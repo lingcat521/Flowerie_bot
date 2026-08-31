@@ -28,6 +28,9 @@ class StubRepo:
     def commit(self):
         pass
 
+    def kv_list(self, user_id, group_id):
+        return []
+
     def insert_note(self, note):
         self.calls.append(("insert", note.user_id, note.group_id, note.text))
         return 1
