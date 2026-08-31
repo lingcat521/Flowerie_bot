@@ -143,7 +143,7 @@ OneBot WebSocket connected
 - **插件**：插件系统（Plugin System v1）管理：保护措施开关（normal/relaxed/unsafe）、插件列表、上传 ZIP / URL 安装、刷新扫描、启用（含权限批准）、禁用、卸载、插件系统配置
 
 完整功能指南（配置中心 / 人格管理 / 群聊知识 / 主题美化 / MCP 卡片管理 / 插件管理 / 安全）见 **[docs/web-ui.md](docs/web-ui.md)**；
-人格系统设计见 [docs/persona.md](docs/persona.md)，梗知识层见 [docs/knowledge.md](docs/knowledge.md)；
+人格系统设计见 [docs/persona.md](docs/persona.md)，记忆/知识体系见 [docs/memory.md](docs/memory.md)；
 插件开发（Plugin API）见 **[docs/plugin-developer-guide.md](docs/plugin-developer-guide.md)**，安全模型见 **[docs/security.md](docs/security.md)**；
 变量说明见 [docs/configuration.md](docs/configuration.md)。
 
@@ -178,7 +178,7 @@ Message / Matcher / Permission 与 Bot Adapter 分层，插件**不接触 OneBot
 
 - [SDK 三层架构与 API](docs/sdk.md)
 - [API 概览](docs/api.md)
-- [插件开发](docs/plugins.md)
+- [插件开发](docs/plugin-developer-guide.md)（文档中心 [docs/README.md](docs/README.md)）
 - [插件开发指南（完整）](docs/plugin-developer-guide.md)
 
 
@@ -194,7 +194,7 @@ Message / Matcher / Permission 与 Bot Adapter 分层，插件**不接触 OneBot
 
 每个群拥有**完全隔离**的梗/黑话知识库：消息命中时只注入相关词条（不可信上下文知识），
 `MEME_LEARNING_ENABLED=true` 时每 24 小时批量总结一次群聊并写入新梗（必要时经 MCP 检索验证）。
-Web UI「群聊知识」页管理；详细设计见 [docs/knowledge.md](docs/knowledge.md)。
+Web UI「群聊知识」页管理；详细设计见 [docs/memory.md](docs/memory.md)。
 
 ## 开发
 

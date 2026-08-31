@@ -154,7 +154,7 @@ Web UI「人格」页管理（全局 / 群聊 / 自定义）。详见 [persona.m
 | `MEME_MIN_MESSAGES_PER_SUMMARY` | 总结最少消息数（低于则跳过） | `10` |
 | `MEME_MAX_SUMMARY_CANDIDATES` | 单群单轮最多写入候选梗数 | `20` |
 
-详见 [knowledge.md](knowledge.md)。
+详见 [memory.md](memory.md)。
 
 ### 如何开启
 

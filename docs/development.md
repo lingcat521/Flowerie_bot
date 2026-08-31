@@ -65,7 +65,7 @@ docs/               # 文档
 - 分层：上层 `plugin_sdk/` → 中层 `src/sdk/`（零 OneBot）→ 下层 `src/sdk/onebot/`
 - 新增平台能力：只改下层 `onebot/`（dto/transformer/adapter），中层上层不动
 - 测试：`tests/test_sdk_*.py`（matcher/listener/adapter/permission/message）
-- 文档：[sdk.md](sdk.md) / [api.md](api.md) / [plugins.md](plugins.md)
+- 文档：[sdk.md](sdk.md) / [api.md](api.md) / [plugin-developer-guide.md](plugin-developer-guide.md)（导航 [README.md](README.md)）
 
 
 ## 存储后端扩展（SQLite 默认 / PostgreSQL 可选）
