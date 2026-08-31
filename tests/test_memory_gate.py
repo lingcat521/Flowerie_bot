@@ -31,6 +31,9 @@ class StubRepo:
     def kv_list(self, user_id, group_id):
         return []
 
+    def count_notes(self, user_id, group_id):
+        return 0
+
     def insert_note(self, note):
         self.calls.append(("insert", note.user_id, note.group_id, note.text))
         return 1
