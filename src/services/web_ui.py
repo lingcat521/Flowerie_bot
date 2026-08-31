@@ -155,6 +155,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_get("/webui", self._handle_root_redirect)  # 旧 JS 版入口 → /panel
         # 无 JS 兼容面板（服务端渲染，任何浏览器可用，含禁用 JS 的手机浏览器）
         app.router.add_get("/panel", self._handle_panel)
+        app.router.add_get("/panel/docs/quick-start", self._handle_doc_quickstart)
         app.router.add_post("/panel/login", self._handle_panel_login)
         app.router.add_get("/panel/register", self._handle_panel_register_page)
         app.router.add_post("/panel/register", self._handle_panel_register)
@@ -231,6 +232,14 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             "size": self._pref("bg_size", "cover"),
             "position": self._pref("bg_position", "center"),
         }
+
+    async def _handle_doc_quickstart(self, request: web.Request) -> web.Response:
+        """新手文档（docs/quick-start.md 本地渲染；零 JS；鉴权同面板）。"""
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        from src.services.webui_render.markdown_mini import render_doc
+        body = '<div class="page">' + render_doc("quick-start.md") + '</div>'
+        return web.Response(text=body, content_type="text/html", charset="utf-8")
 
     async def _handle_panel(self, request: web.Request) -> web.Response:
         if not self._check_token(request):

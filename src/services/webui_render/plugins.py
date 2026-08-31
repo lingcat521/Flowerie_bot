@@ -28,6 +28,10 @@ def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
         for p in ("normal", "relaxed", "unsafe")
     )
     parts.append(
+        '<p class="hint">📖 <a class="doc-link" href="/panel/docs/quick-start">新手文档（10 分钟上手）</a> · '
+        '<a class="doc-link" href="https://github.com/lingcat521/Flowerie_bot/blob/main/docs/plugin-developer-guide.md">完整插件参考</a></p>'
+    )
+    parts.append(
         '<fieldset class="group"><legend>插件保护措施（Plugin Protection）</legend>'
         '<form method="post" action="/panel/plugins/protection">'
         f'{opts}'
