@@ -16,7 +16,8 @@ async def add(event):
     await event.reply(str(int(a) + int(b)))
 
 
-@command("ban", rule=require_permission("group_admin"))
+@command("ban")
+@require_permission("group_admin")
 async def ban(event):
     await event.reply("已执行管理操作")
 

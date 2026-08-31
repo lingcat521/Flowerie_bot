@@ -7,8 +7,17 @@
 """
 from flowerie_sdk.bot import BotAPIError, FlowerieBot
 from flowerie_sdk.event import BotEvent
-from flowerie_sdk.matcher import command, exact, keyword, prefix, regex, rule
+from flowerie_sdk.matcher import (
+    command,
+    exact,
+    keyword,
+    prefix,
+    regex,
+    require_permission,
+    rule,
+)
 from flowerie_sdk.message import BotMessage
 
 __all__ = ["FlowerieBot", "BotEvent", "BotMessage",
-           "command", "keyword", "regex", "prefix", "exact", "rule", "BotAPIError"]
+           "command", "keyword", "regex", "prefix", "exact", "rule",
+           "require_permission", "BotAPIError"]
