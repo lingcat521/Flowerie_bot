@@ -73,19 +73,16 @@ def test_disabling_master_this_save_allows_short_key():
 def test_empty_api_key_skip_not_error():
     """BLOSSOM API_KEY 为空 → 跳过（不修改），不得报'值不合法'（is_secret 修复回归）。"""
     svc = _svc()
-    ok, msg = svc.update_many({"BLOSSOM_MEMORY_EMBEDDING_API_KEY": ""})
-    assert ok, msg
-    ok2, msg2 = svc.update_many({"BLOSSOM_MEMORY_RERANKER_API_KEY": ""})
-    assert ok2, msg2
-    ok3, msg3 = svc.update_many({"DATABASE_URL": ""})
-    assert ok3, msg3
+    for k in ("BLOSSOM_MEMORY_EMBEDDING_API_KEY", "BLOSSOM_MEMORY_RERANKER_API_KEY", "DATABASE_URL"):
+        ok, msg = svc.update_many({k: ""})
+        assert not ok and "值不合法" not in msg, (k, msg)  # 空=无改动提示，而非校验错误
 
 
 def test_empty_numeric_field_skips_not_errors():
     """清空数值字段（如维度/限额）→ 跳过（保持原值），不得报'值不合法'。"""
     svc = _svc()
     ok, msg = svc.update_many({"BLOSSOM_MEMORY_VECTOR_DIMENSION": ""})
-    assert ok, msg
+    assert not ok and "值不合法" not in msg, msg
 
 
 def test_daily_extract_limit_zero_allowed():
