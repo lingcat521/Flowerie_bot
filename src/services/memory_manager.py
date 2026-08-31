@@ -41,7 +41,10 @@ class MemoryManager:
     """按 (user_id, group_id) 隔离的记忆库（业务层，存储经 repository 注入）。"""
 
     def __init__(self, memory_path: str, ttl_days: int = 0, audit_log_path: Optional[str] = None,
-                 model_memory_ttl_days: int = 30, repository: Optional[MemoryRepository] = None):
+                 model_memory_ttl_days: int = 30, repository: Optional[MemoryRepository] = None,
+                 memory_enabled: bool = True):
+        # MEMORY_ENABLED 开关：关=不读/写长期记忆（短期 Context 不受影响）
+        self._enabled = bool(memory_enabled)
         self.memory_path = memory_path
         self.db_path = _resolve_db_path(memory_path)
         self.ttl_days = max(0, int(ttl_days or 0))
@@ -250,6 +253,8 @@ class MemoryManager:
         source_message_id: Optional[int] = None,
         confidence: str = "model",
     ) -> None:
+        if not self._enabled:
+            return
         """写入一条记忆（去重 + 矛盾替换 + 数量上限，存储委托 repository）。
 
         安全边界（P1）：user_id 是唯一的寻址键，调用方（程序层）传入，
@@ -326,6 +331,8 @@ class MemoryManager:
         await self.save()
 
     def get_memory_context(self, user_id: int, group_id: int, max_notes: int = 20, max_length: int = 500) -> str:
+        if not self._enabled:
+            return ""
         notes = self.repository.list_notes(user_id, group_id, limit=max_notes)
         _M_READ.inc()
         logger.debug(
