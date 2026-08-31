@@ -28,8 +28,8 @@ def test_postgres_memory_repository_crud():
         assert repo.search_notes(7001, 701, "奶茶")
         repo.kv_set(7001, 701, "fav", "奶茶")
         assert ("fav", "奶茶") in repo.kv_list(7001, 701)
-        assert repo.trim_notes(7001, 701, 0) >= 0
         assert repo.delete_user_notes(7001, 701) == 1
+        assert repo.count_notes(7001, 701) == 0
         repo.commit()
     finally:
         repo.close()

@@ -118,7 +118,9 @@ class PostgresBlossomMemoryRepository(BlossomMemoryRepository):
 
     @staticmethod
     def _row(r: Any) -> dict:
-        d = dict(r)
+        cols = ("memory_id", "group_id", "kind", "target_id", "text", "vector",
+                "source_message_id", "created_at", "last_used_at", "used_count")
+        d = dict(zip(cols, r))
         vec = d.get("vector")
         if isinstance(vec, str):
             try:
