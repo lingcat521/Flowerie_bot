@@ -142,6 +142,14 @@ def test_malformed_payloads():
     assert ev.timestamp and ev.kind == "message"
 
 
+# ---------- 8b. OneBot11 字符串形式 message 兼容 ----------
+def test_string_message_compat():
+    ev = PARSER.parse({"post_type": "message", "message_type": "group", "group_id": 7,
+                       "user_id": 9, "message_id": 1, "time": 5, "message": "在吗"})
+    assert ev.text == "在吗"
+    assert ev.message_segments == [{"type": "text", "data": {"text": "在吗"}}]
+
+
 # ---------- raw_data 边界：不让 OneBot 字段越过 adapter ----------
 def test_raw_data_boundary():
     ev = PARSER.parse(_message_payload())

@@ -180,9 +180,9 @@ class MessageRouter:
             await self._handle_message(event)
         elif event.kind == "notice":
             if event.notice_kind == "group_upload":
-                self._handle_group_upload(data)
+                self._handle_group_upload(event)
             elif event.notice_kind == "poke":
-                await self._handle_poke(data)
+                await self._handle_poke(event)
 
     @staticmethod
     def _plugin_payload(event: InternalEvent) -> Dict[str, Any]:

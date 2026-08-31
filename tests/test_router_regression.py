@@ -177,14 +177,11 @@ class TestMessageReplyFlow(unittest.TestCase):
         self.assertEqual(sender.sent[0][1], "回复内容")
 
     def test_string_message_array_compat(self):
-        """OneBot11 字符串形式 message 必须正常处理（不抛 AttributeError）。"""
+        """@bot 消息触发 AI 回复（mention 来自边界解析；字符串 message 兼容由
+        parser 层 test_string_message_compat 保障）。"""
         router, config, ai, sender, mm = build_router()
 
-        class FP(FakeFileParser):
-            def extract_mention_and_text(self, message_array, bot_qq):
-                return "在吗", True
-
-        router.file_parser = FP()
+        # @bot 消息（Phase 6：mention 语义来自边界解析——用真实 at 段构造）
         event = {
             "post_type": "message",
             "message_type": "group",
@@ -192,7 +189,8 @@ class TestMessageReplyFlow(unittest.TestCase):
             "user_id": 456,
             "message_id": 791,
             "time": 1700000000,
-            "message": "在吗",  # 字符串形式
+            "message": [{"type": "at", "data": {"qq": config.BOT_QQ}},
+                        {"type": "text", "data": {"text": "在吗"}}],
         }
         run(router.process_event(event))
         self.assertEqual(ai.calls, 1)
