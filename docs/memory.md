@@ -126,7 +126,7 @@ Embedding(HTTP, OpenAI-compatible)
 `tests/test_meme_summary.py`（批量/防重/重试放弃/MCP 按需/降级/解析防御/群数上限）、
 `tests/test_web_ui_persona_knowledge.py`（管理页 UI/隔离/认证/零 JS）。
 
-## v1.3.0 说明
+## 现状说明（演进记录）
 
 群梗知识层由主进程管理（meme_manager），插件如需检索请调用 `get_memory` 等动作；
 知识文件路径与隔离策略不变。
