@@ -44,6 +44,28 @@ def on_schedule(event, api=None):
 
 ---
 
+## 0.5 核心概念（5 分钟，先看这段再写代码）
+
+> 下面三个点是最「反直觉」、最容易卡住新人的地方——**记牢它们，写插件就是拼模板**。
+
+**① 插件是独立进程，不是 import 框架。**
+插件运行在**独立子进程**里（`python3 -I`/node），通过 **stdin/stdout JSON 通信**，`import Flowerie` 内部模块**不行**也不允许。
+→ 你的插件自成一个世界：只有 `flowerie_sdk/`（自带副本）+ 主进程通过 `api` 递给你的能力。
+→ 心法：**写"剧本"，不是写"库"**——你不会被 import 进主进程，主进程只会用钩子调用你。
+
+**② 「动作（Action）」是命令，不是函数调用。**
+插件**不直接执行副作用**，而是**发出动作指令**（`{"type": "send_message", "payload": {...}}` 或 `api.send_message(...)`），由主进程**做权限检查后**执行。
+→ 这就是为什么「发送私聊」是 `send_private_message` 而不是 `send_message`：**事件钩子**（`on_message`/`on_startup`）与**动作指令**（send_xxx）是两套词汇表。
+→ SDK 模式下 `await event.reply(...)` 只是动作的**语法糖**——底层仍是动作。
+→ 好处：**插件永远无法绕过权限**。
+
+**③ 权限声明是唯一闸门，未声明 = 动作静默失败。**
+`manifest.json` 里 `permissions` 未声明的动作，主进程**直接拒绝（写日志，页面不弹错）**——机器人"毫无反应"。
+→ **先声明权限 → 再启用插件**；`send_message`/`read_message` 是最容易漏的两个。
+→ 排查口诀：没反应先查**清单**（manifest）+ **日志**（关键词 `denied` / `permission`）。
+
+---
+
 ## 1. Plugin API 概览
 
 插件是**独立子进程**（Python / Node）或**进程内声明式规则**（JSON），通过统一协议与
@@ -389,6 +411,24 @@ Web UI「插件」页提供 Normal / Relaxed / Unsafe 三档（`PLUGIN_PROTECTIO
 **任何级别都不豁免**：manifest 校验、管理员权限（Web UI 认证）、进程隔离、
 日志、崩溃保护、资源限制、**权限强制（PermissionManager）**。
 关闭保护≠无安全边界：普通 QQ 用户永远不能安装/启用插件或修改权限。
+
+## 24.5 常见错误对照表（先看这里，省一小时排查）
+
+| 症状 | 原因 | 解法 |
+| --- | --- | --- |
+| 插件装上没反应，命令不触发 | `manifest.permissions` 漏 `read_message` | 声明 `read_message`；日志搜 `denied` |
+| 能收到消息但**发不出去** | 漏 `send_message`（或 `send_private_message`） | 声明对应发送权限（最容易漏的两个） |
+| `on_startup`/`on_message` 不执行 | **钩子名拼错**（拼错=静默不调用，不报错） | 对照 §6 生命周期逐字核对 |
+| SDK 模式 matcher 全无 | `bot.attach(api)`/`bot.register()` 忘调用 | §0 模板四行必写：attach → register → route |
+| `event.args` 为空/事件字段为 None | 用了 **notice/request 事件**却按 message 字段取 | 先看 `event.kind/scope`（§7） |
+| `api.send_message` 报"参数错误" | 动作名/键名拼错（`send_message` vs `send_private_message`） | 查 [api.md](api.md) 速查表（生成自源码，最准） |
+| 想发图/at 却拼 CQ 码 | 用了 OneBot 段字符串 | 用 `event.reply`/`BotMessage`（§3）或 SDK `message` 构造 |
+| `file_read` 读不到 | 路径带了 `../` 或绝对路径 | 只能读插件目录内相对路径（§20） |
+| JSON 插件能执行危险动作？ | `runtime=json` 被当沙箱 | **它不是** OS 沙箱！只放模板+信任内容（§5 警告） |
+| URL 装插件失败/慢 | 直连无校验 | 用 `http_request`（主进程 SSRF 防护）或先下载再传 ZIP |
+| 重启后插件没启用 | 安装默认 **discovered（禁用）** | Web UI「插件」页手动启用 + 批准权限 |
+
+> 通用排查顺序：**① manifest 权限 → ② 钩子名 → ③ 日志（关键词 `denied`/`error`/`plugin_log`）→ ④ api.md 拼写**。
 
 ## 25. 最小插件示例（Python）
 
