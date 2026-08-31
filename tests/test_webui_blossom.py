@@ -35,10 +35,10 @@ def test_blossom_default_off_hides_all():
                                      for k in ("BLOSSOM_MEMORY_EMBEDDING_ENABLED",
                                                "BLOSSOM_MEMORY_EMBEDDING_MODEL")],
                                   category_order=_ORDER, category_labels=_LABELS)
-    # 总开关显示；子开关与模型配置不渲染
+    # 总开关显示；子开关（功能门控）不渲染；但模型/API 配置始终渲染（先见才能配）
     assert "BLOSSOM_MEMORY_ENABLED" in html
     assert "BLOSSOM_MEMORY_EMBEDDING_ENABLED" not in html
-    assert "BLOSSOM_MEMORY_EMBEDDING_MODEL" not in html
+    assert "BLOSSOM_MEMORY_EMBEDDING_MODEL" in html
     assert "<details" in html and "<summary" in html  # 原生折叠
     assert "script" not in html.lower()                # 零 JS
 
@@ -51,8 +51,8 @@ def test_blossom_on_shows_sub_switches_but_hides_off_sub_config():
     html = render_config_sections(cfgs, category_order=_ORDER, category_labels=_LABELS)
     assert "BLOSSOM_MEMORY_EMBEDDING_ENABLED" in html      # 子开关显示
     assert "BLOSSOM_MEMORY_RERANKER_ENABLED" in html
-    assert "BLOSSOM_MEMORY_EMBEDDING_MODEL" not in html    # embedding 关 → 模型键隐藏
-    assert "BLOSSOM_MEMORY_RERANKER_MODEL" in html         # rerank 开 → 模型键显示
+    assert "BLOSSOM_MEMORY_EMBEDDING_MODEL" in html        # 模型配置始终显示（不再隐藏）
+    assert "BLOSSOM_MEMORY_RERANKER_MODEL" in html
     assert "BLOSSOM_MEMORY_VECTOR_DIMENSION" in html       # 参数键：总开关 ON 时显示
 
 
