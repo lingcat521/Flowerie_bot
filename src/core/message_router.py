@@ -266,10 +266,10 @@ class MessageRouter:
 
         # 消息组装（文本/识图/转发/卡片/文件/存档）交给 MessageAssembler
         full_text, image_descriptions, is_reply_to_bot, has_reply_to_other, has_at_others = await self.assembler.assemble(
-            message_array, user_id, group_id, raw_time,
+            event, user_id, group_id, raw_time,
         )
-        # 提取纯文本与是否@机器人（决策需要）
-        clean_text, is_mentioned = self.file_parser.extract_mention_and_text(message_array, self.config.BOT_QQ)
+        # 纯文本与是否@机器人（决策需要）：来自边界解析（等价格）
+        clean_text, is_mentioned = event.text, event.is_mentioned
 
         # 用户命令（P2-9 记忆管理：/help /memory /forget /forget_me；管理员 /memory_clear /memory_dump）
         if clean_text.strip().startswith("/") and await self.commands.handle(clean_text.strip(), user_id, group_id):
@@ -479,15 +479,15 @@ class MessageRouter:
 
     # ---------- 存档 ----------
     # ---------- 文件上传 ----------
-    def _handle_group_upload(self, data: Dict[str, Any]):
-        file_data = data.get("file", {})
+    def _handle_group_upload(self, event: InternalEvent):
+        file_data = event.notice_file or {}
         if not file_data:
             return
-        group_id = data.get("group_id")
+        group_id = event.group_id
         if not self._in_whitelist(group_id):
             logger.debug(f"Upload from non-whitelisted group {group_id}, ignoring")
             return
-        user_id = data.get("user_id")
+        user_id = event.actor_id
         if user_id and group_id:
             pending_key = f"{user_id}_{group_id}"
             self.global_state.pending_files[pending_key] = {
@@ -497,7 +497,7 @@ class MessageRouter:
                 "busid": file_data.get("busid", 0),
                 "user_id": user_id,
                 "group_id": group_id,
-                "time": data.get("time", time.time())
+                "time": event.timestamp or time.time()
             }
             logger.debug(f"File upload cached: {file_data.get('name')} from {user_id} in {group_id}")
             # 待配对文件缓存治理：超过 10 分钟没等到消息的条目丢弃 + 总数上限
@@ -521,17 +521,18 @@ class MessageRouter:
     # 每用户戳戳冷却（秒）：防戳戳刷屏刷爆消息发送
     POKE_USER_COOLDOWN = 10
 
-    async def _handle_poke(self, data: Dict[str, Any]):
-        target_id = data.get("target_id") or data.get("target") or data.get("user_id")
+    async def _handle_poke(self, event: InternalEvent):
+        # target 优先级与旧逻辑一致：target_id → target → user_id（边界已提取 target_id；无则兜底 actor）
+        target_id = event.target_id if event.target_id is not None else event.actor_id
         if target_id != self.config.BOT_QQ:
             return
         if not self.config.POKE_REPLY_ENABLED:
             return
-        group_id = data.get("group_id")
+        group_id = event.group_id
         if not self._in_whitelist(group_id):
             logger.debug(f"Poke from non-whitelisted group {group_id}, ignoring")
             return
-        user_id = data.get("user_id")
+        user_id = event.actor_id
         # 每用户戳戳冷却：同一人连续猛戳只回一次
         now = time.time()
         if user_id:

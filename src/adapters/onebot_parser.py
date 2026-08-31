@@ -54,6 +54,13 @@ class OneBotEventParser:
             raw_data=raw,
         )
         event.operator_id = raw.get("operator_id") or actor_id
+        event.target_id = raw.get("target_id")
+        if kind == "notice" and str(raw.get("notice_type") or "") == "group_upload":
+            file_raw = raw.get("file")
+            event.notice_file = dict(file_raw) if isinstance(file_raw, dict) else {}
+        elif kind == "notice" and raw.get("file") is not None:
+            file_raw = raw.get("file")
+            event.notice_file = dict(file_raw) if isinstance(file_raw, dict) else {}
         if kind == "message":
             self._fill_message(event, raw)
         elif kind == "notice":

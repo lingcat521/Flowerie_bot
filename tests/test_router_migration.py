@@ -130,3 +130,30 @@ def test_no_raw_data_read_in_migration_path():
     for src in (inspect.getsource(compat), inspect.getsource(onebot_parser)):
         assert "raw_data[" not in src
         assert "raw_data.get" not in src
+
+
+# ---------- 15/16：poke 与群文件上传的边界字段（行为对照，Step 1） ----------
+def test_poke_boundary_fields():
+    """poke 迁移：target 兜底（target_id/target/user_id）→ target_id 恒等解析。"""
+    ev = PARSER.parse({"post_type": "notice", "notice_type": "notify", "sub_type": "poke",
+                       "group_id": 7, "user_id": 9, "target_id": BOT_QQ, "time": 2000})
+    assert ev.notice_kind == "poke"
+    assert ev.target_id == BOT_QQ          # 旧 target_id 优先语义
+    assert ev.group_id == 7 and ev.actor_id == 9
+
+    # 旧兜底（data.get("target_id") or target or user_id）：只有 user_id 时
+    ev2 = PARSER.parse({"post_type": "notice", "notice_type": "notify", "sub_type": "poke",
+                        "group_id": 7, "user_id": 9, "time": 2001})
+    # 旧行为 target=user_id（当 target_id/target 缺失）——映射表保持同一优先级
+    assert ev2.target_id is None           # 无 target_id 时 None；迁移函数兜底 actor_id
+    assert ev2.actor_id == 9
+
+
+def test_upload_boundary_fields():
+    """群文件上传：file 对象在边界提取（name/id/size/busid）。"""
+    ev = PARSER.parse({"post_type": "notice", "notice_type": "group_upload", "group_id": 7,
+                       "user_id": 9, "time": 3000,
+                       "file": {"name": "a.txt", "id": "f1", "size": 1024, "busid": 0}})
+    assert ev.notice_kind == "group_upload"
+    assert ev.notice_file == {"name": "a.txt", "id": "f1", "size": 1024, "busid": 0}
+    assert ev.group_id == 7 and ev.actor_id == 9 and ev.timestamp == 3000

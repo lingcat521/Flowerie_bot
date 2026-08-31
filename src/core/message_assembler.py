@@ -29,26 +29,29 @@ class MessageAssembler:
 
     async def assemble(
         self,
-        message_array: List[Dict],
+        event,
         user_id: int,
         group_id: int,
         raw_time: int,
     ) -> Tuple[str, List[str], bool, bool, bool]:
         """组装消息，返回 (full_text, 顶层图片描述列表, is_reply_to_bot, has_reply_to_other, has_at_others)。"""
-        # 提取纯文本与是否@机器人
-        clean_text, is_mentioned = self.file_parser.extract_mention_and_text(message_array, self.config.BOT_QQ)
+        message_array = event.message_segments or []   # 组装配件可读段（boundary 已规范化）
+        # 纯文本与@机器人：来自边界解析（与 file_parser 同规则，快照断言保障等价）
+        clean_text = event.text
         full_text = clean_text
 
-        # 顶层图片/表情包识图（OneBot11 image 段带 url）
-        image_descriptions = await self._describe_images(message_array)
+        # 顶层图片识图（边界语义：images=url-or-file；历史行为仅描述 url）
+        image_descriptions = await self._describe_images(event)
         if image_descriptions:
             # 图片描述也按不可信数据处理（图片里可能被塞文字指令）
             cleaned_descs, _ = sanitize_untrusted_text("；".join(image_descriptions))
             full_text += f"\n[用户发送了一张图片，内容如下：]\n{cleaned_descs}\n[图片内容结束]"
             logger.debug(f"Image descriptions: {image_descriptions}")
 
-        # 扫描回复与@
-        is_reply_to_bot, has_reply_to_other, has_at_others = self._scan_reply_and_at(message_array)
+        # 回复与@：边界语义字段（parser 与旧 _scan_reply_and_at 同规则）
+        is_reply_to_bot = event.is_reply_to_bot
+        has_reply_to_other = event.has_reply_to_other
+        has_at_others = event.has_at_others
 
         # 合并转发（含转发内图片，由 VISION_FORWARD_IMAGES 控制）
         full_text += await self._assemble_forward(message_array)
@@ -64,43 +67,24 @@ class MessageAssembler:
         return full_text, image_descriptions, is_reply_to_bot, has_reply_to_other, has_at_others
 
     # ---------- 顶层图片识图 ----------
-    async def _describe_images(self, message_array: List[Dict]) -> List[str]:
+    async def _describe_images(self, event) -> List[str]:
         descriptions = []
         max_images = max(1, self.config.MAX_IMAGES_PER_MESSAGE)
-        for seg in message_array:
-            if seg.get("type") == "image":
-                if len(descriptions) >= max_images:
-                    logger.warning(f"图片超过单条消息上限({max_images}张)，跳过后续识图")
-                    break
-                seg_data = seg.get("data") or {}
-                url = seg_data.get("url", "")
-                if url:
-                    desc = await self.ai_client.describe_image(url)
-                    if desc:
-                        descriptions.append(desc)
-                    else:
-                        logger.warning(f"Vision describe failed for image url: {url[:80]}")
+        # 历史行为：仅 http(s) url 触发识图（file 路径本地图不描述）——保持等价
+        images = [i for i in (event.images or []) if str(i).startswith(("http://", "https://"))]
+        for url in images[:max_images]:
+            try:
+                desc = await self.ai_client.describe_image(url)
+            except Exception as e:  # noqa: BLE001 - 描述失败不阻断组装
+                logger.warning(f"Vision describe failed for image url: {url[:80]} ({e})")
+                desc = ""
+            if desc:
+                descriptions.append(desc)
+            else:
+                logger.warning(f"Vision describe failed for image url: {url[:80]}")
         return descriptions
 
     # ---------- 回复/@ 扫描 ----------
-    def _scan_reply_and_at(self, message_array: List[Dict]) -> Tuple[bool, bool, bool]:
-        is_reply_to_bot = False
-        has_reply_to_other = False
-        has_at_others = False
-        for seg in message_array:
-            if seg.get("type") == "reply":
-                reply_data = seg.get("data", {})
-                replied_qq = str(reply_data.get("qq", ""))
-                if replied_qq == str(self.config.BOT_QQ):
-                    is_reply_to_bot = True
-                else:
-                    has_reply_to_other = True
-            elif seg.get("type") == "at":
-                qq = str(seg.get("data", {}).get("qq", ""))
-                if qq != str(self.config.BOT_QQ):
-                    has_at_others = True
-        return is_reply_to_bot, has_reply_to_other, has_at_others
-
     # ---------- 合并转发 ----------
     async def _assemble_forward(self, message_array: List[Dict]) -> str:
         forward_text, forward_image_urls, has_forward = await self.file_parser.extract_forward_messages(message_array)

@@ -33,6 +33,8 @@ class InternalEvent:
     request_kind: str = ""             # friend / group（申请类事件）
     lifecycle_kind: str = ""           # enable / disable / connect（生命周期事件）
     operator_id: Optional[int] = None  # 操作者（群管变动等）；缺省=actor_id
+    target_id: Optional[int] = None    # 目标（poke 的被戳者等在边界提取）
+    notice_file: Dict[str, Any] = field(default_factory=dict)  # 上传/通知文件对象（边界提取）
     # 派生语义（router/策略层直接使用）
     is_mentioned: bool = False         # @bot_qq 或 @all
     is_reply_to_bot: bool = False
