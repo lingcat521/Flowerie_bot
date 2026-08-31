@@ -60,7 +60,7 @@ def test_enabled_reads_and_writes():
     mm.repository.notes = [MemoryNote(text="奶茶", user_id=1, group_id=2)]
     mm.get_memory_context(1, 2)
     assert ("list", 1, 2) in repo.calls
-    asyncio.run(mm.append_memory_text(1, 2, "我喜欢奶茶"))
+    asyncio.run(mm.append_memory_text(1, 2, "我最怕黑"))
     assert any(c[0] == "insert" for c in repo.calls)
     mm.close()
 
