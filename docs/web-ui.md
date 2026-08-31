@@ -224,7 +224,7 @@ MCP 服务器以**卡片列表**展示，无需手写 JSON：
 
 - 全程 **无 JavaScript**（无 `<script>`/fetch/框架），仅 HTML + CSS + 服务端
 - 移动端自适应（PC / 平板 / 手机），窄屏表单转单列、按钮紧凑横排
-- 其它配置项说明见 [configuration.md](configuration.md)；人格详见 [persona.md](persona.md)；群聊知识详见 [knowledge.md](knowledge.md)；MCP 详见 [mcp.md](mcp.md)；插件 API 详见 [plugin-developer-guide.md](plugin-developer-guide.md)；安全模型见 [security.md](security.md)
+- 其它配置项说明见 [configuration.md](configuration.md)；人格详见 [persona.md](persona.md)；群聊知识详见 [memory.md](memory.md)；MCP 详见 [mcp.md](mcp.md)；插件 API 详见 [plugin-developer-guide.md](plugin-developer-guide.md)；安全模型见 [security.md](security.md)
 
 
 ## 配置页折叠（无 JavaScript）
