@@ -54,7 +54,14 @@ async def main():
 
     logger.info("花璃启动中...", extra={"event": "startup"})
 
-    memory_manager = MemoryManager(config.MEMORY_PATH, config.MEMORY_TTL_DAYS, config.AUDIT_LOG_PATH, config.MODEL_MEMORY_TTL_DAYS, memory_enabled=config.MEMORY_ENABLED)
+    # ---- 存储后端选择（默认 SQLite；STORAGE_BACKEND=postgres 走 PG 平行实现）----
+    if str(getattr(config, "STORAGE_BACKEND", "sqlite") or "sqlite").lower() == "postgres":
+        from src.repositories.postgres_memory_repository import PostgresMemoryRepository
+        memory_repo = PostgresMemoryRepository(config.DATABASE_URL)
+    else:
+        memory_repo = None
+    memory_manager = MemoryManager(config.MEMORY_PATH, config.MEMORY_TTL_DAYS, config.AUDIT_LOG_PATH, config.MODEL_MEMORY_TTL_DAYS, memory_enabled=config.MEMORY_ENABLED,
+                                   repository=memory_repo)
 
     # ---- 花语记忆（BlossomMemory）：默认 OFF——不初始化任何模型资源（embedding/reranker/向量库）
     blossom_memory = None

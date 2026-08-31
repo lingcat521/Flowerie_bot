@@ -33,6 +33,8 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "PROACTIVE_CHAT_ENABLED": ("ActiveChat", "bool", False, True, "主动聊天总开关"),
     "REPEAT_ENABLED": ("Repeat", "bool", False, True, "复读检测开关"),
     "ANTI_SPAM_ENABLED": ("Repeat", "bool", False, True, "防刷/冷却逻辑开关"),
+    "STORAGE_BACKEND": ("Paths", "str", False, True, "存储后端（sqlite=默认；postgres=可选）"),
+    "DATABASE_URL": ("Paths", "secret", False, True, "PostgreSQL 连接串（postgres 后端必填）"),
     "DEEPSEEK_API_KEY": ("AI", "secret", True, True, "DeepSeek API 密钥（必填）"),
     "DEEPSEEK_API_URL": ("AI", "str", False, True, "DeepSeek API 地址"),
     "DEEPSEEK_MODEL": ("AI", "str", False, True, "群聊对话模型"),
@@ -214,6 +216,7 @@ _ENUM_VALUES = {
     "LOG_LEVEL": {"debug", "info", "warning", "error", "critical"},
     "LOG_FORMAT": {"text", "json"},
     "NAPCAT_WS_MODE": {"reverse", "forward"},
+    "STORAGE_BACKEND": {"sqlite", "postgres"},
     "NAPCAT_WS_AUTH_MODE": {"header", "query"},
     "PLUGIN_PROTECTION": {"normal", "relaxed", "unsafe"},
 }

@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     REPEAT_ENABLED: bool = True           # 复读检测开关
     ANTI_SPAM_ENABLED: bool = True        # 防刷/冷却逻辑开关
 
+    # ---- 存储后端（默认 SQLite；可选 PostgreSQL——需自建 PG 服务器）----
+    STORAGE_BACKEND: str = "sqlite"   # "sqlite" | "postgres"
+    DATABASE_URL: str = ""            # postgres://user:pass@host:5432/db（postgres 后端必填）
+
     # DeepSeek
     DEEPSEEK_API_KEY: str = Field(...)  # 环境变量名 = 字段名（pydantic-settings）
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
@@ -495,6 +499,11 @@ def validate_config(config: Settings) -> None:
             if not mcp_url:
                 raise ValueError("MCP_ENABLED=true 时必须配置 MCP_SERVER_URL（不允许静默降级为纯聊天）")
     # LivingMemory（高级记忆）：主开关开启时，启用的子链路必须有完整配置（fail-fast）
+    if str(getattr(config, "STORAGE_BACKEND", "sqlite") or "sqlite").lower() == "postgres":
+        if not getattr(config, "DATABASE_URL", ""):
+            raise ValueError("STORAGE_BACKEND=postgres 时必须配置 DATABASE_URL")
+    if str(getattr(config, "STORAGE_BACKEND", "sqlite") or "sqlite").lower() not in ("sqlite", "postgres"):
+        raise ValueError("STORAGE_BACKEND 仅支持 sqlite/postgres")
     if getattr(config, "BLOSSOM_MEMORY_ENABLED", False):
         if getattr(config, "BLOSSOM_MEMORY_EMBEDDING_ENABLED", False):
             if not (getattr(config, "BLOSSOM_MEMORY_EMBEDDING_MODEL", "") and
