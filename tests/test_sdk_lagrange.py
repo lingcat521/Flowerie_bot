@@ -137,7 +137,6 @@ async def test_emoji_fallback_to_lagrange_endpoint():
 async def test_manager_fallback_selects_available_gateway():
 
     s = LagrangeOnlySender()
-    pm = PluginManager(sender=s, config=None, plugins_dir=None, data_dir=None) if False else None
     # 直接测 _sender_forward 的端到端：构造最小 manager（不依赖插件目录）
     import src.plugins.manager as M
     mgr = M.PluginManager.__new__(M.PluginManager)
