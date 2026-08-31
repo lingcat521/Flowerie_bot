@@ -50,10 +50,13 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
             '</form>'
             + (render_mcp_editor(mcp_raw, edit_index=mcp_edit, mcp_test_status=mcp_test_status, mcp_tool_counts=mcp_tool_counts) if mcp_raw is not None else "")
         )
-        # 折叠（<details>/<summary> 原生，零 JS）+ 开关状态徽标
+        # 折叠（<details>/<summary> 原生，零 JS）+ 开关状态徽标。
+        # 「全部」视图：平铺不折叠（open）；点进特定分类：折叠（点开查看详情）。
+        # 花语记忆总开关 OFF 时子开关/模型配置由上方门控不渲染（qwq 不变）。
         summary_status = _cat_status_badge(by_cat[cat])
+        open_attr = " open" if active_cat == "all" else ""
         section = (
-            f'<details class="cfg-group">'
+            f'<details class="cfg-group"{open_attr}>'
             f'<summary class="cfg-summary">{_esc(label)}{summary_status}</summary>'
             + body
             + '</details>'

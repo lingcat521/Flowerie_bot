@@ -62,3 +62,31 @@ def test_gate_helpers():
     assert _blossom_sub_switch_on(cfgs, "BLOSSOM_MEMORY_EMBEDDING_MODEL") is True
     assert _blossom_sub_switch_on(cfgs, "BLOSSOM_MEMORY_RERANKER_MODEL") is False
     assert _blossom_sub_switch_on(cfgs, "BLOSSOM_MEMORY_VECTOR_DIMENSION") is True  # 未归属键仅受总开关
+
+
+# ---------- 折叠规则：全部视图平铺；特定分类折叠 ----------
+def test_all_view_flat_all_categories_open():
+    from src.services.webui_render.config_panel import render_config_sections
+    cfgs = [
+        _cfg("AI_ENABLED", "true") | {"category": "AI"},
+        _cfg("BLOSSOM_MEMORY_ENABLED", "false"),
+    ]
+    html = render_config_sections(cfgs, active_cat="all",
+                                  category_order=["AI", "BlossomMemory"],
+                                  category_labels={"AI": "AI 配置", "BlossomMemory": "花语记忆"})
+    # 全部视图：每个分类 details 都带 open（平铺，不折叠）
+    assert html.count('<details class="cfg-group" open>') == 2, "全部视图应平铺"
+
+
+def test_specific_view_collapsed():
+    from src.services.webui_render.config_panel import render_config_sections
+    cfgs = [
+        _cfg("AI_ENABLED", "true") | {"category": "AI"},
+        _cfg("BLOSSOM_MEMORY_ENABLED", "false"),
+    ]
+    html = render_config_sections(cfgs, active_cat="AI",
+                                  category_order=["AI", "BlossomMemory"],
+                                  category_labels={"AI": "AI 配置", "BlossomMemory": "花语记忆"})
+    # 特定分类视图：折叠（无 open 属性）
+    assert '<details class="cfg-group" open>' not in html, "特定分类应折叠"
+    assert '<details class="cfg-group">' in html
