@@ -32,6 +32,29 @@ def on_message(event, api=None):
 
 ---
 
+## 1.5 30 秒速查（常用 API 一行例）
+
+```python
+bot = FlowerieBot()
+
+@command("hi", rule=rule(is_group=True))   # !hi 且仅群聊
+async def h(event):
+    await event.reply("你好")                # 回复当前消息上下文
+
+# 更多能力（详见对应章节；全部 await、权限自动检查）
+await event.reply("hi")                     # §3 消息
+await bot.send(("group", 777), "hi")        # 直发群
+await bot.send(("private", 1001), "hi")     # 直发私聊
+await bot.recall(message_id)                # 撤回
+await bot.mute(777, 123, 600)               # 禁言 10 分钟
+await bot.kick(777, 123)                    # 踢
+await bot.get_context(777, 20)              # 群最近历史
+await bot.wait_for(...)                     # 等待下一条（§7 多轮）
+await bot.cool_down("k", 60)                # 冷却（§9）
+await event.mention_bot()                   # @ 机器人
+bot.log("info", "hello")                    # 日志（§6）
+```
+
 ## 2. Event 完整参考
 
 ### 2.1 属性（事件接收时全部可用）

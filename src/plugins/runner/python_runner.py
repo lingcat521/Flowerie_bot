@@ -186,6 +186,79 @@ class PluginApi:
         return self._send_action("group_admin", payload)
 
 
+    # ---------- v1.7.0 语义能力（看一眼就会；底层同 call 白名单/权限/回退） ----------
+    def react(self, message_id: int, react_type: int) -> Dict[str, Any]:
+        """消息表情回应（NapCat/Lagrange 自动适配）。"""
+        return self._send_action("react", {"message_id": message_id, "react_type": react_type})
+
+    def tap(self, group_id: int, user_id: int) -> Dict[str, Any]:
+        """群内戳一戳。"""
+        return self._send_action("tap", {"group_id": group_id, "user_id": user_id})
+
+    def user_history(self, user_id: int, count: int = 20) -> Dict[str, Any]:
+        """好友/私聊消息历史。"""
+        return self._send_action("user_history", {"user_id": user_id, "count": count})
+
+    def user_poke(self, user_id: int) -> Dict[str, Any]:
+        """私聊戳一戳。"""
+        return self._send_action("user_poke", {"user_id": user_id})
+
+    def user_forward(self, user_id: int, messages: list) -> Dict[str, Any]:
+        """私聊合并转发。"""
+        return self._send_action("user_forward", {"user_id": user_id, "messages": messages})
+
+    def group_forward(self, group_id: int, messages: list) -> Dict[str, Any]:
+        """群合并转发。"""
+        return self._send_action("group_forward", {"group_id": group_id, "messages": messages})
+
+    def essence_list(self, group_id: int) -> Dict[str, Any]:
+        """群精华消息列表。"""
+        return self._send_action("essence_list", {"group_id": group_id})
+
+    def group_honor(self, group_id: int, honor_type: str = "") -> Dict[str, Any]:
+        """群荣誉信息。"""
+        return self._send_action("group_honor", {"group_id": group_id, "honor_type": honor_type})
+
+    def group_notice_delete(self, group_id: int, notice_id: str) -> Dict[str, Any]:
+        """删除群公告。"""
+        return self._send_action("group_notice_delete", {"group_id": group_id, "notice_id": notice_id})
+
+    def group_portrait(self, group_id: int, file: str) -> Dict[str, Any]:
+        """修改群头像。"""
+        return self._send_action("group_portrait", {"group_id": group_id, "file": file})
+
+    def group_info(self, group_id: int, no_cache: bool = False) -> Dict[str, Any]:
+        """群信息。"""
+        return self._send_action("group_info", {"group_id": group_id, "no_cache": no_cache})
+
+    def group_list(self, no_cache: bool = False) -> Dict[str, Any]:
+        """群列表。"""
+        return self._send_action("group_list", {"no_cache": no_cache})
+
+    def group_folder_create(self, group_id: int, name: str) -> Dict[str, Any]:
+        """创建群文件文件夹。"""
+        return self._send_action("group_folder_create", {"group_id": group_id, "name": name})
+
+    def group_file_delete(self, group_id: int, file_id: str, busid: int = 0) -> Dict[str, Any]:
+        """删除群文件。"""
+        return self._send_action("group_file_delete",
+                                 {"group_id": group_id, "file_id": file_id, "busid": busid})
+
+    def group_folder_delete(self, group_id: int, folder_id: str) -> Dict[str, Any]:
+        """删除群文件文件夹。"""
+        return self._send_action("group_folder_delete", {"group_id": group_id, "folder_id": folder_id})
+
+    def group_file_move(self, group_id: int, file_id: str, busid: int = 0,
+                        target_folder_id: str = "") -> Dict[str, Any]:
+        """移动群文件。"""
+        return self._send_action("group_file_move", {"group_id": group_id, "file_id": file_id,
+                                                     "busid": busid, "target_folder_id": target_folder_id})
+
+    def group_folder_rename(self, group_id: int, folder_id: str, name: str) -> Dict[str, Any]:
+        """重命名群文件文件夹。"""
+        return self._send_action("group_folder_rename",
+                                 {"group_id": group_id, "folder_id": folder_id, "name": name})
+
 class PluginRunner:
     """协议主体：初始化模块 → 分发事件 → 处理 action 请求（请求-响应嵌套循环）。"""
 

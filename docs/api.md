@@ -1,4 +1,4 @@
-# Flowerie API 概览（v1.3.0）
+# Flowerie API 概览（v1.7.0）
 
 > 完整示例见 [sdk.md](sdk.md)；插件开发见 [plugins.md](plugins.md)。
 

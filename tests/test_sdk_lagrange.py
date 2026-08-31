@@ -162,3 +162,35 @@ def test_onebot_endpoints_stay_in_sender_layer():
         if real:
             bad.append((os.path.basename(f), real))
     assert not bad, f"OneBot 端点泄漏到语义层: {bad}"
+
+
+# ---------- PluginApi 语义方法（看一眼就会；等效 call 白名单通道） ----------
+def test_plugin_api_semantic_methods():
+    from src.plugins.runner.python_runner import PluginApi
+
+    calls = []
+    api = PluginApi(lambda action, payload: calls.append((action, payload)) or {"ok": True}, "p1")
+    api.react(42, 5)
+    api.tap(777, 123)
+    api.user_history(1001, 30)
+    api.group_forward(777, [{"name": "x", "uin": 1, "content": "hi"}])
+    api.group_file_move(777, "f1", 5, "fd2")
+    api.group_folder_rename(777, "fd1", "新名")
+    api.group_list()
+    api.group_notice_delete(777, "n1")
+    api.group_portrait(777, "bg.png")
+    api.group_honor(777, "talkative")
+    api.essence_list(777)
+    api.user_poke(1001)
+    api.user_forward(1001, [{"name": "x", "uin": 1, "content": "hi"}])
+    api.group_info(777)
+    api.group_folder_create(777, "相册")
+    api.group_file_delete(777, "f1", 5)
+    api.group_folder_delete(777, "fd1")
+    actions = [c[0] for c in calls]
+    for want in ("react", "tap", "user_history", "group_forward", "group_file_move",
+                 "group_folder_rename", "group_list", "group_notice_delete", "group_portrait",
+                 "group_honor", "essence_list", "user_poke", "user_forward", "group_info",
+                 "group_folder_create", "group_file_delete", "group_folder_delete"):
+        assert want in actions, f"缺失语义动作 {want}"
+    assert calls[0] == ("react", {"message_id": 42, "react_type": 5})

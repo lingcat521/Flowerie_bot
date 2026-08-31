@@ -1,14 +1,48 @@
 # 插件开发者指南（Plugin Developer Guide）
 
-> Flowerie Plugin API **v1**（版本 `1.2.0` 引入）
+> Flowerie Plugin API **v1**（版本 `1.7.0`）
 >
-> 本指南只描述 **实际支持** 的接口与行为。未列出的接口一概不存在；
-> 「保留权限」等标注为 v1 未实现的能力请勿依赖。
+> 本手册尽力做到**不需要看源码**：所有 API、参数、示例、权限、错误、限制都在本文档。
 
+---
 
-> **SDK 模式（推荐）**：新插件建议使用 [Flowerie SDK](sdk.md)（三层架构 + 装饰器 +
-> `await event.reply(...)`），本指南为完整协议/安装/权限参考。经典模式（返回 actions）
-> 与声明式 JSON 插件完全兼容。
+## 0. 60 秒上手（最短路径）
+
+```python
+# plugin.py —— 你的第一个插件（完整可运行）
+from flowerie_sdk import FlowerieBot, command
+
+bot = FlowerieBot()
+
+@command("hi")                      # 群友发 !hi 自动回复
+async def hello(event):
+    await event.reply("你好呀")      # 一行回复
+
+@command("add")
+async def add(event):
+    a, b = event.args[:2]
+    await event.reply(str(int(a) + int(b)))   # !add 1 2 → 3
+
+def on_startup(context, api=None):
+    bot.attach(api)                 # 绑定能力通道
+    bot.register()                  # 上报匹配器（一次）
+
+def on_message(event, api=None):
+    return bot.route(event)         # 有匹配返回 handler 结果，无匹配 None
+
+def on_schedule(event, api=None):
+    return bot.route_schedule(event)
+```
+
+**4 步上线**：
+1. 新建目录 `my_plugin/`，放 `plugin.py`（上）与 `manifest.json`（见 §2）
+2. 一起放进 `plugins/` 目录（或 Web UI 插件页上传 zip）
+3. 重启 → Web UI「插件」页可见、保护级别默认 Safe
+4. 群里发 `!hi` —— 完成。
+
+更多示例与完整参考（每个 API 的签名/参数/返回/权限）见下文；SDK 模式全量文档见 [sdk.md](sdk.md)。
+
+---
 
 ## 1. Plugin API 概览
 
@@ -268,13 +302,12 @@ v1 不提供运行时修改插件配置的接口（改动 manifest 后重新扫�
 插件调用外部服务统一走 `http_request`（§8），不提供其他网络能力；
 Flowerie 的 HTTP API（send_group_msg 等 OneBot 接口）不是插件接口——请用 `send_message`。
 
-## 13. Message API / 14. Group API / 15. User API
+## 13-15. PluginApi 语义 API 速查（看一眼就会：api.xxx(...)）
 
-| API | 说明 |
+> 所有方法均由主进程做**权限检查**后执行；失败返回 `{"ok": False, "error": ...}`。
+
+| 方法 | 作用 |
 | --- | --- |
-| `send_message` / `send_private_message` | 消息发送（§8） |
-| `get_group` | 群信息（上下文长度/最近活动时间等） |
-| `get_user` | 用户信息（v1 返回 `{}`，视状态注入而定） |
 
 ## 16. Logging API
 
