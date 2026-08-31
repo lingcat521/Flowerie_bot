@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from src.adapters import make_adapters
 from src.config import load_config, validate_config
 from src.core.message_router import MessageRouter
 from src.core.policy_engine import PolicyEngine
@@ -57,6 +58,13 @@ async def main():
 
     # 优雅管理异步资源（HTTP session / AI 客户端）
     async with AIClient(config, memory_manager) as ai_client, Sender(config) as sender:
+        # ---- 消息边界组合根（Phase 4）：解析器 + 现有 Sender（共享实例，不重复构造）----
+        # 依赖链: Settings(config) → Sender(config) → make_adapters(BOT_QQ, sender)
+        #         → OneBotEventParser + Adapters{parser, sender}
+        # 契约校验：sender 不满足 MessageSender 契约 → 启动期即失败（Behavior 不变）
+        adapters = make_adapters(config.BOT_QQ, sender)
+        if adapters.sender is not sender:
+            raise RuntimeError("adapters 必须复用现有的 sender 实例")
         sticker_repo = StickerRepository(config.STICKER_DB_PATH)
         sticker_manager = StickerManager(config, sticker_repo, ai_client)
         tool_manager = McpToolManager(config)
