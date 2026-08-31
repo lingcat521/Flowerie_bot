@@ -179,3 +179,37 @@ OneBot11 已有能力直接包装现成端点（请求处理/群管理/消息）
 3. AI Streaming/Vision/Tool Calling 未插件化（主进程能力保留）
 4. 图片处理（压缩/缩放）——无第三方依赖，标注 P1
 5. node 插件 SDK（v1.4 为 Python 优先）
+
+---
+
+# Bot SDK v1.5.0（社交/群管语义 API）报告
+
+## 交付原则
+能力对标主流网关全 API，**形态自有特色**：插件侧只见 Flowerie 语义分组上下文
+（group/user/me）+ 社交直觉动作名（tap/pin/like）；OneBot11 标准优先（send_msg/
+set_group_ban 等全部走标准），社区通用扩展直接实现，特定网关独有（group_config）
+端点已实现但未激活时返回明确错误——换网关即全量可用，兼容矩阵落盘 docs/sdk.md §14。
+
+## 新增能力（22 个语义动作）
+- 群：members/member/mute/kick/set_admin/whole_ban/rename/set_card/set_title/
+  send_notice/get_notice/files/files_in/file_url/config/config_set/pin/unpin/resource
+- 用户/自我：like/tap/card/info + me.info/devices/status/profile
+- 顶层：bot.tap/emoji/pin/unpin/like/friends
+- 富内容：BotMessage.card/markdown/button（合并 keyboard 段；网关不支持明确报错）
+- 权限：+bot_profile（总计 23）；其余全复用（group_manage/read_group_info/read_user_info）
+
+## 重要修复
+1. **权限拒绝伪装成功**：`_handle_action` 此前把拒绝响应解析成 `{ok: True}`（插件
+   误以为执行成功）——现原样回传 `{ok:False, denied:True, error}`（真实安全漏洞）
+2. **注册失败阻断启动**：matcher/schedule 注册被拒 → 降级日志，插件正常启动
+3. **PR #4 已合并**（README badge 空格，来自 XiaoGanCN fork）
+
+## 验收
+- 测试 +6（转发表 18 组断言/不支持语义/拒绝传播/上下文转发/富 Builder）；
+  本地 152 通过；ruff 0；CI（3.9/3.12）+ Acceptance 双绿（8d2f26e）
+- 白盒复查：22 动作权限映射全通过；_SENDER_ACTIONS 白名单（防任意端点调用）
+
+## 下阶段候选
+- 群文件上传（upload 需 multipart 流式——计划 P1）
+- 合并转发 send_forward_msg（卡片组合）
+- markdown/keyboard 按钮回调事件（QQ 官方 Bot 交互回传 → waiters 联动）
