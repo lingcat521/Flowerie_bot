@@ -1,88 +1,66 @@
-# Flowerie API 概览（v1.7.0）
+# Flowerie API 总索引（v1.7.0）—— 唯一事实来源
 
-> 完整示例见 [sdk.md](sdk.md)；插件开发见 [plugins.md](plugins.md)。
+> 表 = 权威 API 索引（方法/作用/权限/详解章节）；端点名（OneBot）不出现在此表。
+> 语义层与开发者只见方法——低耦合红线。
 
-## 消息
-
-| API | 权限 | 说明 |
-| --- | --- | --- |
-| `bot.send(target, msg)` | send_message | 群/私聊发送（str / BotMessage） |
-| `bot.reply(event, msg)` | send_message | 回复（自动引用） |
-| `bot.recall(message_id)` | delete_message | 撤回（仅本 bot 已发送记录） |
-| `bot.get_message(message_id)` | read_message_history | 消息详情 |
-| `bot.get_context(gid, n)` | read_message_history | 近期上下文（ContextManager） |
-
-## 群
-
-| API | 权限 | 说明 |
-| --- | --- | --- |
-| `bot.get_group_member(gid, uid)` | read_group_info | 成员信息（role: owner/admin/member） |
-| `bot.get_group_members(gid)` | read_group_info | 成员列表 |
-| `bot.is_group_admin(gid, uid)` | read_group_info | 群管理员判定 |
-| `bot.is_group_owner(gid, uid)` | read_group_info | 群主判定 |
-| `bot.mute(gid, uid, seconds)` | group_manage | 禁言（0=解除） |
-| `bot.kick(gid, uid)` | group_manage | 移出群成员 |
-
-## 用户 / 权限
-
-| API | 说明 |
-| --- | --- |
-| `bot.is_admin(event)` / `is_owner(event)` | bot 管理员（ADMIN_QQ_IDS） |
-| `bot.check_permission(event, kind)` | user / group_member / group_admin / group_owner / bot_admin / bot_owner |
-| `@require_permission("group_admin")` | 处理器装饰器（未通过抛 BotPermissionError） |
-
-## 事件（插件投递 payload，领域语义）
-
-```
-kind=message|notice|request|lifecycle
-scope=group|private
-group_id/user_id/message_id/time
-text（CQ 已阉割）/ at_list / images / reply_id
-notice_kind / request_kind
-(匹配命中时) matched=[{name, kind, args, block}]
-```
-
-## v1.4 能力（OneBot 现有直接包装 / 自造轻量）
-
-| 分组 | API | 权限 |
-| --- | --- | --- |
-| 请求处理 | `handle_friend_request(flag, approve, remark)` / `handle_group_request(flag, approve, reason)` | request_handle |
-| 定时 | `@bot.schedule(interval/delay/daily)` / `schedule_cancel/list` | scheduler |
-| 多轮 | `wait_for(cond, timeout)` / `ask` / `confirm` / `select` | 无（事件驱动） |
-| 命令 | `event.args`（shlex）/ 子命令（名含 `.`）/ `cool_down(key, s)` | 无 |
-| KV | `kv_get/set/delete/list` | storage |
-| HTTP | `http_put` / `http_delete` / `http_head` / `http_download` | http_request |
-| 记忆 | `mem_update` / `mem_clear` | read_memory |
-| AI | `ai_chat(message, system)` | ai_chat（独立预算，自限频） |
-| 工具 | `random_choice` / `random_int` / `now` / `format_time` | 无 |
-| 多媒体 | `BotMessage.video/voice/file/add_segment` | send_message |
-
-## v1.5 社交与群管（语义 API；含底层兼容声明）
-
-| 分组 | API（Flowerie 语义） | 权限 |
-| --- | --- | --- |
-| 群操作 | `bot.group(gid).members/member/mute/kick/set_admin` | read_group_info / group_manage |
-| 群管理 | `.whole_ban/rename/set_card/set_title/pin/unpin` | group_manage |
-| 群公告 | `.send_notice/content` / `.get_notice()` | group_manage / read_group_info |
-| 群文件 | `.files()/files_in/folder/file_url` | read_group_info |
-| 群配置 | `.config()/config_set(**kw)` | read_group_info / group_manage |
-| 用户 | `bot.user(uid).like/tap/card/info` | read_user_info |
-| 自我 | `bot.me.info/devices/status` | read_user_info |
-| 资料 | `bot.me.profile(nickname, signature)` | bot_profile |
-| 顶层 | `bot.tap/emoji/pin/unpin/like/friends` | 见权限表 |
-| 富内容 | `BotMessage().card/markdown/button` | send_message |
-
-## 经典插件动作（协议层，未用 SDK 也可用）
-
-send_message · send_private_message · send_reply · delete_message · get_message ·
-get_group_history · get_context · get_group · get_user · get_group_member ·
-get_group_members · group_ban · group_kick · group_admin · is_group_admin ·
-is_group_owner · matcher_register · get_memory · write_memory · http_request ·
-file_read · file_write · log · test
-
-## 权限全集（管理员按插件批准，未批准即拒绝）
-
-send_message · read_message · read_group_info · read_user_info · read_memory ·
-write_memory · http_request · filesystem_read · filesystem_write · delete_message ·
-read_message_history · group_manage · request_handle · scheduler · storage · ai_chat · execute_process(保留，v1 拒绝) ·
-webhook(保留，v1 拒绝)
+| 方法 | 作用 | 权限 | 详解 |
+| --- | --- | --- | --- |
+**消息**
+| `send_message(payload)` |  | `"send_message"` | [sdk.md](sdk.md) |
+| `send_private_message(payload)` |  | `"send_message"` | [sdk.md](sdk.md) |
+| `send_reply(payload)` |  | `"send_message"` | [sdk.md](sdk.md) |
+| `delete_message(payload)` |  | `"delete_message"` | [sdk.md](sdk.md) |
+| `get_message(payload)` |  | `"read_message_history"` | [sdk.md](sdk.md) |
+| `get_group_history(payload)` |  | `"read_message_history"` | [sdk.md](sdk.md) |
+| `get_context(payload)` |  | `"read_message_history"` | [sdk.md](sdk.md) |
+**群信息/成员**
+| `get_group(payload)` |  | `"read_group_info"` | [sdk.md](sdk.md) |
+| `get_user(payload)` |  | `"read_user_info"` | [sdk.md](sdk.md) |
+| `get_group_member(payload)` |  | `"read_group_info"` | [sdk.md](sdk.md) |
+| `group_ban(payload)` |  | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_kick(payload)` |  | `"group_manage"` | [sdk.md](sdk.md) |
+| `is_group_admin(payload)` |  | `"read_group_info"` | [sdk.md](sdk.md) |
+| `is_group_owner(payload)` |  | `"read_group_info"` | [sdk.md](sdk.md) |
+**社交**
+| `tap(group_id,user_id)` | 群内戳一戳。 | `"read_group_info"` | [sdk.md](sdk.md) |
+| `react(message_id,react_type)` | 消息表情回应（NapCat/Lagrange 自动适配）。 | `"read_message"` | [sdk.md](sdk.md) |
+| `user_poke(user_id)` | 私聊戳一戳。 | `"read_user_info"` | [sdk.md](sdk.md) |
+| `user_history(user_id,count)` | 好友/私聊消息历史。 | `"read_user_info"` | [sdk.md](sdk.md) |
+**群管理**
+| `group_portrait(group_id,file)` | 修改群头像。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_notice_delete(group_id,notice_id)` | 删除群公告。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_folder_create(group_id,name)` | 创建群文件文件夹。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_folder_delete(group_id,folder_id)` | 删除群文件文件夹。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_folder_rename(group_id,folder_id,name)` | 重命名群文件文件夹。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_file_delete(group_id,file_id,busid)` | 删除群文件。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_file_move(group_id,file_id,busid,target_folder_id)` | 移动群文件。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `group_forward(group_id,messages)` | 群合并转发。 | `"group_manage"` | [sdk.md](sdk.md) |
+| `essence_list(group_id)` | 群精华消息列表。 | `"read_group_info"` | [sdk.md](sdk.md) |
+| `group_honor(group_id,honor_type)` | 群荣誉信息。 | `"read_group_info"` | [sdk.md](sdk.md) |
+**用户/系统**
+| `user_forward(user_id,messages)` | 私聊合并转发。 | `"read_user_info"` | [sdk.md](sdk.md) |
+| `group_info(group_id,no_cache)` | 群信息。 | `"read_group_info"` | [sdk.md](sdk.md) |
+| `group_list(no_cache)` | 群列表。 | `"read_group_info"` | [sdk.md](sdk.md) |
+| `handle_friend_request(flag,approve,remark)` |  | `"request_handle"` | [sdk.md](sdk.md) |
+| `handle_group_request(flag,approve,reason)` |  | `"request_handle"` | [sdk.md](sdk.md) |
+**数据/扩展**
+| `kv_get(key)` |  | `"storage"` | [sdk.md](sdk.md) |
+| `kv_set(key,value)` |  | `"storage"` | [sdk.md](sdk.md) |
+| `kv_delete(key)` |  | `"storage"` | [sdk.md](sdk.md) |
+| `kv_list()` |  | `"storage"` | [sdk.md](sdk.md) |
+| `ai_chat(message,system)` |  | `"ai_chat"` | [sdk.md](sdk.md) |
+| `mem_update(user_id,group_id,key,value)` |  | `"read_memory"` | [sdk.md](sdk.md) |
+| `mem_clear(user_id,group_id)` |  | `"read_memory"` | [sdk.md](sdk.md) |
+| `http_request(payload)` |  | `"http_request"` | [sdk.md](sdk.md) |
+| `http_put(payload)` |  | `"http_request"` | [sdk.md](sdk.md) |
+| `http_delete(payload)` |  | `"http_request"` | [sdk.md](sdk.md) |
+| `http_head(payload)` |  | `"http_request"` | [sdk.md](sdk.md) |
+| `matcher_register(matchers)` | 批量注册 Matcher（SDK 启动时调用；返回注册摘要）。 | `"read_message"` | [sdk.md](sdk.md) |
+| `schedule_register(kind,when,name)` |  | `"scheduler"` | [sdk.md](sdk.md) |
+| `schedule_cancel(schedule_id)` |  | `"scheduler"` | [sdk.md](sdk.md) |
+| `schedule_list()` |  | `"scheduler"` | [sdk.md](sdk.md) |
+| `log(level,message)` |  | `None` | [sdk.md](sdk.md) |
+| `random_choice(choices)` |  | `None` | [sdk.md](sdk.md) |
+| `random_int(low,high)` |  | `None` | [sdk.md](sdk.md) |
+| `now()` |  | `None` | [sdk.md](sdk.md) |
+| `format_time(timestamp,fmt)` |  | `None` | [sdk.md](sdk.md) |

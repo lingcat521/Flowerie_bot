@@ -302,12 +302,11 @@ v1 不提供运行时修改插件配置的接口（改动 manifest 后重新扫�
 插件调用外部服务统一走 `http_request`（§8），不提供其他网络能力；
 Flowerie 的 HTTP API（send_group_msg 等 OneBot 接口）不是插件接口——请用 `send_message`。
 
-## 13-15. PluginApi 语义 API 速查（看一眼就会：api.xxx(...)）
+## 13-15. PluginApi 语义 API（唯一事实来源见 api.md）
 
-> 所有方法均由主进程做**权限检查**后执行；失败返回 `{"ok": False, "error": ...}`。
-
-| 方法 | 作用 |
-| --- | --- |
+> 全部 PluginApi 方法（含 v1.5 社交/群管与 v1.7 拉格朗日补齐）请直接查
+> **[api.md](api.md) 权威速查总表**（方法/作用/权限/详解，源码自动生成，
+> 此处不重复）。SDK 模式同一能力见 [sdk.md](sdk.md) §13。
 
 ## 16. Logging API
 

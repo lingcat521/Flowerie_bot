@@ -1,4 +1,4 @@
-# 插件开发（v1.3.0）
+# 插件开发（v1.7.0）
 
 > 完整入口见 [plugin-developer-guide.md](plugin-developer-guide.md)；SDK API 见 [sdk.md](sdk.md)；
 > 动作/权限总表见 [api.md](api.md)。
@@ -44,12 +44,11 @@ def on_message(event, api=None):
 批准权限后启用；风险权限（filesystem_write / group_manage / delete_message /
 read_message_history）按需最小授权。
 
-## 高频能力速查（v1.4）
+## 能力入口（单一来源，不重复）
 
-多轮/Session（wait_for/ask/confirm/select）· 定时（@bot.schedule）· 冷却（cool_down）·
-命令参数（event.args·子命令）· KV（kv_*）· 请求处理（handle_friend_request）·
-AI（ai_chat 受限）· HTTP 扩展（http_put/delete/head/download）· 记忆（mem_update/clear）·
-工具（random_choice/random_int/now/format_time）——完整示例与章节见 [sdk.md](sdk.md)。
+- **API 速查总表**（全部方法/作用/权限）：[api.md](api.md)
+- **SDK 模式完整参考**（示例/事件/消息/匹配/多轮/定时/权限/FAQ）：[sdk.md](sdk.md)
+- **安装/打包/资源限制/安全（经典模式协议）**：[plugin-developer-guide.md](plugin-developer-guide.md)
 
 ## 检查清单（上线前）
 
