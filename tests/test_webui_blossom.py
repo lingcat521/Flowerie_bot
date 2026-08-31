@@ -78,7 +78,7 @@ def test_all_view_flat_all_categories_open():
     assert html.count('<details class="cfg-group" open>') == 2, "全部视图应平铺"
 
 
-def test_specific_view_collapsed():
+def test_specific_view_also_open():
     from src.services.webui_render.config_panel import render_config_sections
     cfgs = [
         _cfg("AI_ENABLED", "true") | {"category": "AI"},
@@ -87,6 +87,5 @@ def test_specific_view_collapsed():
     html = render_config_sections(cfgs, active_cat="AI",
                                   category_order=["AI", "BlossomMemory"],
                                   category_labels={"AI": "AI 配置", "BlossomMemory": "花语记忆"})
-    # 特定分类视图：折叠（无 open 属性）
-    assert '<details class="cfg-group" open>' not in html, "特定分类应折叠"
-    assert '<details class="cfg-group">' in html
+    # 特定分类视图同样默认展开（用户要求所有分类不折叠）；分类本身只显示选中项
+    assert html.count('<details class="cfg-group" open>') == 1, "特定分类默认展开"
