@@ -59,6 +59,20 @@ def test_disabling_master_this_save_allows_short_key():
     assert ok, msg
 
 
+def test_empty_numeric_field_skips_not_errors():
+    """清空数值字段（如维度/限额）→ 跳过（保持原值），不得报'值不合法'。"""
+    svc = _svc()
+    ok, msg = svc.update_many({"BLOSSOM_MEMORY_VECTOR_DIMENSION": ""})
+    assert ok, msg
+
+
+def test_daily_extract_limit_zero_allowed():
+    """每日提取上限 0（想停）→ 合法（0=等同关闭）。"""
+    svc = _svc()
+    ok, msg = svc.update_many({"BLOSSOM_MEMORY_DAILY_EXTRACT_LIMIT": "0"})
+    assert ok, msg
+
+
 def test_chain_on_still_blocks_invalid_model():
     svc = _svc(BLOSSOM_MEMORY_ENABLED=True, BLOSSOM_MEMORY_EMBEDDING_ENABLED=True)
     # 链开启但模型空 → 这里只做类型校验不卡（null 模型运行时兜底）；至少保存不因 secret 崩

@@ -375,6 +375,8 @@ class ConfigService:
         # 敏感项：空输入 = 不修改（保留旧值）
         if is_secret and not raw.strip():
             return False, "未输入新值，保持原密钥"
+        if not raw.strip() and ctype in ("int", "float", "bool"):
+            return False, "未输入新值，保持原值"
         value = self._validate(key, ctype, raw)
         if value is None:
             return False, "配置值校验失败"
@@ -410,6 +412,8 @@ class ConfigService:
             raw = "" if raw is None else str(raw)
             if is_secret and not raw.strip():
                 continue  # 密钥留空 = 不修改
+            if not raw.strip() and ctype in ("int", "float", "bool"):
+                continue  # 数值/开关留空 = 不修改（清空不应被"值不合法"拦住）
             if is_secret and len(raw.strip()) < 6 and not self._chain_needs_secret(key, validated):
                 continue  # 对应链路关闭：允许先保存（启用校验交给启动 validate_config）
             value = self._validate(key, ctype, raw)
