@@ -53,7 +53,8 @@ def test_disabled_skips_reads_and_writes():
 
 def test_enabled_reads_and_writes():
     mm, repo = make_mgr(True)
-    mm.repository.notes = [object()]             # 有 1 条
+    from src.repositories.base import MemoryNote
+    mm.repository.notes = [MemoryNote(text="奶茶", user_id=1, group_id=2)]
     mm.get_memory_context(1, 2)
     assert ("list", 1, 2) in repo.calls
     asyncio.run(mm.append_memory_text(1, 2, "我喜欢奶茶"))
