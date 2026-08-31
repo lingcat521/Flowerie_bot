@@ -60,7 +60,7 @@ def test_gate_helpers():
     cfgs = _living_cfgs(total="true", embed="true")
     assert _blossom_on(cfgs) is True
     assert _blossom_sub_switch_on(cfgs, "BLOSSOM_MEMORY_EMBEDDING_MODEL") is True
-    assert _blossom_sub_switch_on(cfgs, "BLOSSOM_MEMORY_RERANKER_MODEL") is False
+    assert _blossom_sub_switch_on(cfgs, "BLOSSOM_MEMORY_RERANKER_MODEL") is True   # 模型配置始终渲染
     assert _blossom_sub_switch_on(cfgs, "BLOSSOM_MEMORY_VECTOR_DIMENSION") is True  # 未归属键仅受总开关
 
 
