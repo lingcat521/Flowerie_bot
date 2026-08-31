@@ -101,6 +101,22 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "group_config": "read_group_info",
     "group_config_set": "group_manage",
     "group_res": "read_group_info",
+    # v1.7.0 拉格朗日补齐（读→read_*，写→group_manage）
+    "user_history": "read_user_info",        # 好友/私聊消息历史
+    "user_forward": "read_user_info",        # 私聊合并转发
+    "user_poke": "read_user_info",           # 私聊戳
+    "essence_list": "read_group_info",       # 精华列表
+    "group_honor": "read_group_info",        # 群荣誉
+    "group_notice_delete": "group_manage",   # 删公告
+    "group_portrait": "group_manage",        # 改群头像
+    "group_info": "read_group_info",
+    "group_list": "read_group_info",
+    "group_forward": "group_manage",         # 群合并转发
+    "group_folder_create": "group_manage",
+    "group_file_delete": "group_manage",
+    "group_folder_delete": "group_manage",
+    "group_file_move": "group_manage",
+    "group_folder_rename": "group_manage",
     "http_put": "http_request",
     "http_delete": "http_request",
     "http_head": "http_request",

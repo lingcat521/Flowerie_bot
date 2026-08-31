@@ -314,6 +314,93 @@ class Sender:
         return await self._post("/set_react", {"message_id": int(message_id),
                                                "react_type": int(react_type), "message_seq": None})
 
+    # ---------- v1.7.0 拉格朗日补齐：端点仅登记于此（语义层不感知端点名） ----------
+
+    async def get_friend_msg_history(self, user_id: int, count: int = 20,
+                                     message_id: int = 0) -> dict:
+        """好友/私聊消息历史（拉格朗日/NapCat 扩展）。"""
+        return await self._post("/get_friend_msg_history",
+                                {"user_id": int(user_id), "count": int(count),
+                                 "message_id": int(message_id)})
+
+    async def send_group_forward_msg(self, group_id: int, messages: list) -> dict:
+        """发送群合并转发消息（messages 为 [{name,uin,content}] 列表）。"""
+        return await self._post("/send_group_forward_msg",
+                                {"group_id": int(group_id), "messages": list(messages)})
+
+    async def send_private_forward_msg(self, user_id: int, messages: list) -> dict:
+        """发送私聊合并转发消息。"""
+        return await self._post("/send_private_forward_msg",
+                                {"user_id": int(user_id), "messages": list(messages)})
+
+    async def get_essence_msg_list(self, group_id: int) -> dict:
+        """群精华消息列表。"""
+        return await self._post("/get_essence_msg_list", {"group_id": int(group_id)})
+
+    async def get_group_honor_info(self, group_id: int, honor_type: str = "") -> dict:
+        """群荣誉信息（honor_type: talkative/performer/legend/strong_newbie/emotion）。"""
+        return await self._post("/get_group_honor_info",
+                                {"group_id": int(group_id), "honor_type": str(honor_type)})
+
+    async def delete_group_notice(self, group_id: int, notice_id: str) -> dict:
+        """删除群公告（拉格朗日端点 _del_group_notice）。"""
+        return await self._post("/_del_group_notice",
+                                {"group_id": int(group_id), "notice_id": str(notice_id)})
+
+    async def set_group_portrait(self, group_id: int, file: str) -> dict:
+        """修改群头像（file 为本地路径/base64；拉格朗日/NapCat 扩展）。"""
+        return await self._post("/set_group_portrait",
+                                {"group_id": int(group_id), "file": str(file)})
+
+    async def create_group_file_folder(self, group_id: int, name: str) -> dict:
+        """创建群文件文件夹。"""
+        return await self._post("/create_group_file_folder",
+                                {"group_id": int(group_id), "name": str(name)})
+
+    async def delete_group_file(self, group_id: int, file_id: str, busid: int = 0) -> dict:
+        """删除群文件。"""
+        return await self._post("/delete_group_file",
+                                {"group_id": int(group_id), "file_id": str(file_id),
+                                 "busid": int(busid)})
+
+    async def delete_group_folder(self, group_id: int, folder_id: str) -> dict:
+        """删除群文件文件夹。"""
+        return await self._post("/delete_group_folder",
+                                {"group_id": int(group_id), "folder_id": str(folder_id)})
+
+    async def move_group_file(self, group_id: int, file_id: str, busid: int = 0,
+                              target_folder_id: str = "") -> dict:
+        """移动群文件到目标文件夹。"""
+        return await self._post("/move_group_file",
+                                {"group_id": int(group_id), "file_id": str(file_id),
+                                 "busid": int(busid), "target_folder_id": str(target_folder_id)})
+
+    async def rename_group_file_folder(self, group_id: int, folder_id: str, name: str) -> dict:
+        """重命名群文件文件夹。"""
+        return await self._post("/rename_group_file_folder",
+                                {"group_id": int(group_id), "folder_id": str(folder_id),
+                                 "name": str(name)})
+
+    async def get_group_info(self, group_id: int, no_cache: bool = False) -> dict:
+        """群信息。"""
+        return await self._post("/get_group_info",
+                                {"group_id": int(group_id), "no_cache": bool(no_cache)})
+
+    async def get_group_list(self, no_cache: bool = False) -> dict:
+        """群列表。"""
+        return await self._post("/get_group_list", {"no_cache": bool(no_cache)})
+
+    async def friend_poke(self, user_id: int) -> dict:
+        """私聊戳一戳（拉格朗日端点 friend_poke）。"""
+        return await self._post("/friend_poke", {"user_id": int(user_id)})
+
+    async def set_group_reaction(self, message_id: int, react_type: int,
+                                 is_emoji_id: bool = False) -> dict:
+        """消息回应（拉格朗日端点 set_group_reaction；与 set_react 参数同构便于回退）。"""
+        return await self._post("/set_group_reaction",
+                                {"message_id": int(message_id), "code": int(react_type),
+                                 "is_emoji_id": bool(is_emoji_id), "message_seq": None})
+
     async def set_group_whole_ban(self, group_id: int, enable: bool) -> dict:
         return await self._post("/set_group_whole_ban",
                                 {"group_id": int(group_id), "enable": bool(enable)})

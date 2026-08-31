@@ -1027,13 +1027,20 @@ class PluginManager:
 
     async def _sender_forward(self, plugin_id: str, action_type: str, payload: dict) -> dict:
         """语义化动作 → Sender 端点（参数白名单清洗；未实现端点返回明确错误）。"""
-        method_name, spec = _SENDER_ACTIONS[action_type]
+        entry, spec = _SENDER_ACTIONS[action_type]
         sender = getattr(self, "sender", None)
         if sender is None:
             return {"ok": False, "error": "sender 不可用"}
-        method = getattr(sender, method_name, None)
+        # 网关回退：entry 可为 str（单一端点）或 list（按序尝试，支持度自动激活）
+        names = [entry] if isinstance(entry, str) else list(entry)
+        method = None
+        for name in names:
+            cand = getattr(sender, name, None)
+            if cand is not None:
+                method = cand
+                break
         if method is None:
-            return {"ok": False, "error": f"当前网关不支持该能力（{method_name}）"}
+            return {"ok": False, "error": f"当前网关不支持该能力（{'/'.join(names)}）"}
         kw = {}
         for key, typ, backend_key in spec:
             val = payload.get(key)
@@ -1106,7 +1113,24 @@ def _json_loads(value: str):
 _SENDER_ACTIONS: Dict[str, tuple] = {
     # 动作名: (sender 方法, 参数白名单 [(payload键, 类型: "int"/"str"/"bool"/"any", 后端键)])
     "tap": ("send_poke", [("group_id", "int", "group_id"), ("user_id", "int", "user_id")]),
-    "react": ("set_react", [("message_id", "int", "message_id"), ("react_type", "int", "react_type")]),
+    "react": (["set_react", "set_group_reaction"],  # 网关回退：NapCat=set_react，Lagrange=set_group_reaction
+              [("message_id", "int", "message_id"), ("react_type", "int", "react_type")]),
+    # v1.7.0 拉格朗日补齐
+    "user_history": ("get_friend_msg_history", [("user_id", "int", "user_id"), ("count", "int", "count")]),
+    "user_forward": ("send_private_forward_msg", [("user_id", "int", "user_id"), ("messages", "any", "messages")]),
+    "user_poke": ("friend_poke", [("user_id", "int", "user_id")]),
+    "essence_list": ("get_essence_msg_list", [("group_id", "int", "group_id")]),
+    "group_honor": ("get_group_honor_info", [("group_id", "int", "group_id"), ("honor_type", "str", "honor_type")]),
+    "group_notice_delete": ("delete_group_notice", [("group_id", "int", "group_id"), ("notice_id", "str", "notice_id")]),
+    "group_portrait": ("set_group_portrait", [("group_id", "int", "group_id"), ("file", "str", "file")]),
+    "group_info": ("get_group_info", [("group_id", "int", "group_id"), ("no_cache", "bool", "no_cache")]),
+    "group_list": ("get_group_list", [("no_cache", "bool", "no_cache")]),
+    "group_forward": ("send_group_forward_msg", [("group_id", "int", "group_id"), ("messages", "any", "messages")]),
+    "group_folder_create": ("create_group_file_folder", [("group_id", "int", "group_id"), ("name", "str", "name")]),
+    "group_file_delete": ("delete_group_file", [("group_id", "int", "group_id"), ("file_id", "str", "file_id"), ("busid", "int", "busid")]),
+    "group_folder_delete": ("delete_group_folder", [("group_id", "int", "group_id"), ("folder_id", "str", "folder_id")]),
+    "group_file_move": ("move_group_file", [("group_id", "int", "group_id"), ("file_id", "str", "file_id"), ("busid", "int", "busid"), ("target_folder_id", "str", "target_folder_id")]),
+    "group_folder_rename": ("rename_group_file_folder", [("group_id", "int", "group_id"), ("folder_id", "str", "folder_id"), ("name", "str", "name")]),
     "pin": ("set_essence_msg", [("message_id", "int", "message_id")]),
     "unpin": ("delete_essence_msg", [("message_id", "int", "message_id")]),
     "like": ("set_friend_profile_like", [("user_id", "int", "user_id")]),

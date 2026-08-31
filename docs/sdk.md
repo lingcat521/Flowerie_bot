@@ -514,3 +514,27 @@ bot.friends()                    # 好友列表（list[dict]）
 - 新增平台能力 → 只改下层 `onebot/`（dto / transformer / adapter）
 - 新增领域能力（如 Session）→ 加在中层，上层只做 wrapper
 - 依赖倒置验证：`grep -rn "post_type\|sub_type" src/sdk/*.py`（除 onebot/ 与注释）应为空
+
+
+## v1.7.0 拉格朗日补齐（能力对标 Lagrange；OneBot 端点仅存在于 Sender/适配层）
+
+| SDK 语义（OneBotAdapter/PluginApi.call） | OneBot 端点（仅 Sender） | 权限 | Lagrange |
+| --- | --- | --- | --- |
+| `bot_user_history` / `user_history` | `/get_friend_msg_history` | read_user_info | ✅ |
+| `user_forward` | `/send_private_forward_msg` | read_user_info | ✅ |
+| `user_poke` | `/friend_poke` | read_user_info | ✅ |
+| `group_forward` | `/send_group_forward_msg` | group_manage | ✅ |
+| `essence_list` | `/get_essence_msg_list` | read_group_info | ✅ |
+| `group_honor` | `/get_group_honor_info` | read_group_info | ✅ |
+| `group_notice_delete` | `/_del_group_notice` | group_manage | ✅ |
+| `group_portrait` | `/set_group_portrait` | group_manage | ✅ |
+| `group_folder_create` | `/create_group_file_folder` | group_manage | ✅ |
+| `group_file_delete` | `/delete_group_file` | group_manage | ✅ |
+| `group_folder_delete` | `/delete_group_folder` | group_manage | ✅ |
+| `group_file_move` | `/move_group_file` | group_manage | ✅ |
+| `group_folder_rename` | `/rename_group_file_folder` | group_manage | ✅ |
+| `group_info` / `group_list` | `/get_group_info` / `/get_group_list` | read_group_info | ✅ |
+| `react`（emoji 回应） | `set_react`（NapCat 主）→ **`set_group_reaction`（Lagrange 回退，自动激活）** | read_message | ✅ |
+
+**网关回退机制**：`_SENDER_ACTIONS` 动作值可为端点方法列表，`_sender_forward` 按
+sender 可用方法自动选择（换网关无需改代码）；adapter.react 同策略。

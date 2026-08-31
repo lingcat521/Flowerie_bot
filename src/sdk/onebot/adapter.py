@@ -107,7 +107,13 @@ class OneBotAdapter(BotAdapter):
         return await self._call(self._sender.send_poke(int(group_id), int(user_id)))
 
     async def react(self, message_id: int, emoji_id: int) -> dict:
-        return await self._call(self._sender.set_react(int(message_id), int(emoji_id)))
+        # 网关回退（换网关自动激活）：NapCat=set_react（主端点）；Lagrange=set_group_reaction
+        if getattr(self._sender, "set_react", None) is not None:
+            return await self._call(self._sender.set_react(int(message_id), int(emoji_id)))
+        lagrange = getattr(self._sender, "set_group_reaction", None)
+        if lagrange is not None:
+            return await self._call(lagrange(int(message_id), int(emoji_id)))
+        return {"ok": False, "error": "当前网关不支持表情回应"}
 
     async def pin(self, message_id: int) -> dict:
         return await self._call(self._sender.set_essence_msg(int(message_id)))
@@ -151,6 +157,65 @@ class OneBotAdapter(BotAdapter):
 
     async def group_files(self, group_id: int) -> dict:
         return await self._call(self._sender.get_group_root_files(int(group_id)))
+
+    # ---------- v1.7.0 拉格朗日补齐（端点名仅存在于 Sender） ----------
+    async def user_history(self, user_id: int, count: int = 20) -> dict:
+        """好友/私聊消息历史。"""
+        return await self._call(self._sender.get_friend_msg_history(int(user_id), int(count)))
+
+    async def user_poke(self, user_id: int) -> dict:
+        """私聊戳一戳。"""
+        return await self._call(self._sender.friend_poke(int(user_id)))
+
+    async def group_forward(self, group_id: int, messages: list) -> dict:
+        """群合并转发消息。"""
+        return await self._call(self._sender.send_group_forward_msg(int(group_id), list(messages)))
+
+    async def user_forward(self, user_id: int, messages: list) -> dict:
+        """私聊合并转发消息。"""
+        return await self._call(self._sender.send_private_forward_msg(int(user_id), list(messages)))
+
+    async def essence_list(self, group_id: int) -> dict:
+        """群精华消息列表。"""
+        return await self._call(self._sender.get_essence_msg_list(int(group_id)))
+
+    async def group_honor(self, group_id: int, honor_type: str = "") -> dict:
+        """群荣誉信息（honor_type: talkative/performer/legend/strong_newbie/emotion）。"""
+        return await self._call(self._sender.get_group_honor_info(int(group_id), honor_type))
+
+    async def group_notice_delete(self, group_id: int, notice_id: str) -> dict:
+        """删除群公告。"""
+        return await self._call(self._sender.delete_group_notice(int(group_id), notice_id))
+
+    async def group_portrait(self, group_id: int, file: str) -> dict:
+        """修改群头像（file 本地路径/base64）。"""
+        return await self._call(self._sender.set_group_portrait(int(group_id), file))
+
+    async def group_folder_create(self, group_id: int, name: str) -> dict:
+        """创建群文件文件夹。"""
+        return await self._call(self._sender.create_group_file_folder(int(group_id), name))
+
+    async def group_file_delete(self, group_id: int, file_id: str, busid: int = 0) -> dict:
+        """删除群文件。"""
+        return await self._call(self._sender.delete_group_file(int(group_id), file_id, int(busid)))
+
+    async def group_folder_delete(self, group_id: int, folder_id: str) -> dict:
+        """删除群文件文件夹。"""
+        return await self._call(self._sender.delete_group_folder(int(group_id), folder_id))
+
+    async def group_file_move(self, group_id: int, file_id: str, busid: int = 0,
+                              target_folder_id: str = "") -> dict:
+        """移动群文件到目标文件夹。"""
+        return await self._call(self._sender.move_group_file(
+            int(group_id), file_id, int(busid), target_folder_id))
+
+    async def group_folder_rename(self, group_id: int, folder_id: str, name: str) -> dict:
+        """重命名群文件文件夹。"""
+        return await self._call(self._sender.rename_group_file_folder(int(group_id), folder_id, name))
+
+    async def group_list(self) -> dict:
+        """群列表。"""
+        return await self._call(self._sender.get_group_list())
 
 
 def make_onebot_adapter(sender, context_manager=None) -> OneBotAdapter:
