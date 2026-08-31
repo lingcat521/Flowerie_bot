@@ -16,6 +16,18 @@ class StubRepo:
         self.calls.append(("list", user_id, group_id))
         return self.notes
 
+    def list_all_notes(self):
+        return []
+
+    def iter_user_groups(self):
+        return []
+
+    def trim_notes(self, user_id, group_id, keep):
+        return 0
+
+    def commit(self):
+        pass
+
     def insert_note(self, note):
         self.calls.append(("insert", note.user_id, note.group_id, note.text))
         return 1
