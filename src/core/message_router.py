@@ -124,7 +124,7 @@ class MessageRouter:
 
     async def start(self):
         """启动主动聊天循环（若配置允许）与上下文备份循环（经 TaskManager 注册）"""
-        if not self.config.ONLY_REPLY_WHEN_AT:
+        if not self.config.ONLY_REPLY_WHEN_AT and getattr(self.config, "PROACTIVE_CHAT_ENABLED", True):
             self.task_manager.register("active_chat", self._active_chat_loop())
             logger.info("Active chat loop started")
         # 周期备份上下文（意外去世后重启可恢复最近 50 条）
@@ -275,8 +275,8 @@ class MessageRouter:
         if clean_text.strip().startswith("/") and await self.commands.handle(clean_text.strip(), user_id, group_id):
             return
 
-        # 复读检测
-        if full_text:
+        # 复读检测（REPEAT_ENABLED 关闭时跳过）
+        if full_text and getattr(self.config, "REPEAT_ENABLED", True):
             if self.policy_engine.check_and_record_repeat(full_text, group_id):
                 await self.sender.send_group_message(group_id, full_text)
                 self.policy_engine.record_bot_reply(group_id)
@@ -344,17 +344,20 @@ class MessageRouter:
         if not should_reply:
             return
 
-        # 机器人冷却检查
-        if not self.policy_engine.can_bot_reply(group_id):
-            logger.debug("Bot cooldown, skip reply")
-            return
-
-        # 用户冷却检查
-        if not (is_mentioned or is_reply_to_bot):
-            if not self.policy_engine.can_user_reply(user_id, group_id):
-                logger.debug(f"User {user_id} in cooldown, skip reply")
+        # 防刷/冷却检查（ANTI_SPAM_ENABLED=false 时跳过，用户/机器人冷却均豁免）
+        anti_spam = getattr(self.config, "ANTI_SPAM_ENABLED", True)
+        if anti_spam:
+            if not self.policy_engine.can_bot_reply(group_id):
+                logger.debug("Bot cooldown, skip reply")
                 return
-            self.policy_engine.update_user_time(user_id, group_id)
+
+            if not (is_mentioned or is_reply_to_bot):
+                if not self.policy_engine.can_user_reply(user_id, group_id):
+                    logger.debug(f"User {user_id} in cooldown, skip reply")
+                    return
+                self.policy_engine.update_user_time(user_id, group_id)
+            else:
+                self.policy_engine.update_user_time(user_id, group_id)
         else:
             self.policy_engine.update_user_time(user_id, group_id)
 
@@ -444,7 +447,12 @@ class MessageRouter:
 
     # ---------- 统一 AI 准入层（委托 AiGateway；防上帝类） ----------
     async def guarded_chat(self, group_id: int, user_id: int, **kwargs) -> Tuple[Optional[str], Optional[str], bool]:
-        """统一 AI 对话入口（委托 AiGateway：熔断/预算/人格/知识/重试）。"""
+        """统一 AI 对话入口（委托 AiGateway：熔断/预算/人格/知识/重试）。
+
+        AI_ENABLED=false：不执行 AI 回复（普通功能/记忆/知识不受影响）。
+        """
+        if not getattr(self.config, "AI_ENABLED", True):
+            return None, None, False
         return await self.ai_gateway.guarded_chat(group_id, user_id, **kwargs)
 
     async def _ai_allowed(self, group_id: int, user_id: int, user_interval: bool = True) -> bool:

@@ -10,6 +10,12 @@ from typing import Dict, List, Tuple
 
 SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     # ---------- AI / Provider ----------
+    "AI_ENABLED": ("AI", "bool", False, True, "AI 回复总开关（关=不请求 Provider，普通功能不受影响）"),
+    "MEMORY_ENABLED": ("Memory", "bool", False, True, "长期记忆总开关（关=不读/写；短期 Context 不受影响）"),
+    "LIVING_MEMORY_ENABLED": ("Memory", "bool", False, True, "语义长期记忆（默认 OFF；开启需配置 embedding/reranker）"),
+    "PROACTIVE_CHAT_ENABLED": ("Proactive Chat", "bool", False, True, "主动聊天总开关"),
+    "REPEAT_ENABLED": ("Repeat & Anti-Spam", "bool", False, True, "复读检测开关"),
+    "ANTI_SPAM_ENABLED": ("Repeat & Anti-Spam", "bool", False, True, "防刷/冷却逻辑开关"),
     "DEEPSEEK_API_KEY": ("AI", "secret", True, True, "DeepSeek API 密钥（必填）"),
     "DEEPSEEK_API_URL": ("AI", "str", False, True, "DeepSeek API 地址"),
     "DEEPSEEK_MODEL": ("AI", "str", False, True, "群聊对话模型"),

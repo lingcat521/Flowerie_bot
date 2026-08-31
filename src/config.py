@@ -9,6 +9,14 @@ from src.core.sanitizer import validate_mcp_server_url
 
 
 class Settings(BaseSettings):
+    # ---- 功能总开关（Web UI 可切换；运行时门控见各组件判断点）----
+    AI_ENABLED: bool = True              # 关：不执行 AI 回复/Provider 请求（普通功能不受影响）
+    MEMORY_ENABLED: bool = True          # 关：不读/写长期记忆（短期 Context 不受影响）
+    LIVING_MEMORY_ENABLED: bool = False  # 语义长期记忆（默认 OFF；开启需配置 embedding/reranker）
+    PROACTIVE_CHAT_ENABLED: bool = True   # 主动聊天循环总开关
+    REPEAT_ENABLED: bool = True           # 复读检测开关
+    ANTI_SPAM_ENABLED: bool = True        # 防刷/冷却逻辑开关
+
     # DeepSeek
     DEEPSEEK_API_KEY: str = Field(...)  # 环境变量名 = 字段名（pydantic-settings）
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
