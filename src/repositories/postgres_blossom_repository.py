@@ -95,6 +95,7 @@ class PostgresBlossomMemoryRepository(BlossomMemoryRepository):
                         (group_id, group_id, total - keep_count))
                 cur.execute("SELECT COUNT(*) FROM blossom_memory WHERE group_id=%s", (group_id,))
                 n = int(cur.fetchone()[0])
+                # 兼容：无 RETURNING 时用 count 差集校验（总行数 = 删除后行数）
             conn.commit()
             return n
 

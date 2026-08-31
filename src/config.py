@@ -498,6 +498,17 @@ def validate_config(config: Settings) -> None:
             mcp_url = (getattr(config, "MCP_SERVER_URL", "") or "").strip()
             if not mcp_url:
                 raise ValueError("MCP_ENABLED=true 时必须配置 MCP_SERVER_URL（不允许静默降级为纯聊天）")
+            # legacy 单 server 同样执行 SSRF/参数校验（与多 server 一致——历史缺口修复）
+            ok, reason = validate_mcp_server_url(mcp_url, allowed_hosts)
+            if not ok:
+                raise ValueError(f"MCP_SERVER_URL 不合法: {reason}")
+            if int(getattr(config, "MCP_TIMEOUT", 15) or 0) < 1:
+                raise ValueError("MCP_TIMEOUT 必须 >= 1（秒）")
+            if int(getattr(config, "MCP_MAX_TOOL_CALLS", 5) or 0) < 1:
+                raise ValueError("MCP_MAX_TOOL_CALLS 必须 >= 1")
+            for token in (t.strip() for t in (getattr(config, "MCP_ALLOWED_TOOLS", "") or "").split(",") if t.strip()):
+                if not re.fullmatch(r"[A-Za-z0-9_.\-]+", token):
+                    raise ValueError(f"MCP_ALLOWED_TOOLS 含非法工具名: {token!r}")
     # LivingMemory（高级记忆）：主开关开启时，启用的子链路必须有完整配置（fail-fast）
     if str(getattr(config, "STORAGE_BACKEND", "sqlite") or "sqlite").lower() == "postgres":
         if not getattr(config, "DATABASE_URL", ""):

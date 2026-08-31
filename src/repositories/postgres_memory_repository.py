@@ -114,8 +114,9 @@ class PostgresMemoryRepository(MemoryRepository):
     def delete_user_notes(self, user_id: int, group_id: int) -> int:
         with self._conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM memory WHERE user_id=%s AND group_id=%s", (user_id, group_id))
-                deleted = cur.rowcount or 0
+                cur.execute("DELETE FROM memory WHERE user_id=%s AND group_id=%s RETURNING note_id",
+                            (user_id, group_id))
+                deleted = len(cur.fetchall())
             conn.commit()
             return deleted
 
@@ -132,9 +133,9 @@ class PostgresMemoryRepository(MemoryRepository):
                 cur.execute(
                     "DELETE FROM memory WHERE user_id=%s AND group_id=%s AND note_id IN ("
                     "SELECT note_id FROM memory WHERE user_id=%s AND group_id=%s "
-                    "ORDER BY created_at DESC OFFSET %s)",
+                    "ORDER BY created_at DESC OFFSET %s) RETURNING note_id",
                     (user_id, group_id, user_id, group_id, keep))
-                deleted = cur.rowcount or 0
+                deleted = len(cur.fetchall())
             conn.commit()
             return deleted
 
