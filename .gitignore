@@ -29,4 +29,5 @@ venv/
 Flowerie_bot/
 
 # 插件运行时目录（插件从 Web UI / URL 安装，或管理员手动放入；不提交）
-/plugins/
+/plugins/*
+!/plugins/README.md
