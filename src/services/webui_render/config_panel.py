@@ -153,9 +153,9 @@ def _mcp_server_card(i, s, test_status=None, tool_count=None) -> str:
     toggle = "停用" if enabled else "启用"
     return (
         '<div class="mcp-card">'
-        f'<div class="mcp-card-head"><b>{name}</b>{status}</div>'
-        f'<div class="mcp-card-meta">{transport} · {tools_label}</div>'
-        f'<div class="mcp-card-url">{url}</div>'
+        f'<div class="mcp-card-head"><b>{_esc(name)}</b>{status}</div>'
+        f'<div class="mcp-card-meta">{_esc(transport)} · {_esc(tools_label)}</div>'
+        f'<div class="mcp-card-url">{_esc(url)}</div>'
         + (_mcp_test_status_html(test_status) if test_status else "")
         + '<div class="actions-row">'
         # 每个操作是独立、紧凑的按钮（toggle 与 test 不再塞进同一个 form），窄屏也横向不竖排
