@@ -410,6 +410,8 @@ class ConfigService:
             raw = "" if raw is None else str(raw)
             if is_secret and not raw.strip():
                 continue  # 密钥留空 = 不修改
+            if is_secret and len(raw.strip()) < 6 and not self._chain_needs_secret(key):
+                continue  # 对应链路关闭：允许先保存（启用校验交给启动 validate_config）
             value = self._validate(key, ctype, raw)
             if value is None:
                 errors.append(f"{key} 值不合法")
@@ -467,6 +469,32 @@ class ConfigService:
             except (TypeError, ValueError):
                 pass
         return float(getattr(self.config, key, 0.0) or 0.0)
+
+
+    def _chain_needs_secret(self, key: str) -> bool:
+        """secret 键所属功能链是否开启：BLOSSOM 链看总开关+子开关，其他链恒 True。
+
+        链关闭时允许空/短 secret 随表单一起保存（用户可能中途操作；严格校验在启用后由
+        启动 validate_config 执行）。"""
+        if key.startswith("BLOSSOM_MEMORY_"):
+            def on(k):
+                return self._current_value(k) == "true"
+            if not on("BLOSSOM_MEMORY_ENABLED"):
+                return False
+            sub = {
+                "BLOSSOM_MEMORY_EMBEDDING_API_KEY": "BLOSSOM_MEMORY_EMBEDDING_ENABLED",
+                "BLOSSOM_MEMORY_RERANKER_API_KEY": "BLOSSOM_MEMORY_RERANKER_ENABLED",
+            }.get(key)
+            if sub is not None and not on(sub):
+                return False
+            return True
+        return True
+
+    def _current_value(self, key: str) -> str:
+        val = getattr(self.config, key, None)
+        if isinstance(val, bool):
+            return "true" if val else "false"
+        return "" if val is None else str(val)
 
     def _pair_error(self, validated: Dict[str, str], ctypes: Dict[str, str]) -> Optional[str]:
         """成对配置交叉校验（如 min <= max）；返回错误文案或 None。"""
