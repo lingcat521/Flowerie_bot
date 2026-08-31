@@ -1,6 +1,6 @@
 # 插件开发者指南（Plugin Developer Guide）
 
-> Flowerie Plugin API **v1**（版本 `1.7.0`）
+> Flowerie Plugin API **v1**（版本 `2.0.0`）
 >
 > 本手册尽力做到**不需要看源码**：所有 API、参数、示例、权限、错误、限制都在本文档。
 
