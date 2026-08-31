@@ -92,10 +92,10 @@ class FakeFileParser:
 
 
 class FakeAssembler:
-    async def assemble(self, message_array, user_id, group_id, raw_time):
-        # 从段数组拼 full_text
+    async def assemble(self, event, user_id, group_id, raw_time):
+        # 从段数组拼 full_text（签名同步 Phase 6：首参为 InternalEvent）
         parts = []
-        for seg in message_array or []:
+        for seg in getattr(event, "message_segments", None) or []:
             if isinstance(seg, dict) and seg.get("type") == "text":
                 parts.append((seg.get("data") or {}).get("text", ""))
         return "".join(parts), [], False, False, False
