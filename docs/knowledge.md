@@ -97,3 +97,10 @@
 
 群梗知识层由主进程管理（meme_manager），插件如需检索请调用 `get_memory` 等动作；
 知识文件路径与隔离策略不变。
+
+
+## 群知识管理（Web UI）
+
+- 按群查看/搜索/编辑/删除（零 JS：GET/POST 表单）；来源标注（本群总结/互联网 MCP）
+- 群隔离：每群独立（memes/slang/facts）；每日 24h 总结 + 互联网梗学习（MEME_LEARNING_ENABLED）
+- 互联网内容 = untrusted：sanitize 后入库，绝不作为系统指令（只进【不可信数据区】）

@@ -234,3 +234,39 @@ Web UI「人格」页管理（全局 / 群聊 / 自定义）。详见 [persona.m
   主动发言概率（`PROACTIVE_MESSAGE_*` / `ACTIVE_CHAT_*`）与 `ADMIN_RESPONSE_RULES` 亦为热更新。
 - **需要重启**：WS 端口、HTTP API 地址、数据库路径、监听地址、NapCat WS 模式（`NAPCAT_WS_MODE`/`NAPCAT_WS_URL`/`NAPCAT_ACCESS_TOKEN`）、
   `PLUGIN_DIR` 等 Advanced 项（UI 会提示）
+
+
+## 功能总开关（Web UI 可切换；运行时真实门控）
+
+| 键 | 默认 | 作用 |
+| --- | --- | --- |
+| `AI_ENABLED` | true | 关=不执行 AI 回复/Provider 请求（普通功能不受影响） |
+| `MEMORY_ENABLED` | true | 关=不读/写长期记忆（短期 Context 不受影响） |
+| `PROACTIVE_CHAT_ENABLED` | true | 主动聊天循环 |
+| `REPEAT_ENABLED` | true | 复读检测 |
+| `ANTI_SPAM_ENABLED` | true | 防刷/冷却 |
+| `POKE_REPLY_ENABLED` | true | 戳戳回复 |
+| `ARCHIVE_ENABLED` | false | 消息存档 |
+| `STICKER_ENABLED` | false | 表情包 |
+| `MCP_ENABLED` | false | MCP 工具 |
+| `MEME_LEARNING_ENABLED` | false | 群梗学习 |
+
+## 花语记忆（BlossomMemory，默认关闭）
+
+- `BLOSSOM_MEMORY_ENABLED=false`：零模型资源（不加载 embedding/reranker/向量库）
+- 子开关（各自默认关）：`BLOSSOM_MEMORY_EMBEDDING_ENABLED`（向量模型）/
+  `BLOSSOM_MEMORY_RERANKER_ENABLED`（重排序）/ `BLOSSOM_MEMORY_EXTRACT_ENABLED`
+  （自动提取）/ `BLOSSOM_MEMORY_RETRIEVAL_ENABLED`（长期检索）
+- 模型配置：`BLOSSOM_MEMORY_EMBEDDING_MODEL/API_URL/API_KEY`、
+  `BLOSSOM_MEMORY_RERANKER_MODEL/API_URL/API_KEY`（OpenAI-compatible；
+  开启但未配置 → 启动 fail-fast，同 MCP 策略）
+- 参数：`VECTOR_DIMENSION/RETRIEVAL_TOP_K/RERANK_TOP_K/SIMILARITY_THRESHOLD/
+  MAX_ENTRIES/TTL_DAYS/DAILY_EXTRACT_LIMIT`
+- Web UI：高级配置默认折叠；总开关 OFF 时子配置不显示（零 JS details 门控）
+
+## 存储后端（默认 SQLite）
+
+- `STORAGE_BACKEND=sqlite`（默认）| `postgres`；`DATABASE_URL`（postgres 必填）
+- PG 平行实现：`PostgresMemoryRepository` / `PostgresBlossomMemoryRepository`
+  （psycopg 软依赖；向量=存储+内存 cosine，pgvector 列为未来优化）
+- 迁移：`python -m src.services.storage_migrate --sqlite ./data/memory.db --postgres <dsn> [--blossom ./data/blossom_memory.db]`

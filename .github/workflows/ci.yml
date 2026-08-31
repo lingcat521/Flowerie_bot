@@ -14,6 +14,22 @@ jobs:
         # 覆盖项目声明支持的最低版本（3.9）与当前主流版本（3.12）
         python-version: ["3.9", "3.12"]
 
+    # PostgreSQL 服务（验证可选 PG 后端：Postgres*Repository 真跑 CRUD）
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: flowerie
+          POSTGRES_PASSWORD: flowerie
+          POSTGRES_DB: flowerie_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U flowerie"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
       - uses: actions/checkout@v4
 
@@ -30,10 +46,12 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio ruff
+          pip install pytest pytest-asyncio ruff psycopg psycopg-pool
 
       - name: Ruff check
         run: ruff check .
 
       - name: Run tests (pytest)
+        env:
+          TEST_POSTGRES_URL: postgresql://flowerie:flowerie@127.0.0.1:5432/flowerie_test
         run: pytest -q

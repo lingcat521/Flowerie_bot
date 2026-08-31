@@ -18,7 +18,7 @@
 ---
 ## 这是什么
 
-**花璃** 是一个基于 **DeepSeek API** 的 **QQ 群聊机器人**：像真实群友一样聊天、识图、看转发、记记忆、被戳会回应，还能自定义人格、发表情包、用 MCP 工具上网查信息，并且可以通过 Web UI 管理配置（当前版本 **v1.5.0**）。
+**花璃** 是一个基于 **DeepSeek API** 的 **QQ 群聊机器人**：像真实群友一样聊天、识图、看转发、记记忆、被戳会回应，还能自定义人格、发表情包、用 MCP 工具上网查信息，并且可以通过 Web UI 管理配置（当前版本 **v1.6.0**）。
 
 ## 功能
 
@@ -212,3 +212,10 @@ CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 ## License
 
 [MIT](LICENSE) © 2026 铃樱（lingcat521）
+
+
+## 功能开关（Web UI 可切换）
+
+- **AI / 长期记忆 / 主动聊天 / 复读 / 防刷 / 戳戳 / 表情包 / MCP / 存档 / 群梗学习**：Web UI「配置」按分类折叠，每分类顶部开关徽标
+- **花语记忆（BlossomMemory，默认关闭）**：语义长期记忆（向量化检索+可重排+自动提取+群隔离）；开启后展开子开关与模型配置
+- **存储后端**：默认 SQLite；可选 PostgreSQL（`STORAGE_BACKEND=postgres` + `DATABASE_URL`，迁移工具 `python -m src.services.storage_migrate`）

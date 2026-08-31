@@ -63,3 +63,12 @@ docs/               # 文档
 - 新增平台能力：只改下层 `onebot/`（dto/transformer/adapter），中层上层不动
 - 测试：`tests/test_sdk_*.py`（matcher/listener/adapter/permission/message）
 - 文档：[sdk.md](sdk.md) / [api.md](api.md) / [plugins.md](plugins.md)
+
+
+## 存储后端扩展（SQLite 默认 / PostgreSQL 可选）
+
+- 业务只依赖 Repository 接口（`repositories/base.py` / `blossom_memory_repository.py`）
+- 新增后端 = 平行实现接口（参考 Postgres*Repository）；`STORAGE_BACKEND` 切换
+- 迁移工具幂等 + 失败安全（源库不动）；测试：CI postgres service（TEST_POSTGRES_URL）
+- 安全：API URL 一律过 `sanitizer.validate_mcp_server_url`（SSRF）；记忆文本过
+  `sanitize_untrusted_text`；metrics label 仅低基数（operation/result，禁 id 类）
