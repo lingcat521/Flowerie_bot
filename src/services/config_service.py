@@ -410,7 +410,7 @@ class ConfigService:
             raw = "" if raw is None else str(raw)
             if is_secret and not raw.strip():
                 continue  # 密钥留空 = 不修改
-            if is_secret and len(raw.strip()) < 6 and not self._chain_needs_secret(key):
+            if is_secret and len(raw.strip()) < 6 and not self._chain_needs_secret(key, validated):
                 continue  # 对应链路关闭：允许先保存（启用校验交给启动 validate_config）
             value = self._validate(key, ctype, raw)
             if value is None:
@@ -471,13 +471,16 @@ class ConfigService:
         return float(getattr(self.config, key, 0.0) or 0.0)
 
 
-    def _chain_needs_secret(self, key: str) -> bool:
+    def _chain_needs_secret(self, key: str, validated: Dict[str, str]) -> bool:
         """secret 键所属功能链是否开启：BLOSSOM 链看总开关+子开关，其他链恒 True。
 
-        链关闭时允许空/短 secret 随表单一起保存（用户可能中途操作；严格校验在启用后由
-        启动 validate_config 执行）。"""
+        判定顺序：本次提交值（本次==false 即"正在关闭"）→ 当前生效值。
+        链关闭（或本次正关闭）时允许空/短 secret 随表单一起保存——否则用户"想关掉"
+        的那次保存会被当成链开启而拦截；严格校验仍由启动 validate_config 执行。"""
         if key.startswith("BLOSSOM_MEMORY_"):
             def on(k):
+                if k in validated:
+                    return validated[k] == "true"
                 return self._current_value(k) == "true"
             if not on("BLOSSOM_MEMORY_ENABLED"):
                 return False

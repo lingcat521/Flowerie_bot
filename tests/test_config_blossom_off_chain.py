@@ -40,6 +40,25 @@ def test_subchain_off_allows_short_key():
     assert ok, msg
 
 
+def test_disabling_subswitch_this_save_allows_short_key():
+    """本次提交把子开关关掉（false）→ 短 key 放行（修复回归）。"""
+    svc = _svc(BLOSSOM_MEMORY_ENABLED=True, BLOSSOM_MEMORY_EMBEDDING_ENABLED=True,
+               BLOSSOM_MEMORY_RERANKER_ENABLED=True)
+    ok, msg = svc.update_many({"BLOSSOM_MEMORY_EMBEDDING_ENABLED": "false",
+                               "BLOSSOM_MEMORY_EMBEDDING_API_KEY": "ab",
+                               "BLOSSOM_MEMORY_EMBEDDING_MODEL": ""})
+    assert ok, msg
+
+
+def test_disabling_master_this_save_allows_short_key():
+    """本次提交把总开关关掉（false）→ 所有 key 放行。"""
+    svc = _svc(BLOSSOM_MEMORY_ENABLED=True, BLOSSOM_MEMORY_EMBEDDING_ENABLED=True,
+               BLOSSOM_MEMORY_RERANKER_ENABLED=True)
+    ok, msg = svc.update_many({"BLOSSOM_MEMORY_ENABLED": "false",
+                               "BLOSSOM_MEMORY_EMBEDDING_API_KEY": "xy"})
+    assert ok, msg
+
+
 def test_chain_on_still_blocks_invalid_model():
     svc = _svc(BLOSSOM_MEMORY_ENABLED=True, BLOSSOM_MEMORY_EMBEDDING_ENABLED=True)
     # 链开启但模型空 → 这里只做类型校验不卡（null 模型运行时兜底）；至少保存不因 secret 崩
