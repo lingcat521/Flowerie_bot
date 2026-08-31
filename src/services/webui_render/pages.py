@@ -19,7 +19,7 @@ def render_login_page(msg: str = "") -> str:
         '<label>密码</label><input name="password" type="password" required autocomplete="current-password">'
         '<button type="submit" class="btn">登录</button></form>'
         '<p class="foot"><a href="/panel/register">没有账号？注册管理员账号</a></p>'
-        '<p style="text-align:center;color:var(--text-muted);font-size:12px;margin-top:14px">'
+        '<p style="text-align:center;color:var(--text-muted);font-size:11.5px;margin-top:14px">'
         '无 JS 兼容面板（服务端渲染）· 任意浏览器可用</p>'
         '</div></body></html>'
     )
