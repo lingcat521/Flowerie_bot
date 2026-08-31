@@ -11,6 +11,17 @@ class _FakeConfig:
             setattr(self, k, v)
 
 
+class _FakeRepo:
+    def __init__(self):
+        self.store = {}
+
+    def set_config(self, key, value):
+        self.store[key] = value
+
+    def get_config(self, key):
+        return self.store.get(key)
+
+
 def _svc(**kw):
     # Settings 字段：默认空/False；用 SimpleNamespace 兼容（ConfigService 只 getattr）
     cfg = _FakeConfig(**{
@@ -19,7 +30,7 @@ def _svc(**kw):
         "BLOSSOM_MEMORY_RERANKER_ENABLED": False,
         **kw,
     })
-    return ConfigService(cfg)
+    return ConfigService(cfg, _FakeRepo())
 
 
 def test_chain_off_allows_short_key():
