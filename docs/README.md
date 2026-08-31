@@ -1,14 +1,13 @@
 # Flowerie 文档中心（导航）
 
-> 阅读顺序建议：**开发插件**→ [plugin-developer-guide](plugin-developer-guide.md)（60 秒上手）+
-> [sdk](sdk.md)（SDK 完整参考）+ [api](api.md)（API 速查索引）；**运维/配置**→ [configuration](configuration.md) +
-> [web-ui](web-ui.md) + [install-termux](install-termux.md)。
+> 阅读顺序：**插件新人先看 [quick-start](quick-start.md)（第一层）** → 深入再看 [plugin-developer-guide](plugin-developer-guide.md)（第二层·完整参考）+ [sdk](sdk.md) + [api](api.md)；运维/配置 → [configuration](configuration.md) + [web-ui](web-ui.md) + [install-termux](install-termux.md)。
 
 ## 核心文档（唯一事实来源）
 
 | 文档 | 内容 | 谁需要 |
 | --- | --- | --- |
-| [plugin-developer-guide.md](plugin-developer-guide.md) | 60 秒上手 / manifest / 经典协议 / 打包 / 资源限制 / 检查清单 | 插件开发者 |
+| **[quick-start.md](quick-start.md)** | **第一层·小白快速开始**（10 分钟：创建/manifest/收发消息/记忆/HTTP/权限/完整例子/安装测试） | 插件新人 |
+| [plugin-developer-guide.md](plugin-developer-guide.md) | **第二层·完整参考**（Manifest 规则/Python·Node·JSON/生命周期/Event·Action·Permission API/超时/资源/安全/打包/WebUI 安装） | 插件开发者 |
 | [sdk.md](sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ | 插件开发者 |
 | [api.md](api.md) | **API 权威速查总表**（59 方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |
 | [configuration.md](configuration.md) | 全部配置项 / .env / 优先级 / 功能开关表 | 运维 |
