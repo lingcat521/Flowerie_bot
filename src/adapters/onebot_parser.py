@@ -53,15 +53,18 @@ class OneBotEventParser:
             message_id=message_id, timestamp=timestamp,
             raw_data=raw,
         )
+        event.operator_id = raw.get("operator_id") or actor_id
         if kind == "message":
             self._fill_message(event, raw)
         elif kind == "notice":
             self._fill_notice(event, raw)
         elif kind == "request":
-            event.notice_kind = str(raw.get("request_type") or "")
+            event.request_kind = str(raw.get("request_type") or "")
+            event.notice_kind = event.request_kind
             event.text = str(raw.get("comment") or "")[:500]
         elif kind == "lifecycle":
-            event.notice_kind = str(raw.get("meta_event_type") or "")
+            event.lifecycle_kind = str(raw.get("meta_event_type") or "")
+            event.notice_kind = event.lifecycle_kind
         return event
 
     # ---------- 各类型 ----------
@@ -81,7 +84,9 @@ class OneBotEventParser:
             elif seg_type == "at":
                 qq = str(data.get("qq") or "")
                 mentions.append(qq)
-                if qq == self._bot_qq or qq == "all":
+                # 等价格：旧行为（file_parser.extract_mention_and_text）仅 qq==bot_qq
+                # 视为 @机器人；@all 记录在 mentions（"all"）但不置 is_mentioned
+                if qq == self._bot_qq:
                     event.is_mentioned = True
                 elif qq != self._bot_qq:
                     has_at_others = True
@@ -105,6 +110,7 @@ class OneBotEventParser:
                 summary.append(("json", dict(data)))
             elif seg_type:
                 summary.append((seg_type, dict(data)))
+        event.message_segments = [dict(seg) for seg in arr]  # 段浅拷贝（兼容组装）
         event.text = "".join(text_parts).strip()
         event.mentions = mentions
         event.images = images

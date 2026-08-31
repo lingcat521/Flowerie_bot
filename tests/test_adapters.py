@@ -71,9 +71,9 @@ def test_mention_bot():
         [{"type": "at", "data": {"qq": BOT_QQ}}, {"type": "text", "data": {"text": " 早安"}}]))
     assert ev.is_mentioned is True and ev.mentions == [str(BOT_QQ)]
     assert ev.text == "早安"   # strip 后与 extract_mention_and_text 一致
-    # @all 也算提到 bot
+    # @all：记录在 mentions（"all"）；is_mentioned 保持旧行为（仅 @bot 才算）
     ev2 = PARSER.parse(_message_payload([{"type": "at", "data": {"qq": "all"}}]))
-    assert ev2.is_mentioned is True
+    assert ev2.is_mentioned is False and ev2.mentions == ["all"]
 
 
 # ---------- 3. 图片 / 表情包（face 视为普通段） ----------

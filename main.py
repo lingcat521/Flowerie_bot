@@ -150,6 +150,7 @@ async def main():
             meme_summary=meme_summary,
             budget=budget_manager,
             plugin_manager=plugin_manager,
+            event_parser=adapters.parser,
         )
         # NapCat WebSocket：反向（NapCat 连过来，原有行为）或正向（连接 NapCat 的 WS server），二选一
         if str(getattr(config, "NAPCAT_WS_MODE", "reverse") or "reverse").lower() == "forward":

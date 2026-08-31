@@ -116,33 +116,53 @@ def test_sender_injected_and_contract():
     assert _missing_sender_methods(sender) == []
 
 
-# ---------- 4. 不存在业务层反向依赖 OneBot Adapter ----------
+# ---------- 4. 依赖方向与 raw_data 泄漏检查（uwu Phase5 §8） ----------
 def test_no_backward_dependency():
     root = os.path.join(os.path.dirname(__file__), "..", "src")
-    banned = ("from src.adapters", "import src.adapters")
-    offenders = []
-    for base, _dirs, files in os.walk(os.path.join(root, "core")):
-        for f in files:
-            if not f.endswith(".py"):
-                continue
-            text = open(os.path.join(base, f), encoding="utf-8").read()
-            if any(b in text for b in banned):
-                offenders.append(os.path.join(base, f))
+    banned_import = ("from src.adapters", "import src.adapters")
+    # 冻结层（services/repositories/plugins）：禁止 import 消息边界
+    frozen_offenders = []
     for base, _dirs, files in os.walk(os.path.join(root, "services")):
         for f in files:
             if not f.endswith(".py"):
                 continue
             text = open(os.path.join(base, f), encoding="utf-8").read()
-            if any(b in text for b in banned):
-                offenders.append(os.path.join(base, f))
+            if any(b in text for b in banned_import):
+                frozen_offenders.append(os.path.join(base, f))
     for base, _dirs, files in os.walk(os.path.join(root, "repositories")):
         for f in files:
             if not f.endswith(".py"):
                 continue
             text = open(os.path.join(base, f), encoding="utf-8").read()
-            if any(b in text for b in banned):
+            if any(b in text for b in banned_import):
+                frozen_offenders.append(os.path.join(base, f))
+    assert frozen_offenders == [], f"冻结层反向依赖 adapters: {frozen_offenders}"
+    # core 允许 message_router 接入（合法单向依赖），其余 core 模块禁止
+    core_offenders = []
+    for base, _dirs, files in os.walk(os.path.join(root, "core")):
+        for f in files:
+            if not f.endswith(".py"):
+                continue
+            if f == "message_router.py":
+                continue
+            text = open(os.path.join(base, f), encoding="utf-8").read()
+            if any(b in text for b in banned_import):
+                core_offenders.append(os.path.join(base, f))
+    assert core_offenders == [], f"core 意外依赖 adapters: {core_offenders}"
+
+
+# ---------- 4b. 全库禁止读取 raw_data（无泄漏路径） ----------
+def test_no_raw_data_read_anywhere():
+    root = os.path.join(os.path.dirname(__file__), "..", "src")
+    offenders = []
+    for base, _dirs, files in os.walk(root):
+        for f in files:
+            if not f.endswith(".py") or f.startswith("__"):
+                continue
+            text = open(os.path.join(base, f), encoding="utf-8").read()
+            if "raw_data[" in text or "raw_data.get(" in text:
                 offenders.append(os.path.join(base, f))
-    assert offenders == [], f"业务层反向依赖 adapters: {offenders}"
+    assert offenders == [], f"raw_data 被业务读取: {offenders}"
 
 
 # ---------- 5. Legacy 路径仍可正常构造（Sender 流程函数面完整；解析旧路径同步） ----------

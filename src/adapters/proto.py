@@ -30,6 +30,9 @@ class InternalEvent:
     images: List[str] = field(default_factory=list)     # 图片 url（url 优先，file 兜底）
     reply_id: Optional[int] = None     # 引用消息 id
     notice_kind: str = ""              # poke / group_increase / group_upload / ...
+    request_kind: str = ""             # friend / group（申请类事件）
+    lifecycle_kind: str = ""           # enable / disable / connect（生命周期事件）
+    operator_id: Optional[int] = None  # 操作者（群管变动等）；缺省=actor_id
     # 派生语义（router/策略层直接使用）
     is_mentioned: bool = False         # @bot_qq 或 @all
     is_reply_to_bot: bool = False
@@ -37,6 +40,9 @@ class InternalEvent:
     has_at_others: bool = False
     # 高级段摘要（合并转发/卡片等）：(kind, data)；data 为平台释义 dict（解析期使用）
     segments_summary: List[Tuple[str, dict]] = field(default_factory=list)
+    # 原始消息段（浅拷贝的段数组，供 GroupMessage.message_array 兼容组装；
+    # 业务如需按段处理请用 segments_summary/语义字段——不要把 OneBot JSON 读进业务）
+    message_segments: List[dict] = field(default_factory=list)
     # 隔离保留：仅供 EventParser 内部/调试；业务层禁止读取（审查红线）
     raw_data: Dict[str, Any] = field(default_factory=dict, repr=False)
 

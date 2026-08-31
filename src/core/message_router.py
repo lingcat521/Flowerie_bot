@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 if TYPE_CHECKING:  # pragma: no cover - 仅类型注解
     from src.plugins.manager import PluginManager
 
+from src.adapters import InternalEvent, OneBotEventParser  # 消息边界（Phase 5）
 from src.config import Settings
 from src.core.ai_gateway import AiGateway
 from src.core.budget_manager import BudgetManager
@@ -14,7 +15,6 @@ from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
 from src.core.sanitizer import validate_memory_content
 from src.models import GroupMessage
-from src.sdk.onebot.transformer import to_bot_event  # 插件通道领域化（唯一转换入口）
 from src.services.ai_client import AIClient
 from src.services.file_parser import FileParser
 from src.services.mcp_tool_manager import McpToolManager
@@ -65,12 +65,15 @@ class MessageRouter:
         meme_summary: Optional["MemeSummaryService"] = None,
         budget: Optional["BudgetManager"] = None,
         plugin_manager: Optional["PluginManager"] = None,
+        event_parser: Optional[Any] = None,
     ):
         self.config = config
         self.ai_client = ai_client
         self.memory_manager = memory_manager
         self.file_parser = file_parser
         self.sender = sender
+        # 消息边界（Phase 5）：OneBot raw → InternalEvent；None 时按默认构造（行为不变）
+        self._event_parser = event_parser or OneBotEventParser(bot_qq=getattr(config, "BOT_QQ", None))
         self.policy_engine = policy_engine
         self.global_state = self.policy_engine.global_state
         # 插件系统（Plugin System v1）：None 时不投递事件（不影响现有行为）
@@ -164,60 +167,46 @@ class MessageRouter:
                 logger.error("Context backup loop error: %s", e)
 
     async def process_event(self, data: Dict[str, Any]) -> None:
-        post_type = data.get("post_type")
-        # 插件事件投递（受控运行时；插件异常被隔离，不阻塞主消息流程）
+        # ---- Phase 5：单点解析（OneBot raw → InternalEvent）；parse 不抛（未知→kind=unknown）----
+        event = self._event_parser.parse(data)
+        # 插件事件投递（受控运行时；领域 kind；插件异常被隔离，不阻塞主消息流程）
         if self.plugin_manager is not None:
             try:
-                await self.plugin_manager.dispatch_event(self._plugin_event_type(data), self._plugin_payload(data))
+                await self.plugin_manager.dispatch_event(event.kind, self._plugin_payload(event))
             except Exception as e:  # noqa: BLE001 - 插件系统异常绝不影响主流程
                 logger.error("plugin_dispatch_error reason=%s", e, extra={"event": "plugin_error"})
-        if post_type == "message":
-            await self._handle_message(data)
-        elif post_type == "notice":
-            notice_type = data.get("notice_type")
-            if notice_type == "group_upload":
+        # ---- 业务分支（unknown/request 等旧行为 = 不进入业务，保持等价）----
+        if event.kind == "message":
+            await self._handle_message(event)
+        elif event.kind == "notice":
+            if event.notice_kind == "group_upload":
                 self._handle_group_upload(data)
-            elif notice_type == "notify" and data.get("sub_type") == "poke":
+            elif event.notice_kind == "poke":
                 await self._handle_poke(data)
 
     @staticmethod
-    def _plugin_event_type(data: Dict[str, Any]) -> str:
-        """插件投递事件类型 = 领域 kind（message/notice/request/lifecycle）。"""
-        try:
-            return to_bot_event(data).kind
-        except Exception:  # noqa: BLE001 - 未知结构按 message 兜底
-            return "message"
-
-    @staticmethod
-    def _plugin_payload(data: Dict[str, Any]) -> Dict[str, Any]:
-        """投递给插件的事件负载（领域语义；不透视原始段/敏感信息；CQ 码在下层阉割）。"""
+    def _plugin_payload(event: InternalEvent) -> Dict[str, Any]:
+        """投递给插件的事件负载（领域语义；源由 parser 在边界产出，无二次转换）。"""
         try:
             from src.utils.trace import get_trace_id
             trace_id = get_trace_id()
         except Exception:  # noqa: BLE001
             trace_id = ""
-        try:
-            event = to_bot_event(data)
-        except Exception:  # noqa: BLE001 - 结构异常按原始投射兜底
-            event = None
-        if event is None:
-            return {"kind": str(data.get("post_type") or "unknown"), "scope": "",
-                    "trace_id": trace_id}
         payload: Dict[str, Any] = {
             "kind": event.kind,
             "scope": event.scope,
             "group_id": event.group_id,
-            "user_id": event.user_id,
+            "user_id": event.actor_id,
             "message_id": event.message_id,
-            "time": event.time,
+            "time": event.timestamp,
             "text": event.text[:2000],
-            "at_list": event.at_list[:20],
+            "at_list": [str(a) for a in event.mentions[:20]],
             "images": event.images[:10],
             "reply_id": event.reply_id,
-            "operator_id": event.operator_id,
+            "operator_id": event.operator_id or event.actor_id,
             "trace_id": trace_id,
         }
-        # kind 专属字段
+        # kind 专属字段（与边界转换前的输出完全一致）
         if event.kind == "notice":
             payload["notice_kind"] = event.notice_kind
         elif event.kind == "request":
@@ -231,16 +220,16 @@ class MessageRouter:
         """群白名单：空=放行所有群；设置后只有白名单群能触发任何行为（消息/戳戳/文件）。"""
         return not self.config.ALLOWED_GROUP_IDS or group_id in self.config.ALLOWED_GROUP_IDS
 
-    async def _handle_message(self, data: Dict[str, Any]) -> None:
-        if data.get("message_type") != "group":
+    async def _handle_message(self, event: InternalEvent) -> None:
+        if event.scope != "group":
             return
-        group_id = data.get("group_id")
+        group_id = event.group_id
         if not group_id:
             return
 
         logger.info(
             "message_received group=%s user=%s msg_id=%s",
-            group_id, data.get("user_id"), data.get("message_id"),
+            group_id, event.actor_id, event.message_id,
             extra={"event": "message_received", "group_id": group_id},
         )
         _M_RECEIVED.inc()
@@ -251,7 +240,7 @@ class MessageRouter:
             logger.info("message_rejected group=%s reason=whitelist", group_id, extra={"event": "message_rejected"})
             return
 
-        message_array = data.get("message", [])
+        message_array = event.message_segments or []   # parser 已规范化（str→text 段；非法→[]）
         # OneBot11 兼容：纯文本消息可能以字符串形式下发（而非段数组）
         if isinstance(message_array, str):
             message_array = [{"type": "text", "data": {"text": message_array}}]
@@ -259,9 +248,9 @@ class MessageRouter:
             logger.debug("Unsupported message format: %s", type(message_array).__name__)
             message_array = []
 
-        raw_time = data.get("time", int(time.time()))
-        user_id = data.get("user_id")
-        msg_id = data.get("message_id")
+        raw_time = event.timestamp or int(time.time())
+        user_id = event.actor_id
+        msg_id = event.message_id
         if not user_id:
             _M_REJECTED.inc({"reason": "no_user"})
             return
