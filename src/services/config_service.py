@@ -27,9 +27,11 @@ from src.services.config_schema import (
     _ENUM_OPTIONS,
     _ENUM_VALUES,
     _RANGES,
+    SCHEMA,
+)
+from src.services.webui_render.category_constants import (  # 单源（无 pydantic）
     CATEGORY_LABELS,
     CATEGORY_ORDER,
-    SCHEMA,
 )
 from src.utils.logging_setup import get_logger
 
