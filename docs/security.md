@@ -163,4 +163,4 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
 - **OneBot 耦合红线**：端点名只存在于 `src/services/sender.py` + 适配层；语义层/插件永不接触端点串（白盒测试锁定）
 - **零 JS**：Web UI 全部原生 `<details>`/表单 POST（黑盒验证 0 命中）
 
-安全规则的**权威版本**仍以本文档为准；权限映射总表见 [api.md](docs/api.md)。
+安全规则的**权威版本**仍以本文档为准；权限映射总表见 [api.md](https://github.com/lingcat521/Flowerie_bot/blob/main/docs/api.md)。
