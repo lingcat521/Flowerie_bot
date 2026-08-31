@@ -6,16 +6,33 @@ SCHEMA 条目格式：key -> (分类, 类型, 是否敏感, 是否热更新, 说
 管理账号（WEB_UI_USERNAME / WEB_UI_PASSWORD）不在此表：由注册页管理，
 密码只存 scrypt 哈希，禁止通过配置表单写入明文 .env。
 """
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     # ---------- AI / Provider ----------
     "AI_ENABLED": ("AI", "bool", False, True, "AI 回复总开关（关=不请求 Provider，普通功能不受影响）"),
     "MEMORY_ENABLED": ("Memory", "bool", False, True, "长期记忆总开关（关=不读/写；短期 Context 不受影响）"),
-    "LIVING_MEMORY_ENABLED": ("Memory", "bool", False, True, "语义长期记忆（默认 OFF；开启需配置 embedding/reranker）"),
-    "PROACTIVE_CHAT_ENABLED": ("Proactive Chat", "bool", False, True, "主动聊天总开关"),
-    "REPEAT_ENABLED": ("Repeat & Anti-Spam", "bool", False, True, "复读检测开关"),
-    "ANTI_SPAM_ENABLED": ("Repeat & Anti-Spam", "bool", False, True, "防刷/冷却逻辑开关"),
+    "LIVING_MEMORY_EMBEDDING_ENABLED": ("LivingMemory", "bool", False, True, "向量模型（Embedding）"),
+    "LIVING_MEMORY_RERANKER_ENABLED": ("LivingMemory", "bool", False, True, "重排序模型（Reranker）"),
+    "LIVING_MEMORY_EXTRACT_ENABLED": ("LivingMemory", "bool", False, True, "自动提取记忆"),
+    "LIVING_MEMORY_RETRIEVAL_ENABLED": ("LivingMemory", "bool", False, True, "长期记忆检索"),
+    "LIVING_MEMORY_EMBEDDING_MODEL": ("LivingMemory", "str", False, True, "向量模型名（如 text-embedding-3-small）"),
+    "LIVING_MEMORY_EMBEDDING_API_URL": ("LivingMemory", "str", False, True, "向量模型 API 地址"),
+    "LIVING_MEMORY_EMBEDDING_API_KEY": ("LivingMemory", "secret", False, True, "向量模型 API 密钥"),
+    "LIVING_MEMORY_RERANKER_MODEL": ("LivingMemory", "str", False, True, "重排序模型名"),
+    "LIVING_MEMORY_RERANKER_API_URL": ("LivingMemory", "str", False, True, "重排序 API 地址"),
+    "LIVING_MEMORY_RERANKER_API_KEY": ("LivingMemory", "secret", False, True, "重排序 API 密钥"),
+    "LIVING_MEMORY_VECTOR_DIMENSION": ("LivingMemory", "int", False, True, "向量维度", 64, 8192),
+    "LIVING_MEMORY_RETRIEVAL_TOP_K": ("LivingMemory", "int", False, True, "检索 Top K", 1, 20),
+    "LIVING_MEMORY_RERANK_TOP_K": ("LivingMemory", "int", False, True, "重排 Top K", 1, 10),
+    "LIVING_MEMORY_SIMILARITY_THRESHOLD": ("LivingMemory", "float", False, True, "相似度阈值", 0.0, 1.0),
+    "LIVING_MEMORY_MAX_ENTRIES": ("LivingMemory", "int", False, True, "每组记忆上限", 100, 100000),
+    "LIVING_MEMORY_TTL_DAYS": ("LivingMemory", "int", False, True, "记忆 TTL（天，0=永久）", 0, 3650),
+    "LIVING_MEMORY_DAILY_EXTRACT_LIMIT": ("LivingMemory", "int", False, True, "每日提取上限", 1, 500),
+    "LIVING_MEMORY_ENABLED": ("LivingMemory", "bool", False, True, "高级记忆（LivingMemory），默认 OFF"),
+    "PROACTIVE_CHAT_ENABLED": ("ActiveChat", "bool", False, True, "主动聊天总开关"),
+    "REPEAT_ENABLED": ("Repeat", "bool", False, True, "复读检测开关"),
+    "ANTI_SPAM_ENABLED": ("Repeat", "bool", False, True, "防刷/冷却逻辑开关"),
     "DEEPSEEK_API_KEY": ("AI", "secret", True, True, "DeepSeek API 密钥（必填）"),
     "DEEPSEEK_API_URL": ("AI", "str", False, True, "DeepSeek API 地址"),
     "DEEPSEEK_MODEL": ("AI", "str", False, True, "群聊对话模型"),
@@ -191,38 +208,7 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "MEME_MAX_SUMMARY_CANDIDATES": ("Knowledge", "int", False, True, "单群单轮候选梗上限"),
 }
 
-CATEGORY_LABELS: Dict[str, str] = {
-    "AI": "AI / Provider 配置",
-    "Bot": "基础配置",
-    "Connection": "QQ / OneBot 连接",
-    "Behavior": "行为与回复",
-    "Stability": "稳定性与熔断",
-    "Memory": "记忆库",
-    "Sticker": "表情包",
-    "MCP": "MCP 工具",
-    "WebUI": "Web UI",
-    "Logging": "日志",
-    "Budget": "预算与限额",
-    "ActiveChat": "主动聊天",
-    "Repeat": "复读与防刷",
-    "Poke": "戳戳",
-    "FileParse": "文件解析",
-    "Security": "安全与资源限制",
-    "Whitelist": "白名单与隐私",
-    "Archive": "消息存档",
-    "Paths": "数据路径",
-    "Persona": "人格（Persona）",
-    "Knowledge": "群聊知识（Meme）",
-    "Plugin": "插件系统",
-}
 
-CATEGORY_ORDER: List[str] = [
-    "AI", "Bot", "Connection", "Behavior", "Stability", "Memory", "Context",
-    "Sticker", "MCP", "WebUI", "Logging", "Budget", "ActiveChat", "Repeat",
-    "Poke", "FileParse", "Security", "Whitelist", "Archive", "Paths",
-    # 注意：Persona/Knowledge/Plugin 分类的配置项已在 SCHEMA 中，但不在配置页展示——
-    # 它们由「人格」「群聊知识」「插件」页的专属配置区块管理（见 webui_panels/* 等）
-]
 
 _ENUM_VALUES = {
     "LOG_LEVEL": {"debug", "info", "warning", "error", "critical"},

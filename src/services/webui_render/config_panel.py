@@ -1,26 +1,35 @@
 """webui_render 配置页：分组表单 + MCP 卡片编辑器（零 JS）。"""
 
+from src.services.webui_render.category_constants import (  # 单源
+    CATEGORY_LABELS as _DEFAULT_LABELS,
+)
+from src.services.webui_render.category_constants import (
+    CATEGORY_ORDER as _DEFAULT_ORDER,
+)
 from src.services.webui_render.util import _esc
 
 
-def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_test_status=None, mcp_tool_counts=None) -> str:
+def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_test_status=None, mcp_tool_counts=None,
+                           category_order=None, category_labels=None) -> str:
     """按分类渲染配置分组表单，顶部带分类导航（点某个分类只看那一类，避免全部堆在一屏）。
 
     active_cat: "all" 显示全部分类；否则只显示该分类。纯 HTML + 链接跳转，零 JS。
+    category_order/labels: 可选注入（测试解耦）；缺省用 ConfigService 常量（生产行为不变）。
     """
-    from src.services.config_service import ConfigService
+    order = category_order if category_order is not None else _DEFAULT_ORDER
+    labels = category_labels if category_labels is not None else _DEFAULT_LABELS
     by_cat: dict = {}
     for c in configs:
         by_cat.setdefault(c["category"], []).append(c)
     # 有内容的分类（按固定顺序）
-    cats = [cat for cat in ConfigService.CATEGORY_ORDER if by_cat.get(cat)]
+    cats = [cat for cat in order if by_cat.get(cat)]
     if active_cat not in ("all", "") and active_cat not in by_cat:
         active_cat = "all"
-    nav = _render_cat_nav(active_cat, cats, ConfigService.CATEGORY_LABELS)
+    nav = _render_cat_nav(active_cat, cats, labels)
     shown_cats = [active_cat] if active_cat in by_cat else cats
     sections = []
     for cat in shown_cats:
-        label = ConfigService.CATEGORY_LABELS.get(cat, cat)
+        label = labels.get(cat, cat)
         action = f"/panel/save?cat={_esc(active_cat)}" if active_cat in by_cat else "/panel/save"
         mcp_raw = None
         rows_html = []
@@ -28,17 +37,76 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
             if c["key"] == "MCP_SERVERS":
                 mcp_raw = c.get("current", "")  # MCP_SERVERS 单独渲染为表单编辑器
                 continue
+            # 高级记忆层级门控（零 JS）：
+            # 总开关 OFF → 子开关与全部配置不渲染；子开关 OFF → 对应模型配置不渲染
+            if c["key"] in _SUB_SWITCH_KEYS and not _living_on(by_cat[cat]):
+                continue
+            if c["key"] in _SUB_CONFIG_KEYS and not _sub_switch_on(by_cat[cat], c["key"]):
+                continue
             rows_html.append(_render_config_row(c))
-        section = (
-            f'<fieldset class="group"><legend>{_esc(label)}</legend>'
+        body = (
             f'<form method="post" action="{action}">{"".join(rows_html)}'
             '<div class="group-actions"><button type="submit" class="btn">保存本组</button></div>'
             '</form>'
             + (render_mcp_editor(mcp_raw, edit_index=mcp_edit, mcp_test_status=mcp_test_status, mcp_tool_counts=mcp_tool_counts) if mcp_raw is not None else "")
-            + '</fieldset>'
+        )
+        # 折叠（<details>/<summary> 原生，零 JS）+ 开关状态徽标
+        summary_status = _cat_status_badge(by_cat[cat])
+        section = (
+            f'<details class="cfg-group">'
+            f'<summary class="cfg-summary">{_esc(label)}{summary_status}</summary>'
+            + body
+            + '</details>'
         )
         sections.append(section)
     return nav + "\n" + "\n".join(sections)
+
+
+# 子开关（总开关 ON 时渲染）
+_SUB_SWITCH_KEYS = {
+    "LIVING_MEMORY_EMBEDDING_ENABLED", "LIVING_MEMORY_RERANKER_ENABLED",
+    "LIVING_MEMORY_EXTRACT_ENABLED", "LIVING_MEMORY_RETRIEVAL_ENABLED",
+}
+# 子开关 → 其专属配置键（子开关 OFF 时不渲染）
+_SUB_CONFIG_KEYS = {
+    "LIVING_MEMORY_EMBEDDING_MODEL": "LIVING_MEMORY_EMBEDDING_ENABLED",
+    "LIVING_MEMORY_EMBEDDING_API_URL": "LIVING_MEMORY_EMBEDDING_ENABLED",
+    "LIVING_MEMORY_EMBEDDING_API_KEY": "LIVING_MEMORY_EMBEDDING_ENABLED",
+    "LIVING_MEMORY_RERANKER_MODEL": "LIVING_MEMORY_RERANKER_ENABLED",
+    "LIVING_MEMORY_RERANKER_API_URL": "LIVING_MEMORY_RERANKER_ENABLED",
+    "LIVING_MEMORY_RERANKER_API_KEY": "LIVING_MEMORY_RERANKER_ENABLED",
+}
+# 总开关配置键（始终渲染）
+_LIVING_ADVANCED_KEYS = frozenset()
+
+
+def _living_on(cfgs) -> bool:
+    """高级记忆总开关（渲染门控）。"""
+    for c in cfgs:
+        if c["key"] == "LIVING_MEMORY_ENABLED":
+            return str(c.get("current") or "").lower() in ("true", "1")
+    return False
+
+
+def _sub_switch_on(cfgs, config_key: str) -> bool:
+    """子开关状态（渲染门控）：未列出归属的键仅受总开关控制。"""
+    sw = _SUB_CONFIG_KEYS.get(config_key)
+    if sw is None:
+        return True
+    for c in cfgs:
+        if c["key"] == sw:
+            return str(c.get("current") or "").lower() in ("true", "1")
+    return False
+
+
+def _cat_status_badge(cfgs) -> str:
+    """分类内 *_ENABLED 开关徽标（ON/OFF；无开关分类无徽标）。"""
+    badges = []
+    for c in cfgs:
+        if c["key"].endswith("_ENABLED") and c.get("type") == "bool":
+            on = str(c.get("current") or "").lower() in ("true", "1")
+            badges.append(f'<span class="badge{" warn" if not on else ""}">{_esc(c["key"].replace("_", " ").lower())}: {"ON" if on else "OFF"}</span>')
+    return f'<span class="badges">{"".join(badges)}</span>' if badges else ""
 
 def render_mcp_editor(raw: str, default_timeout: int = 15, edit_index=None, mcp_test_status=None, mcp_tool_counts=None) -> str:
     """把 MCP_SERVERS 的 JSON 渲染成卡片式列表（每个 server 一张卡，零 JS）。
