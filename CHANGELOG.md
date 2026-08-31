@@ -2,6 +2,36 @@
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [1.5.0] - 2026-08-31
+
+### Added（能力对标主流网关；形态自有特色——语义化分组上下文，端点只在适配层）
+
+- **群操作上下文** `bot.group(gid)`：members/member/mute/kick/set_admin/whole_ban/
+  rename/set_card/set_title/send_notice/get_notice/files/files_in/file_url/config/
+  config_set/pin/unpin/resource
+- **用户与自我**：`bot.user(uid)`（like/tap/card/info）、`bot.me`（info/devices/status/profile）
+- **顶层语义动作**：`bot.tap`（戳）/ `bot.emoji`（表情回应）/ `bot.pin`+`bot.unpin`
+  （精华）/ `bot.like` / `bot.friends`
+- **富内容 Builder**：`BotMessage().card(json)` / `.markdown(text)` / `.button(label, action)`
+  （合并 keyboard 段；底层转 json/markdown/keyboard 段，网关支持度见 sdk.md 兼容矩阵）
+- 权限新增 `bot_profile`（改 Bot 资料）；群写复用 group_manage、读复用 read_group_info、
+  好友/自我复用 read_user_info（总计 23）
+- 管理端 `_SENDER_ACTIONS` 转发表（22 语义动作 → Sender 端点；参数白名单清洗；
+  不支持端点返回明确错误——换网关即激活）
+
+### Fixed
+
+- **`_handle_action` 权限拒绝解析错误**：拒绝响应此前被伪装成 `ok=True`（插件误以为成功）
+  ——现在原样回传 `{ok: False, denied: True, error}`
+- **SDK 注册动作失败不再阻断插件启动**：matcher/schedule 注册被拒时降级为日志
+- PR #4（README badge 空格）合并
+
+### Tests
+
+- +6：语义动作转发表（18 组端点参数断言）、不支持端点语义、权限拒绝传播、
+  SDK 分组上下文转发、富 Builder 出段合并
+- 本地 152 通过；ruff 0
+
 ## [1.4.0] - 2026-08-31
 
 ### Added（高频能力补齐；原则：OneBot 已有直接包装，没有的自造但要轻）

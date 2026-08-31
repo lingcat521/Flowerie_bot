@@ -138,3 +138,17 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
   （字面量 + DNS 双闸、头过滤、不重定向）；下载 ≤10MB 且只能写插件目录
   （save_to 相对路径校验 + 真实路径公共前缀校验）。
 - **记忆写入**：mem_update/mem_clear 复用现有 MemoryManager（审计与 TTL 不变）。
+
+## v1.5 新增边界（社交/群管语义 API）
+
+- **群写操作**（whole_ban/rename/card/title/公告/精华 pin）：统一 group_manage 权限；
+  建议只给受信任插件并在命令上叠加 rule(is_group_admin=True) 守卫。
+- **修改 Bot 资料**（bot_profile）：能改昵称/签名——全局可见副作用，仅批准明确用途的插件。
+- **好友与自我信息**（friends/like/devices/login_info/status）：read_user_info；
+  like（点赞）为社交副作用，注意频控（同指标可复用 cool_down）。
+- **好友/加群请求处理**（request_handle）：approve 必须回传原 flag；正式环境建议
+  人工审核后批准。
+- **富内容**（card/markdown/button）：按键/卡片为 QQ 官方 Bot 能力，网关不支持时
+  主进程返回明确错误（绝不静默丢弃）；插件应允许失败降级为纯文本。
+- **动作名白名单**：PluginApi.call 的 action 名由主进程 `_SENDER_ACTIONS` 白名单校验，
+  未登记动作一律拒绝（防任意端点调用）。

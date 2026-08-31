@@ -57,6 +57,21 @@ notice_kind / request_kind
 | 工具 | `random_choice` / `random_int` / `now` / `format_time` | 无 |
 | 多媒体 | `BotMessage.video/voice/file/add_segment` | send_message |
 
+## v1.5 社交与群管（语义 API；含底层兼容声明）
+
+| 分组 | API（Flowerie 语义） | 权限 |
+| --- | --- | --- |
+| 群操作 | `bot.group(gid).members/member/mute/kick/set_admin` | read_group_info / group_manage |
+| 群管理 | `.whole_ban/rename/set_card/set_title/pin/unpin` | group_manage |
+| 群公告 | `.send_notice/content` / `.get_notice()` | group_manage / read_group_info |
+| 群文件 | `.files()/files_in/folder/file_url` | read_group_info |
+| 群配置 | `.config()/config_set(**kw)` | read_group_info / group_manage |
+| 用户 | `bot.user(uid).like/tap/card/info` | read_user_info |
+| 自我 | `bot.me.info/devices/status` | read_user_info |
+| 资料 | `bot.me.profile(nickname, signature)` | bot_profile |
+| 顶层 | `bot.tap/emoji/pin/unpin/like/friends` | 见权限表 |
+| 富内容 | `BotMessage().card/markdown/button` | send_message |
+
 ## 经典插件动作（协议层，未用 SDK 也可用）
 
 send_message · send_private_message · send_reply · delete_message · get_message ·

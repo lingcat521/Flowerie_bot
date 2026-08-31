@@ -377,7 +377,85 @@ bot.now()                               # {timestamp, iso}
 bot.format_time(1700000000, "%Y-%m-%d %H:%M:%S")
 ```
 
-## 13. 权限与安全
+## 13. 社交与群管（Flowerie 语义 API）
+
+> 特色：操作对象是一等公民——`bot.group(gid)` / `bot.user(uid)` / `bot.me`；
+> 方法名取社交直觉（tap=戳、pin=精华、like=点赞），**不暴露任何网关端点名**；
+> 底层端点只存在于适配层，网关支持度见 §14 兼容矩阵。
+
+### 13.1 群操作（GroupContext）
+
+```python
+g = bot.group(123456)
+
+await g.members()                    # 成员列表
+await g.member(10001)                # 成员信息（role/card/nickname）
+await g.mute(10001, 600)             # 禁言 10 分钟
+await g.kick(10002)                  # 踢人
+await g.set_admin(10001, on=True)    # 设为管理员
+await g.whole_ban(on=True)           # 全体禁言
+await g.rename("新群名")              # 改群名
+await g.set_card(10001, "新名片")     # 成员名片
+await g.set_title(10001, "队长")      # 成员头衔
+await g.send_notice("明天升级维护")    # 发群公告（QQ 官方公告）
+notice = await g.get_notice()        # 读最新公告
+await g.pin(123) / g.unpin(123)      # 精华消息 / 取消精华
+await g.config_set(welcome_text="欢迎")   # 群配置（部分网关支持）
+conf = await g.config()              # 读群配置
+files = await g.files()              # 群文件（根目录）
+files = await g.files_in("folder_id")
+url = await g.file_url("file_id", busid=0)
+```
+
+### 13.2 用户与自我（UserContext / MeContext）
+
+```python
+u = bot.user(10001)
+await u.like()                       # 点赞
+await u.tap(123456)                  # 戳一戳（群内）
+await u.card(123456, "名片")          # 设名片
+
+await bot.me.info()                  # 登录信息（昵称/QQ）
+await bot.me.devices()               # 在线设备
+await bot.me.status()                # 网关状态
+await bot.me.profile(nickname="花璃") # 改 Bot 资料（权限 bot_profile）
+```
+
+### 13.3 顶层语义动作
+
+```python
+bot.tap(group_id, user_id)       # 戳
+bot.emoji(message_id, emoji_id)  # 消息表情回应
+bot.pin(message_id) / bot.unpin(message_id)
+bot.like(user_id)
+bot.friends()                    # 好友列表（list[dict]）
+```
+
+## 14. 底层兼容矩阵（内部文档）
+
+> 能力清单对齐主流网关（OneBot11 标准 + 社区通用 + 扩展）；**OneBot11 标准优先**。
+> 在当前网关（NapCat）与 Lagrange 均支持的项目打 ✅；仅特定网关支持的打 ⚠️
+> （调用返回明确错误），换网关即激活。
+
+| SDK 能力 | OneBot11 | 社区通用（NapCat/Lagrange） | 说明 |
+| --- | --- | --- | --- |
+| send/reply/recall/get_message | ✅ 标准 | ✅/✅ | send_msg/delete_msg/get_msg |
+| at/图片/语音/视频/文件 | ✅ 标准 | ✅/✅ | 段数组 |
+| markdown/keyboard/json 富内容 | ⚠️ 扩展 | ✅/✅ | QQ 官方 Bot 能力 |
+| group_member(s)/mute/kick/admin | ✅ 标准 | ✅/✅ | get_group_member_info 等 |
+| whole_ban/rename/card/title | ⚠️ 扩展 | ✅/✅ | set_group_* 系列 |
+| 群公告 send/get | ⚠️ 扩展 | ✅/✅ | send_group_notice |
+| 群文件 list/url | ⚠️ 扩展 | ✅/✅ | get_group_root_files 等 |
+| pin/unpin（精华） | ⚠️ 扩展 | ✅/✅ | set_essence_msg |
+| emoji 回应 / tap（戳） | ⚠️ 扩展 | ✅/✅ | set_react / send_poke |
+| like / friends | ⚠️ 扩展 | ✅/✅ | set_friend_profile_like / get_friend_list |
+| login_info/devices/status | ✅ 标准 | ✅/✅ | get_login_info / get_online_clients |
+| profile 修改 | ⚠️ 扩展 | ⚠️/✅ | set_self_profile（自定义协议） |
+| group_config 读写 | ❌ 无 | ❌/✅ | **Lagrange 独有** |
+
+## 15. 权限与安全
+
+
 
 
 
@@ -398,13 +476,13 @@ bot.format_time(1700000000, "%Y-%m-%d %H:%M:%S")
 `send_message` / `read_message` / `read_group_info` / `read_user_info` /
 `read_memory` / `write_memory` / `http_request` / `filesystem_read` /
 `filesystem_write` / `delete_message` / `read_message_history` / `group_manage` /
-`request_handle` / `scheduler` / `storage` / `ai_chat`（v1.4 新增）。
+`request_handle` / `scheduler` / `storage` / `ai_chat` / `bot_profile`（v1.5 新增）。
 建议最小授权：只有明确需要才批准 `group_manage` / `storage` / `ai_chat` /
 `filesystem_write`。
 
 ---
 
-## 8. 常见问题（FAQ）
+## 16. 常见问题（FAQ）
 
 **Q: 如何只在私聊响应？**
 `@command("x", rule=rule(is_private=True))`
@@ -427,7 +505,7 @@ bot.format_time(1700000000, "%Y-%m-%d %H:%M:%S")
 
 ---
 
-## 9. 三层架构与扩展
+## 17. 三层架构与扩展
 
 ```text
 插件（plugin_sdk/） → 中层 src/sdk/（零 OneBot） ← 下层 src/sdk/onebot/ → NapCat/OneBot
