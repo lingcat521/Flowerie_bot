@@ -1,5 +1,8 @@
 # 开发
 
+> 开发环境/仓库约定见本文件；v1.5+ 迭代与 SDK 三层架构见 [sdk.md](sdk.md)/[qwq-final-report.md](qwq-final-report.md)；存储后端扩展（SQLite 默认/PG 可选+迁移工具）见本文 §存储后端扩展。
+
+
 ## 环境
 
 ```bash

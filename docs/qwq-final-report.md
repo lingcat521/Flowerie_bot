@@ -23,7 +23,7 @@
 ## 4. .env 同步机制
 沿用 P4-1 链：Web UI 保存 → settings.db + .env 原子更新（保留注释）；apply_persisted 启动合并（.env mtime > db ts 时 .env 优先并回写 db）；secret 脱敏显示、留空不覆盖。
 
-## 5-8. LivingMemory（花语记忆 BlossomMemory）架构
+## 5-8. BlossomMemory（花语记忆，原 qwq 示例名 LivingMemory）（花语记忆 BlossomMemory）架构
 - **EmbeddingProvider / Reranker**：纯 Protocol + OpenAI-compatible HTTP 实现（复用 MCP 同款 SSRF 校验；零新依赖；默认无内置小模型）
 - **Vector**：纯 Python cosine（内存索引，条目上限治理）；存储=SQLite（默认）/ PG（JSONB），pgvector 列为未来可选
 - **管线**：提取（每日限额）→ embed → 存储(blossom_memory 表, group_id 隔离) → 检索 top-k → 可选 rerank → sanitize → 注入【检索到的历史记忆】段（**声明来源不可信、优先级低于系统安全规则**）

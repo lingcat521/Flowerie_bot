@@ -152,3 +152,15 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
   主进程返回明确错误（绝不静默丢弃）；插件应允许失败降级为纯文本。
 - **动作名白名单**：PluginApi.call 的 action 名由主进程 `_SENDER_ACTIONS` 白名单校验，
   未登记动作一律拒绝（防任意端点调用）。
+
+
+## v1.6-1.7 安全补充（变化记录）
+
+- **开关治理**：AI/MEMORY/PROACTIVE/REPEAT/ANTI_SPAM/花语记忆均为真实门控（关=不产生对应副作用）；花语记忆默认关闭=零模型资源
+- **花语记忆（BlossomMemory）**：记忆文本/检索结果按不可信数据处理（sanitize 兜底+prompt 段声明低于系统规则）；API URL 复用 MCP 同款 SSRF 校验；指标低基数（仅 result 标签）
+- **MCP legacy 单 server SSRF 校验缺口修复**（v1.6）：`MCP_SERVER_URL` 现与多 server 一致校验（URL/超时/最大调用/工具名白名单）
+- **存储后端**：默认 SQLite；`STORAGE_BACKEND=postgres` 需自备 PG（psycopg 软依赖）；迁移工具失败安全（源库不动）
+- **OneBot 耦合红线**：端点名只存在于 `src/services/sender.py` + 适配层；语义层/插件永不接触端点串（白盒测试锁定）
+- **零 JS**：Web UI 全部原生 `<details>`/表单 POST（黑盒验证 0 命中）
+
+安全规则的**权威版本**仍以本文档为准；权限映射总表见 [api.md](api.md)。

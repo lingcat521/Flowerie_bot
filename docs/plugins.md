@@ -12,7 +12,7 @@
 | 匹配 | 主进程按 Matcher 只投递命中事件 | 声明式 JSON 规则 / 全量事件 |
 | 示例 | `@command("hello") async def hello(event): await event.reply("你好")` | 见 guide |
 
-## 快速开始（复制模板）
+## 快速开始（含 25 行完整模板，见 [guide §0 60 秒上手](plugin-developer-guide.md#0-60-秒上手最短路径)）
 
 ```
 plugins/myplugin/
