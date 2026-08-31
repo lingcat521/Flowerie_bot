@@ -44,6 +44,7 @@ ALL_PERMISSIONS = frozenset({
     "scheduler",             # 定时任务（interval/delay/daily）
     "storage",               # 插件 KV 存储
     "ai_chat",               # 受限 AI 对话（独立于聊天预算，务必自限频）
+    "bot_profile",           # 修改 Bot 自身资料（昵称/签名）
 })
 
 # Action 类型 → 所需权限（None = 无需权限：log / test 等无害动作）
@@ -78,6 +79,28 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "random_int": None,
     "now": None,
     "format_time": None,
+    "tap": "read_group_info",          # 戳一戳（对群成员）
+    "react": "read_message",           # 表情回应（需消息 id）
+    "pin": "group_manage",             # 精华消息
+    "unpin": "group_manage",
+    "like": "read_user_info",          # 点赞
+    "friends": "read_user_info",       # 好友列表
+    "login_info": "read_user_info",    # 登录信息
+    "devices": "read_user_info",       # 在线设备
+    "status": "read_user_info",        # 运行状态
+    "profile_set": "bot_profile",      # 改 Bot 资料
+    "group_whole_ban": "group_manage",
+    "group_rename": "group_manage",
+    "group_card": "group_manage",
+    "group_title": "group_manage",
+    "group_notice_send": "group_manage",
+    "group_notice_get": "read_group_info",
+    "group_files": "read_group_info",
+    "group_files_in": "read_group_info",
+    "group_file_url": "read_group_info",
+    "group_config": "read_group_info",
+    "group_config_set": "group_manage",
+    "group_res": "read_group_info",
     "http_put": "http_request",
     "http_delete": "http_request",
     "http_head": "http_request",

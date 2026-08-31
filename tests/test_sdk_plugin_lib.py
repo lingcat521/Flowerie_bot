@@ -139,3 +139,41 @@ async def test_route_matched_and_listener_kind():
                      "user_id": 3, "group_id": 2, "message_id": 0, "text": ""})
     assert seen == ["group_increase"]
     bot._schedules.clear()
+
+
+# ---------- v1.5：SDK 分组上下文与语义动作转发（FakeApi.call 记录） ----------
+@pytest.mark.asyncio
+async def test_group_context_semantic_forward():
+    class CallApi:
+        def __init__(self):
+            self.calls = []
+
+        def call(self, action, payload=None):
+            self.calls.append((action, payload))
+            return {"ok": True, "data": {}}
+
+    bot = FlowerieBot()
+    api = CallApi()
+    bot.attach(api)
+    g = bot.group(7)
+    assert g.group_id == 7
+    await g.whole_ban(True)
+    await g.rename("新群名")
+    await g.set_title(2, "队长")
+    await g.pin(100)
+    await g.config_set(welcome_text="欢迎")
+    u = bot.user(9)
+    await u.like()
+    assert bot.me is not None
+    await bot.me.profile(nickname="花璃")
+
+    actions = [c[0] for c in api.calls]
+    assert actions == ["group_whole_ban", "group_rename", "group_title", "pin",
+                       "group_config_set", "like", "profile_set"]
+    assert api.calls[2][1] == {"group_id": 7, "user_id": 2, "title": "队长"}
+    # 顶层语义动作
+    bot.tap(7, 9)
+    bot.emoji(1, 2)
+    bot.pin(5)
+    bot.unpin(5)
+    assert api.calls[-4][0] == "tap" and api.calls[-3][0] == "react"

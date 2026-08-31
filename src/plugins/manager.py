@@ -561,7 +561,10 @@ class PluginManager:
         results = await self._execute_action(plugin_id, {"type": action, "payload": payload})
         if not results:
             return {"ok": False, "error": "permission denied or unknown action"}
-        return results[0].get("result", {"ok": True})
+        first = results[0]
+        # 权限拒绝/错误的内层响应直接是 {ok:False, denied:True, ...}（无嵌套 result）——
+        # 必须原样回传，否则插件会把「拒绝」当成功
+        return first.get("result", first)
 
     async def _execute_action(self, plugin_id: str, action: dict) -> List[dict]:
         action_type = str(action.get("type") or "")
@@ -591,6 +594,8 @@ class PluginManager:
 
     async def _run_action(self, plugin_id: str, action_type: str, payload: Dict[str, Any]) -> dict:
         """action 具体实现（按类型；全部结果回传插件，不执行任何未实现动作）。"""
+        if action_type in _SENDER_ACTIONS:
+            return await self._sender_forward(plugin_id, action_type, payload)
         if action_type == "test":
             return {"ok": True, "plugin": plugin_id}
         if action_type == "log":
@@ -1020,6 +1025,42 @@ class PluginManager:
             f.write(data)
         return {"ok": True, "bytes": len(data), "saved_to": rel}
 
+    async def _sender_forward(self, plugin_id: str, action_type: str, payload: dict) -> dict:
+        """语义化动作 → Sender 端点（参数白名单清洗；未实现端点返回明确错误）。"""
+        method_name, spec = _SENDER_ACTIONS[action_type]
+        sender = getattr(self, "sender", None)
+        if sender is None:
+            return {"ok": False, "error": "sender 不可用"}
+        method = getattr(sender, method_name, None)
+        if method is None:
+            return {"ok": False, "error": f"当前网关不支持该能力（{method_name}）"}
+        kw = {}
+        for key, typ, backend_key in spec:
+            val = payload.get(key)
+            if key == "group_config_set" and backend_key == "group_id":
+                val = payload.get("group_id")
+            if val is None:
+                continue
+            if typ == "int":
+                val = int(val)
+            elif typ == "bool":
+                val = bool(val)
+            else:
+                val = str(val)
+            kw[backend_key] = val
+        # group_config_set：payload 其余键透传（网关允许的配置键）
+        if action_type == "group_config_set":
+            for k, v in payload.items():
+                if k not in ("group_id",) and not k.startswith("_"):
+                    kw[k] = v
+        try:
+            result = await method(**kw)
+        except TypeError as e:
+            return {"ok": False, "error": f"参数错误: {e}"}
+        if isinstance(result, dict):
+            return result
+        return {"ok": bool(result)}
+
     def _file_read(self, plugin_id: str, rel: str) -> dict:
         """filesystem_read：仅允许读取插件自身目录内的文件（真实路径校验）。"""
         base = os.path.realpath(os.path.join(self.plugin_dir, plugin_id))
@@ -1059,6 +1100,34 @@ def _json_loads(value: str):
         return _j.loads(value)
     except Exception:  # noqa: BLE001
         return value
+
+
+# ---------- v1.5：语义化动作 → Sender 端点方法 转发表（端点实现只在 Sender/下层） ----------
+_SENDER_ACTIONS: Dict[str, tuple] = {
+    # 动作名: (sender 方法, 参数白名单 [(payload键, 类型: "int"/"str"/"bool"/"any", 后端键)])
+    "tap": ("send_poke", [("group_id", "int", "group_id"), ("user_id", "int", "user_id")]),
+    "react": ("set_react", [("message_id", "int", "message_id"), ("react_type", "int", "react_type")]),
+    "pin": ("set_essence_msg", [("message_id", "int", "message_id")]),
+    "unpin": ("delete_essence_msg", [("message_id", "int", "message_id")]),
+    "like": ("set_friend_profile_like", [("user_id", "int", "user_id")]),
+    "friends": ("get_friend_list", []),
+    "login_info": ("get_login_info", []),
+    "devices": ("get_online_clients", []),
+    "status": ("get_status", []),
+    "profile_set": ("set_qq_profile", [("nickname", "str", "nickname"), ("signature", "str", "signature")]),
+    "group_whole_ban": ("set_group_whole_ban", [("group_id", "int", "group_id"), ("enable", "bool", "enable")]),
+    "group_rename": ("set_group_name", [("group_id", "int", "group_id"), ("name", "str", "name")]),
+    "group_card": ("set_group_card", [("group_id", "int", "group_id"), ("user_id", "int", "user_id"), ("card", "str", "card")]),
+    "group_title": ("set_group_special_title", [("group_id", "int", "group_id"), ("user_id", "int", "user_id"), ("title", "str", "title")]),
+    "group_notice_send": ("send_group_notice", [("group_id", "int", "group_id"), ("content", "str", "content"), ("image", "str", "image")]),
+    "group_notice_get": ("get_group_notice", [("group_id", "int", "group_id")]),
+    "group_files": ("get_group_root_files", [("group_id", "int", "group_id")]),
+    "group_files_in": ("get_group_files_by_folder", [("group_id", "int", "group_id"), ("folder_id", "str", "folder_id")]),
+    "group_file_url": ("get_group_file_url", [("group_id", "int", "group_id"), ("file_id", "str", "file_id"), ("busid", "int", "busid")]),
+    "group_config": ("get_group_config", [("group_id", "int", "group_id")]),
+    "group_config_set": ("set_group_config", [("group_id", "int", "group_id")]),  # 其余键透传
+    "group_res": ("get_group_res", [("group_id", "int", "group_id"), ("res_type", "str", "group_res")]),
+}
 
 
 def _rule_from(conditions: dict):

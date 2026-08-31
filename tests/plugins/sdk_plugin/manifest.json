@@ -21,6 +21,8 @@
     "request_handle",
     "scheduler",
     "storage",
-    "ai_chat"
+    "ai_chat",
+    "bot_profile",
+    "read_user_info"
   ]
 }

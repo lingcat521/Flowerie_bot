@@ -71,6 +71,10 @@ class PluginApi:
     def log(self, level: str, message: str) -> Dict[str, Any]:
         return self._send_action("log", {"level": level, "message": message})
 
+    def call(self, action: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """通用语义化动作调用（v1.5；封装唯一，动作名白名单由主进程校验）。"""
+        return self._send_action(str(action), dict(payload or {}))
+
     # ---------- SDK 动作（消息/群管/匹配注册；无需插件感知 OneBot payload） ----------
     def send_reply(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._send_action("send_reply", payload)

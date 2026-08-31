@@ -61,6 +61,29 @@ class BotMessage:
         self.segments.append({"type": str(seg_type), "data": dict(data or {})})
         return self
 
+    def card(self, app_data: Dict[str, Any]) -> "BotMessage":
+        """卡片消息（QQ 原生 JSON 卡片）。"""
+        self.segments.append({"type": "json", "data": {"data": dict(app_data)}})
+        return self
+
+    def markdown(self, text: str, style: str = "default") -> "BotMessage":
+        """Markdown 富文本（网关不支持时由适配层返回明确错误）。"""
+        self.segments.append({"type": "markdown", "data": {"content": str(text), "style": str(style)}})
+        return self
+
+    def button(self, label: str, action: str = "", style: int = 1) -> "BotMessage":
+        """交互按钮（合并 keyboard 段；QQ 官方 Bot 能力）。"""
+        for seg in self.segments:
+            if seg.get("type") == "keyboard":
+                seg["data"].setdefault("buttons", []).append(
+                    {"text": str(label)[:20], "k": str(action)[:64], "style": int(style)})
+                return self
+        self.segments.append({"type": "keyboard",
+                              "data": {"buttons": [{"text": str(label)[:20],
+                                                    "k": str(action)[:64],
+                                                    "style": int(style)}]}})
+        return self
+
     def reply(self, message_id: int) -> "BotMessage":
         self.reply_id = int(message_id)
         return self

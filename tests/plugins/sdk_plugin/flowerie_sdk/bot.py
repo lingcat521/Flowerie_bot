@@ -77,7 +77,10 @@ class FlowerieBot:
         matchers = [{"kind": m["kind"], "pattern": m["pattern"], "priority": m["priority"],
                      "block": m["block"], "name": m["name"], "rule": m.get("rule")}
                     for m, _ in self._handlers]
-        result = self._api.matcher_register(matchers)
+        try:
+            result = self._api.matcher_register(matchers)
+        except Exception:  # noqa: BLE001 - 权限不足降级：不阻断插件启动
+            result = {"ok": False, "error": "matcher register failed"}
         self._registered = True
         return result
 
@@ -233,7 +236,10 @@ class FlowerieBot:
         if self._api is None:
             return
         for name, kind, when, _func in self._schedules:
-            self._r(self._api.schedule_register(kind, when, name))
+            try:
+                self._r(self._api.schedule_register(kind, when, name))
+            except Exception:  # noqa: BLE001 - 权限不足/网关不支持：降级为日志，不阻断启动
+                pass
 
     # ---------- 冷却（插件进程内轻量实现） ----------
     def is_cooled(self, key: str, seconds: float) -> bool:
@@ -283,6 +289,48 @@ class FlowerieBot:
         if self._api is None:
             raise BotAPIError("bot 未 attach")
         self._r(self._api.log(str(level or "info")[:16], str(message or "")[:500]))
+
+    # ---------- v1.5：分组上下文与语义化社交动作 ----------
+    def group(self, group_id):
+        from flowerie_sdk.contexts import GroupContext
+        return GroupContext(self, int(group_id))
+
+    def user(self, user_id):
+        from flowerie_sdk.contexts import UserContext
+        return UserContext(self, int(user_id))
+
+    @property
+    def me(self):
+        from flowerie_sdk.contexts import MeContext
+        return MeContext(self)
+
+    def tap(self, group_id, user_id) -> bool:
+        """戳一戳（群内 @ 动作的 QQ 原生版）。"""
+        return bool(self._r(self._api.call("tap", {"group_id": int(group_id),
+                                                   "user_id": int(user_id)})).get("ok"))
+
+    def emoji(self, message_id, emoji_id: int) -> bool:
+        """消息表情回应（emoji_id 为平台表情编号）。"""
+        return bool(self._r(self._api.call("react", {"message_id": int(message_id),
+                                                     "react_type": int(emoji_id)})).get("ok"))
+
+    def pin(self, message_id) -> bool:
+        """加精华消息（群里置顶质感）。"""
+        return bool(self._r(self._api.call("pin", {"message_id": int(message_id)})).get("ok"))
+
+    def unpin(self, message_id) -> bool:
+        return bool(self._r(self._api.call("unpin", {"message_id": int(message_id)})).get("ok"))
+
+    def like(self, user_id) -> bool:
+        """给好友点个赞。"""
+        return bool(self._r(self._api.call("like", {"user_id": int(user_id)})).get("ok"))
+
+    def friends(self) -> Optional[list]:
+        res = self._r(self._api.call("friends", {}))
+        if not res.get("ok"):
+            return None
+        data = res.get("data") or res.get("friends") or []
+        return data if isinstance(data, list) else None
 
     # ---------- 消息 API（经协议 action，插件不碰 OneBot） ----------
     def _r(self, result):

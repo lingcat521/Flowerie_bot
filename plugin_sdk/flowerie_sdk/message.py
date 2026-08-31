@@ -51,6 +51,31 @@ class BotMessage:
         self.segments.append({"type": str(seg_type), "data": dict(data or {})})
         return self
 
+    # ---------- 富内容 Builder（Flowerie 语义；底层转 markdown/keyboard/json 段） ----------
+    def card(self, app_data: dict) -> "BotMessage":
+        """卡片消息（QQ 原生 JSON 卡片；底部转 json 段，适配层透传）。"""
+        self.segments.append({"type": "json", "data": {"data": app_data}})
+        return self
+
+    def markdown(self, text: str, style: str = "default") -> "BotMessage":
+        """Markdown 富文本（底层转 markdown 段；网关不支持时主进程返回明确错误）。"""
+        self.segments.append({"type": "markdown", "data": {"content": str(text), "style": str(style)}})
+        return self
+
+    def button(self, label: str, action: str = "", style: int = 1) -> "BotMessage":
+        """交互按钮（底层合并为 keyboard 段；QQ 官方 Bot 能力，兼容性以网关为准）。"""
+        # 找到最近的 keyboard 段，追加按钮；否则新建
+        for seg in self.segments:
+            if seg.get("type") == "keyboard":
+                seg["data"].setdefault("buttons", []).append(
+                    {"text": str(label)[:20], "k": str(action)[:64], "style": int(style)})
+                return self
+        self.segments.append({"type": "keyboard",
+                              "data": {"buttons": [{"text": str(label)[:20],
+                                                    "k": str(action)[:64],
+                                                    "style": int(style)}]}})
+        return self
+
     def reply(self, message_id: int) -> "BotMessage":
         self.reply_id = int(message_id)
         return self

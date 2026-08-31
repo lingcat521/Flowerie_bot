@@ -28,6 +28,20 @@ class Sender:
         if self.session:
             await self.session.close()
 
+    async def _post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
+        """通用 OneBot/Lagrange 端点调用（薄封装；统一返回 {ok, data|error}）。"""
+        try:
+            async with self.session.post(
+                    f"{self.config.HTTP_API_BASE}{endpoint}",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
+                if resp.status != 200:
+                    return {"ok": False, "error": f"HTTP {resp.status}"}
+                body = await resp.json(content_type=None)
+                return {"ok": body.get("status", "ok") == "ok", "data": body.get("data")}
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
     async def send_group_message_with_image(self, group_id: int, text: str, image_path: str,
                                             retries: int = 2) -> bool:
         """发送文字 + 本地图片（段数组消息，OneBot11 image 段用 file:// 绝对路径）。"""
@@ -289,6 +303,95 @@ class Sender:
                 return resp.status == 200
         except Exception:
             return False
+
+    # ---------- v1.5：Lagrange 全量 API 端点（OneBot11 标准优先；社区通用/Lagrange 扩展） ----------
+    async def send_poke(self, group_id: int, user_id: int) -> dict:
+        """戳一戳（群成员）。NapCat/Lagrange 均支持。"""
+        return await self._post("/send_poke", {"group_id": int(group_id), "user_id": int(user_id)})
+
+    async def set_react(self, message_id: int, react_type: int) -> dict:
+        """消息表情回应（emoji id；NapCat/Lagrange 支持）。"""
+        return await self._post("/set_react", {"message_id": int(message_id),
+                                               "react_type": int(react_type), "message_seq": None})
+
+    async def set_group_whole_ban(self, group_id: int, enable: bool) -> dict:
+        return await self._post("/set_group_whole_ban",
+                                {"group_id": int(group_id), "enable": bool(enable)})
+
+    async def set_group_name(self, group_id: int, name: str) -> dict:
+        return await self._post("/set_group_name",
+                                {"group_id": int(group_id), "name": str(name)[:30]})
+
+    async def set_group_card(self, group_id: int, user_id: int, card: str) -> dict:
+        return await self._post("/set_group_card", {"group_id": int(group_id),
+                                                    "user_id": int(user_id),
+                                                    "card": str(card)[:20]})
+
+    async def set_group_special_title(self, group_id: int, user_id: int, title: str) -> dict:
+        return await self._post("/set_group_special_title", {"group_id": int(group_id),
+                                                             "user_id": int(user_id),
+                                                             "title": str(title)[:12]})
+
+    async def send_group_notice(self, group_id: int, content: str, image: str = "") -> dict:
+        body = {"group_id": int(group_id), "content": str(content)[:2000]}
+        if image:
+            body["image"] = str(image)[:300]
+        return await self._post("/send_group_notice", body)
+
+    async def get_group_notice(self, group_id: int) -> dict:
+        return await self._post("/get_group_notice", {"group_id": int(group_id)})
+
+    async def get_group_root_files(self, group_id: int) -> dict:
+        return await self._post("/get_group_root_files", {"group_id": int(group_id)})
+
+    async def get_group_files_by_folder(self, group_id: int, folder_id: str) -> dict:
+        return await self._post("/get_group_files_by_folder",
+                                {"group_id": int(group_id), "folder_id": str(folder_id)})
+
+    async def get_group_file_url(self, group_id: int, file_id: str, busid: int) -> dict:
+        return await self._post("/get_group_file_url", {"group_id": int(group_id),
+                                                        "file_id": str(file_id),
+                                                        "busid": int(busid)})
+
+    async def set_essence_msg(self, message_id: int) -> dict:
+        return await self._post("/set_essence_msg", {"message_id": int(message_id)})
+
+    async def delete_essence_msg(self, message_id: int) -> dict:
+        return await self._post("/delete_essence_msg", {"message_id": int(message_id)})
+
+    async def set_friend_profile_like(self, user_id: int) -> dict:
+        return await self._post("/set_friend_profile_like", {"user_id": int(user_id)})
+
+    async def get_friend_list(self) -> dict:
+        return await self._post("/get_friend_list", {})
+
+    async def get_login_info(self) -> dict:
+        return await self._post("/get_login_info", {})
+
+    async def get_online_clients(self) -> dict:
+        return await self._post("/get_online_clients", {})
+
+    async def set_qq_profile(self, nickname: str = "", signature: str = "") -> dict:
+        body = {}
+        if nickname:
+            body["nickname"] = str(nickname)[:20]
+        if signature:
+            body["signature"] = str(signature)[:20]
+        return await self._post("/set_self_profile", body)
+
+    async def get_group_config(self, group_id: int) -> dict:
+        """群配置读取（Lagrange/Lagrange.OneBot 独有扩展；NapCat 通常无此端点）。"""
+        return await self._post("/get_group_config", {"group_id": int(group_id)})
+
+    async def set_group_config(self, group_id: int, **kwargs) -> dict:
+        """群配置修改（Lagrange 独有；可用键以网关为准：welcome_text/approval 等）。"""
+        return await self._post("/set_group_config",
+                                {"group_id": int(group_id), **{k: v for k, v in kwargs.items()
+                                                               if k != "group_id"}})
+
+    async def get_group_res(self, group_id: int, res_type: str) -> dict:
+        """群资源（头像直链等；Lagrange 独有）。res_type: small_head/great_head。"""
+        return await self._post("/get_group_res", {"group_id": int(group_id), "group_res": res_type})
 
     async def send_private_message(self, user_id: int, message: str) -> bool:
         if not message:

@@ -102,6 +102,56 @@ class OneBotAdapter(BotAdapter):
         return [{"user_id": e.get("user_id"), "message": str(e.get("message", "")),
                  "is_bot": bool(e.get("is_bot")), "time": e.get("time")} for e in entries]
 
+    # ---------- v1.5 社交/群管语义（端点只在 Sender；支持矩阵见 docs/sdk.md） ----------
+    async def tap(self, group_id: int, user_id: int) -> dict:
+        return await self._call(self._sender.send_poke(int(group_id), int(user_id)))
+
+    async def react(self, message_id: int, emoji_id: int) -> dict:
+        return await self._call(self._sender.set_react(int(message_id), int(emoji_id)))
+
+    async def pin(self, message_id: int) -> dict:
+        return await self._call(self._sender.set_essence_msg(int(message_id)))
+
+    async def unpin(self, message_id: int) -> dict:
+        return await self._call(self._sender.delete_essence_msg(int(message_id)))
+
+    async def friends(self) -> list:
+        return (await self._call(self._sender.get_friend_list())).get("data") or []
+
+    async def like(self, user_id: int) -> dict:
+        return await self._call(self._sender.set_friend_profile_like(int(user_id)))
+
+    async def login_info(self) -> dict:
+        return await self._call(self._sender.get_login_info())
+
+    async def online_devices(self) -> dict:
+        return await self._call(self._sender.get_online_clients())
+
+    async def set_profile(self, nickname: str = "", signature: str = "") -> dict:
+        return await self._call(self._sender.set_qq_profile(nickname=nickname, signature=signature))
+
+    async def group_whole_ban(self, group_id: int, enable: bool) -> dict:
+        return await self._call(self._sender.set_group_whole_ban(int(group_id), bool(enable)))
+
+    async def group_rename(self, group_id: int, name: str) -> dict:
+        return await self._call(self._sender.set_group_name(int(group_id), name))
+
+    async def group_card(self, group_id: int, user_id: int, card: str) -> dict:
+        return await self._call(self._sender.set_group_card(int(group_id), int(user_id), card))
+
+    async def group_title(self, group_id: int, user_id: int, title: str) -> dict:
+        return await self._call(self._sender.set_group_special_title(int(group_id), int(user_id), title))
+
+    async def group_notice(self, group_id: int, content: str, image: str = "") -> dict:
+        return await self._call(self._sender.send_group_notice(int(group_id), content, image))
+
+    async def group_config(self, group_id: int) -> dict:
+        """群配置读取（部分网关支持；不支持时返回明确错误）。"""
+        return await self._call(self._sender.get_group_config(int(group_id)))
+
+    async def group_files(self, group_id: int) -> dict:
+        return await self._call(self._sender.get_group_root_files(int(group_id)))
+
 
 def make_onebot_adapter(sender, context_manager=None) -> OneBotAdapter:
     """下层工厂（上层/主进程按需创建）。"""
