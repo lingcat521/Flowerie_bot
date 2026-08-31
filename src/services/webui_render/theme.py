@@ -273,7 +273,7 @@ input[type=text].color-text{flex:0 1 180px;width:180px;font-family:ui-monospace,
 .row-control code{background:var(--accent-soft);padding:1px 5px;border-radius:5px;color:var(--accent);font-size:11.5px}
 .masked{font-size:12px;color:var(--text-muted)}
 .hint{font-size:11.5px;color:var(--text-muted);line-height:1.5}
-.prot-note{font-size:13px;color:var(--text-muted);line-height:1.6;margin:10px 0}
+.prot-note{font-size:13px;color:var(--text);line-height:1.5;margin:8px 0}
 .cats{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
 .cat{display:inline-block;padding:6px 13px;border-radius:999px;border:1px solid var(--panel-border);
 background:var(--panel-bg);color:var(--text-muted);font-size:12.5px;text-decoration:none;transition:all .15s ease;white-space:nowrap}
