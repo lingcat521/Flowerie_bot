@@ -124,6 +124,12 @@ async def main():
         try:
             if main_proc.poll() is not None:
                 main_ok = False
+                # 诊断：main.py 提前退出 → 打印其输出（失败原因）
+                try:
+                    out = main_proc.stdout.read(1500) if main_proc.stdout else ""
+                except Exception:  # noqa: BLE001
+                    out = ""
+                print(f"== main.py stdout (exit) ==\n{out}")
         except Exception:  # noqa: BLE001
             pass
     rec(main_ok, "实际启动 main.py", "Web UI 端口 18080 响应" if main_ok else "main.py 未能保持监听（需 NapCat WS），改由 WebUIServer 组件实际启动")
