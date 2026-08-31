@@ -12,28 +12,28 @@ class Settings(BaseSettings):
     # ---- 功能总开关（Web UI 可切换；运行时门控见各组件判断点）----
     AI_ENABLED: bool = True              # 关：不执行 AI 回复/Provider 请求（普通功能不受影响）
     MEMORY_ENABLED: bool = True          # 关：不读/写长期记忆（短期 Context 不受影响）
-    LIVING_MEMORY_ENABLED: bool = False  # 高级记忆（LivingMemory）总开关：默认 OFF——零模型资源
+    BLOSSOM_MEMORY_ENABLED: bool = False  # 高级记忆（LivingMemory）总开关：默认 OFF——零模型资源
     # 高级记忆四子开关（总开关 ON 时才生效；各自默认关闭）
-    LIVING_MEMORY_EMBEDDING_ENABLED: bool = False   # 向量模型（Embedding）
-    LIVING_MEMORY_RERANKER_ENABLED: bool = False    # 重排序模型（Reranker）
-    LIVING_MEMORY_EXTRACT_ENABLED: bool = False     # 自动提取记忆
-    LIVING_MEMORY_RETRIEVAL_ENABLED: bool = False   # 长期记忆检索
+    BLOSSOM_MEMORY_EMBEDDING_ENABLED: bool = False   # 向量模型（Embedding）
+    BLOSSOM_MEMORY_RERANKER_ENABLED: bool = False    # 重排序模型（Reranker）
+    BLOSSOM_MEMORY_EXTRACT_ENABLED: bool = False     # 自动提取记忆
+    BLOSSOM_MEMORY_RETRIEVAL_ENABLED: bool = False   # 长期记忆检索
     # 向量模型配置（Embedding API：OpenAI-compatible）
-    LIVING_MEMORY_EMBEDDING_MODEL: str = ""
-    LIVING_MEMORY_EMBEDDING_API_URL: str = ""
-    LIVING_MEMORY_EMBEDDING_API_KEY: str = ""
+    BLOSSOM_MEMORY_EMBEDDING_MODEL: str = ""
+    BLOSSOM_MEMORY_EMBEDDING_API_URL: str = ""
+    BLOSSOM_MEMORY_EMBEDDING_API_KEY: str = ""
     # 重排序模型配置
-    LIVING_MEMORY_RERANKER_MODEL: str = ""
-    LIVING_MEMORY_RERANKER_API_URL: str = ""
-    LIVING_MEMORY_RERANKER_API_KEY: str = ""
+    BLOSSOM_MEMORY_RERANKER_MODEL: str = ""
+    BLOSSOM_MEMORY_RERANKER_API_URL: str = ""
+    BLOSSOM_MEMORY_RERANKER_API_KEY: str = ""
     # 检索/存储参数
-    LIVING_MEMORY_VECTOR_DIMENSION: int = 1024
-    LIVING_MEMORY_RETRIEVAL_TOP_K: int = 5
-    LIVING_MEMORY_RERANK_TOP_K: int = 3
-    LIVING_MEMORY_SIMILARITY_THRESHOLD: float = 0.6
-    LIVING_MEMORY_MAX_ENTRIES: int = 2000        # 每组语义记忆条目上限（超限清理最旧）
-    LIVING_MEMORY_TTL_DAYS: int = 90             # 语义记忆 TTL（0=永久）
-    LIVING_MEMORY_DAILY_EXTRACT_LIMIT: int = 20  # 每日自动提取上限（防刷量）
+    BLOSSOM_MEMORY_VECTOR_DIMENSION: int = 1024
+    BLOSSOM_MEMORY_RETRIEVAL_TOP_K: int = 5
+    BLOSSOM_MEMORY_RERANK_TOP_K: int = 3
+    BLOSSOM_MEMORY_SIMILARITY_THRESHOLD: float = 0.6
+    BLOSSOM_MEMORY_MAX_ENTRIES: int = 2000        # 每组语义记忆条目上限（超限清理最旧）
+    BLOSSOM_MEMORY_TTL_DAYS: int = 90             # 语义记忆 TTL（0=永久）
+    BLOSSOM_MEMORY_DAILY_EXTRACT_LIMIT: int = 20  # 每日自动提取上限（防刷量）
     PROACTIVE_CHAT_ENABLED: bool = True   # 主动聊天循环总开关
     REPEAT_ENABLED: bool = True           # 复读检测开关
     ANTI_SPAM_ENABLED: bool = True        # 防刷/冷却逻辑开关
@@ -494,6 +494,18 @@ def validate_config(config: Settings) -> None:
             mcp_url = (getattr(config, "MCP_SERVER_URL", "") or "").strip()
             if not mcp_url:
                 raise ValueError("MCP_ENABLED=true 时必须配置 MCP_SERVER_URL（不允许静默降级为纯聊天）")
+    # LivingMemory（高级记忆）：主开关开启时，启用的子链路必须有完整配置（fail-fast）
+    if getattr(config, "BLOSSOM_MEMORY_ENABLED", False):
+        if getattr(config, "BLOSSOM_MEMORY_EMBEDDING_ENABLED", False):
+            if not (getattr(config, "BLOSSOM_MEMORY_EMBEDDING_MODEL", "") and
+                    getattr(config, "BLOSSOM_MEMORY_EMBEDDING_API_URL", "")):
+                raise ValueError("BLOSSOM_MEMORY_ENABLED=true 且向量模型开启时，必须配置 "
+                                 "BLOSSOM_MEMORY_EMBEDDING_MODEL 与 BLOSSOM_MEMORY_EMBEDDING_API_URL")
+        if getattr(config, "BLOSSOM_MEMORY_RERANKER_ENABLED", False):
+            if not (getattr(config, "BLOSSOM_MEMORY_RERANKER_MODEL", "") and
+                    getattr(config, "BLOSSOM_MEMORY_RERANKER_API_URL", "")):
+                raise ValueError("BLOSSOM_MEMORY_ENABLED=true 且重排序开启时，必须配置 "
+                                 "BLOSSOM_MEMORY_RERANKER_MODEL 与 BLOSSOM_MEMORY_RERANKER_API_URL")
             ok, reason = validate_mcp_server_url(mcp_url, allowed_hosts)
             if not ok:
                 raise ValueError(f"MCP_SERVER_URL 不合法: {reason}")

@@ -34,7 +34,8 @@ class AiGateway:
     """AI 准入层：熔断 / 预算 / 人格 / 知识 / 重试。"""
 
     def __init__(self, config, ai_client, budget, prompt_manager=None,
-                 tool_manager=None, persona_manager=None, meme_manager=None):
+                 tool_manager=None, persona_manager=None, meme_manager=None,
+                 blossom_memory=None):
         """ai_client/tool_manager 等可变依赖以 provider（可调用）传入：
         动态读取宿主（MessageRouter）当前属性，支持测试/运行期热替换。"""
         self.config = config
@@ -44,6 +45,9 @@ class AiGateway:
         self._tool_manager = tool_manager if callable(tool_manager) else (lambda: tool_manager)
         self._persona_manager = persona_manager if callable(persona_manager) else (lambda: persona_manager)
         self._meme_manager = meme_manager if callable(meme_manager) else (lambda: meme_manager)
+        # 花语记忆（BlossomMemory）：默认 None（不含重资源；main 按开关注入）
+        self._blossom_memory = blossom_memory if callable(blossom_memory) or blossom_memory is None \
+            else (lambda: blossom_memory)
 
         # ---- Circuit Breaker（双层：provider 级全局 + 群级有界）----
         self.provider_breaker = CircuitBreaker(
@@ -170,6 +174,15 @@ class AiGateway:
                         "max_tool_calls": mcp_max_calls,
                         "tool_quota": tool_quota,
                     }
+            # 花语记忆检索（群隔离；ON 且可用时注入语义记忆，失败降级为空串）
+            if kwargs.get("group_id") is not None:
+                bm = self._blossom_memory() if callable(self._blossom_memory) else self._blossom_memory
+                if bm is not None:
+                    try:
+                        kwargs["retrieved_memory"] = await bm.search(
+                            kwargs["group_id"], kwargs.get("user_message") or "")
+                    except Exception as e:  # noqa: BLE001 - 语义记忆故障绝不影响主 AI 流程
+                        logger.warning("blossom_search_fail group=%s err=%s", kwargs.get("group_id"), e)
             reply, memory_update = await self.ai_client.chat_once(**kwargs)
             if reply and reply.strip():
                 latency = time.monotonic() - started

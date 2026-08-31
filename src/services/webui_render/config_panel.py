@@ -39,9 +39,9 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
                 continue
             # 高级记忆层级门控（零 JS）：
             # 总开关 OFF → 子开关与全部配置不渲染；子开关 OFF → 对应模型配置不渲染
-            if c["key"] in _SUB_SWITCH_KEYS and not _living_on(by_cat[cat]):
+            if c["key"] in _BLOSSOM_SUB_SWITCH_KEYS and not _blossom_on(by_cat[cat]):
                 continue
-            if c["key"] in _SUB_CONFIG_KEYS and not _sub_switch_on(by_cat[cat], c["key"]):
+            if c["key"] in _BLOSSOM_SUB_CONFIG_KEYS and not _blossom_sub_switch_on(by_cat[cat], c["key"]):
                 continue
             rows_html.append(_render_config_row(c))
         body = (
@@ -63,34 +63,34 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
 
 
 # 子开关（总开关 ON 时渲染）
-_SUB_SWITCH_KEYS = {
-    "LIVING_MEMORY_EMBEDDING_ENABLED", "LIVING_MEMORY_RERANKER_ENABLED",
-    "LIVING_MEMORY_EXTRACT_ENABLED", "LIVING_MEMORY_RETRIEVAL_ENABLED",
+_BLOSSOM_SUB_SWITCH_KEYS = {
+    "BLOSSOM_MEMORY_EMBEDDING_ENABLED", "BLOSSOM_MEMORY_RERANKER_ENABLED",
+    "BLOSSOM_MEMORY_EXTRACT_ENABLED", "BLOSSOM_MEMORY_RETRIEVAL_ENABLED",
 }
 # 子开关 → 其专属配置键（子开关 OFF 时不渲染）
-_SUB_CONFIG_KEYS = {
-    "LIVING_MEMORY_EMBEDDING_MODEL": "LIVING_MEMORY_EMBEDDING_ENABLED",
-    "LIVING_MEMORY_EMBEDDING_API_URL": "LIVING_MEMORY_EMBEDDING_ENABLED",
-    "LIVING_MEMORY_EMBEDDING_API_KEY": "LIVING_MEMORY_EMBEDDING_ENABLED",
-    "LIVING_MEMORY_RERANKER_MODEL": "LIVING_MEMORY_RERANKER_ENABLED",
-    "LIVING_MEMORY_RERANKER_API_URL": "LIVING_MEMORY_RERANKER_ENABLED",
-    "LIVING_MEMORY_RERANKER_API_KEY": "LIVING_MEMORY_RERANKER_ENABLED",
+_BLOSSOM_SUB_CONFIG_KEYS = {
+    "BLOSSOM_MEMORY_EMBEDDING_MODEL": "BLOSSOM_MEMORY_EMBEDDING_ENABLED",
+    "BLOSSOM_MEMORY_EMBEDDING_API_URL": "BLOSSOM_MEMORY_EMBEDDING_ENABLED",
+    "BLOSSOM_MEMORY_EMBEDDING_API_KEY": "BLOSSOM_MEMORY_EMBEDDING_ENABLED",
+    "BLOSSOM_MEMORY_RERANKER_MODEL": "BLOSSOM_MEMORY_RERANKER_ENABLED",
+    "BLOSSOM_MEMORY_RERANKER_API_URL": "BLOSSOM_MEMORY_RERANKER_ENABLED",
+    "BLOSSOM_MEMORY_RERANKER_API_KEY": "BLOSSOM_MEMORY_RERANKER_ENABLED",
 }
 # 总开关配置键（始终渲染）
-_LIVING_ADVANCED_KEYS = frozenset()
+_BLOSSOM_ADVANCED_KEYS = frozenset()
 
 
-def _living_on(cfgs) -> bool:
+def _blossom_on(cfgs) -> bool:
     """高级记忆总开关（渲染门控）。"""
     for c in cfgs:
-        if c["key"] == "LIVING_MEMORY_ENABLED":
+        if c["key"] == "BLOSSOM_MEMORY_ENABLED":
             return str(c.get("current") or "").lower() in ("true", "1")
     return False
 
 
-def _sub_switch_on(cfgs, config_key: str) -> bool:
+def _blossom_sub_switch_on(cfgs, config_key: str) -> bool:
     """子开关状态（渲染门控）：未列出归属的键仅受总开关控制。"""
-    sw = _SUB_CONFIG_KEYS.get(config_key)
+    sw = _BLOSSOM_SUB_CONFIG_KEYS.get(config_key)
     if sw is None:
         return True
     for c in cfgs:

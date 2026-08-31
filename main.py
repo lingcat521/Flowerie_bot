@@ -16,6 +16,7 @@ from src.repositories.meme_knowledge_repository import MemeKnowledgeRepository
 from src.repositories.settings_repository import SettingsRepository
 from src.repositories.sticker_repository import StickerRepository
 from src.services.ai_client import AIClient
+from src.services.blossom_memory import BlossomMemoryManager
 from src.services.config_service import ConfigService
 from src.services.file_parser import FileParser
 from src.services.mcp_tool_manager import McpToolManager
@@ -54,6 +55,28 @@ async def main():
     logger.info("花璃启动中...", extra={"event": "startup"})
 
     memory_manager = MemoryManager(config.MEMORY_PATH, config.MEMORY_TTL_DAYS, config.AUDIT_LOG_PATH, config.MODEL_MEMORY_TTL_DAYS, memory_enabled=config.MEMORY_ENABLED)
+
+    # ---- 花语记忆（BlossomMemory）：默认 OFF——不初始化任何模型资源（embedding/reranker/向量库）
+    blossom_memory = None
+    if config.BLOSSOM_MEMORY_ENABLED:
+        from src.services.blossom_memory import (
+            OpenAICompatibleEmbedding,
+            OpenAICompatibleRerank,
+        )
+        embedding = reranker = None
+        if config.BLOSSOM_MEMORY_EMBEDDING_ENABLED:
+            embedding = OpenAICompatibleEmbedding(
+                config.BLOSSOM_MEMORY_EMBEDDING_MODEL,
+                config.BLOSSOM_MEMORY_EMBEDDING_API_URL,
+                config.BLOSSOM_MEMORY_EMBEDDING_API_KEY,
+                dimension=config.BLOSSOM_MEMORY_VECTOR_DIMENSION)
+        if config.BLOSSOM_MEMORY_RERANKER_ENABLED:
+            reranker = OpenAICompatibleRerank(
+                config.BLOSSOM_MEMORY_RERANKER_MODEL,
+                config.BLOSSOM_MEMORY_RERANKER_API_URL,
+                config.BLOSSOM_MEMORY_RERANKER_API_KEY,
+                top_k=config.BLOSSOM_MEMORY_RERANK_TOP_K)
+        blossom_memory = BlossomMemoryManager(config, embedding=embedding, reranker=reranker)
     prompt_manager = PromptManager(settings_repo, max_length=config.MAX_CUSTOM_PROMPT_LENGTH)
 
     # 优雅管理异步资源（HTTP session / AI 客户端）
@@ -151,6 +174,7 @@ async def main():
             budget=budget_manager,
             plugin_manager=plugin_manager,
             event_parser=adapters.parser,
+            blossom_memory=blossom_memory,
         )
         # NapCat WebSocket：反向（NapCat 连过来，原有行为）或正向（连接 NapCat 的 WS server），二选一
         if str(getattr(config, "NAPCAT_WS_MODE", "reverse") or "reverse").lower() == "forward":
@@ -186,6 +210,8 @@ async def main():
             await file_parser.close()
             await plugin_manager.shutdown()
             memory_manager.close()
+            if blossom_memory is not None:
+                await blossom_memory.close()
             settings_repo.close()
             sticker_manager.close()
             meme_manager.close()

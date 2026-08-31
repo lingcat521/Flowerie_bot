@@ -66,6 +66,7 @@ class MessageRouter:
         budget: Optional["BudgetManager"] = None,
         plugin_manager: Optional["PluginManager"] = None,
         event_parser: Optional[Any] = None,
+        blossom_memory: Optional[Any] = None,
     ):
         self.config = config
         self.ai_client = ai_client
@@ -107,7 +108,10 @@ class MessageRouter:
             tool_manager=lambda: self.tool_manager,
             persona_manager=lambda: self.persona_manager,
             meme_manager=lambda: self.meme_manager,
+            blossom_memory=lambda: getattr(self, "blossom_memory", None),
         )
+        # 花语记忆（可写 provider：测试可热替换）
+        self.blossom_memory = blossom_memory
         # 兼容属性：熔断器/群级熔断容器由 AiGateway 持有（旧调用路径）
         self.provider_breaker = self.ai_gateway.provider_breaker
         self.group_breakers = self.ai_gateway.group_breakers

@@ -1,7 +1,7 @@
 """Web UI 配置分类常量（单源；无 pydantic 依赖——config_schema 与渲染层共用）。"""
 
 CATEGORY_ORDER = [
-    "AI", "Bot", "Connection", "Behavior", "Stability", "Memory", "LivingMemory", "Context",
+    "AI", "Bot", "Connection", "Behavior", "Stability", "Memory", "BlossomMemory", "Context",
     "Sticker", "MCP", "WebUI", "Logging", "Budget", "ActiveChat", "Repeat",
     "Poke", "FileParse", "Security", "Whitelist", "Archive", "Paths",
     # 注意：Persona/Knowledge/Plugin 分类的配置项已在 SCHEMA 中，但不在配置页展示——
@@ -15,7 +15,7 @@ CATEGORY_LABELS = {
     "Behavior": "行为与回复",
     "Stability": "稳定性与熔断",
     "Memory": "记忆库",
-    "LivingMemory": "高级记忆（默认关闭）",
+    "BlossomMemory": "花语记忆（默认关闭）",
     "Context": "上下文",
     "Sticker": "表情包",
     "MCP": "MCP 工具",
