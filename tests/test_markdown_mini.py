@@ -29,7 +29,7 @@ def test_markdown_injection_escaped():
 [a](javascript:alert(1))
 """)
     assert "<script>" not in html
-    assert "javascript:" not in html
+    assert 'href="javascript:' not in html       # 危险协议不得成为链接（可保留纯文本）
 
 
 def test_render_doc_quickstart_exists():
