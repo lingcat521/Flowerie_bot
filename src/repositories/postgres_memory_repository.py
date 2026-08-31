@@ -24,7 +24,8 @@ class PostgresMemoryRepository(MemoryRepository):
                 "（pip install psycopg psycopg_pool）") from e
         self.url = database_url
         self._pool = psycopg_pool.ConnectionPool(
-            database_url, min_size=1, max_size=pool_size, open=False)
+            database_url, min_size=1, max_size=pool_size, open=False,
+            kwargs={"autocommit": True})
         self._pool.open(wait=True, timeout=10)
         self._init_schema()
 

@@ -22,7 +22,8 @@ class PostgresBlossomMemoryRepository(BlossomMemoryRepository):
             raise RuntimeError(
                 "STORAGE_BACKEND=postgres 需要安装 psycopg 与 psycopg-pool") from e
         self._pool = psycopg_pool.ConnectionPool(
-            database_url, min_size=1, max_size=2, open=False)
+            database_url, min_size=1, max_size=2, open=False,
+            kwargs={"autocommit": True})
         self._pool.open(wait=True, timeout=10)
         self._init_schema()
 
