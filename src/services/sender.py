@@ -316,6 +316,10 @@ class Sender:
 
     # ---------- v1.7.0 拉格朗日补齐：端点仅登记于此（语义层不感知端点名） ----------
 
+    async def get_status(self) -> dict:
+        """OneBot 标准：运行状态（版本/状态/在线）。"""
+        return await self._post("/get_status", {})
+
     async def get_friend_msg_history(self, user_id: int, count: int = 20,
                                      message_id: int = 0) -> dict:
         """好友/私聊消息历史（拉格朗日/NapCat 扩展）。"""

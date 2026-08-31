@@ -1,0 +1,8 @@
+{
+  "id": "doc_example",
+  "name": "文档示例",
+  "version": "1.7.0",
+  "runtime": "python",
+  "entry": "plugin.py",
+  "permissions": ["read_message", "send_message", "group_manage"]
+}
