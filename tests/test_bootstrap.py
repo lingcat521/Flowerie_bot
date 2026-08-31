@@ -105,7 +105,7 @@ def test_parser_injected_and_functional():
 # ---------- 3. Sender 被正确注入 + 满足 MessageSender 契约 ----------
 def test_sender_injected_and_contract():
     sender = FullSender()
-    adapters = make_adapters(10001, sender)
+    _ = make_adapters(10001, sender)
     # FakeSender 满足协议的全方法面（缺失会由 make_adapters 抛 RuntimeError；
     # 此处再显式验证一组核心签名）
     for name in ("send_group_message", "send_msg_raw", "delete_msg", "get_msg",
