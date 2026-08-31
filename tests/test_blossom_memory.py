@@ -3,6 +3,7 @@
 本地可跑（无 pydantic：用 stub config 对象）。
 """
 import asyncio
+import os
 
 from src.repositories.blossom_memory_repository import (
     SQLiteBlossomMemoryRepository,
@@ -47,8 +48,9 @@ class FakeEmbedding:
 
 
 def make_manager(config=None, embed=None, repo=None):
+    import tempfile
     cfg = config or StubConfig()
-    db = f"/data/data/com.dshmobile.shell/files/home/工作区/.test_blossom_{id(cfg)}.db"
+    db = os.path.join(tempfile.mkdtemp(), f"blossom_{id(cfg)}.db")
     repo = repo or SQLiteBlossomMemoryRepository(db)
     return BlossomMemoryManager(cfg, repository=repo, embedding=embed or FakeEmbedding())
 
@@ -105,10 +107,8 @@ def test_daily_limit():
 
 # ---------- 6) TTL + 上限清理 ----------
 def test_ttl_and_max_prune():
-    repo_path = "/data/data/com.dshmobile.shell/files/home/工作区/.test_blossom_ttl.db"
-    import os
-    if os.path.exists(repo_path):
-        os.remove(repo_path)
+    import tempfile
+    repo_path = os.path.join(tempfile.mkdtemp(), "blossom_ttl.db")
     repo = SQLiteBlossomMemoryRepository(repo_path)
     import time
 
