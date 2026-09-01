@@ -108,6 +108,89 @@ class PluginApi:
         """引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义）"""
         return self._send_action("quote_chain", payload)
 
+    # ---------- v2.1 缺口池：数据 ----------
+    def db_query(self, payload):
+        """数据查询（插件数据域 JSON 过滤）"""
+        return self._send_action("db_query", payload)
+
+    def db_transaction(self, payload):
+        """事务（原子写；全成或全滚）"""
+        return self._send_action("db_transaction", payload)
+
+    def db_migration(self, payload):
+        """迁移（插件数据域 schema 版本）"""
+        return self._send_action("db_migration", payload)
+
+    def db_index(self, payload):
+        """索引（字段索引加速查询）"""
+        return self._send_action("db_index", payload)
+
+    def cache_get(self, payload):
+        """缓存读（等价 KV 读取）"""
+        return self._send_action("cache_get", payload)
+
+    def cache_set(self, payload):
+        """缓存写（等价 KV 写入）"""
+        return self._send_action("cache_set", payload)
+
+    def cache_delete(self, payload):
+        """缓存删（等价 KV 删除）"""
+        return self._send_action("cache_delete", payload)
+
+    # ---------- v2.1 缺口池：运行时 ----------
+    def task_status(self, payload):
+        """任务状态（任务运行在插件进程内；v1 主进程无句柄→not supported）"""
+        return self._send_action("task_status", payload)
+
+    def task_cancel(self, payload):
+        """任务取消（v1 主进程无句柄→not supported；SDK TaskManager 提供）"""
+        return self._send_action("task_cancel", payload)
+
+    def task_pause(self, payload):
+        """任务暂停（同上）"""
+        return self._send_action("task_pause", payload)
+
+    def task_resume(self, payload):
+        """任务恢复（同上）"""
+        return self._send_action("task_resume", payload)
+
+    def resource_usage(self, payload):
+        """资源占用（插件进程 CPU/内存；/proc 读取）"""
+        return self._send_action("resource_usage", payload)
+
+    def resource_quota(self, payload):
+        """资源配额（保护级别映射）"""
+        return self._send_action("resource_quota", payload)
+
+    def runtime_status(self, payload):
+        """运行状态（pid/uptime/版本）"""
+        return self._send_action("runtime_status", payload)
+
+    # ---------- v2.1 缺口池：开发工具 ----------
+    def metrics(self, payload):
+        """指标快照（全量注册表）"""
+        return self._send_action("metrics", payload)
+
+    def trace(self, payload):
+        """链路追踪（trace_id 查近期日志）"""
+        return self._send_action("trace", payload)
+
+    def health(self, payload):
+        """健康检查（进程信息）"""
+        return self._send_action("health", payload)
+
+    def debug(self, payload):
+        """调试通道（v1 不支持→not supported）"""
+        return self._send_action("debug", payload)
+
+    def plugin_test(self, payload):
+        """自测（运行插件 on_plugin_test 钩子）"""
+        return self._send_action("plugin_test", payload)
+
+    def mock_api(self, payload):
+        """Mock（SDK 本地测试工具；API 层→not supported）"""
+        return self._send_action("mock_api", payload)
+
     # ---------- v2.1 缺口池：插件 ----------
     def plugin_call(self, payload):
         """插件间调用（投递事件给目标插件；目标需启用）"""

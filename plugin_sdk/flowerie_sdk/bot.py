@@ -274,6 +274,89 @@ class FlowerieBot:
         """好友在线状态。"""
         return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
 
+    # ---------- v2.1 缺口池：数据 / 运行时 / 开发工具 ----------
+    def db_query(self, where=None, limit=50, offset=0):
+        """数据查询（插件数据域过滤）。"""
+        return self._api.db_query({"where": where or {}, "limit": limit,
+                                   "offset": offset}) if self._api else self._no_api()
+
+    def db_transaction(self, ops):
+        """事务（insert/delete/update 数组；原子落盘）。"""
+        return self._api.db_transaction({"ops": list(ops)}) if self._api else self._no_api()
+
+    def db_migration(self, version):
+        """迁移（schema 版本升级）。"""
+        return self._api.db_migration({"version": version}) if self._api else self._no_api()
+
+    def db_index(self, field):
+        """索引（字段统计加速）。"""
+        return self._api.db_index({"field": field}) if self._api else self._no_api()
+
+    def cache_get(self, key):
+        """缓存读。"""
+        return self._api.cache_get({"key": key}) if self._api else self._no_api()
+
+    def cache_set(self, key, value):
+        """缓存写。"""
+        return self._api.cache_set({"key": key,
+                                    "value": value}) if self._api else self._no_api()
+
+    def cache_delete(self, key):
+        """缓存删。"""
+        return self._api.cache_delete({"key": key}) if self._api else self._no_api()
+
+    def task_status(self, task_id):
+        """任务状态（SDK TaskManager 本地）。"""
+        return self._api.task_status({"task_id": task_id}) if self._api else self._no_api()
+
+    def task_cancel(self, task_id):
+        """任务取消。"""
+        return self._api.task_cancel({"task_id": task_id}) if self._api else self._no_api()
+
+    def task_pause(self, task_id):
+        """任务暂停。"""
+        return self._api.task_pause({"task_id": task_id}) if self._api else self._no_api()
+
+    def task_resume(self, task_id):
+        """任务恢复。"""
+        return self._api.task_resume({"task_id": task_id}) if self._api else self._no_api()
+
+    def resource_usage(self):
+        """资源占用（插件进程）。"""
+        return self._api.resource_usage({}) if self._api else self._no_api()
+
+    def resource_quota(self):
+        """资源配额（保护级别）。"""
+        return self._api.resource_quota({}) if self._api else self._no_api()
+
+    def runtime_status(self):
+        """运行状态。"""
+        return self._api.runtime_status({}) if self._api else self._no_api()
+
+    def metrics(self):
+        """指标快照。"""
+        return self._api.metrics({}) if self._api else self._no_api()
+
+    def trace(self, trace_id):
+        """链路日志查询。"""
+        return self._api.trace({"trace_id": trace_id}) if self._api else self._no_api()
+
+    def health(self):
+        """健康检查。"""
+        return self._api.health({}) if self._api else self._no_api()
+
+    def debug(self, **kw):
+        """调试（v1 不支持）。"""
+        return self._api.debug(kw) if self._api else self._no_api()
+
+    def plugin_test(self, **kw):
+        """自测（on_plugin_test 钩子）。"""
+        return self._api.plugin_test(kw) if self._api else self._no_api()
+
+    def mock_api(self, **kw):
+        """Mock（SDK 本地）。"""
+        return self._api.mock_api(kw) if self._api else self._no_api()
+
     # ---------- v2.1 缺口池：插件 / Web ----------
     def plugin_call(self, target, name="", data=None):
         """插件间调用（投递 on_plugin_event 给目标）。"""

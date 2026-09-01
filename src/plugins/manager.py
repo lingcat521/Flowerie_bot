@@ -58,6 +58,7 @@ class PluginManager:
         self.config = config
         self.repository = repository
         self.sender = sender
+        self._start_ts = time.time()
         self._plugin_services = {}
         self.memory_manager = memory_manager
         # state_provider: (kind, id) -> dict | None（get_group/get_user 的数据源，由 main 注入）
@@ -714,6 +715,11 @@ class PluginManager:
                                         "friend_detail", "friend_remark", "friend_delete",
                                         "friend_group", "friend_category", "friend_online"})
 
+    _DATA_EXT = frozenset({"db_query", "db_transaction", "db_migration", "db_index",
+                           "cache_get", "cache_set", "cache_delete",
+                           "task_status", "task_cancel", "task_pause", "task_resume",
+                           "resource_usage", "resource_quota", "runtime_status",
+                           "metrics", "trace", "health", "debug", "plugin_test", "mock_api"})
     _PLUGIN_EXT = frozenset({"plugin_call", "plugin_event", "plugin_service", "plugin_discovery",
                              "plugin_dependency", "plugin_health", "plugin_reload",
                              "plugin_config", "router", "ws", "sse", "webhook",
@@ -735,6 +741,174 @@ class PluginManager:
     _EXT_NS = {"edit_message", "favorite_message", "mark_message", "read_status",
                "friend_remark", "friend_delete", "friend_group", "friend_category",
                "friend_online"}
+
+    _DB_FILE = "data.json"
+    _DB_SCHEMA_V = 1
+
+    def _db_path(self, plugin_id: str) -> str:
+        import os
+        d = self.plugin_webui_dir(plugin_id)
+        return os.path.join(d, self._DB_FILE)
+
+    def _db_load(self, plugin_id: str) -> dict:
+        try:
+            with open(self._db_path(plugin_id), "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except (OSError, ValueError):
+            pass
+        return {"schema_version": self._DB_SCHEMA_V, "rows": []}
+
+    def _db_save(self, plugin_id: str, data: dict) -> None:
+        import os
+        tmp = self._db_path(plugin_id) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+        os.replace(tmp, self._db_path(plugin_id))
+
+    async def _ext_data(self, plugin_id: str, action: str, payload: dict) -> dict:
+        """数据/运行时/开发工具语义：插件数据域 JSON（真）+ 资源/指标/健康（真）+ 明确 NS。"""
+        import time
+        NS = {"task_status", "task_cancel", "task_pause", "task_resume", "debug", "mock_api"}
+        if action in NS:
+            return {"ok": False, "error": f"{action}: 运行时在插件进程内（SDK TaskManager）/v1 不支持"}
+        if action in ("cache_get", "cache_set", "cache_delete"):
+            key = str(payload.get("key") or "")
+            if action == "cache_get":
+                return await self._run_action(plugin_id, "kv_get", {"key": key})
+            if action == "cache_set":
+                return await self._run_action(plugin_id, "kv_set", payload)
+            return await self._run_action(plugin_id, "kv_delete", {"key": key})
+        if action == "db_query":
+            try:
+                data = self._db_load(plugin_id)
+                rows = data.get("rows", [])
+                q = payload.get("where") or {}
+                if isinstance(q, dict):
+                    rows = [r for r in rows if isinstance(r, dict)
+                            and all(str(r.get(k)) == str(v) for k, v in q.items())]
+                limit = max(1, min(200, int(payload.get("limit", 50) or 50)))
+                offset = max(0, int(payload.get("offset", 0) or 0))
+                page = rows[offset:offset + limit]
+                return {"ok": True, "rows": page, "total": len(rows)}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"db_query: {type(e).__name__}: {e}"}
+        if action == "db_transaction":
+            try:
+                ops = payload.get("ops") or []
+                data = self._db_load(plugin_id)
+                for op in ops:
+                    if op.get("type") == "insert":
+                        data.setdefault("rows", []).append(op.get("row") or {})
+                    elif op.get("type") == "delete":
+                        q = op.get("where") or {}
+                        data["rows"] = [r for r in data.get("rows", [])
+                                        if not (all(str(r.get(k)) == str(v) for k, v in q.items()))]
+                    elif op.get("type") == "update":
+                        q = op.get("where") or {}
+                        for r in data.get("rows", []):
+                            if all(str(r.get(k)) == str(v) for k, v in q.items()):
+                                r.update(op.get("set") or {})
+                self._db_save(plugin_id, data)
+                return {"ok": True, "applied": len(ops)}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"db_transaction: {type(e).__name__}: {e}"}
+        if action == "db_migration":
+            try:
+                data = self._db_load(plugin_id)
+                version = int(payload.get("version", data.get("schema_version", self._DB_SCHEMA_V)))
+                data["schema_version"] = max(version, data.get("schema_version", 0))
+                self._db_save(plugin_id, data)
+                return {"ok": True, "schema_version": data["schema_version"]}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"db_migration: {type(e).__name__}: {e}"}
+        if action == "db_index":
+            field = str(payload.get("field") or "")
+            if not field:
+                return {"ok": False, "error": "db_index: 需要 field"}
+            try:
+                # 索引 = 内存加速结构（语义级；持久化无副作用——只返回统计）
+                data = self._db_load(plugin_id)
+                from collections import Counter
+                counter = Counter(str(r.get(field)) for r in data.get("rows", [])
+                                  if isinstance(r, dict))
+                return {"ok": True, "field": field, "distinct": len(counter),
+                        "sample": dict(list(counter.items())[:10])}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"db_index: {type(e).__name__}: {e}"}
+        if action == "resource_usage":
+            rt = self._runtimes.get(plugin_id)
+            pid = getattr(rt, "process", None) and rt.process.pid
+            usage = {"pid": pid}
+            if pid:
+                try:
+                    with open(f"/proc/{pid}/status", "r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.startswith("VmRSS:"):
+                                usage["vm_rss_kb"] = int(line.split()[1])
+                except OSError:
+                    pass
+            return {"ok": True, "usage": usage}
+        if action == "resource_quota":
+            try:
+                row = self.get_plugin(plugin_id) or {}
+                return {"ok": True, "protection": row.get("protection") or "normal",
+                        "quota": {"rate": 10, "burst": 20, "max_memory_mb": 256}
+                        if row.get("protection") == "normal" else
+                        {"rate": 50, "burst": 100, "max_memory_mb": 1024}}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"resource_quota: {type(e).__name__}: {e}"}
+        if action == "runtime_status":
+            rt = self._runtimes.get(plugin_id)
+            pid = getattr(rt, "process", None) and rt.process.pid
+            row = self.get_plugin(plugin_id) or {}
+            return {"ok": True, "plugin_id": plugin_id, "pid": pid,
+                    "enabled": bool(row.get("enabled")),
+                    "runtime": row.get("runtime") or "python",
+                    "uptime_s": int(time.time() - getattr(rt, "_start_ts", time.time()))}
+        if action == "metrics":
+            try:
+                from src.utils.metrics import registry
+                return {"ok": True, "metrics": registry.snapshot()}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"metrics: {type(e).__name__}: {e}"}
+        if action == "health":
+            try:
+                with open("/proc/self/status", "r", encoding="utf-8") as f:
+                    rss = next((int(ln.split()[1]) for ln in f if ln.startswith("VmRSS:")), 0)
+                return {"ok": True, "status": "healthy", "uptime_s": int(time.time() - self._start_ts),
+                        "vm_rss_kb": rss}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"health: {type(e).__name__}: {e}"}
+        if action == "trace":
+            tid = str(payload.get("trace_id") or payload.get("id") or "")
+            try:
+                import glob
+                logs = []
+                for lp in glob.glob(str(self._plugin_dir()) + "/../logs/*.log")[:2]:
+                    with open(lp, "r", encoding="utf-8", errors="replace") as f:
+                        tail = f.readlines()[-50:]
+                    logs.extend(line2 for line2 in tail if tid and tid in line2)
+                return {"ok": True, "trace_id": tid, "lines": logs[-30:]}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"trace: {type(e).__name__}: {e}"}
+        if action == "plugin_test":
+            rt = self._runtimes.get(plugin_id)
+            if rt is None:
+                return {"ok": False, "error": "plugin_test: 插件未加载"}
+            try:
+                import asyncio
+                res = await asyncio.wait_for(
+                    asyncio.to_thread(rt._call_hook, "on_plugin_test", payload), timeout=4.0)
+                if isinstance(res, dict) and res.get("__error__"):
+                    return {"ok": False, "error": res["__error__"]}
+                return {"ok": True, "result": res}
+            except asyncio.TimeoutError:
+                return {"ok": False, "error": "plugin_test: 超时"}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"plugin_test: {type(e).__name__}: {e}"}
+        return {"ok": False, "error": f"{action}: 未知语义"}
 
     async def _ext_plugin(self, plugin_id: str, action: str, payload: dict) -> dict:
         """插件运行时语义：调用/事件/服务总线（真投递）+ 发现/健康/配置/重载 + 明确 NS。"""
@@ -1257,6 +1431,8 @@ class PluginManager:
             return await self._ext_memory(plugin_id, action_type, payload)
         if action_type in self._PLUGIN_EXT:
             return await self._ext_plugin(plugin_id, action_type, payload)
+        if action_type in self._DATA_EXT:
+            return await self._ext_data(plugin_id, action_type, payload)
         if action_type in self._MCP_EXT:
             return await self._ext_mcp(plugin_id, action_type, payload)
         if action_type == "test":

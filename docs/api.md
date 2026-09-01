@@ -103,6 +103,7 @@
 | `plugin_health(payload)` | 插件健康（当前插件运行状态） | `plugin_admin` |
 | `plugin_reload(payload)` | 插件重载（自身；停止并重载） | `plugin_admin` |
 | `plugin_service(payload)` | 插件服务（注册/发现/调用插件服务总线） | `plugin_admin` |
+| `plugin_test(payload)` | 自测（运行插件 on_plugin_test 钩子） | `plugin_admin` |
 | `schedule_cancel(payload)` |  | `scheduler` |
 | `schedule_list(payload)` |  | `scheduler` |
 | `schedule_register(payload)` |  | `scheduler` |
@@ -138,7 +139,15 @@
 | --- | --- | --- |
 | `__init__(payload)` |  | `—` |
 | `audio_info(payload)` | 音频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
+| `cache_delete(payload)` | 缓存删（等价 KV 删除） | `storage` |
+| `cache_get(payload)` | 缓存读（等价 KV 读取） | `storage` |
+| `cache_set(payload)` | 缓存写（等价 KV 写入） | `storage` |
 | `call(payload)` | 通用语义化动作调用（v1.5；封装唯一，动作名白名单由主进程校验）。 | `—` |
+| `db_index(payload)` | 索引（字段索引加速查询） | `storage` |
+| `db_migration(payload)` | 迁移（插件数据域 schema 版本） | `storage` |
+| `db_query(payload)` | 数据查询（插件数据域 JSON 过滤） | `storage` |
+| `db_transaction(payload)` | 事务（原子写；全成或全滚） | `storage` |
+| `debug(payload)` | 调试通道（v1 不支持→not supported） | `plugin_admin` |
 | `edit_message(payload)` | 编辑消息（网关需支持；不支持时返回 not supported in v1） | `delete_message` |
 | `favorite_message(payload)` | 收藏消息（网关需支持；当前 v1 无端点→not supported） | `read_message_history` |
 | `file_convert(payload)` | 文件转换（v1 无转换器→not supported） | `filesystem_read` |
@@ -155,22 +164,33 @@
 | `get_memory(payload)` |  | `read_memory` |
 | `handle_friend_request(payload)` |  | `request_handle` |
 | `handle_group_request(payload)` |  | `request_handle` |
+| `health(payload)` | 健康检查（进程信息） | `plugin_admin` |
 | `image_compress(payload)` | 图片压缩（v1 无图像库→not supported） | `filesystem_read` |
 | `image_resize(payload)` | 图片缩放（v1 无图像库→not supported） | `filesystem_read` |
 | `image_screenshot(payload)` | 图片截图（v1 无图像能力→not supported） | `filesystem_read` |
 | `log(payload)` |  | `—` |
 | `mark_message(payload)` | 标记消息（已读/未读；v1 无端点→not supported） | `delete_message` |
 | `merge_message(payload)` | 消息合并（payload 段列表 → 单条消息负载；纯本地语义） | `send_message` |
+| `metrics(payload)` | 指标快照（全量注册表） | `plugin_admin` |
+| `mock_api(payload)` | Mock（SDK 本地测试工具；API 层→not supported） | `plugin_admin` |
 | `now(payload)` |  | `—` |
 | `quote_chain(payload)` | 引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义） | `read_message_history` |
 | `random_choice(payload)` |  | `—` |
 | `random_int(payload)` |  | `—` |
 | `read_status(payload)` | 消息已读状态查询（v1 无端点→not supported） | `read_message_history` |
+| `resource_quota(payload)` | 资源配额（保护级别映射） | `plugin_admin` |
+| `resource_usage(payload)` | 资源占用（插件进程 CPU/内存；/proc 读取） | `plugin_admin` |
 | `router(payload)` | 路由列表（自身 Plugin WebUI 页面） | `plugin_admin` |
+| `runtime_status(payload)` | 运行状态（pid/uptime/版本） | `plugin_admin` |
 | `search_message(payload)` | 消息搜索（user_id/group_id + query + count：拉取历史并在本地过滤） | `read_message_history` |
 | `split_message(payload)` | 消息拆段（payload.text；按段/长度拆分，纯本地语义） | `read_message` |
 | `sse(payload)` | SSE 通道（v1 明确不支持→not supported） | `plugin_admin` |
 | `static_file(payload)` | 静态文件（插件 WebUI 空间；列/取链接） | `plugin_admin` |
+| `task_cancel(payload)` | 任务取消（v1 主进程无句柄→not supported；SDK TaskManager 提供） | `plugin_admin` |
+| `task_pause(payload)` | 任务暂停（同上） | `plugin_admin` |
+| `task_resume(payload)` | 任务恢复（同上） | `plugin_admin` |
+| `task_status(payload)` | 任务状态（任务运行在插件进程内；v1 主进程无句柄→not supported） | `plugin_admin` |
+| `trace(payload)` | 链路追踪（trace_id 查近期日志） | `plugin_admin` |
 | `video_info(payload)` | 视频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
 | `webhook(payload)` | Webhook 发送（等价 http_request）；接收注册 v1 不支持 | `webhook` |
 | `write_memory(payload)` |  | `write_memory` |

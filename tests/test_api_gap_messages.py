@@ -313,3 +313,34 @@ def test_plugin_web_ns():
         assert not r["ok"] and "不支持" in r["error"]
     h = _run(mgr, "p", "webhook", {"url": "https://a.b/c", "method": "POST"})
     assert "未知语义" not in h.get("error", "")
+
+
+def test_db_roundtrip_and_transaction(tmp_path):
+    from src.plugins.manager import PluginManager
+    class C5(_Cfg):
+        PLUGIN_DIR = str(tmp_path)
+    mgr = PluginManager(config=C5(), repository=_Repo())
+    t = _run(mgr, "p", "db_transaction", {"ops": [
+        {"type": "insert", "row": {"id": 1, "name": "a"}},
+        {"type": "insert", "row": {"id": 2, "name": "b"}}]})
+    assert t["ok"] and t["applied"] == 2
+    q = _run(mgr, "p", "db_query", {"where": {"name": "b"}})
+    assert q["ok"] and q["total"] == 1 and q["rows"][0]["id"] == 2
+    m = _run(mgr, "p", "db_migration", {"version": 2})
+    assert m["ok"] and m["schema_version"] == 2
+
+
+def test_health_and_metrics_local():
+    mgr, _s = _mgr()
+    h = _run(mgr, "p", "health", {})
+    assert h["ok"] and h["status"] == "healthy"
+    met = _run(mgr, "p", "metrics", {})
+    assert met["ok"] and isinstance(met["metrics"], dict)
+
+
+def test_task_ns_and_cache_alias():
+    mgr, _s = _mgr()
+    r = _run(mgr, "p", "task_status", {"task_id": "x"})
+    assert not r["ok"] and "TaskManager" in r["error"]
+    r2 = _run(mgr, "p", "debug", {})
+    assert not r2["ok"]
