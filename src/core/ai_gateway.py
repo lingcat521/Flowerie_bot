@@ -175,16 +175,20 @@ class AiGateway:
                         "tool_quota": tool_quota,
                     }
             # 花语记忆检索（群隔离；ON 且可用时注入语义记忆，失败降级为空串）
-            if kwargs.get("group_id") is not None:
+            _gid = kwargs.get("group_id")
+            if _gid is None:
+                _gid = group_id
+            if _gid is not None:
                 bm = self._blossom_memory() if callable(self._blossom_memory) else self._blossom_memory
                 if bm is not None:
                     try:
                         kwargs["retrieved_memory"] = await bm.search(
-                            kwargs["group_id"], kwargs.get("user_message") or "")
+                            _gid, kwargs.get("user_message") or "")
                     except Exception as e:  # noqa: BLE001 - 语义记忆故障绝不影响主 AI 流程
-                        logger.warning("blossom_search_fail group=%s err=%s", kwargs.get("group_id"), e)
+                        logger.warning("blossom_search_fail group=%s err=%s", _gid, e)
             reply, memory_update = await self.ai_client.chat_once(**kwargs)
-            if reply and reply.strip():
+            if reply and reply.strip() or (memory_update and reply is None):
+                # 纯记忆回合（reply 空但有记忆产出）视为成功，不再浪费预算重试
                 latency = time.monotonic() - started
                 _M_AI_OK.inc()
                 _M_AI_LATENCY.observe(latency)

@@ -526,17 +526,14 @@ def validate_config(config: Settings) -> None:
                     getattr(config, "BLOSSOM_MEMORY_RERANKER_API_URL", "")):
                 raise ValueError("BLOSSOM_MEMORY_ENABLED=true 且重排序开启时，必须配置 "
                                  "BLOSSOM_MEMORY_RERANKER_MODEL 与 BLOSSOM_MEMORY_RERANKER_API_URL")
-            ok, reason = validate_mcp_server_url(mcp_url, allowed_hosts)
-            if not ok:
-                raise ValueError(f"MCP_SERVER_URL 不合法: {reason}")
             if int(getattr(config, "MCP_TIMEOUT", 15)) < 1:
                 raise ValueError(f"MCP_TIMEOUT 必须 >= 1（秒），当前: {getattr(config, 'MCP_TIMEOUT', 15)}")
             allowed = (getattr(config, "MCP_ALLOWED_TOOLS", "") or "").strip()
             for token in (t.strip() for t in allowed.split(",") if t.strip()):
                 if not re.fullmatch(r"[A-Za-z0-9_.\-]+", token):
                     raise ValueError(f"MCP_ALLOWED_TOOLS 含非法工具名: {token!r}")
-        if int(getattr(config, "MCP_MAX_TOOL_CALLS", 5)) < 0:
-            raise ValueError(f"MCP_MAX_TOOL_CALLS 必须 >= 0，当前: {getattr(config, 'MCP_MAX_TOOL_CALLS', 5)}")
+            if int(getattr(config, "MCP_MAX_TOOL_CALLS", 5)) < 0:
+                raise ValueError(f"MCP_MAX_TOOL_CALLS 必须 >= 0，当前: {getattr(config, 'MCP_MAX_TOOL_CALLS', 5)}")
     # Persona / 群聊知识（Meme）配置合法性
     if int(getattr(config, "MEME_SUMMARY_INTERVAL_HOURS", 24)) < 1:
         raise ValueError("MEME_SUMMARY_INTERVAL_HOURS 必须 >= 1（小时）")

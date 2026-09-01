@@ -14,6 +14,7 @@
 安全不变式（任何保护级别都不豁免）：管理员权限（Web UI 认证）、安装完整性检查、
 manifest 校验、进程隔离、日志、崩溃保护、资源限制、权限强制。
 """
+import asyncio
 import json
 import os
 import random
@@ -82,6 +83,30 @@ class PluginManager:
 
     def _plugin_dir(self) -> str:
         return str(getattr(self.config, "PLUGIN_DIR", "./plugins") or "./plugins")
+
+
+    @staticmethod
+    async def _runtime_hook_call(rt, name: str, *args):
+        """经 runtime 同步通道调插件 hook（runner 处理 method=hook；返回 {ok, result|error}）。
+
+        测试桩回退：老旧 FakeRuntime 仅实现 _call_hook 时直接调用（保持单测兼容）。
+        """
+        if not hasattr(rt, "request"):
+            call = getattr(rt, "_call_hook", None)
+            if call is None:
+                return {"__error__": "runtime 无可调用钩子通道"}
+            try:
+                r = await asyncio.to_thread(call, name, *args)
+            except Exception as e:  # noqa: BLE001
+                return {"__error__": f"{type(e).__name__}: {e}"}
+            return r
+        try:
+            resp = await rt.request("hook", {"name": name, "args": list(args)})
+        except Exception as e:  # noqa: BLE001
+            return {"__error__": f"{type(e).__name__}: {e}"}
+        if isinstance(resp, dict) and resp.get("error"):
+            return {"__error__": str(resp["error"])}
+        return resp.get("result") if isinstance(resp, dict) else None
 
     # ================= Plugin WebUI 文件空间（web_ui.files 权限；仅插件自己目录） =================
     _WEBUI_ALLOWED_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt", ".json",
@@ -178,8 +203,8 @@ class PluginManager:
         try:
             import asyncio
             result = await asyncio.wait_for(
-                asyncio.to_thread(rt._call_hook, hook_name, page_id, action,
-                                  dict(params or {}), dict(values or {})),
+                self._runtime_hook_call(rt, hook_name, page_id, action,
+                                        dict(params or {}), dict(values or {})),
                 timeout=4.0)
         except asyncio.TimeoutError:
             return None, "插件响应超时（4s 上限）"
@@ -924,7 +949,7 @@ class PluginManager:
             try:
                 import asyncio
                 res = await asyncio.wait_for(
-                    asyncio.to_thread(rt._call_hook, "on_plugin_test", payload), timeout=4.0)
+                    self._runtime_hook_call(rt, "on_plugin_test", payload), timeout=4.0)
                 if isinstance(res, dict) and res.get("__error__"):
                     return {"ok": False, "error": res["__error__"]}
                 return {"ok": True, "result": res}
@@ -1007,9 +1032,12 @@ class PluginManager:
             # 插件服务总线：注册/调用统一投递事件（目标启用+非自身兜底）
             target = str(payload.get("target") or "")
             if action == "plugin_service" and str(payload.get("op") or "") == "register":
-                self._plugin_services[payload.get("name", "")] = {"plugin": plugin_id,
-                                                                  "desc": payload.get("desc", "")}
-                return {"ok": True, "registered": payload.get("name", "")}
+                sname = str(payload.get("name") or "")
+                if not re.fullmatch(r"[a-z_][a-z0-9_]{0,63}", sname):
+                    return {"ok": False, "error": "plugin_service: 服务名非法（小写字母开头 ≤64）"}
+                self._plugin_services[sname] = {"plugin": plugin_id,
+                                                "desc": str(payload.get("desc", ""))[:200]}
+                return {"ok": True, "registered": sname}
             if not target:
                 return {"ok": False, "error": f"{action}: 需要 target（或服务名）"}
             if target == plugin_id:
@@ -1024,12 +1052,11 @@ class PluginManager:
             if tgt_rt is None:
                 return {"ok": False, "error": f"{action}: 目标插件未加载: {target}"}
             try:
-                hook = getattr(tgt_rt, "_call_hook", None)
-                if hook is None:
+                if not hasattr(tgt_rt, "request") and not hasattr(tgt_rt, "_call_hook"):
                     return {"ok": False, "error": f"{action}: 目标插件不支持事件钩子"}
                 import asyncio
-                res = await asyncio.wait_for(asyncio.to_thread(hook, "on_plugin_event", ev),
-                                             timeout=3.0)
+                res = await asyncio.wait_for(
+                    self._runtime_hook_call(tgt_rt, "on_plugin_event", ev), timeout=3.0)
                 if isinstance(res, dict) and res.get("__error__"):
                     return {"ok": False, "error": f"{action}: 目标插件错误: {res['__error__']}"}
                 return {"ok": True, "delivered": target, "response": res}
@@ -2018,7 +2045,7 @@ _SENDER_ACTIONS: Dict[str, tuple] = {
     "group_file_url": ("get_group_file_url", [("group_id", "int", "group_id"), ("file_id", "str", "file_id"), ("busid", "int", "busid")]),
     "group_config": ("get_group_config", [("group_id", "int", "group_id")]),
     "group_config_set": ("set_group_config", [("group_id", "int", "group_id")]),  # 其余键透传
-    "group_res": ("get_group_res", [("group_id", "int", "group_id"), ("res_type", "str", "group_res")]),
+    "group_res": ("get_group_res", [("group_id", "int", "group_id"), ("res_type", "str", "res_type")]),
 }
 
 

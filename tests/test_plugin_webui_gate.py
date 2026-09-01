@@ -36,6 +36,16 @@ class _FakeRuntime:
             raise self._exc
         return self._result
 
+    async def request(self, method, params=None, timeout=None):
+        """模拟 runtime 同步通道（测试桩：直接走 _call_hook 语义）。"""
+        if self._exc:
+            return {"error": f"RuntimeError: {self._exc}"}
+        name = (params or {}).get("name", "")
+        args = (params or {}).get("args", [])
+        if callable(name):
+            return {"result": self._call_hook(name, *args)}
+        return {"result": self._call_hook(*args)}
+
 
 def _manager(row=None, runtime=None):
     if row is None:

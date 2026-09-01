@@ -164,6 +164,16 @@ class FileParser:
                 if openpyxl is None:
                     return "", False
                 try:
+                    # zip 炸弹预检：综合解压尺寸上限（xlsx 是 zip，解压可膨胀数百倍）
+                    import zipfile as _zip
+                    try:
+                        with _zip.ZipFile(BytesIO(content_bytes)) as zf:
+                            total_uncompressed = sum(i.file_size for i in zf.infolist())
+                            if total_uncompressed > 512 * 1024 * 1024:
+                                logger.warning("xlsx decompression bomb: %s", total_uncompressed)
+                                return "", False
+                    except _zip.BadZipFile:
+                        return "", False
                     wb = openpyxl.load_workbook(BytesIO(content_bytes), data_only=True)
                     rows = []
                     cell_count = 0

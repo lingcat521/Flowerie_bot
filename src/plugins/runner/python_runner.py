@@ -34,6 +34,7 @@ import argparse
 import importlib.util
 import inspect
 import json
+import re
 import os
 import sys
 import traceback
@@ -794,6 +795,17 @@ class PluginRunner:
                 event = params.get("event", "")
                 payload = params.get("payload", {})
                 self._emit({"id": req_id, "result": {"actions": self._dispatch_event(event, payload)}})
+            elif method == "hook":
+                hook_name = str(params.get("name") or "")
+                args = params.get("args") or []
+                if not re.fullmatch(r"[a-z_][a-z0-9_]{0,63}", hook_name):
+                    self._error(req_id, "hook 名非法")
+                    return
+                res = self._call_hook(hook_name, *args)
+                if isinstance(res, dict) and "__error__" in res:
+                    self._emit({"id": req_id, "result": {"ok": False, "error": res["__error__"]}})
+                else:
+                    self._emit({"id": req_id, "result": {"ok": True, "result": res}})
             elif method == "health":
                 hook = self._call_hook("health_check", {"plugin_id": self.plugin_id}, self.api)
                 if isinstance(hook, dict) and "__error__" in hook:

@@ -27,14 +27,20 @@ def test_private_ipv6_rejected_with_whitelist():
         assert not ok, f"{host} should be rejected with whitelist: {reason}"
 
 
-def test_no_whitelist_allows_private_but_blocks_bad_schemes():
-    # 无白名单：http/https 放行（含内网——本地部署信任边界，文档已说明）
-    assert check_image_url("http://192.168.1.1/x.jpg", None)[0]
-    # 但 scheme 白名单仍然生效
+def test_no_whitelist_rejects_private_and_bad_schemes():
+    # 无白名单：http/https 公有放行；私网/元数据/坏 scheme 一律拒绝（SSRF 默认防线）
+    assert check_image_url("https://cdn.example.com/x.jpg", None)[0]
+    for bad in ("http://192.168.1.1/x.jpg", "http://10.0.0.5/x.jpg",
+                "http://172.16.0.1/x.jpg", "http://169.254.169.254/meta"):
+        ok, reason = check_image_url(bad, None)
+        assert not ok, f"{bad} should be rejected: {reason}"
     for bad in ("file:///etc/passwd", "ftp://192.168.1.1/x", "gopher://x", "javascript:alert(1)"):
         ok, reason = check_image_url(bad, None)
         assert not ok, f"{bad} should be rejected: {reason}"
         assert reason.startswith("scheme_rejected")
+    # loopback 放行（NapCat 本地图信任边界，含 IPv6 ::1）
+    assert check_image_url("http://127.0.0.1:3000/1.jpg", None)[0]
+    assert check_image_url("http://[::1]/1.jpg", None)[0]
 
 
 def test_whitelist_host_case_insensitive_and_port():
