@@ -656,6 +656,11 @@ class FlowerieBot:
         return self._api.group_honor({"group_id": group_id,
                                       "honor_type": honor_type}) if self._api else self._no_api()
 
+    def sdk(self, base_dir: str = "") -> dict:
+        """缺口 SDK 分面（ai/memory/mcp/db/cache/task/i18n/config/...）。"""
+        from flowerie_sdk.gap_sdk import build_sdk
+        return build_sdk(self, base_dir)
+
     def _no_api(self):
         return {"ok": False, "error": "未 attach（api 不可用）"}
 

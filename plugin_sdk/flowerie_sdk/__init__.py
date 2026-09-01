@@ -21,3 +21,11 @@ from flowerie_sdk.message import BotMessage
 __all__ = ["FlowerieBot", "BotEvent", "BotMessage",
            "command", "keyword", "regex", "prefix", "exact", "rule",
            "require_permission", "BotAPIError"]
+
+# v2.1 缺口 SDK（分面/上下文/任务/组合器/明确 NS）
+from flowerie_sdk.gap_sdk import (
+    MessageSegment, MessageFilter, FriendContext, GroupMemberContext, ReactionContext,
+    SessionContext, Conversation, FriendRequest, GroupRequest, FileContext, MediaContext,
+    TaskManager, TaskHandle, I18n, PluginFeatureError, build_sdk,
+)
+from flowerie_sdk.matcher import rule_or, rule_all, rule_not

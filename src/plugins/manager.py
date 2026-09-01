@@ -605,8 +605,30 @@ class PluginManager:
                 break
         return actions
 
-    @staticmethod
-    def _rule_matches(match: dict, payload: Dict[str, Any]) -> bool:
+    @classmethod
+    def _rule_matches(cls, match: dict, payload: Dict[str, Any]) -> bool:
+        # 组合键（SDK rule_or/rule_all/rule_not 生成的嵌套条件）
+        if "any_of" in match:
+            sub = match.get("any_of") or []
+            if not sub:
+                return False
+            if not any(cls._rule_matches(m, payload) for m in sub if isinstance(m, dict)):
+                return False
+            inner = {k: v for k, v in match.items() if k != "any_of"}
+            return cls._rule_matches(inner, payload) if inner else True
+        if "all_of" in match:
+            sub = match.get("all_of") or []
+            if not sub:
+                return False
+            if not all(cls._rule_matches(m, payload) for m in sub if isinstance(m, dict)):
+                return False
+            inner = [k for k in match if k != "all_of"]
+            return all(cls._rule_matches({k: match[k]}, payload) for k in inner)
+        if "not" in match:
+            if cls._rule_matches(match["not"], payload):
+                return False
+            inner = [k for k in match if k != "not"]
+            return all(cls._rule_matches({k: match[k]}, payload) for k in inner)
         for key, value in match.items():
             if key == "text_contains":
                 if str(value) not in str(payload.get("text", "")):

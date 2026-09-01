@@ -28,6 +28,21 @@ def exact(text: str, /, **kw) -> Callable:
     return _mk("exact", text, **kw)
 
 
+def rule_or(*rules):
+    """组合器：任一规则匹配即命中（any_of；可混入条件 kwargs）。"""
+    return {"any_of": [r if isinstance(r, dict) else rule(**r) for r in rules]}
+
+
+def rule_all(*rules):
+    """组合器：全部规则匹配才命中（all_of）。"""
+    return {"all_of": [r if isinstance(r, dict) else rule(**r) for r in rules]}
+
+
+def rule_not(rules):
+    """组合器：取反（not；传入规则/条件 dict）。"""
+    return {"not": rules if isinstance(rules, dict) else rule(**rules)}
+
+
 def rule(**conditions) -> Dict[str, Any]:
     """Rule 条件：is_group/is_private/is_bot_admin/is_bot_owner/
     is_group_admin/is_group_owner/user_id/group_id/自定义谓词（仅服务端支持 key 形式）。"""

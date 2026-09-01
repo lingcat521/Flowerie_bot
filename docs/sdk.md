@@ -560,3 +560,60 @@ bot.friends()                    # 好友列表（list[dict]）
 - 新增领域能力（如 Session）→ 加在中层，上层只做 wrapper
 - 依赖倒置验证：`grep -rn "post_type\|sub_type" src/sdk/*.py`（除 onebot/ 与注释）应为空
 
+
+## v2.1 缺口 SDK 矩阵（api/sdk 缺口池 → 入口 → 状态）
+
+> 状态：**可用**（真实现）｜**等价**（转发已有能力）｜**受限**（详见列出的明确错误）｜**NS**（v1 明确不支持，抛 `PluginFeatureError`）。
+> 入口：`bot.方法(...)` / `bot.sdk()[分面].方法(...)` / `from flowerie_sdk import 类`。
+
+### 消息类
+| 缺口 | 入口 | 状态 |
+| --- | --- | --- |
+| Message Edit SDK | `bot.edit_message` | 受限（网关端点缺失→明确错误） |
+| Message Search SDK | `bot.search_message` | 可用（历史拉取+本地过滤） |
+| Message Segment SDK | `MessageSegment.text/image/at/face/reply` | 可用 |
+| Message Filter SDK | `MessageFilter(where).apply(list)` | 可用 |
+
+### 用户/好友/群/社交
+| 缺口 | 入口 | 状态 |
+| --- | --- | --- |
+| FriendContext SDK | `FriendContext(bot, user_id=...)` | 可用（detail/remark/delete/online） |
+| FriendRequest SDK | `FriendRequest(bot, flag=...).approve()/.deny()` | 可用 |
+| GroupRequest SDK | `GroupRequest(bot, flag=...).approve()/.deny()` | 可用 |
+| GroupMemberContext SDK | `GroupMemberContext(bot, group_id=...).search()/.title()` | 可用 |
+| ReactionContext SDK | `ReactionContext(bot, message_id=...).react()/.list()` | 可用（list 受限） |
+
+### 会话/编排
+| 缺口 | 入口 | 状态 |
+| --- | --- | --- |
+| SessionContext SDK | `SessionContext(bot, group_id=...).remember()/.recall()` | 可用 |
+| Session Manager SDK | `bot.sdk()["conversation"].session(key)` | 可用 |
+| Conversation SDK | `Conversation(bot).add_round/history` | 可用 |
+| Matcher OR SDK | `rule_or(*rules)` | 可用（主进程 any_of） |
+| Matcher NOT SDK | `rule_not(rule)` | 可用（主进程 not） |
+| Matcher Middleware SDK | 装饰器/组合 `rule_all` | 可用（组合实现） |
+| Matcher Dynamic Register SDK | `bot.matcher_register`（已有） | 等价 |
+
+### AI / Memory / MCP / DB / Cache
+| 缺口 | 入口 | 状态 |
+| --- | --- | --- |
+| AI SDK | `bot.sdk()["ai"].chat/vision/embedding/rerank/models/usage/budget` | 可用 |
+| AI Stream SDK | `bot.ai_stream` | 可用（chunks 收集返回） |
+| Memory SDK | `bot.sdk()["memory"].search/semantic/update/tag` | 可用（pin/expire 受限） |
+| Memory Context SDK | `SessionContext.recall/remember` | 可用 |
+| MCP SDK | `bot.sdk()["mcp"].servers/tools/call/status` | 可用（resource/prompt NS） |
+| Database SDK | `bot.sdk()["db"].query/transaction/migration/index` | 可用（插件数据域 JSON） |
+| Cache SDK | `bot.sdk()["cache"].get/set/delete` | 等价（KV 域） |
+| Task Manager SDK | `TaskManager` / `bot.sdk()["task"].submit/status/cancel/pause/resume` | 可用（专用后台 loop，真） |
+| Runtime SDK | `bot.sdk()["runtime"].usage/quota/status` | 可用 |
+| Metrics/Trace/Health/Debug SDK | `bot.sdk()["metrics"]` / `bot.trace` / `bot.health` | 可用（debug NS） |
+| Plugin Config SDK | `bot.sdk()["config"].get/set` | 可用 |
+| I18n SDK | `I18n` / `bot.sdk()["i18n"].t(key)` | 可用（i18n/<lang>.json） |
+| Plugin Service/Discovery/Dependency SDK | `bot.sdk()["services"]` / `bot.plugin_*` | 可用 |
+| FileContext SDK | `FileContext(bot).upload/download/info/delete` | 可用（web_ui.files 空间） |
+| Media SDK | `MediaContext(bot).info(name)` | 可用（格式识别；时长受限） |
+| Webhook SDK | `bot.webhook(url, ...)` | 等价（发送=http_request；接收注册 NS） |
+| WebSocket Server SDK | `WebSocketServer` | **NS**（零 JS+安全红线，构造即抛 PluginFeatureError） |
+| SSE SDK | `SseServer` | **NS**（同上；轮询/重渲染替代） |
+| Router SDK | `bot.router()` | 可用（插件 WebUI 页面路由） |
+| Mock SDK | `bot.sdk()["mock"].set/get/clear` | 可用（插件自测 fixture） |
