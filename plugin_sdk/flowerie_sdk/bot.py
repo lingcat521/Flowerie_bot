@@ -274,6 +274,70 @@ class FlowerieBot:
         """好友在线状态。"""
         return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
 
+    # ---------- v2.1 缺口池：Memory / MCP ----------
+    def memory_get(self, **kw):
+        """记忆读取（等价 get_memory）。"""
+        return self._api.memory_get(kw) if self._api else self._no_api()
+
+    def memory_search(self, query, group_id=0, top_k=3):
+        """语义记忆检索（花语记忆相似度召回）。"""
+        return self._api.memory_search({"query": query, "group_id": group_id,
+                                        "top_k": top_k}) if self._api else self._no_api()
+
+    def memory_semantic(self, query, group_id=0, top_k=3):
+        """语义检索（等价 memory_search）。"""
+        return self._api.memory_semantic({"query": query, "group_id": group_id,
+                                          "top_k": top_k}) if self._api else self._no_api()
+
+    def memory_update(self, **kw):
+        """记忆更新（等价 write_memory）。"""
+        return self._api.memory_update(kw) if self._api else self._no_api()
+
+    def memory_delete(self, key):
+        """记忆删除（KV 域）。"""
+        return self._api.memory_delete({"key": key}) if self._api else self._no_api()
+
+    def memory_tag(self, name, value="1"):
+        """记忆标签（tag: 前缀 KV）。"""
+        return self._api.memory_tag({"name": name,
+                                     "value": value}) if self._api else self._no_api()
+
+    def memory_pin(self, key):
+        """记忆置顶（网关需支持）。"""
+        return self._api.memory_pin({"key": key}) if self._api else self._no_api()
+
+    def memory_expire(self, key=None, days=30):
+        """记忆过期查询（网关需支持）。"""
+        return self._api.memory_expire({"key": key,
+                                        "days": days}) if self._api else self._no_api()
+
+    def mcp_server(self):
+        """MCP 服务器列表。"""
+        return self._api.mcp_server({}) if self._api else self._no_api()
+
+    def mcp_tools(self):
+        """MCP 工具清单。"""
+        return self._api.mcp_tools({}) if self._api else self._no_api()
+
+    def mcp_call(self, server, tool, arguments=None):
+        """MCP 工具调用（白名单内）。"""
+        return self._api.mcp_call({"server": server, "tool": tool,
+                                   "arguments": arguments or {}}) if self._api else self._no_api()
+
+    def mcp_resource(self, server, uri):
+        """MCP 资源读取（v1 未实现）。"""
+        return self._api.mcp_resource({"server": server,
+                                       "uri": uri}) if self._api else self._no_api()
+
+    def mcp_prompt(self, server, name, arguments=None):
+        """MCP Prompt 模板（v1 未实现）。"""
+        return self._api.mcp_prompt({"server": server, "name": name,
+                                     "arguments": arguments or {}}) if self._api else self._no_api()
+
+    def mcp_status(self, server):
+        """MCP 服务器在线状态。"""
+        return self._api.mcp_status({"server": server}) if self._api else self._no_api()
+
     # ---------- v2.1 缺口池：AI ----------
     def ai_stream(self, messages=None, prompt=None):
         """AI 流式对话（返回 text + chunks）。"""

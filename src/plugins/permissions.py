@@ -90,6 +90,20 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "login_info": "read_user_info",    # 登录信息
     "devices": "read_user_info",       # 在线设备
     "status": "read_user_info",        # 运行状态
+    "memory_get": "read_memory",
+    "memory_search": "read_memory",
+    "memory_semantic": "read_memory",
+    "memory_update": "write_memory",
+    "memory_delete": "write_memory",
+    "memory_tag": "storage",
+    "memory_pin": "write_memory",
+    "memory_expire": "read_memory",
+    "mcp_server": "http_request",
+    "mcp_tools": "http_request",
+    "mcp_call": "http_request",
+    "mcp_resource": "http_request",
+    "mcp_prompt": "http_request",
+    "mcp_status": "http_request",
     "ai_stream": "ai_chat",
     "ai_vision": "ai_chat",
     "ai_embedding": "ai_chat",

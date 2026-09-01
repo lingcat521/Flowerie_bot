@@ -1,5 +1,6 @@
 """v2.1 缺口池 Batch1（消息+好友）：语义执行（本地真实现/路由/受控 NS）+ SDK 门面。"""
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -217,3 +218,35 @@ def test_ai_embedding_missing_config():
     assert not r["ok"] and "未配置" in r["error"]
     r2 = _run(mgr, "p", "ai_rerank", {"query": "q", "documents": ["a"]})
     assert not r2["ok"] and "未配置" in r2["error"]
+
+
+def test_memory_alias_and_ns():
+    mgr, _s = _mgr()
+    r = _run(mgr, "p", "memory_pin", {"key": "k"})
+    assert not r["ok"] and "not supported" in r["error"]
+    r2 = _run(mgr, "p", "memory_expire", {})
+    assert not r2["ok"] and "not supported" in r2["error"]
+    # memory_get 别名走 get_memory（fake sender 无该端点→明确错误，但不报"未知语义"）
+    r3 = _run(mgr, "p", "memory_get", {})
+    assert "未知语义" not in r3.get("error", "")
+
+
+def test_mcp_config_lists():
+    class C4(_Cfg):
+        MCP_ENABLED = True
+        MCP_SERVER_URL = ""
+        MCP_SERVERS = json.dumps([
+            {"name": "s1", "url": "https://mcp.example.com/rpc", "tools": "a,b"},
+            {"name": "s2", "url": "http://127.0.0.1:9000/mcp", "tools": "*"}])
+        MCP_TIMEOUT = 10
+    mgr2 = PluginManager(config=C4(), repository=_Repo())
+    sv = _run(mgr2, "p", "mcp_server", {})
+    assert sv["ok"] and len(sv["servers"]) == 2
+    tools = _run(mgr2, "p", "mcp_tools", {})
+    assert tools["ok"] and tools["tools"][0]["allowed_tools"] == ["a", "b"]
+    # 白名单拒绝（不经网络）
+    den = _run(mgr2, "p", "mcp_call", {"server": "s1", "tool": "evil"})
+    assert not den["ok"] and "白名单" in den["error"]
+    # 未找到服务器
+    nf = _run(mgr2, "p", "mcp_status", {"server": "nope"})
+    assert not nf["ok"] and "未找到" in nf["error"]

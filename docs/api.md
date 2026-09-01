@@ -82,6 +82,14 @@
 | `kv_set(payload)` |  | `storage` |
 | `mem_clear(payload)` |  | `read_memory` |
 | `mem_update(payload)` |  | `read_memory` |
+| `memory_delete(payload)` | 记忆删除（插件 KV 域删除） | `write_memory` |
+| `memory_expire(payload)` | 记忆过期查询（v1 无 TTL 域→not supported） | `read_memory` |
+| `memory_get(payload)` | 记忆读取（等价 get_memory） | `read_memory` |
+| `memory_pin(payload)` | 记忆置顶（v1 花语无置顶域→not supported） | `write_memory` |
+| `memory_search(payload)` | 语义记忆检索（花语记忆；相似度召回，返回回忆文本） | `read_memory` |
+| `memory_semantic(payload)` | 语义检索（等价 memory_search） | `read_memory` |
+| `memory_tag(payload)` | 记忆标签（插件 KV 域 tag: 前缀） | `storage` |
+| `memory_update(payload)` | 记忆更新（等价 write_memory） | `write_memory` |
 
 **插件运行时**
 | 方法 | 作用 | 权限 |
@@ -109,6 +117,12 @@
 | `http_head(payload)` |  | `http_request` |
 | `http_put(payload)` |  | `http_request` |
 | `http_request(payload)` |  | `http_request` |
+| `mcp_call(payload)` | MCP 工具调用（管理员配置服务器；工具白名单） | `http_request` |
+| `mcp_prompt(payload)` | MCP Prompt 模板（v1 未实现→not supported） | `http_request` |
+| `mcp_resource(payload)` | MCP 资源读取（v1 未实现→not supported） | `http_request` |
+| `mcp_server(payload)` | MCP 服务器列表（已配置；含测试状态） | `http_request` |
+| `mcp_status(payload)` | MCP 服务器状态（在线探测） | `http_request` |
+| `mcp_tools(payload)` | MCP 工具列表（配置声明与在线工具） | `http_request` |
 
 **其他**
 | 方法 | 作用 | 权限 |

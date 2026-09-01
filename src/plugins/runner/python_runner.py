@@ -108,6 +108,64 @@ class PluginApi:
         """引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义）"""
         return self._send_action("quote_chain", payload)
 
+    # ---------- v2.1 缺口池：Memory ----------
+    def memory_get(self, payload):
+        """记忆读取（等价 get_memory）"""
+        return self._send_action("memory_get", payload)
+
+    def memory_search(self, payload):
+        """语义记忆检索（花语记忆；相似度召回，返回回忆文本）"""
+        return self._send_action("memory_search", payload)
+
+    def memory_semantic(self, payload):
+        """语义检索（等价 memory_search）"""
+        return self._send_action("memory_semantic", payload)
+
+    def memory_update(self, payload):
+        """记忆更新（等价 write_memory）"""
+        return self._send_action("memory_update", payload)
+
+    def memory_delete(self, payload):
+        """记忆删除（插件 KV 域删除）"""
+        return self._send_action("memory_delete", payload)
+
+    def memory_tag(self, payload):
+        """记忆标签（插件 KV 域 tag: 前缀）"""
+        return self._send_action("memory_tag", payload)
+
+    def memory_pin(self, payload):
+        """记忆置顶（v1 花语无置顶域→not supported）"""
+        return self._send_action("memory_pin", payload)
+
+    def memory_expire(self, payload):
+        """记忆过期查询（v1 无 TTL 域→not supported）"""
+        return self._send_action("memory_expire", payload)
+
+    # ---------- v2.1 缺口池：MCP ----------
+    def mcp_server(self, payload):
+        """MCP 服务器列表（已配置；含测试状态）"""
+        return self._send_action("mcp_server", payload)
+
+    def mcp_tools(self, payload):
+        """MCP 工具列表（配置声明与在线工具）"""
+        return self._send_action("mcp_tools", payload)
+
+    def mcp_call(self, payload):
+        """MCP 工具调用（管理员配置服务器；工具白名单）"""
+        return self._send_action("mcp_call", payload)
+
+    def mcp_resource(self, payload):
+        """MCP 资源读取（v1 未实现→not supported）"""
+        return self._send_action("mcp_resource", payload)
+
+    def mcp_prompt(self, payload):
+        """MCP Prompt 模板（v1 未实现→not supported）"""
+        return self._send_action("mcp_prompt", payload)
+
+    def mcp_status(self, payload):
+        """MCP 服务器状态（在线探测）"""
+        return self._send_action("mcp_status", payload)
+
     # ---------- v2.1 缺口池：AI ----------
     def ai_stream(self, payload):
         """AI 流式对话（收集 chunks 返回；主进程流式请求）"""

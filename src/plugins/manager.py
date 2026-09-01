@@ -23,6 +23,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+import httpx
+
 from src.core.sanitizer import validate_memory_content
 from src.plugins.http_action import plugin_http_request, redact_url
 from src.plugins.installer import PluginInstaller, PluginInstallError
@@ -711,6 +713,10 @@ class PluginManager:
                                         "friend_detail", "friend_remark", "friend_delete",
                                         "friend_group", "friend_category", "friend_online"})
 
+    _MEM_EXT = frozenset({"memory_get", "memory_search", "memory_semantic", "memory_update",
+                          "memory_delete", "memory_tag", "memory_pin", "memory_expire"})
+    _MCP_EXT = frozenset({"mcp_server", "mcp_tools", "mcp_call", "mcp_resource",
+                          "mcp_prompt", "mcp_status"})
     _AI_EXT = frozenset({"ai_stream", "ai_vision", "ai_embedding", "ai_rerank", "ai_token",
                          "ai_models", "ai_model_info", "ai_usage", "ai_budget"})
     _SOCIAL_EXT = frozenset({"reaction", "poke", "like", "emoji", "emoji_list",
@@ -724,6 +730,101 @@ class PluginManager:
     _EXT_NS = {"edit_message", "favorite_message", "mark_message", "read_status",
                "friend_remark", "friend_delete", "friend_group", "friend_category",
                "friend_online"}
+
+    async def _ext_memory(self, plugin_id: str, action: str, payload: dict) -> dict:
+        """记忆语义：别名（get/write_memory）+ 花语语义检索 + KV 标签/删除 + 明确 NS。"""
+        if action == "memory_get":
+            return await self._run_action(plugin_id, "get_memory", payload)
+        if action == "memory_update":
+            return await self._run_action(plugin_id, "write_memory", payload)
+        if action == "memory_delete":
+            return await self._run_action(plugin_id, "kv_delete", payload)
+        if action == "memory_tag":
+            p2 = dict(payload)
+            p2["key"] = f"tag:{p2.get('key') or p2.get('name') or ''}"
+            p2["value"] = p2.get("value") or "1"
+            return await self._sender_forward(plugin_id, "kv_set", p2)
+        if action in ("memory_search", "memory_semantic"):
+            mm = getattr(self, "memory_manager", None)
+            if mm is None:
+                return {"ok": False, "error": "memory_search: 花语记忆未启用"}
+            try:
+                ok, why = mm.ready()
+                if not ok:
+                    return {"ok": False, "error": f"memory_search: {why}"}
+                text = await mm.search(int(payload.get("group_id") or 0),
+                                       str(payload.get("query") or ""),
+                                       top_k=max(1, min(10, int(payload.get("top_k", 3) or 3))))
+                return {"ok": True, "memory": text or ""}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"memory_search: {type(e).__name__}: {e}"}
+        return {"ok": False, "error": f"{action}: 网关 v1 无对应能力（not supported）"}
+
+    async def _ext_mcp(self, plugin_id: str, action: str, payload: dict) -> dict:
+        """MCP 语义：配置列表/工具清单/在线状态 + 工具调用（管理员配置+白名单）。"""
+        cfg = self.config
+        try:
+            servers = json.loads(str(getattr(cfg, "MCP_SERVERS", "") or "[]") or "[]")
+        except (ValueError, TypeError):
+            servers = []
+        single_url = str(getattr(cfg, "MCP_SERVER_URL", "") or "")
+        if single_url and not any(s.get("url") == single_url for s in servers):
+            servers.insert(0, {"name": str(getattr(cfg, "MCP_SERVER_NAME", "") or "default"),
+                               "url": single_url,
+                               "tools": (getattr(cfg, "MCP_TOOLS", "") or "*")})
+        if action == "mcp_server":
+            out = [{"name": s.get("name", ""), "url": s.get("url", "")} for s in servers]
+            return {"ok": True, "servers": out, "enabled": bool(getattr(cfg, "MCP_ENABLED", False))}
+        if action == "mcp_tools":
+            out = []
+            for s in servers:
+                tools_wildcard = str(s.get("tools") or "*")
+                out.append({"server": s.get("name", ""),
+                            "allowed_tools": [t.strip() for t in tools_wildcard.split(",")]})
+            return {"ok": True, "tools": out}
+        if action in ("mcp_resource", "mcp_prompt"):
+            return {"ok": False, "error": f"{action}: v1 未实现（not supported）"}
+        if action in ("mcp_status", "mcp_call"):
+            name = str(payload.get("server") or payload.get("name") or "")
+            server = next((s for s in servers if s.get("name") == name), None)
+            if server is None:
+                return {"ok": False, "error": f"未找到 MCP 服务器: {name}"}
+            url = str(server.get("url") or "")
+            timeout = max(3, min(30, int(getattr(cfg, "MCP_TIMEOUT", 15) or 15)))
+            if action == "mcp_status":
+                try:
+                    async with httpx.AsyncClient(timeout=timeout) as c:
+                        resp = await c.post(url, json={"jsonrpc": "2.0", "id": 1,
+                                                       "method": "tools/list", "params": {}},
+                                            headers={"Content-Type": "application/json"})
+                        ok = resp.status_code == 200
+                        return {"ok": ok, "status": "online" if ok else f"HTTP {resp.status_code}"}
+                except httpx.HTTPError as e:
+                    return {"ok": False, "status": "offline",
+                            "error": f"{type(e).__name__}: {e}"}
+            # mcp_call：工具白名单（* 或含 name）
+            tool = str(payload.get("tool") or "")
+            if not tool:
+                return {"ok": False, "error": "mcp_call: 需要 tool"}
+            allow_raw = str(server.get("tools") or "*")
+            allowed = [t.strip() for t in allow_raw.split(",")]
+            if allow_raw != "*" and tool not in allowed:
+                return {"ok": False, "error": f"mcp_call: 工具 {tool} 不在白名单"}
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as c:
+                    resp = await c.post(url, json={"jsonrpc": "2.0", "id": 1,
+                                                   "method": "tools/call",
+                                                   "params": {"name": tool,
+                                                              "arguments": payload.get("arguments") or {}}},
+                                        headers={"Content-Type": "application/json"})
+                    data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+                    if resp.status_code != 200:
+                        return {"ok": False, "error": f"HTTP {resp.status_code}: {(resp.text or '')[:160]}"}
+                    result = data.get("result") or {}
+                    return {"ok": True, "content": str(result.get("content") or result)[:2000]}
+            except httpx.HTTPError as e:
+                return {"ok": False, "error": f"mcp_call: {type(e).__name__}: {e}"}
+        return {"ok": False, "error": f"{action}: 未知语义"}
 
     async def _ext_ai(self, plugin_id: str, action: str, payload: dict) -> dict:
         """AI 语义（真实现：复用生产 AiClient/Vision/花语客户端/指标/预算配置）。"""
@@ -1042,6 +1143,10 @@ class PluginManager:
             return await self._ext_social(plugin_id, action_type, payload)
         if action_type in self._AI_EXT:
             return await self._ext_ai(plugin_id, action_type, payload)
+        if action_type in self._MEM_EXT:
+            return await self._ext_memory(plugin_id, action_type, payload)
+        if action_type in self._MCP_EXT:
+            return await self._ext_mcp(plugin_id, action_type, payload)
         if action_type == "test":
             return {"ok": True, "plugin": plugin_id}
         if action_type == "log":
