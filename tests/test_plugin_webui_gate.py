@@ -1,12 +1,9 @@
 """Plugin WebUI 访问 gate（manager 级）：未启用/未批准/未声明/未知页/异常降级。"""
 import asyncio
-import sys
-
-import pytest
-
-sys.path.insert(0, "tests/plugins/webui_example")
+import json
 
 from src.plugins.manager import PluginManager
+from src.plugins.manifest import PluginManifest
 
 
 class _Cfg:
@@ -14,22 +11,13 @@ class _Cfg:
 
 
 class _Repo:
-    def __init__(self, row=None):
-        self._row = row
-
     def list_plugins(self):
         return []
 
 
-def _manifest_row(approved=("web_ui",), enabled=True, with_webui=True, manifest=None):
-    import json
-    from src.plugins.manifest import PluginManifest
-    if manifest is None:
-        manifest = ("web_ui" if with_webui else None)
+def _manifest_row(approved=("web_ui",), enabled=True, with_webui=True):
     base = {"id": "abc", "name": "ABC", "version": "1.0.0", "runtime": "python",
-            "entry": "p.py", "api_version": "1",
-            "permissions": list(approved) + ["web_ui"] if with_webui else ["web_ui"],
-            }
+            "entry": "p.py", "api_version": "1", "permissions": ["web_ui"]}
     if with_webui:
         base["web_ui"] = {"pages": [{"id": "home", "title": "总览"}]}
     m = PluginManifest.from_dict(base)
@@ -43,7 +31,7 @@ class _FakeRuntime:
         self._result = result
         self._exc = exc
 
-    def _call_hook(self, *a, **k):
+    def _call_hook(self, *args, **kwargs):
         if self._exc:
             raise self._exc
         return self._result
@@ -52,19 +40,11 @@ class _FakeRuntime:
 def _manager(row=None, runtime=None):
     if row is None:
         row = _manifest_row()
-    repo = _Repo()
-    mgr = PluginManager(config=_Cfg(), repository=repo)
+    mgr = PluginManager(config=_Cfg(), repository=_Repo())
     mgr._runtimes["abc"] = runtime or _FakeRuntime({"type": "text", "text": "ok"})
-    # monkeypatch get_plugin/_manifest_of
     mgr.get_plugin = lambda pid: row if pid == "abc" else None
-    mgr._manifest_of = lambda r: __import__("src.plugins.manifest", fromlist=["PluginManifest"]).PluginManifest.from_json(r["manifest_json"]) if False else _parse(r)
+    mgr._manifest_of = lambda r: PluginManifest.from_dict(json.loads(r["manifest_json"]))
     return mgr
-
-
-def _parse(row):
-    from src.plugins.manifest import PluginManifest
-    import json
-    return PluginManifest.from_dict(json.loads(row["manifest_json"]))
 
 
 def test_enabled_approved_returns_dsl():

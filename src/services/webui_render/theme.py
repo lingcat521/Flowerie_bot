@@ -247,7 +247,7 @@ font-size:13.5px;border:1px solid transparent;transition:all .18s ease}
 .group{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:14px;
 box-shadow:var(--shadow);padding:16px 18px 18px;margin-bottom:18px}
 /* 卡片效果：body.pglass=液态玻璃（磨砂），否则=纯透明（淡入淡出，直接透出背景） */
-.pglass .group,.pglass 
+.pglass .group,.pglass
 .breadcrumb{display:flex;gap:6px;align-items:center;margin:0 0 10px;color:var(--text-muted);font-size:12px}
 .crumb-here{color:var(--text)}
 .plugin-page{margin-top:12px}

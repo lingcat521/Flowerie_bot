@@ -27,6 +27,6 @@ def render_plugin_webui_page(plugin_name: str, page_title: str, page_desc: str,
         f'<h1 class="page-title">{_esc(page_title)}</h1>'
         + (f'<p class="hint">{_esc(page_desc)}</p>' if page_desc else "")
         + tabs_html
-        f'<div class="plugin-page">{content}</div>'
+        + f'<div class="plugin-page">{content}</div>'
         '</div>'
     )

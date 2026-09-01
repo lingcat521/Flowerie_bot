@@ -107,7 +107,7 @@ def _code(node: dict, depth: int) -> str:
 def _badge(node: dict, depth: int) -> str:
     variant = node.get("variant", "info")
     v = variant if variant in ("info", "ok", "warn", "err") else "info"
-    return f'<span class="badge {'info ok warn err'.split()[['info', 'ok', 'warn', 'err'].index(v)]}">{esc(node.get("text", ""))}</span>'
+    return f'<span class="badge {v}">{esc(node.get("text", ""))}</span>'
 
 
 def _alert(node: dict, depth: int) -> str:
@@ -190,7 +190,8 @@ def _stats(node: dict, depth: int) -> str:
 
 def _log_lines(node: dict, depth: int) -> str:
     lines = node.get("lines") or []
-    out = "".join(f'<div class="log-line">{esc(l)}</div>' for l in lines if isinstance(l, (str, int, float)))
+    out = "".join(f'<div class="log-line">{esc(line)}</div>'
+                  for line in lines if isinstance(line, (str, int, float)))
     return f'<div class="log-box">{out}</div>'
 
 
@@ -237,7 +238,7 @@ def _form_field(node: dict, depth: int = 0) -> str:
                 f'<input type="checkbox" name="{esc(name)}" value="true"{checked}>{hints}</div></div>')
     if ftype == "radio":
         opts = ""
-        for idx, o in enumerate(node.get("options") or []):
+        for _i, o in enumerate(node.get("options") or []):
             ov, otxt = (o.get("value"), o.get("label", o.get("value", ""))) if isinstance(o, dict) else (o, o)
             sel = " checked" if str(ov) == str(node.get("value", "")) else ""
             opts += (f'<label class="opt"><input type="radio" name="{esc(name)}" '
