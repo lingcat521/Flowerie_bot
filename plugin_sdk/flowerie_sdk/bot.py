@@ -274,6 +274,46 @@ class FlowerieBot:
         """好友在线状态。"""
         return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
 
+    # ---------- v2.1 缺口池：AI ----------
+    def ai_stream(self, messages=None, prompt=None):
+        """AI 流式对话（返回 text + chunks）。"""
+        return self._api.ai_stream({"messages": messages,
+                                    "prompt": prompt}) if self._api else self._no_api()
+
+    def ai_vision(self, image_url, question=""):
+        """AI 视觉识图（返回描述）。"""
+        return self._api.ai_vision({"image_url": image_url,
+                                    "question": question}) if self._api else self._no_api()
+
+    def ai_embedding(self, text):
+        """AI 向量化（复用花语向量模型；返回 dim+vector 预览）。"""
+        return self._api.ai_embedding({"text": text}) if self._api else self._no_api()
+
+    def ai_rerank(self, query, documents):
+        """AI 重排（返回 index+score 列表）。"""
+        return self._api.ai_rerank({"query": query,
+                                    "documents": list(documents)}) if self._api else self._no_api()
+
+    def ai_token(self, text):
+        """Token 估算。"""
+        return self._api.ai_token({"text": text}) if self._api else self._no_api()
+
+    def ai_models(self):
+        """已配置模型列表。"""
+        return self._api.ai_models({}) if self._api else self._no_api()
+
+    def ai_model_info(self, model_key):
+        """模型信息（key→名称/类型/URL）。"""
+        return self._api.ai_model_info({"model": model_key}) if self._api else self._no_api()
+
+    def ai_usage(self):
+        """用量统计（指标快照 AI 相关键）。"""
+        return self._api.ai_usage({}) if self._api else self._no_api()
+
+    def ai_budget(self):
+        """预算/限额配置。"""
+        return self._api.ai_budget({}) if self._api else self._no_api()
+
     # ---------- v2.1 缺口池：社交互动 / 文件 / 媒体 ----------
     def reaction(self, message_id, react_type):
         """表情回应（等价 react）。"""

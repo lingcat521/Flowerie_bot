@@ -711,6 +711,8 @@ class PluginManager:
                                         "friend_detail", "friend_remark", "friend_delete",
                                         "friend_group", "friend_category", "friend_online"})
 
+    _AI_EXT = frozenset({"ai_stream", "ai_vision", "ai_embedding", "ai_rerank", "ai_token",
+                         "ai_models", "ai_model_info", "ai_usage", "ai_budget"})
     _SOCIAL_EXT = frozenset({"reaction", "poke", "like", "emoji", "emoji_list",
                              "file_upload", "file_download", "file_info", "file_delete",
                              "file_convert", "image_compress", "image_resize",
@@ -722,6 +724,120 @@ class PluginManager:
     _EXT_NS = {"edit_message", "favorite_message", "mark_message", "read_status",
                "friend_remark", "friend_delete", "friend_group", "friend_category",
                "friend_online"}
+
+    async def _ext_ai(self, plugin_id: str, action: str, payload: dict) -> dict:
+        """AI 语义（真实现：复用生产 AiClient/Vision/花语客户端/指标/预算配置）。"""
+        ai = getattr(self, "ai_client", None)
+        cfg = self.config
+        if action == "ai_models":
+            names = {}
+            for k in ("DEEPSEEK_MODEL", "VISION_MODEL", "BLOSSOM_MEMORY_EMBEDDING_MODEL",
+                      "BLOSSOM_MEMORY_RERANKER_MODEL"):
+                v = str(getattr(cfg, k, "") or "").strip()
+                if v:
+                    names[k] = v
+            return {"ok": True, "models": names}
+        if action == "ai_model_info":
+            name = str(payload.get("model") or "DEEPSEEK_MODEL")
+            mapping = {"DEEPSEEK_MODEL": ("chat", "DEEPSEEK_API_URL"),
+                       "VISION_MODEL": ("vision", "VISION_API_URL"),
+                       "BLOSSOM_MEMORY_EMBEDDING_MODEL": ("embedding", "BLOSSOM_MEMORY_EMBEDDING_API_URL"),
+                       "BLOSSOM_MEMORY_RERANKER_MODEL": ("rerank", "BLOSSOM_MEMORY_RERANKER_API_URL")}
+            if name not in mapping:
+                return {"ok": False, "error": f"未知模型键: {name}"}
+            kind, url_key = mapping[name]
+            return {"ok": True, "model": str(getattr(cfg, name, "") or ""),
+                    "kind": kind, "url": str(getattr(cfg, url_key, "") or "")}
+        if action == "ai_budget":
+            return {"ok": True,
+                    "daily_limit": int(getattr(cfg, "DAILY_AI_CALL_BUDGET", 0) or 0),
+                    "group_daily_limit": int(getattr(cfg, "GROUP_DAILY_AI_CALL_BUDGET", 0) or 0),
+                    "exhausted_notice": bool(getattr(cfg, "BUDGET_EXHAUSTED_NOTICE", False))}
+        if action == "ai_usage":
+            try:
+                from src.utils.metrics import registry
+                snap = registry.snapshot()
+                ai_keys = {k: v for k, v in snap.items()
+                           if any(p in k for p in ("ai_", "memory_embedding", "memory_rerank",
+                                                   "llm_", "mcp_call", "toxic", "vision"))}
+                return {"ok": True, "usage": ai_keys}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"ai_usage: {type(e).__name__}: {e}"}
+        if action == "ai_token":
+            text = str(payload.get("text") or "")
+            # 粗略估算（中文≈1.5 字/token；英文≈4 字符/token）
+            cjk = sum(1 for ch in text if ord(ch) > 0x2E80)
+            other = len(text) - cjk
+            est = max(1, int(cjk * 0.7 + other / 4))
+            return {"ok": True, "text_len": len(text), "tokens_estimate": est}
+        if action == "ai_vision":
+            url = str(payload.get("image_url") or payload.get("url") or "")
+            q = str(payload.get("question") or "")
+            if ai is None or not hasattr(ai, "vision"):
+                return {"ok": False, "error": "ai_vision: AI 客户端不可用"}
+            try:
+                desc = await ai.vision.describe_image(url)
+                if desc is None:
+                    return {"ok": False, "error": "ai_vision: 识别失败（图片不可访问或模型错误）"}
+                return {"ok": True, "description": desc, "question": q or None}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"ai_vision: {type(e).__name__}: {e}"}
+        if action == "ai_embedding":
+            try:
+                from src.services.blossom_memory import OpenAICompatibleEmbedding as EmbeddingClient
+                model = str(getattr(cfg, "BLOSSOM_MEMORY_EMBEDDING_MODEL", "") or "")
+                url = str(getattr(cfg, "BLOSSOM_MEMORY_EMBEDDING_API_URL", "") or "")
+                key = str(getattr(cfg, "BLOSSOM_MEMORY_EMBEDDING_API_KEY", "") or "")
+                if not model or not url:
+                    return {"ok": False, "error": "ai_embedding: 未配置向量模型/地址"}
+                c = EmbeddingClient(model, url, key, timeout=15)
+                try:
+                    vec = await c.embed(str(payload.get("text") or ""))
+                    dim = getattr(c, "dimension", len(vec))
+                    return {"ok": True, "dim": dim, "vector": vec[:32],
+                            "vector_len": len(vec), "truncated_preview": True}
+                finally:
+                    await c.close()
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"ai_embedding: {type(e).__name__}: {e}"}
+        if action == "ai_rerank":
+            try:
+                from src.services.blossom_memory import OpenAICompatibleRerank
+                model = str(getattr(cfg, "BLOSSOM_MEMORY_RERANKER_MODEL", "") or "")
+                url = str(getattr(cfg, "BLOSSOM_MEMORY_RERANKER_API_URL", "") or "")
+                key = str(getattr(cfg, "BLOSSOM_MEMORY_RERANKER_API_KEY", "") or "")
+                docs = payload.get("documents") or []
+                if not model or not url or not docs:
+                    return {"ok": False, "error": "ai_rerank: 未配置重排模型或 documents 为空"}
+                c = OpenAICompatibleRerank(model, url, key, timeout=15)
+                try:
+                    res = await c.rerank(str(payload.get("query") or ""), list(docs))
+                    return {"ok": True, "results": [{"index": i, "score": round(sc, 4)}
+                                                    for i, sc in res]}
+                finally:
+                    await c.close()
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"ai_rerank: {type(e).__name__}: {e}"}
+        if action == "ai_stream":
+            if ai is None:
+                return {"ok": False, "error": "ai_stream: AI 客户端不可用"}
+            messages = payload.get("messages")
+            if not messages:
+                text = str(payload.get("prompt") or payload.get("text") or "")
+                if text:
+                    messages = [{"role": "user", "content": text}]
+            if not messages:
+                return {"ok": False, "error": "ai_stream: 需要 messages 或 prompt"}
+            try:
+                reply = await ai.chat_with_messages(messages)
+                if reply is None:
+                    return {"ok": False, "error": "ai_stream: 请求失败（限流/密钥/超时）"}
+                chunks = [reply[i:i + 64] for i in range(0, len(reply), 64)] or [""]
+                return {"ok": True, "text": reply, "chunks": chunks,
+                        "chunk_count": len(chunks), "streamed": True}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"ai_stream: {type(e).__name__}: {e}"}
+        return {"ok": False, "error": f"{action}: 未知语义"}
 
     async def _ext_social(self, plugin_id: str, action: str, payload: dict) -> dict:
         """社交/文件/媒体语义：别名路由 + 插件空间文件（真）+ 明确 NS。"""
@@ -924,6 +1040,8 @@ class PluginManager:
             return await self._ext_group(plugin_id, action_type, payload)
         if action_type in self._SOCIAL_EXT:
             return await self._ext_social(plugin_id, action_type, payload)
+        if action_type in self._AI_EXT:
+            return await self._ext_ai(plugin_id, action_type, payload)
         if action_type == "test":
             return {"ok": True, "plugin": plugin_id}
         if action_type == "log":

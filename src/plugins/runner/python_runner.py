@@ -108,6 +108,43 @@ class PluginApi:
         """引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义）"""
         return self._send_action("quote_chain", payload)
 
+    # ---------- v2.1 缺口池：AI ----------
+    def ai_stream(self, payload):
+        """AI 流式对话（收集 chunks 返回；主进程流式请求）"""
+        return self._send_action("ai_stream", payload)
+
+    def ai_vision(self, payload):
+        """AI 视觉识图（图片地址/描述；主进程 vision 客户端，敏感图不可见跳转）"""
+        return self._send_action("ai_vision", payload)
+
+    def ai_embedding(self, payload):
+        """AI 向量化（文本→向量；复用花语向量模型客户端）"""
+        return self._send_action("ai_embedding", payload)
+
+    def ai_rerank(self, payload):
+        """AI 重排（query+documents→相关性得分）"""
+        return self._send_action("ai_rerank", payload)
+
+    def ai_token(self, payload):
+        """Token 统计（文本→token 估算）"""
+        return self._send_action("ai_token", payload)
+
+    def ai_models(self, payload):
+        """模型列表（已配置 AI 模型）"""
+        return self._send_action("ai_models", payload)
+
+    def ai_model_info(self, payload):
+        """模型信息（名称/地址/类型）"""
+        return self._send_action("ai_model_info", payload)
+
+    def ai_usage(self, payload):
+        """用量统计（调用次数/费用指标）"""
+        return self._send_action("ai_usage", payload)
+
+    def ai_budget(self, payload):
+        """预算/限额（配置的每日限额与剩余）"""
+        return self._send_action("ai_budget", payload)
+
     # ---------- v2.1 缺口池：社交互动 ----------
     def reaction(self, payload):
         """表情回应（message_id + react_type；等价 react）"""

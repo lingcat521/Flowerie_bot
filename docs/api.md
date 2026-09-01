@@ -94,7 +94,16 @@
 **AI/MCP**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
+| `ai_budget(payload)` | 预算/限额（配置的每日限额与剩余） | `ai_chat` |
 | `ai_chat(payload)` |  | `ai_chat` |
+| `ai_embedding(payload)` | AI 向量化（文本→向量；复用花语向量模型客户端） | `ai_chat` |
+| `ai_model_info(payload)` | 模型信息（名称/地址/类型） | `ai_chat` |
+| `ai_models(payload)` | 模型列表（已配置 AI 模型） | `ai_chat` |
+| `ai_rerank(payload)` | AI 重排（query+documents→相关性得分） | `ai_chat` |
+| `ai_stream(payload)` | AI 流式对话（收集 chunks 返回；主进程流式请求） | `ai_chat` |
+| `ai_token(payload)` | Token 统计（文本→token 估算） | `ai_chat` |
+| `ai_usage(payload)` | 用量统计（调用次数/费用指标） | `ai_chat` |
+| `ai_vision(payload)` | AI 视觉识图（图片地址/描述；主进程 vision 客户端，敏感图不可见跳转） | `ai_chat` |
 | `http_delete(payload)` |  | `http_request` |
 | `http_download(payload)` |  | `http_request` |
 | `http_head(payload)` |  | `http_request` |

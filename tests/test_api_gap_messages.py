@@ -164,8 +164,8 @@ def test_social_alias_and_poke_route():
 
 
 def test_file_space_roundtrip(tmp_path):
+
     from src.plugins.manager import PluginManager
-    import os
     class C2(_Cfg):
         PLUGIN_DIR = str(tmp_path)
     mgr = PluginManager(config=C2(), repository=_Repo())
@@ -187,3 +187,33 @@ def test_file_ns_explicit():
                          ("emoji_list", {"message_id": 1})):
         r = _run(mgr, "p", act, payload)
         assert not r["ok"] and "not supported" in r["error"]
+
+
+def test_ai_local_semantics():
+    mgr, _s = _mgr()
+    class C3(_Cfg):
+        DEEPSEEK_MODEL = "deepseek-chat"
+        DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+        VISION_MODEL = ""
+        BLOSSOM_MEMORY_EMBEDDING_MODEL = ""
+        BLOSSOM_MEMORY_RERANKER_MODEL = ""
+        DAILY_AI_CALL_BUDGET = 100
+        GROUP_DAILY_AI_CALL_BUDGET = 20
+        BUDGET_EXHAUSTED_NOTICE = True
+    mgr2 = PluginManager(config=C3(), repository=_Repo())
+    t = _run(mgr2, "p", "ai_token", {"text": "你好world"})
+    assert t["ok"] and t["tokens_estimate"] > 0
+    ms = _run(mgr2, "p", "ai_models", {})
+    assert ms["ok"] and "DEEPSEEK_MODEL" in ms["models"]
+    mi = _run(mgr2, "p", "ai_model_info", {"model": "VISION_MODEL"})
+    assert mi["ok"] and mi["kind"] == "vision"
+    b = _run(mgr2, "p", "ai_budget", {})
+    assert b["ok"] and b["daily_limit"] == 100
+
+
+def test_ai_embedding_missing_config():
+    mgr, _s = _mgr()
+    r = _run(mgr, "p", "ai_embedding", {"text": "x"})
+    assert not r["ok"] and "未配置" in r["error"]
+    r2 = _run(mgr, "p", "ai_rerank", {"query": "q", "documents": ["a"]})
+    assert not r2["ok"] and "未配置" in r2["error"]

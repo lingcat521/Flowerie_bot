@@ -90,6 +90,15 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "login_info": "read_user_info",    # 登录信息
     "devices": "read_user_info",       # 在线设备
     "status": "read_user_info",        # 运行状态
+    "ai_stream": "ai_chat",
+    "ai_vision": "ai_chat",
+    "ai_embedding": "ai_chat",
+    "ai_rerank": "ai_chat",
+    "ai_token": "ai_chat",
+    "ai_models": "ai_chat",
+    "ai_model_info": "ai_chat",
+    "ai_usage": "ai_chat",
+    "ai_budget": "ai_chat",
     "reaction": "send_message",
     "poke": "send_message",
     "like": "send_message",
