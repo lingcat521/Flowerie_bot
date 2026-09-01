@@ -100,7 +100,8 @@ def webui_page(page: str, action: str, params: dict, values: dict) -> dict | Non
 ### 容器
 | type | 说明 |
 | --- | --- |
-| `container`/`card` | kind: card/section/grid(columns)/stack/columns/accordion/tabs + children |
+| `container` | kind: card/section/grid(columns)/stack/columns/accordion/tabs + children |
+| `card` | 等价 container(kind=card)（快捷卡片） |
 | `grid` | columns(1-4) + children |
 
 > 交互（分页/搜索/过滤/排序/条件显示/任务状态刷新）= **每次请求重渲染**：
