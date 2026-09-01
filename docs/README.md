@@ -7,6 +7,7 @@
 | 文档 | 内容 | 谁需要 |
 | --- | --- | --- |
 | **[quick-start.md](quick-start.md)** | **第一层·小白快速开始**（10 分钟：创建/manifest/收发消息/记忆/HTTP/权限/完整例子/安装测试） | 插件新人 |
+| [plugin-webui.md](plugin-webui.md) | **Plugin WebUI**（DSL 组件全集 / hook / 权限 / 文件 / 安全边界） | 插件开发者 |
 | [plugin-developer-guide.md](plugin-developer-guide.md) | **第二层·完整参考**（Manifest 规则/Python·Node·JSON/生命周期/Event·Action·Permission API/超时/资源/安全/打包/WebUI 安装） | 插件开发者 |
 | [sdk.md](sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ | 插件开发者 |
 | [api.md](api.md) | **API 权威速查总表**（59 方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |
