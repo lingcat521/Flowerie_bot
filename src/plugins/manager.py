@@ -58,6 +58,7 @@ class PluginManager:
         self.config = config
         self.repository = repository
         self.sender = sender
+        self._plugin_services = {}
         self.memory_manager = memory_manager
         # state_provider: (kind, id) -> dict | None（get_group/get_user 的数据源，由 main 注入）
         self.state_provider = state_provider
@@ -713,6 +714,10 @@ class PluginManager:
                                         "friend_detail", "friend_remark", "friend_delete",
                                         "friend_group", "friend_category", "friend_online"})
 
+    _PLUGIN_EXT = frozenset({"plugin_call", "plugin_event", "plugin_service", "plugin_discovery",
+                             "plugin_dependency", "plugin_health", "plugin_reload",
+                             "plugin_config", "router", "ws", "sse", "webhook",
+                             "http_middleware", "static_file"})
     _MEM_EXT = frozenset({"memory_get", "memory_search", "memory_semantic", "memory_update",
                           "memory_delete", "memory_tag", "memory_pin", "memory_expire"})
     _MCP_EXT = frozenset({"mcp_server", "mcp_tools", "mcp_call", "mcp_resource",
@@ -730,6 +735,111 @@ class PluginManager:
     _EXT_NS = {"edit_message", "favorite_message", "mark_message", "read_status",
                "friend_remark", "friend_delete", "friend_group", "friend_category",
                "friend_online"}
+
+    async def _ext_plugin(self, plugin_id: str, action: str, payload: dict) -> dict:
+        """插件运行时语义：调用/事件/服务总线（真投递）+ 发现/健康/配置/重载 + 明确 NS。"""
+        NS = {"ws", "sse", "http_middleware"}
+        if action in NS:
+            return {"ok": False, "error": f"{action}: v1 明确不支持（零 JS+安全红线）"}
+        if action == "webhook":
+            return await self._sender_forward(plugin_id, "http_request", payload)
+        if action == "router":
+            try:
+                mf = self._manifest_of(self.get_plugin(plugin_id))
+            except Exception:  # noqa: BLE001
+                mf = None
+            pages = (mf.web_ui or {}).get("pages", []) if mf and mf.web_ui else []
+            return {"ok": True, "pages": [{"id": p["id"], "title": p["title"]} for p in pages]}
+        if action == "static_file":
+            try:
+                import os
+                root = self.plugin_webui_dir(plugin_id)
+                names = sorted(n for n in os.listdir(root)
+                               if os.path.isfile(os.path.join(root, n)))
+                return {"ok": True, "files": [{"name": n,
+                                               "url": f"/panel/plugins/webui/files/{plugin_id}/{n}"}
+                                              for n in names]}
+            except ValueError as e:
+                return {"ok": False, "error": str(e)}
+        if action == "plugin_discovery":
+            rows = []
+            for r in self.list_plugins():
+                if r.get("enabled"):
+                    rows.append({"id": r["id"], "name": r.get("name", ""),
+                                 "version": r.get("version", ""),
+                                 "source": r.get("install_source", "")})
+            return {"ok": True, "plugins": rows}
+        if action == "plugin_dependency":
+            try:
+                mf = self._manifest_of(self.get_plugin(plugin_id))
+            except Exception:  # noqa: BLE001
+                mf = None
+            if mf is None:
+                return {"ok": False, "error": "manifest 不可读"}
+            return {"ok": True, "permissions": list(mf.permissions),
+                    "api_version": mf.api_version, "declarations": bool(mf.declarations)}
+        if action == "plugin_health":
+            rt = self._runtimes.get(plugin_id)
+            return {"ok": True, "running": rt is not None,
+                    "pid": getattr(rt, "process", None) and getattr(rt.process, "pid", None),
+                    "status": "running" if rt else "stopped"}
+        if action == "plugin_config":
+            try:
+                mf = self._manifest_of(self.get_plugin(plugin_id))
+            except Exception:  # noqa: BLE001
+                mf = None
+            return {"ok": True, "config": (mf.config if mf else None) or {}}
+        if action == "plugin_reload":
+            # 安全：仅允许重载自身；停止+重载（子进程重启，权限不变）
+            if str(payload.get("plugin_id") or plugin_id) != plugin_id:
+                return {"ok": False, "error": "plugin_reload: 只能重载自身"}
+            self._stop_runtime(plugin_id)
+            try:
+                row = self.get_plugin(plugin_id)
+                if row:
+                    mf = self._manifest_of(row)
+                    rt = self._start_runtime(plugin_id, mf, row.get("approved_permissions") or [],
+                                             row.get("protection") or "normal")
+                    if rt and mf.runtime != "json":
+                        await rt.start()
+                return {"ok": True, "reloaded": plugin_id}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"plugin_reload: {type(e).__name__}: {e}"}
+        if action in ("plugin_call", "plugin_event", "plugin_service"):
+            # 插件服务总线：注册/调用统一投递事件（目标启用+非自身兜底）
+            target = str(payload.get("target") or "")
+            if action == "plugin_service" and str(payload.get("op") or "") == "register":
+                self._plugin_services[payload.get("name", "")] = {"plugin": plugin_id,
+                                                                  "desc": payload.get("desc", "")}
+                return {"ok": True, "registered": payload.get("name", "")}
+            if not target:
+                return {"ok": False, "error": f"{action}: 需要 target（或服务名）"}
+            if target == plugin_id:
+                return {"ok": False, "error": f"{action}: 不能调用自身"}
+            row = self.get_plugin(target)
+            if not row or not row.get("enabled"):
+                return {"ok": False, "error": f"{action}: 目标插件未启用: {target}"}
+            ev = {"kind": "plugin_call", "caller": plugin_id, "action": action,
+                  "name": payload.get("name", ""), "data": payload.get("data") or {},
+                  "trace_id": str(payload.get("trace_id") or "")}
+            tgt_rt = self._runtimes.get(target)
+            if tgt_rt is None:
+                return {"ok": False, "error": f"{action}: 目标插件未加载: {target}"}
+            try:
+                hook = getattr(tgt_rt, "_call_hook", None)
+                if hook is None:
+                    return {"ok": False, "error": f"{action}: 目标插件不支持事件钩子"}
+                import asyncio
+                res = await asyncio.wait_for(asyncio.to_thread(hook, "on_plugin_event", ev),
+                                             timeout=3.0)
+                if isinstance(res, dict) and res.get("__error__"):
+                    return {"ok": False, "error": f"{action}: 目标插件错误: {res['__error__']}"}
+                return {"ok": True, "delivered": target, "response": res}
+            except asyncio.TimeoutError:
+                return {"ok": False, "error": f"{action}: 目标插件超时"}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"{action}: {type(e).__name__}: {e}"}
+        return {"ok": False, "error": f"{action}: 未知语义"}
 
     async def _ext_memory(self, plugin_id: str, action: str, payload: dict) -> dict:
         """记忆语义：别名（get/write_memory）+ 花语语义检索 + KV 标签/删除 + 明确 NS。"""
@@ -1145,6 +1255,8 @@ class PluginManager:
             return await self._ext_ai(plugin_id, action_type, payload)
         if action_type in self._MEM_EXT:
             return await self._ext_memory(plugin_id, action_type, payload)
+        if action_type in self._PLUGIN_EXT:
+            return await self._ext_plugin(plugin_id, action_type, payload)
         if action_type in self._MCP_EXT:
             return await self._ext_mcp(plugin_id, action_type, payload)
         if action_type == "test":

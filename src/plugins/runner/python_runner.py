@@ -108,6 +108,64 @@ class PluginApi:
         """引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义）"""
         return self._send_action("quote_chain", payload)
 
+    # ---------- v2.1 缺口池：插件 ----------
+    def plugin_call(self, payload):
+        """插件间调用（投递事件给目标插件；目标需启用）"""
+        return self._send_action("plugin_call", payload)
+
+    def plugin_event(self, payload):
+        """插件事件广播（所有启用插件可订阅）"""
+        return self._send_action("plugin_event", payload)
+
+    def plugin_service(self, payload):
+        """插件服务（注册/发现/调用插件服务总线）"""
+        return self._send_action("plugin_service", payload)
+
+    def plugin_discovery(self, payload):
+        """插件发现（已启用插件列表与元数据）"""
+        return self._send_action("plugin_discovery", payload)
+
+    def plugin_dependency(self, payload):
+        """插件依赖（自身 manifest 权限/声明）"""
+        return self._send_action("plugin_dependency", payload)
+
+    def plugin_health(self, payload):
+        """插件健康（当前插件运行状态）"""
+        return self._send_action("plugin_health", payload)
+
+    def plugin_reload(self, payload):
+        """插件重载（自身；停止并重载）"""
+        return self._send_action("plugin_reload", payload)
+
+    def plugin_config(self, payload):
+        """插件配置读取（自身 manifest config）"""
+        return self._send_action("plugin_config", payload)
+
+    # ---------- v2.1 缺口池：Web ----------
+    def router(self, payload):
+        """路由列表（自身 Plugin WebUI 页面）"""
+        return self._send_action("router", payload)
+
+    def ws(self, payload):
+        """WebSocket 通道（v1 明确不支持→not supported）"""
+        return self._send_action("ws", payload)
+
+    def sse(self, payload):
+        """SSE 通道（v1 明确不支持→not supported）"""
+        return self._send_action("sse", payload)
+
+    def webhook(self, payload):
+        """Webhook 发送（等价 http_request）；接收注册 v1 不支持"""
+        return self._send_action("webhook", payload)
+
+    def http_middleware(self, payload):
+        """HTTP 中间件（主进程专属→not supported）"""
+        return self._send_action("http_middleware", payload)
+
+    def static_file(self, payload):
+        """静态文件（插件 WebUI 空间；列/取链接）"""
+        return self._send_action("static_file", payload)
+
     # ---------- v2.1 缺口池：Memory ----------
     def memory_get(self, payload):
         """记忆读取（等价 get_memory）"""

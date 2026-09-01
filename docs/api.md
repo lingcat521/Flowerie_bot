@@ -95,6 +95,14 @@
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
 | `matcher_register(payload)` | 批量注册 Matcher（SDK 启动时调用；返回注册摘要）。 | `read_message` |
+| `plugin_call(payload)` | 插件间调用（投递事件给目标插件；目标需启用） | `plugin_admin` |
+| `plugin_config(payload)` | 插件配置读取（自身 manifest config） | `plugin_admin` |
+| `plugin_dependency(payload)` | 插件依赖（自身 manifest 权限/声明） | `plugin_admin` |
+| `plugin_discovery(payload)` | 插件发现（已启用插件列表与元数据） | `plugin_admin` |
+| `plugin_event(payload)` | 插件事件广播（所有启用插件可订阅） | `plugin_admin` |
+| `plugin_health(payload)` | 插件健康（当前插件运行状态） | `plugin_admin` |
+| `plugin_reload(payload)` | 插件重载（自身；停止并重载） | `plugin_admin` |
+| `plugin_service(payload)` | 插件服务（注册/发现/调用插件服务总线） | `plugin_admin` |
 | `schedule_cancel(payload)` |  | `scheduler` |
 | `schedule_list(payload)` |  | `scheduler` |
 | `schedule_register(payload)` |  | `scheduler` |
@@ -115,6 +123,7 @@
 | `http_delete(payload)` |  | `http_request` |
 | `http_download(payload)` |  | `http_request` |
 | `http_head(payload)` |  | `http_request` |
+| `http_middleware(payload)` | HTTP 中间件（主进程专属→not supported） | `plugin_admin` |
 | `http_put(payload)` |  | `http_request` |
 | `http_request(payload)` |  | `http_request` |
 | `mcp_call(payload)` | MCP 工具调用（管理员配置服务器；工具白名单） | `http_request` |
@@ -157,7 +166,12 @@
 | `random_choice(payload)` |  | `—` |
 | `random_int(payload)` |  | `—` |
 | `read_status(payload)` | 消息已读状态查询（v1 无端点→not supported） | `read_message_history` |
+| `router(payload)` | 路由列表（自身 Plugin WebUI 页面） | `plugin_admin` |
 | `search_message(payload)` | 消息搜索（user_id/group_id + query + count：拉取历史并在本地过滤） | `read_message_history` |
 | `split_message(payload)` | 消息拆段（payload.text；按段/长度拆分，纯本地语义） | `read_message` |
+| `sse(payload)` | SSE 通道（v1 明确不支持→not supported） | `plugin_admin` |
+| `static_file(payload)` | 静态文件（插件 WebUI 空间；列/取链接） | `plugin_admin` |
 | `video_info(payload)` | 视频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
+| `webhook(payload)` | Webhook 发送（等价 http_request）；接收注册 v1 不支持 | `webhook` |
 | `write_memory(payload)` |  | `write_memory` |
+| `ws(payload)` | WebSocket 通道（v1 明确不支持→not supported） | `plugin_admin` |

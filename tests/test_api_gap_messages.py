@@ -250,3 +250,66 @@ def test_mcp_config_lists():
     # 未找到服务器
     nf = _run(mgr2, "p", "mcp_status", {"server": "nope"})
     assert not nf["ok"] and "未找到" in nf["error"]
+
+
+class _ManifestStub:
+    def __init__(self):
+        self.permissions = ["plugin_admin"]
+        self.api_version = "1"
+        self.declarations = []
+        self.config = {"k": "v"}
+        self.web_ui = {"pages": [{"id": "home", "title": "总览"}]}
+
+
+def test_plugin_semantics_local():
+    mgr, _s = _mgr()
+    class Row:
+        id = "abc"
+        name = "ABC"
+        enabled = True
+        version = "1.0.0"
+        install_source = "test"
+    mgr.get_plugin = lambda pid: Row() if pid == "abc" else None
+    mgr._manifest_of = lambda r: _ManifestStub()
+    mgr.list_plugins = lambda: [{"id": "abc", "name": "ABC", "enabled": True,
+                                 "version": "1.0.0", "install_source": "test"}]
+    d = _run(mgr, "p", "plugin_discovery", {})
+    assert d["ok"] and d["plugins"][0]["id"] == "abc"
+    h = _run(mgr, "p", "plugin_health", {})
+    assert h["ok"] and h["running"] is False
+    c = _run(mgr, "p", "plugin_config", {})
+    assert c["ok"] and c["config"]["k"] == "v"
+    r = _run(mgr, "p", "router", {})
+    assert r["ok"] and r["pages"][0]["id"] == "home"
+
+
+def test_plugin_call_delivery():
+    mgr, _s = _mgr()
+    got = {}
+
+    class Rt:
+        def _call_hook(self, name, ev):
+            got["ev"] = ev
+            return {"ok": True}
+
+    mgr._runtimes["target"] = Rt()
+    mgr.get_plugin = lambda pid: {"id": "target", "enabled": True} if pid == "target" else None
+    r = _run(mgr, "p", "plugin_call", {"target": "target", "name": "ping", "data": {"a": 1}})
+    assert r["ok"] and r["delivered"] == "target"
+    assert got["ev"]["caller"] == "p" and got["ev"]["data"]["a"] == 1
+    # 自身调用拒绝
+    r2 = _run(mgr, "p", "plugin_call", {"target": "p"})
+    assert not r2["ok"] and "自身" in r2["error"]
+    # 未启用目标
+    mgr.get_plugin = lambda pid: {"id": "target", "enabled": False} if pid == "target" else None
+    r3 = _run(mgr, "p", "plugin_call", {"target": "target"})
+    assert not r3["ok"] and "未启用" in r3["error"]
+
+
+def test_plugin_web_ns():
+    mgr, _s = _mgr()
+    for act in ("ws", "sse", "http_middleware"):
+        r = _run(mgr, "p", act, {})
+        assert not r["ok"] and "不支持" in r["error"]
+    h = _run(mgr, "p", "webhook", {"url": "https://a.b/c", "method": "POST"})
+    assert "未知语义" not in h.get("error", "")

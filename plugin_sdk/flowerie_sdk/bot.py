@@ -274,6 +274,68 @@ class FlowerieBot:
         """好友在线状态。"""
         return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
 
+    # ---------- v2.1 缺口池：插件 / Web ----------
+    def plugin_call(self, target, name="", data=None):
+        """插件间调用（投递 on_plugin_event 给目标）。"""
+        return self._api.plugin_call({"target": target, "name": name,
+                                      "data": data or {}}) if self._api else self._no_api()
+
+    def plugin_event(self, name, data=None, target=""):
+        """插件事件广播/定向投递。"""
+        return self._api.plugin_event({"name": name, "data": data or {},
+                                       "target": target}) if self._api else self._no_api()
+
+    def plugin_service(self, op, name="", desc="", target="", data=None):
+        """插件服务总线（register/call）。"""
+        return self._api.plugin_service({"op": op, "name": name, "desc": desc,
+                                         "target": target,
+                                         "data": data or {}}) if self._api else self._no_api()
+
+    def plugin_discovery(self):
+        """插件发现（已启用列表）。"""
+        return self._api.plugin_discovery({}) if self._api else self._no_api()
+
+    def plugin_dependency(self):
+        """插件依赖（自身 manifest 权限）。"""
+        return self._api.plugin_dependency({}) if self._api else self._no_api()
+
+    def plugin_health(self):
+        """插件健康。"""
+        return self._api.plugin_health({}) if self._api else self._no_api()
+
+    def plugin_reload(self):
+        """重载自身。"""
+        return self._api.plugin_reload({}) if self._api else self._no_api()
+
+    def plugin_config(self):
+        """插件配置（manifest config）。"""
+        return self._api.plugin_config({}) if self._api else self._no_api()
+
+    def router(self):
+        """自身 WebUI 页面路由。"""
+        return self._api.router({}) if self._api else self._no_api()
+
+    def ws(self, **kw):
+        """WebSocket（v1 不支持）。"""
+        return self._api.ws(kw) if self._api else self._no_api()
+
+    def sse(self, **kw):
+        """SSE（v1 不支持）。"""
+        return self._api.sse(kw) if self._api else self._no_api()
+
+    def webhook(self, url, method="POST", data=None):
+        """Webhook 发送（等价 http_request）。"""
+        return self._api.webhook({"url": url, "method": method,
+                                  "data": data or {}}) if self._api else self._no_api()
+
+    def http_middleware(self, **kw):
+        """HTTP 中间件（v1 不支持）。"""
+        return self._api.http_middleware(kw) if self._api else self._no_api()
+
+    def static_file(self):
+        """插件 WebUI 静态文件列表。"""
+        return self._api.static_file({}) if self._api else self._no_api()
+
     # ---------- v2.1 缺口池：Memory / MCP ----------
     def memory_get(self, **kw):
         """记忆读取（等价 get_memory）。"""
