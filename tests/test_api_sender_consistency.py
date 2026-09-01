@@ -56,7 +56,41 @@ def test_table_methods_exist_in_sender():
     assert not missing, f"表引用但 Sender 无方法（恒失败）: {sorted(missing)}"
 
 
-def test_ns_actions_have_no_endpoint():
+# 纯工具/日志动作：不经权限 gate（本地实现），无需映射
+_LOCAL_UTILS = {"now", "format_time", "log", "random_choice", "random_int"}
+
+
+def _action_names_from_api():
+    tree = ast.parse((ROOT / "src/plugins/runner/python_runner.py").read_text(encoding="utf-8"))
+    calls = set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "_send_action":
+            if n.args and isinstance(n.args[0], ast.Constant):
+                calls.add(n.args[0].value)
+    return calls
+
+
+def test_all_actions_have_permissions():
+    import re as _re
+    perm = (ROOT / "src/plugins/permissions.py").read_text(encoding="utf-8")
+    perm_keys = set(_re.findall(r'^    "([a-z_0-9]+)": "[a-z_0-9_.]+",', perm, _re.M))
+    tree = ast.parse((ROOT / "src/plugins/manager.py").read_text(encoding="utf-8"))
+    ext_actions = set()
+    for n in ast.walk(tree):
+        target = None
+        if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name):
+            target = n.targets[0].id
+        elif isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name):
+            target = n.target.id
+        if target and target.endswith("_EXT") and target != "_EXT_NS" and not target.startswith("_WEBUI"):
+            v = n.value
+            while isinstance(v, ast.Call):
+                v = v.args[0] if v.args else None
+            if v is not None and hasattr(v, "elts"):
+                ext_actions |= {el.value for el in v.elts if isinstance(el, ast.Constant)}
+    actions = _action_names_from_api() | ext_actions
+    missing = sorted((actions - _LOCAL_UTILS) - perm_keys)
+    assert not missing, f"动作无权限映射（gate 会被绕过）: {missing}"
     keys, _ = _action_table()
     ns = _ns_actions()
     overlap = ns & keys
