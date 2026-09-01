@@ -96,7 +96,8 @@ def _text(node: dict, depth: int) -> str:
 
 def _markdown(node: dict, depth: int) -> str:
     from src.services.webui_render.markdown_mini import render_md
-    return render_md(str(node.get("text", "") or ""))[8:-9]  # 去掉 article 包裹
+    html = render_md(str(node.get("text", "") or ""))
+    return html.replace('<article class="doc">', "").replace('</article>', "")
 
 
 def _code(node: dict, depth: int) -> str:
@@ -147,7 +148,8 @@ def _button(node: dict, depth: int) -> str:
     confirm = str(node.get("confirm", "") or "")
     if confirm:
         kw = f' title="{esc(confirm)}"'
-    return (f'<form method="post" action="{esc(node.get("post", "/panel/plugin-actions"))}" '
+    post = safe_url(node.get("post", "/panel/plugin-actions"), allow_relative=True) or "/panel/plugin-actions"
+    return (f'<form method="post" action="{esc(post)}" '
             f'class="inline-form"{kw}>'
             f'<input type="hidden" name="plugin_action" value="{action}">'
             f'<button type="submit" class="btn">{esc(node.get("text", ""))}</button></form>')

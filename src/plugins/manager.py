@@ -121,6 +121,8 @@ class PluginManager:
         # 固定名前缀：防覆盖/路径穿越（保存为 <safe 名>）
         root = self.plugin_webui_dir(plugin_id)
         target = os.path.join(root, name)
+        if os.path.exists(target):
+            raise ValueError("同名文件已存在（请换一个文件名）")
         with open(target, "wb") as f:
             f.write(data)
         return name, len(data)
