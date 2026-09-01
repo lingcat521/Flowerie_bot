@@ -281,6 +281,8 @@ background:var(--panel-bg);color:var(--text-muted);font-size:12.5px;text-decorat
 .cat:hover{border-color:var(--accent);color:var(--text)}
 .cat.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .group-actions{display:flex;justify-content:flex-end;margin-top:12px;padding-top:13px;border-top:1px solid var(--panel-border)}
+.btn-mini{padding:2px 10px;border:1px solid var(--panel-border);border-radius:8px;background:var(--panel-bg);color:var(--text-muted);cursor:pointer;font-size:12px}
+.btn-inline-ok{color:var(--ok)}
 .btn{background:var(--accent);color:#fff;border:none;border-radius:9px;padding:9px 22px;font-size:13.5px;
 cursor:pointer;transition:background .18s ease;font-family:inherit}
 .btn:hover{background:var(--accent-hover)}

@@ -160,6 +160,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_get("/panel/register", self._handle_panel_register_page)
         app.router.add_post("/panel/register", self._handle_panel_register)
         app.router.add_post("/panel/save", self._handle_panel_save)
+        app.router.add_post("/panel/test/model", self._handle_panel_model_test)
         app.router.add_get("/panel/logout", self._handle_panel_logout)
         # 注销管理员账号（需当前密码验证；只清账号密码，其他配置不动）
         app.router.add_post("/panel/account/unregister", self._handle_panel_unregister)

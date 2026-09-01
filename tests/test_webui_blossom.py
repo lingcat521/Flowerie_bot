@@ -122,3 +122,21 @@ def test_model_status_badge_disabled():
                                   category_labels={"BlossomMemory": "花语记忆"})
     assert "未启用" in html, "链关闭应显示未启用"
     assert "⚠️" not in html, "链关闭不应报缺配置"
+
+
+def test_model_ping_button_rendered():
+    """模型行内联「测」按钮（零 JS 表单目标 /panel/test/model）。"""
+    from src.services.webui_render.config_panel import render_config_sections
+    cfgs = [
+        _cfg("BLOSSOM_MEMORY_ENABLED", "true"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_ENABLED", "true"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_MODEL", "m", "str"),
+        _cfg("BLOSSOM_MEMORY_RERANKER_ENABLED", "true"),
+        _cfg("BLOSSOM_MEMORY_RERANKER_MODEL", "m", "str"),
+    ]
+    html = render_config_sections([c | {"category": "BlossomMemory"} for c in cfgs],
+                                  category_order=["BlossomMemory"],
+                                  category_labels={"BlossomMemory": "花语记忆"})
+    assert html.count('action="/panel/test/model"') == 2, "两个模型行应各有测按钮"
+    assert 'name="target" value="embedding"' in html
+    assert 'name="target" value="reranker"' in html

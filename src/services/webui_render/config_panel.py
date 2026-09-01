@@ -254,6 +254,16 @@ def _render_config_row(c: dict, extra_badges: str = "") -> str:
     if not c.get("hot_reload"):
         badges.append('<span class="badge warn">需重启</span>')
     badges_html = f'<span class="badges">{"".join(badges)}</span>' if badges else ""
+    # 模型/API 行内联「测」按钮（零 JS：独立表单 POST → 结果经 msg 回显）
+    ping_target = {"BLOSSOM_MEMORY_EMBEDDING_MODEL": "embedding",
+                   "BLOSSOM_MEMORY_RERANKER_MODEL": "reranker"}.get(key)
+    if ping_target:
+        control_suffix = (
+            f'<form method="post" action="/panel/test/model" class="inline-form">'
+            f'<input type="hidden" name="target" value="{ping_target}">'
+            f'<button type="submit" class="btn-mini">测</button></form>')
+    else:
+        control_suffix = ""
     ctype = c["type"]
     if ctype == "bool":
         checked = ' checked' if str(cur).lower() in ("true", "1") else ""
@@ -290,7 +300,7 @@ def _render_config_row(c: dict, extra_badges: str = "") -> str:
         '<div class="row">'
         f'<label class="row-info"><span class="row-title">{_esc(c["description"])}</span>'
         f'<span class="row-key">{_esc(key)}</span>{badges_html}</label>'
-        f'<div class="row-control">{control}{hint}</div>'
+        f'<div class="row-control">{control}{control_suffix}{hint}</div>'
         '</div>'
     )
 
