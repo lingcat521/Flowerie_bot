@@ -128,3 +128,26 @@ def test_sdk_facade_forwards():
     bot._api = Api()
     r = bot.search_message("q", group_id=1, count=5)
     assert r["ok"] and r["count"] == 5
+
+
+def test_group_member_search_and_admins():
+    mgr, _s = _mgr()
+    class S2(_FakeSender):
+        async def get_group_member_list(self, group_id):
+            self.calls.append(("members", group_id))
+            return {"members": [{"user_id": 1, "nickname": "阿雪", "role": "admin"},
+                                {"user_id": 2, "nickname": "小明", "role": "member"}]}
+    sender = S2()
+    from src.plugins.manager import PluginManager
+    mgr = PluginManager(config=_Cfg(), repository=_Repo(), sender=sender)
+    r = _run(mgr, "p", "group_member_search", {"group_id": 5, "query": "阿雪"})
+    assert r["ok"] and r["count"] == 1 and r["results"][0]["user_id"] == 1
+    a = _run(mgr, "p", "group_admins", {"group_id": 5})
+    assert a["ok"] and a["count"] == 1 and a["admins"][0]["user_id"] == 1
+
+
+def test_group_not_supported_explicit():
+    mgr, _s = _mgr()
+    for act in ("group_mute_status", "group_file_upload", "group_file_rename", "group_invite"):
+        r = _run(mgr, "p", act, {})
+        assert not r["ok"] and "not supported" in r["error"]

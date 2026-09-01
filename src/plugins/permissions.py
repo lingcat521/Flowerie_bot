@@ -90,6 +90,18 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "login_info": "read_user_info",    # 登录信息
     "devices": "read_user_info",       # 在线设备
     "status": "read_user_info",        # 运行状态
+    "group_member_search": "read_group_info",
+    "group_member_update": "group_manage",
+    "group_mute_status": "read_group_info",
+    "group_title": "group_manage",
+    "group_notice_create": "group_manage",
+    "group_notice_update": "group_manage",
+    "group_file_upload": "group_manage",
+    "group_file_rename": "group_manage",
+    "group_essence": "read_group_info",
+    "group_invite": "group_manage",
+    "group_apply": "request_handle",
+    "group_admins": "read_group_info",
     "edit_message": "delete_message",      # 编辑消息（同撤回级敏感）
     "forward_message": "send_message",     # 转发（发送动作）
     "split_message": "read_message",       # 拆段（纯本地）

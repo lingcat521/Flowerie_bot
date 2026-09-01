@@ -19,19 +19,31 @@
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
 | `group_admin(payload)` |  | `group_manage` |
+| `group_admins(payload)` | 群管理员列表（成员列表本地过滤 admin/owner） | `read_group_info` |
+| `group_apply(payload)` | 群申请处理（等价 handle_group_request） | `request_handle` |
 | `group_ban(payload)` |  | `group_manage` |
+| `group_essence(payload)` | 群精华消息列表（等价 essence_list） | `read_group_info` |
 | `group_file_delete(payload)` | 删除群文件。 | `group_manage` |
 | `group_file_move(payload)` | 移动群文件。 | `group_manage` |
+| `group_file_rename(payload)` | 重命名群文件（v1 无端点→not supported） | `group_manage` |
+| `group_file_upload(payload)` | 上传群文件（v1 无专用端点→not supported） | `group_manage` |
 | `group_folder_create(payload)` | 创建群文件文件夹。 | `group_manage` |
 | `group_folder_delete(payload)` | 删除群文件文件夹。 | `group_manage` |
 | `group_folder_rename(payload)` | 重命名群文件文件夹。 | `group_manage` |
 | `group_forward(payload)` | 群合并转发。 | `group_manage` |
 | `group_honor(payload)` | 群荣誉信息。 | `read_group_info` |
 | `group_info(payload)` | 群信息。 | `read_group_info` |
+| `group_invite(payload)` | 群邀请（v1 无端点→not supported） | `group_manage` |
 | `group_kick(payload)` |  | `group_manage` |
 | `group_list(payload)` | 群列表。 | `read_group_info` |
+| `group_member_search(payload)` | 群成员搜索（group_id + query；成员列表本地过滤） | `read_group_info` |
+| `group_member_update(payload)` | 群成员信息更新（user_id + card；等价设置群名片） | `group_manage` |
+| `group_mute_status(payload)` | 群成员禁言状态（v1 无查询端点→not supported） | `read_group_info` |
+| `group_notice_create(payload)` | 创建群公告（等价发送公告） | `group_manage` |
 | `group_notice_delete(payload)` | 删除群公告。 | `group_manage` |
+| `group_notice_update(payload)` | 更新群公告（删除旧公告+发送新公告组合） | `group_manage` |
 | `group_portrait(payload)` | 修改群头像。 | `group_manage` |
+| `group_title(payload)` | 群成员头衔（group_id/user_id/title；等价 set_group_special_title） | `group_manage` |
 | `is_group_admin(payload)` |  | `read_group_info` |
 | `is_group_owner(payload)` |  | `read_group_info` |
 

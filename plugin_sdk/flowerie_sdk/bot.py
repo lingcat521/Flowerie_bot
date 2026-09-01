@@ -274,6 +274,70 @@ class FlowerieBot:
         """好友在线状态。"""
         return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
 
+    # ---------- v2.1 缺口池：群 ----------
+    def group_member_search(self, group_id, query="", count=100):
+        """群成员搜索（昵称/群名片/ID 模糊）。"""
+        return self._api.group_member_search({"group_id": group_id, "query": query,
+                                              "count": count}) if self._api else self._no_api()
+
+    def group_member_update(self, group_id, user_id, card=None):
+        """更新群名片（等价设置成员资料）。"""
+        return self._api.group_member_update({"group_id": group_id, "user_id": user_id,
+                                              "card": card}) if self._api else self._no_api()
+
+    def group_mute_status(self, group_id, user_id):
+        """群成员禁言状态查询（网关需支持）。"""
+        return self._api.group_mute_status({"group_id": group_id,
+                                            "user_id": user_id}) if self._api else self._no_api()
+
+    def group_title(self, group_id, user_id, title):
+        """设置群头衔（等价 set_group_special_title）。"""
+        return self._api.group_title({"group_id": group_id, "user_id": user_id,
+                                      "title": title}) if self._api else self._no_api()
+
+    def group_notice_create(self, group_id, content):
+        """创建群公告。"""
+        return self._api.group_notice_create({"group_id": group_id,
+                                              "content": content}) if self._api else self._no_api()
+
+    def group_notice_update(self, group_id, content, notice_id=None):
+        """更新群公告（删除旧+发送新）。"""
+        return self._api.group_notice_update({"group_id": group_id, "content": content,
+                                              "notice_id": notice_id}) if self._api else self._no_api()
+
+    def group_file_upload(self, group_id, path, name):
+        """上传群文件（网关需支持）。"""
+        return self._api.group_file_upload({"group_id": group_id, "path": path,
+                                            "name": name}) if self._api else self._no_api()
+
+    def group_file_rename(self, group_id, file_id, name):
+        """重命名群文件。"""
+        return self._api.group_file_rename({"group_id": group_id, "file_id": file_id,
+                                            "name": name}) if self._api else self._no_api()
+
+    def group_essence(self, group_id):
+        """群精华消息列表。"""
+        return self._api.group_essence({"group_id": group_id}) if self._api else self._no_api()
+
+    def group_invite(self, group_id, user_id):
+        """群邀请（网关需支持）。"""
+        return self._api.group_invite({"group_id": group_id,
+                                       "user_id": user_id}) if self._api else self._no_api()
+
+    def group_apply(self, flag, approve=True, reason=""):
+        """处理加群申请（等价 handle_group_request）。"""
+        return self._api.group_apply({"flag": flag, "approve": approve,
+                                      "reason": reason}) if self._api else self._no_api()
+
+    def group_admins(self, group_id):
+        """群管理员列表（admin+owner）。"""
+        return self._api.group_admins({"group_id": group_id}) if self._api else self._no_api()
+
+    def group_honor(self, group_id, honor_type=""):
+        """群荣誉。"""
+        return self._api.group_honor({"group_id": group_id,
+                                      "honor_type": honor_type}) if self._api else self._no_api()
+
     def _no_api(self):
         return {"ok": False, "error": "未 attach（api 不可用）"}
 

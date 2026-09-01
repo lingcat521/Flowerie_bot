@@ -711,9 +711,55 @@ class PluginManager:
                                         "friend_detail", "friend_remark", "friend_delete",
                                         "friend_group", "friend_category", "friend_online"})
 
+    _GROUP_EXT = frozenset({"group_member_search", "group_member_update", "group_mute_status",
+                            "group_title", "group_notice_create", "group_notice_update",
+                            "group_file_upload", "group_file_rename", "group_essence",
+                            "group_invite", "group_apply", "group_admins", "group_honor"})
     _EXT_NS = {"edit_message", "favorite_message", "mark_message", "read_status",
                "friend_remark", "friend_delete", "friend_group", "friend_category",
                "friend_online"}
+
+    async def _ext_group(self, plugin_id: str, action: str, payload: dict) -> dict:
+        """群语义：本地实现/等价别名/组合/明确 not supported。"""
+        sender = getattr(self, "sender", None)
+        # 等价别名（复用现有动作）
+        alias = {"group_title": "group_title", "group_notice_create": "group_notice_send",
+                 "group_essence": "essence_list", "group_honor": "group_honor",
+                 "group_apply": "handle_group_request"}
+        if action in alias:
+            return await self._sender_forward(plugin_id, alias[action], payload)
+        if action == "group_member_update":
+            return await self._sender_forward(plugin_id, "group_card", payload)
+        if action == "group_notice_update":
+            # 组合语义：删除旧公告（如有 notice_id）+ 发送新公告
+            if payload.get("notice_id"):
+                await self._sender_forward(plugin_id, "group_notice_delete", payload)
+            return await self._sender_forward(plugin_id, "group_notice_send", payload)
+        if action == "group_member_search":
+            try:
+                rows = await sender.get_group_member_list(group_id=payload.get("group_id"))
+                members = rows.get("data") or rows.get("members") or []
+                q = str(payload.get("query") or "").lower()
+                out = []
+                for m in members:
+                    if not q:
+                        out.append(m)
+                        continue
+                    hay = " ".join(str(m.get(k, "")) for k in ("user_id", "nickname", "card"))
+                    if q in hay.lower():
+                        out.append(m)
+                return {"ok": True, "results": out, "count": len(out)}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"group_member_search: {type(e).__name__}: {e}"}
+        if action == "group_admins":
+            try:
+                rows = await sender.get_group_member_list(group_id=payload.get("group_id"))
+                members = rows.get("data") or rows.get("members") or []
+                admins = [m for m in members if str(m.get("role", "")).lower() in ("admin", "owner")]
+                return {"ok": True, "admins": admins, "count": len(admins)}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"group_admins: {type(e).__name__}: {e}"}
+        return {"ok": False, "error": f"{action}: 网关 v1 无对应端点（not supported）"}
 
     async def _ext_msg_friend(self, plugin_id: str, action: str, payload: dict) -> dict:
         """消息/好友缺口：可用=本地语义真实现；无端点=显式 not supported（绝不静默）。"""
@@ -797,6 +843,8 @@ class PluginManager:
             return await self._sender_forward(plugin_id, action_type, payload)
         if action_type in self._MSG_FRIEND_EXT:
             return await self._ext_msg_friend(plugin_id, action_type, payload)
+        if action_type in self._GROUP_EXT:
+            return await self._ext_group(plugin_id, action_type, payload)
         if action_type == "test":
             return {"ok": True, "plugin": plugin_id}
         if action_type == "log":

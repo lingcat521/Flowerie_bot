@@ -108,6 +108,59 @@ class PluginApi:
         """引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义）"""
         return self._send_action("quote_chain", payload)
 
+    # ---------- v2.1 缺口池：群 ----------
+    def group_member_search(self, payload):
+        """群成员搜索（group_id + query；成员列表本地过滤）"""
+        return self._send_action("group_member_search", payload)
+
+    def group_member_update(self, payload):
+        """群成员信息更新（user_id + card；等价设置群名片）"""
+        return self._send_action("group_member_update", payload)
+
+    def group_mute_status(self, payload):
+        """群成员禁言状态（v1 无查询端点→not supported）"""
+        return self._send_action("group_mute_status", payload)
+
+    def group_title(self, payload):
+        """群成员头衔（group_id/user_id/title；等价 set_group_special_title）"""
+        return self._send_action("group_title", payload)
+
+    def group_notice_create(self, payload):
+        """创建群公告（等价发送公告）"""
+        return self._send_action("group_notice_create", payload)
+
+    def group_notice_update(self, payload):
+        """更新群公告（删除旧公告+发送新公告组合）"""
+        return self._send_action("group_notice_update", payload)
+
+    def group_file_upload(self, payload):
+        """上传群文件（v1 无专用端点→not supported）"""
+        return self._send_action("group_file_upload", payload)
+
+    def group_file_rename(self, payload):
+        """重命名群文件（v1 无端点→not supported）"""
+        return self._send_action("group_file_rename", payload)
+
+    def group_essence(self, payload):
+        """群精华消息列表（等价 essence_list）"""
+        return self._send_action("group_essence", payload)
+
+    def group_invite(self, payload):
+        """群邀请（v1 无端点→not supported）"""
+        return self._send_action("group_invite", payload)
+
+    def group_apply(self, payload):
+        """群申请处理（等价 handle_group_request）"""
+        return self._send_action("group_apply", payload)
+
+    def group_admins(self, payload):
+        """群管理员列表（成员列表本地过滤 admin/owner）"""
+        return self._send_action("group_admins", payload)
+
+    def group_honor(self, payload):
+        """群荣誉（等价 group_honor）"""
+        return self._send_action("group_honor", payload)
+
     # ---------- v2.1 缺口池：好友 ----------
     def friend_detail(self, payload):
         """好友详细信息（user_id；列表内匹配详情）"""
