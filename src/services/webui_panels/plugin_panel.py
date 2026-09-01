@@ -3,6 +3,7 @@
 从 WebUIServer 拆分（防上帝类）：数据源为注入的 plugin_manager。
 全部处理器先过 _check_token（管理员认证）；未认证一律重定向回 /panel。
 """
+import re
 from urllib.parse import quote
 
 from aiohttp import web
@@ -29,8 +30,73 @@ class PluginPanelMixin:
             self._plugin_manager, "_protection_level") else "normal"
         plugin_configs = [c for c in self.config_service.list_configs()
                           if c["key"].startswith("PLUGIN_")]
+        webui_links = []
+        try:
+            for prow in self._plugin_manager.list_plugins():
+                if not prow.get("enabled"):
+                    continue
+                if "web_ui" not in (prow.get("approved_permissions") or []):
+                    continue
+                try:
+                    pm = self._plugin_manager._manifest_of(prow)
+                except Exception:  # noqa: BLE001
+                    pm = None
+                if pm and pm.web_ui and pm.web_ui.get("pages"):
+                    first = pm.web_ui["pages"][0]["id"]
+                    webui_links.append(
+                        (prow.get("name") or prow["id"],
+                         f"/panel/plugins/webui/{prow['id']}/{first}"))
+        except Exception:  # noqa: BLE001
+            webui_links = []
         return render_plugin_tab(plugins, protection=protection,
-                                 plugin_configs=plugin_configs, protection_warning=protection == "unsafe")
+                                 plugin_configs=plugin_configs, protection_warning=protection == "unsafe",
+                                 webui_links=webui_links)
+
+    async def _handle_panel_plugin_webui(self, request: web.Request) -> web.Response:
+        """Plugin WebUI 页面：GET=渲染（params 从 query），POST=form 提交（动态重渲染）。
+
+        零 JS：所有交互都是表单 POST/GET → 插件（webui_page hook）→ DSL → 重渲染。
+        """
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        pid = str(request.match_info.get("pid", ""))[:64]
+        page = str(request.match_info.get("page", ""))[:64]
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", pid) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", page):
+            return web.HTTPFound("/panel?tab=plugins&err=1&msg=" + quote("非法页面参数"))
+        if self._plugin_manager is None:
+            return web.HTTPFound("/panel?tab=plugins&err=1&msg="
+                                 + quote("插件系统未启用（未注入 PluginManager）"))
+        if request.method == "POST":
+            form = await request.post()
+            action = str(form.get("plugin_action", "") or "")[:64] or "submit"
+            values = {str(k): str(v) for k, v in form.items() if not str(k).startswith("plugin_")}
+        else:
+            action, values = "get", {}
+        params = {str(k): str(v) for k, v in request.query.items()}
+        result, err = await self._plugin_manager.plugin_webui_page(pid, page, action, params, values)
+        plugin_row = self._plugin_manager.get_plugin(pid) or {}
+        pname = str(plugin_row.get("name") or pid)
+        page_meta = result.get("page", {"title": page, "description": ""}) if isinstance(result, dict) else {}
+        dsl_html = ""
+        if err:
+            dsl_html = ""
+        elif isinstance(result, dict):
+            from src.services.webui_render.plugin_dsl import render_plugin_dsl
+            dsl_html = render_plugin_dsl(result.get("dsl"))
+        tabs = []
+        try:
+            manifest = self._plugin_manager._manifest_of(plugin_row)
+            if manifest and manifest.web_ui:
+                tabs = [{"id": p["id"], "title": p["title"], "active": p["id"] == page}
+                        for p in manifest.web_ui["pages"]]
+        except Exception:  # noqa: BLE001
+            tabs = []
+        from src.services.webui_render.plugin_webui import render_plugin_webui_page
+        html = render_plugin_webui_page(
+            pname, str(page_meta.get("title") or page),
+            str(page_meta.get("description") or ""), dsl_html,
+            error=err, plugin_id=pid, plugin_tabs=tabs)
+        return web.Response(text=html, content_type="text/html", charset="utf-8")
 
     async def _handle_panel_plugins_refresh(self, request: web.Request) -> web.Response:
         if not self._check_token(request):

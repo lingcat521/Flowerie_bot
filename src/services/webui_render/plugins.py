@@ -18,9 +18,15 @@ _PROTECTION_WARN = (
 
 
 def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
-                      protection_warning: bool = False) -> str:
+                      protection_warning: bool = False,
+                      webui_links=None) -> str:
     """插件管理页：保护措施开关 / 插件列表 / 上传与 URL 安装 / 插件系统配置。"""
     parts = []
+    if webui_links:
+        links = "".join(f'<a class="cat" href="{_esc(href)}">{_esc(name)}</a>'
+                        for name, href in webui_links)
+        parts.append('<div class="group"><span class="group-legend">Plugin WebUI</span>'
+                     f'<nav class="cats">{links}</nav></div>')
     # ---------- 插件保护措施 ----------
     opts = "".join(
         f'<label class="opt"><input type="radio" name="protection" value="{p}"'

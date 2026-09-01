@@ -1,0 +1,22 @@
+{
+  "id": "webui_example",
+  "name": "WebUI 示例",
+  "version": "1.0.0",
+  "runtime": "python",
+  "entry": "plugin.py",
+  "permissions": [
+    "web_ui"
+  ],
+  "web_ui": {
+    "pages": [
+      {
+        "id": "home",
+        "title": "总览"
+      },
+      {
+        "id": "tasks",
+        "title": "任务"
+      }
+    ]
+  }
+}

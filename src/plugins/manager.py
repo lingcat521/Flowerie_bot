@@ -79,6 +79,53 @@ class PluginManager:
     def _plugin_dir(self) -> str:
         return str(getattr(self.config, "PLUGIN_DIR", "./plugins") or "./plugins")
 
+    # ================= Plugin WebUI（控制面；不进入消息高频路径） =================
+    async def plugin_webui_page(self, plugin_id: str, page_id: str, action: str = "get",
+                                params: Optional[dict] = None, values: Optional[dict] = None):
+        """插件 WebUI 页面渲染/提交的统一入口。
+
+        权限：插件须启用且管理员批准过 web_ui（web_ui.files 控制文件能力——本方法不含文件）。
+        返回 (dsl, error_str)：dsl 可直接交给 render_plugin_dsl；error 非空时渲染错误页。
+        任何异常都降级为错误页，绝不把异常/原始 HTML 交给浏览器。
+        """
+        row = self.get_plugin(plugin_id)
+        if row is None or not row.get("enabled"):
+            return None, "插件未启用或不存在"
+        approved = set(row.get("approved_permissions") or [])
+        if "web_ui" not in approved:
+            return None, "插件未批准 web_ui 权限（管理员批准后才能访问）"
+        try:
+            manifest = self._manifest_of(row)
+        except Exception:  # noqa: BLE001
+            return None, "插件 manifest 不可解析"
+        if not manifest or not manifest.web_ui:
+            return None, "插件未声明 web_ui"
+        page = next((p for p in manifest.web_ui["pages"] if p["id"] == page_id), None)
+        if page is None:
+            return None, f"页面不存在: {page_id}"
+        rt = self._runtimes.get(plugin_id)
+        if rt is None:
+            return None, "插件运行中未加载（重启后重试）"
+        hook_name = str(manifest.web_ui.get("entry") or "webui_page")
+        try:
+            import asyncio
+            result = await asyncio.wait_for(
+                asyncio.to_thread(rt._call_hook, hook_name, page_id, action,
+                                  dict(params or {}), dict(values or {})),
+                timeout=4.0)
+        except asyncio.TimeoutError:
+            return None, "插件响应超时（4s 上限）"
+        except Exception as e:  # noqa: BLE001
+            return None, f"插件调用失败: {type(e).__name__}: {e}"
+        if isinstance(result, dict) and result.get("__error__"):
+            return None, str(result["__error__"])
+        if result is None:
+            return None, "插件未返回页面内容"
+        if not isinstance(result, dict):
+            return None, "插件返回了非法响应（必须是 DSL 对象）"
+        # 附加页面元数据（供 shell 展示）
+        return {"dsl": result, "page": page}, ""
+
     # ================= 注册表 =================
     def _manifest_of(self, record: dict) -> Optional[PluginManifest]:
         """从注册行解析 manifest（带进程内缓存，manifest 变更时失效）。"""

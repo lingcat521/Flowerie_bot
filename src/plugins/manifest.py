@@ -23,7 +23,7 @@ from src.plugins.permissions import ALL_PERMISSIONS
 # 允许的 manifest 顶层字段（严格白名单）
 _ALLOWED_KEYS = frozenset({
     "id", "name", "version", "author", "description", "runtime",
-    "entry", "api_version", "permissions", "config", "declarations",
+    "entry", "api_version", "permissions", "config", "declarations", "web_ui",
 })
 
 _ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
@@ -49,12 +49,14 @@ class PluginManifest:
     """校验通过的插件 manifest（不可变数据对象）。"""
 
     __slots__ = ("id", "name", "version", "author", "description", "runtime",
-                 "entry", "api_version", "permissions", "config", "declarations")
+                 "entry", "api_version", "permissions", "config", "declarations",
+                 "web_ui")
 
     def __init__(self, id: str, name: str, version: str, runtime: str, entry: str,
                  api_version: str, permissions: List[str], author: str = "",
                  description: str = "", config: Optional[Dict[str, Any]] = None,
-                 declarations: Optional[List[Dict[str, Any]]] = None):
+                 declarations: Optional[List[Dict[str, Any]]] = None,
+                 web_ui: Optional[Dict[str, Any]] = None):
         self.id = id
         self.name = name
         self.version = version
@@ -66,6 +68,8 @@ class PluginManifest:
         self.permissions = list(permissions)
         self.config = dict(config or {})
         self.declarations = list(declarations or [])
+        self.web_ui = web_ui
+        self.web_ui = web_ui
 
     # ---------- 校验 ----------
     @classmethod
@@ -149,12 +153,52 @@ class PluginManifest:
             if runtime != "json":
                 raise PluginManifestError("declarations 仅 runtime=json 的声明式插件允许")
             declarations = cls._validate_declarations(data["declarations"])
+        web_ui = cls._validate_web_ui(data.get("web_ui"))
         return cls(
             id=plugin_id, name=name, version=version, runtime=runtime, entry=entry,
             api_version=api_version, permissions=perms, author=author,
             description=description, config=config_raw,
-            declarations=declarations,
+            declarations=declarations, web_ui=web_ui,
         )
+
+    _PAGE_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+
+    @staticmethod
+    def _validate_web_ui(raw: Any) -> Optional[Dict[str, Any]]:
+        """Plugin WebUI 声明：web_ui.pages[]（id/title/description；未知字段拒绝）。
+
+        组件由插件运行时返回（webui_page hook 动态 DSL），manifest 只声明页面骨架。"""
+        if raw is None:
+            return None
+        if not isinstance(raw, dict):
+            raise PluginManifestError("web_ui 必须是对象")
+        unknown = set(raw.keys()) - {"pages", "entry"}
+        if unknown:
+            raise PluginManifestError(f"web_ui 含未知字段: {sorted(unknown)}")
+        entry = str(raw.get("entry") or "webui_page")
+        if not re.fullmatch(r"^[a-z_][a-z0-9_]{0,63}$", entry):
+            raise PluginManifestError("web_ui.entry 必须是合法函数名")
+        pages_raw = raw.get("pages")
+        if not isinstance(pages_raw, list) or not pages_raw:
+            raise PluginManifestError("web_ui.pages 必须是非空数组")
+        if len(pages_raw) > 8:
+            raise PluginManifestError("web_ui.pages 上限 8 个页面")
+        pages = []
+        for i, pg in enumerate(pages_raw):
+            if not isinstance(pg, dict):
+                raise PluginManifestError(f"web_ui.pages[{i}] 必须是对象")
+            pk = set(pg.keys()) - {"id", "title", "description"}
+            if pk:
+                raise PluginManifestError(f"web_ui.pages[{i}] 含未知字段: {sorted(pk)}")
+            pid = str(pg.get("id", "")).strip()
+            if not PluginManifest._PAGE_ID_RE.fullmatch(pid):
+                raise PluginManifestError(f"web_ui.pages[{i}].id 非法（小写字母开头 ≤32）")
+            title = str(pg.get("title", "")).strip()
+            if not title or len(title) > 64:
+                raise PluginManifestError(f"web_ui.pages[{i}].title 必须 1~64 字符")
+            desc = str(pg.get("description", "")).strip()[:300]
+            pages.append({"id": pid, "title": title, "description": desc})
+        return {"entry": entry, "pages": pages}
 
     @staticmethod
     def _validate_declarations(raw: Any) -> List[Dict[str, Any]]:
@@ -227,6 +271,8 @@ class PluginManifest:
             data["config"] = self.config
         if self.declarations:
             data["declarations"] = self.declarations
+        if self.web_ui:
+            data["web_ui"] = self.web_ui
         return data
 
     def to_json(self) -> str:

@@ -45,6 +45,8 @@ ALL_PERMISSIONS = frozenset({
     "storage",               # 插件 KV 存储
     "ai_chat",               # 受限 AI 对话（独立于聊天预算，务必自限频）
     "bot_profile",           # 修改 Bot 自身资料（昵称/签名）
+    "web_ui",                # Plugin WebUI：插件自有管理页面（管理员批准后才能访问）
+    "web_ui.files",          # Plugin WebUI 文件能力（上传/下载，仅插件自身空间）
 })
 
 # Action 类型 → 所需权限（None = 无需权限：log / test 等无害动作）
