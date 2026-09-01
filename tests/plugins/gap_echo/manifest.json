@@ -1,0 +1,3 @@
+{"id": "gap_echo", "name": "Gap Echo", "version": "1.0.0", "runtime": "python",
+ "entry": "plugin.py", "api_version": "1",
+ "permissions": ["read_message_history", "send_message", "storage", "plugin_admin", "ai_chat"]}

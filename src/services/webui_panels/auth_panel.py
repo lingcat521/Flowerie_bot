@@ -122,6 +122,10 @@ class AuthPanelMixin:
         return web.HTTPFound("/panel")
 
     async def _handle_panel_login(self, request: web.Request) -> web.Response:
+        ip = request.remote or "unknown"
+        if self._login_blocked(ip):
+            return web.Response(text=render_login_page("尝试过多，请稍后再试"),
+                                content_type="text/html", charset="utf-8")
         form = await request.post()
         username = str(form.get("username", ""))
         password = str(form.get("password", ""))

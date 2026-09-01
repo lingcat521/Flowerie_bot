@@ -210,6 +210,451 @@ class FlowerieBot:
                 self._waiters.remove(waiter)
 
     # ---------- 调度（轻量：interval/delay/daily；无第三方依赖） ----------
+    # ---------- v2.1 缺口池：消息 / 好友 ----------
+    def edit_message(self, message_id, **kw):
+        """编辑已发送消息（网关支持时；否则返回 not supported）。"""
+        return self._api.edit_message({"message_id": message_id, **kw}) if self._api else self._no_api()
+
+    def forward_message(self, messages, group_id=None, user_id=None, text=None):
+        """转发消息（messages=段列表或 text=纯文本；自动选群/私聊通道）。"""
+        return self._api.forward_message({"messages": messages, "text": text,
+                                          "group_id": group_id,
+                                          "user_id": user_id}) if self._api else self._no_api()
+
+    def split_message(self, text, limit=2000):
+        """把长文本按 limit 拆段（纯本地；返回 segments 列表）。"""
+        return self._api.split_message({"text": str(text), "limit": limit}) if self._api else self._no_api()
+
+    def merge_message(self, segments):
+        """段列表合并为文本。"""
+        return self._api.merge_message({"segments": list(segments)}) if self._api else self._no_api()
+
+    def favorite_message(self, message_id):
+        """收藏消息（v1 网关可能不支持）。"""
+        return self._api.favorite_message({"message_id": message_id}) if self._api else self._no_api()
+
+    def mark_message(self, message_id, read=True):
+        """标记消息已读/未读。"""
+        return self._api.mark_message({"message_id": message_id, "read": read}) if self._api else self._no_api()
+
+    def read_status(self, message_id=None):
+        """会话/消息已读状态。"""
+        return self._api.read_status({"message_id": message_id}) if self._api else self._no_api()
+
+    def search_message(self, query="", group_id=None, user_id=None, count=20):
+        """消息搜索（本地过滤历史；返回 results）。"""
+        return self._api.search_message({"query": query, "group_id": group_id,
+                                         "user_id": user_id, "count": count}) if self._api else self._no_api()
+
+    def quote_chain(self, message_id, depth=3):
+        """引用链（message_id 回溯，≤depth 层）。"""
+        return self._api.quote_chain({"message_id": message_id, "depth": depth}) if self._api else self._no_api()
+
+    def friend_detail(self, user_id):
+        """好友详细信息。"""
+        return self._api.friend_detail({"user_id": user_id}) if self._api else self._no_api()
+
+    def friend_remark(self, user_id, remark):
+        """设置好友备注。"""
+        return self._api.friend_remark({"user_id": user_id, "remark": remark}) if self._api else self._no_api()
+
+    def friend_delete(self, user_id):
+        """删除好友。"""
+        return self._api.friend_delete({"user_id": user_id}) if self._api else self._no_api()
+
+    def friend_group(self, user_id=None, group_name=None):
+        """好友分组管理。"""
+        return self._api.friend_group({"user_id": user_id, "group_name": group_name}) if self._api else self._no_api()
+
+    def friend_category(self, user_id=None, category=None):
+        """好友分类（等价 friend_group）。"""
+        return self._api.friend_category({"user_id": user_id, "category": category}) if self._api else self._no_api()
+
+    def friend_online(self, user_id):
+        """好友在线状态。"""
+        return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
+
+    # ---------- v2.1 缺口池：数据 / 运行时 / 开发工具 ----------
+    def db_query(self, where=None, limit=50, offset=0):
+        """数据查询（插件数据域过滤）。"""
+        return self._api.db_query({"where": where or {}, "limit": limit,
+                                   "offset": offset}) if self._api else self._no_api()
+
+    def db_transaction(self, ops):
+        """事务（insert/delete/update 数组；原子落盘）。"""
+        return self._api.db_transaction({"ops": list(ops)}) if self._api else self._no_api()
+
+    def db_migration(self, version):
+        """迁移（schema 版本升级）。"""
+        return self._api.db_migration({"version": version}) if self._api else self._no_api()
+
+    def db_index(self, field):
+        """索引（字段统计加速）。"""
+        return self._api.db_index({"field": field}) if self._api else self._no_api()
+
+    def cache_get(self, key):
+        """缓存读。"""
+        return self._api.cache_get({"key": key}) if self._api else self._no_api()
+
+    def cache_set(self, key, value):
+        """缓存写。"""
+        return self._api.cache_set({"key": key,
+                                    "value": value}) if self._api else self._no_api()
+
+    def cache_delete(self, key):
+        """缓存删。"""
+        return self._api.cache_delete({"key": key}) if self._api else self._no_api()
+
+    def task_status(self, task_id):
+        """任务状态（SDK TaskManager 本地）。"""
+        return self._api.task_status({"task_id": task_id}) if self._api else self._no_api()
+
+    def task_cancel(self, task_id):
+        """任务取消。"""
+        return self._api.task_cancel({"task_id": task_id}) if self._api else self._no_api()
+
+    def task_pause(self, task_id):
+        """任务暂停。"""
+        return self._api.task_pause({"task_id": task_id}) if self._api else self._no_api()
+
+    def task_resume(self, task_id):
+        """任务恢复。"""
+        return self._api.task_resume({"task_id": task_id}) if self._api else self._no_api()
+
+    def resource_usage(self):
+        """资源占用（插件进程）。"""
+        return self._api.resource_usage({}) if self._api else self._no_api()
+
+    def resource_quota(self):
+        """资源配额（保护级别）。"""
+        return self._api.resource_quota({}) if self._api else self._no_api()
+
+    def runtime_status(self):
+        """运行状态。"""
+        return self._api.runtime_status({}) if self._api else self._no_api()
+
+    def metrics(self):
+        """指标快照。"""
+        return self._api.metrics({}) if self._api else self._no_api()
+
+    def trace(self, trace_id):
+        """链路日志查询。"""
+        return self._api.trace({"trace_id": trace_id}) if self._api else self._no_api()
+
+    def health(self):
+        """健康检查。"""
+        return self._api.health({}) if self._api else self._no_api()
+
+    def debug(self, **kw):
+        """调试（v1 不支持）。"""
+        return self._api.debug(kw) if self._api else self._no_api()
+
+    def plugin_test(self, **kw):
+        """自测（on_plugin_test 钩子）。"""
+        return self._api.plugin_test(kw) if self._api else self._no_api()
+
+    def mock_api(self, **kw):
+        """Mock（SDK 本地）。"""
+        return self._api.mock_api(kw) if self._api else self._no_api()
+
+    # ---------- v2.1 缺口池：插件 / Web ----------
+    def plugin_call(self, target, name="", data=None):
+        """插件间调用（投递 on_plugin_event 给目标）。"""
+        return self._api.plugin_call({"target": target, "name": name,
+                                      "data": data or {}}) if self._api else self._no_api()
+
+    def plugin_event(self, name, data=None, target=""):
+        """插件事件广播/定向投递。"""
+        return self._api.plugin_event({"name": name, "data": data or {},
+                                       "target": target}) if self._api else self._no_api()
+
+    def plugin_service(self, op, name="", desc="", target="", data=None):
+        """插件服务总线（register/call）。"""
+        return self._api.plugin_service({"op": op, "name": name, "desc": desc,
+                                         "target": target,
+                                         "data": data or {}}) if self._api else self._no_api()
+
+    def plugin_discovery(self):
+        """插件发现（已启用列表）。"""
+        return self._api.plugin_discovery({}) if self._api else self._no_api()
+
+    def plugin_dependency(self):
+        """插件依赖（自身 manifest 权限）。"""
+        return self._api.plugin_dependency({}) if self._api else self._no_api()
+
+    def plugin_health(self):
+        """插件健康。"""
+        return self._api.plugin_health({}) if self._api else self._no_api()
+
+    def plugin_reload(self):
+        """重载自身。"""
+        return self._api.plugin_reload({}) if self._api else self._no_api()
+
+    def plugin_config(self):
+        """插件配置（manifest config）。"""
+        return self._api.plugin_config({}) if self._api else self._no_api()
+
+    def router(self):
+        """自身 WebUI 页面路由。"""
+        return self._api.router({}) if self._api else self._no_api()
+
+    def ws(self, **kw):
+        """WebSocket（v1 不支持）。"""
+        return self._api.ws(kw) if self._api else self._no_api()
+
+    def sse(self, **kw):
+        """SSE（v1 不支持）。"""
+        return self._api.sse(kw) if self._api else self._no_api()
+
+    def webhook(self, url, method="POST", data=None):
+        """Webhook 发送（等价 http_request）。"""
+        return self._api.webhook({"url": url, "method": method,
+                                  "data": data or {}}) if self._api else self._no_api()
+
+    def http_middleware(self, **kw):
+        """HTTP 中间件（v1 不支持）。"""
+        return self._api.http_middleware(kw) if self._api else self._no_api()
+
+    def static_file(self):
+        """插件 WebUI 静态文件列表。"""
+        return self._api.static_file({}) if self._api else self._no_api()
+
+    # ---------- v2.1 缺口池：Memory / MCP ----------
+    def memory_get(self, **kw):
+        """记忆读取（等价 get_memory）。"""
+        return self._api.memory_get(kw) if self._api else self._no_api()
+
+    def memory_search(self, query, group_id=0, top_k=3):
+        """语义记忆检索（花语记忆相似度召回）。"""
+        return self._api.memory_search({"query": query, "group_id": group_id,
+                                        "top_k": top_k}) if self._api else self._no_api()
+
+    def memory_semantic(self, query, group_id=0, top_k=3):
+        """语义检索（等价 memory_search）。"""
+        return self._api.memory_semantic({"query": query, "group_id": group_id,
+                                          "top_k": top_k}) if self._api else self._no_api()
+
+    def memory_update(self, **kw):
+        """记忆更新（等价 write_memory）。"""
+        return self._api.memory_update(kw) if self._api else self._no_api()
+
+    def memory_delete(self, key):
+        """记忆删除（KV 域）。"""
+        return self._api.memory_delete({"key": key}) if self._api else self._no_api()
+
+    def memory_tag(self, name, value="1"):
+        """记忆标签（tag: 前缀 KV）。"""
+        return self._api.memory_tag({"name": name,
+                                     "value": value}) if self._api else self._no_api()
+
+    def memory_pin(self, key):
+        """记忆置顶（网关需支持）。"""
+        return self._api.memory_pin({"key": key}) if self._api else self._no_api()
+
+    def memory_expire(self, key=None, days=30):
+        """记忆过期查询（网关需支持）。"""
+        return self._api.memory_expire({"key": key,
+                                        "days": days}) if self._api else self._no_api()
+
+    def mcp_server(self):
+        """MCP 服务器列表。"""
+        return self._api.mcp_server({}) if self._api else self._no_api()
+
+    def mcp_tools(self):
+        """MCP 工具清单。"""
+        return self._api.mcp_tools({}) if self._api else self._no_api()
+
+    def mcp_call(self, server, tool, arguments=None):
+        """MCP 工具调用（白名单内）。"""
+        return self._api.mcp_call({"server": server, "tool": tool,
+                                   "arguments": arguments or {}}) if self._api else self._no_api()
+
+    def mcp_resource(self, server, uri):
+        """MCP 资源读取（v1 未实现）。"""
+        return self._api.mcp_resource({"server": server,
+                                       "uri": uri}) if self._api else self._no_api()
+
+    def mcp_prompt(self, server, name, arguments=None):
+        """MCP Prompt 模板（v1 未实现）。"""
+        return self._api.mcp_prompt({"server": server, "name": name,
+                                     "arguments": arguments or {}}) if self._api else self._no_api()
+
+    def mcp_status(self, server):
+        """MCP 服务器在线状态。"""
+        return self._api.mcp_status({"server": server}) if self._api else self._no_api()
+
+    # ---------- v2.1 缺口池：AI ----------
+    def ai_stream(self, messages=None, prompt=None):
+        """AI 流式对话（返回 text + chunks）。"""
+        return self._api.ai_stream({"messages": messages,
+                                    "prompt": prompt}) if self._api else self._no_api()
+
+    def ai_vision(self, image_url, question=""):
+        """AI 视觉识图（返回描述）。"""
+        return self._api.ai_vision({"image_url": image_url,
+                                    "question": question}) if self._api else self._no_api()
+
+    def ai_embedding(self, text):
+        """AI 向量化（复用花语向量模型；返回 dim+vector 预览）。"""
+        return self._api.ai_embedding({"text": text}) if self._api else self._no_api()
+
+    def ai_rerank(self, query, documents):
+        """AI 重排（返回 index+score 列表）。"""
+        return self._api.ai_rerank({"query": query,
+                                    "documents": list(documents)}) if self._api else self._no_api()
+
+    def ai_token(self, text):
+        """Token 估算。"""
+        return self._api.ai_token({"text": text}) if self._api else self._no_api()
+
+    def ai_models(self):
+        """已配置模型列表。"""
+        return self._api.ai_models({}) if self._api else self._no_api()
+
+    def ai_model_info(self, model_key):
+        """模型信息（key→名称/类型/URL）。"""
+        return self._api.ai_model_info({"model": model_key}) if self._api else self._no_api()
+
+    def ai_usage(self):
+        """用量统计（指标快照 AI 相关键）。"""
+        return self._api.ai_usage({}) if self._api else self._no_api()
+
+    def ai_budget(self):
+        """预算/限额配置。"""
+        return self._api.ai_budget({}) if self._api else self._no_api()
+
+    # ---------- v2.1 缺口池：社交互动 / 文件 / 媒体 ----------
+    def reaction(self, message_id, react_type):
+        """表情回应（等价 react）。"""
+        return self._api.reaction({"message_id": message_id,
+                                   "react_type": react_type}) if self._api else self._no_api()
+
+    def poke(self, user_id=None, group_id=None):
+        """戳一戳（好友戳真；群戳网关需支持）。"""
+        return self._api.poke({"user_id": user_id,
+                               "group_id": group_id}) if self._api else self._no_api()
+
+    def emoji_list(self, message_id):
+        """表情回应列表（网关需支持）。"""
+        return self._api.emoji_list({"message_id": message_id}) if self._api else self._no_api()
+
+    def file_upload(self, name, data):
+        """上传文件到插件 WebUI 空间（web_ui.files 权限）。"""
+        return self._api.file_upload({"name": name,
+                                      "data": data}) if self._api else self._no_api()
+
+    def file_download(self, name):
+        """下载插件空间文件。"""
+        return self._api.file_download({"name": name}) if self._api else self._no_api()
+
+    def file_info(self, name):
+        """文件信息（大小/类型/图片宽高）。"""
+        return self._api.file_info({"name": name}) if self._api else self._no_api()
+
+    def file_delete(self, name):
+        """删除插件空间文件。"""
+        return self._api.file_delete({"name": name}) if self._api else self._no_api()
+
+    def file_convert(self, name, target_format):
+        """文件转换（网关需支持）。"""
+        return self._api.file_convert({"name": name,
+                                       "target_format": target_format}) if self._api else self._no_api()
+
+    def image_compress(self, name, quality=80):
+        """图片压缩（网关需支持）。"""
+        return self._api.image_compress({"name": name,
+                                         "quality": quality}) if self._api else self._no_api()
+
+    def image_resize(self, name, width, height=0):
+        """图片缩放（网关需支持）。"""
+        return self._api.image_resize({"name": name, "width": width,
+                                       "height": height}) if self._api else self._no_api()
+
+    def image_screenshot(self, name, box=None):
+        """图片截图（网关需支持）。"""
+        return self._api.image_screenshot({"name": name,
+                                           "box": box}) if self._api else self._no_api()
+
+    def audio_info(self, name):
+        """音频信息（大小/格式）。"""
+        return self._api.audio_info({"name": name}) if self._api else self._no_api()
+
+    def video_info(self, name):
+        """视频信息（大小/格式）。"""
+        return self._api.video_info({"name": name}) if self._api else self._no_api()
+
+    # ---------- v2.1 缺口池：群 ----------
+    def group_member_search(self, group_id, query="", count=100):
+        """群成员搜索（昵称/群名片/ID 模糊）。"""
+        return self._api.group_member_search({"group_id": group_id, "query": query,
+                                              "count": count}) if self._api else self._no_api()
+
+    def group_member_update(self, group_id, user_id, card=None):
+        """更新群名片（等价设置成员资料）。"""
+        return self._api.group_member_update({"group_id": group_id, "user_id": user_id,
+                                              "card": card}) if self._api else self._no_api()
+
+    def group_mute_status(self, group_id, user_id):
+        """群成员禁言状态查询（网关需支持）。"""
+        return self._api.group_mute_status({"group_id": group_id,
+                                            "user_id": user_id}) if self._api else self._no_api()
+
+    def group_title(self, group_id, user_id, title):
+        """设置群头衔（等价 set_group_special_title）。"""
+        return self._api.group_title({"group_id": group_id, "user_id": user_id,
+                                      "title": title}) if self._api else self._no_api()
+
+    def group_notice_create(self, group_id, content):
+        """创建群公告。"""
+        return self._api.group_notice_create({"group_id": group_id,
+                                              "content": content}) if self._api else self._no_api()
+
+    def group_notice_update(self, group_id, content, notice_id=None):
+        """更新群公告（删除旧+发送新）。"""
+        return self._api.group_notice_update({"group_id": group_id, "content": content,
+                                              "notice_id": notice_id}) if self._api else self._no_api()
+
+    def group_file_upload(self, group_id, path, name):
+        """上传群文件（网关需支持）。"""
+        return self._api.group_file_upload({"group_id": group_id, "path": path,
+                                            "name": name}) if self._api else self._no_api()
+
+    def group_file_rename(self, group_id, file_id, name):
+        """重命名群文件。"""
+        return self._api.group_file_rename({"group_id": group_id, "file_id": file_id,
+                                            "name": name}) if self._api else self._no_api()
+
+    def group_essence(self, group_id):
+        """群精华消息列表。"""
+        return self._api.group_essence({"group_id": group_id}) if self._api else self._no_api()
+
+    def group_invite(self, group_id, user_id):
+        """群邀请（网关需支持）。"""
+        return self._api.group_invite({"group_id": group_id,
+                                       "user_id": user_id}) if self._api else self._no_api()
+
+    def group_apply(self, flag, approve=True, reason=""):
+        """处理加群申请（等价 handle_group_request）。"""
+        return self._api.group_apply({"flag": flag, "approve": approve,
+                                      "reason": reason}) if self._api else self._no_api()
+
+    def group_admins(self, group_id):
+        """群管理员列表（admin+owner）。"""
+        return self._api.group_admins({"group_id": group_id}) if self._api else self._no_api()
+
+    def group_honor(self, group_id, honor_type=""):
+        """群荣誉。"""
+        return self._api.group_honor({"group_id": group_id,
+                                      "honor_type": honor_type}) if self._api else self._no_api()
+
+    def sdk(self, base_dir: str = "") -> dict:
+        """缺口 SDK 分面（ai/memory/mcp/db/cache/task/i18n/config/...）。"""
+        from flowerie_sdk.gap_sdk import build_sdk
+        return build_sdk(self, base_dir)
+
+    def _no_api(self):
+        return {"ok": False, "error": "未 attach（api 不可用）"}
+
     def schedule_cancel(self, schedule_id: str) -> dict:
         """取消定时任务（api.schedule_cancel 的 bot 门面转发）。"""
         if self._api is None:

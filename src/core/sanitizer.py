@@ -20,14 +20,34 @@ def check_image_url(url: str, allowed_hosts: Optional[list] = None) -> Tuple[boo
         return True, ""
     if not re.match(r"^https?://", url, re.IGNORECASE):
         return False, f"scheme_rejected:{url[:24]}"
+    from urllib.parse import urlparse
+    host = (urlparse(url).hostname or "").lower()
+    # loopback 放行（NapCat 本地图片就是 127.0.0.1——已知信任边界）：
+    # 覆盖整个 127.0.0.0/8 与 localhost / ::1
+    loopback = host in ("localhost", "::1") or (host or "").startswith("127.")
+    allowed = []
     if allowed_hosts:
-        from urllib.parse import urlparse
-        host = (urlparse(url).hostname or "").lower()
-        # loopback 放行（NapCat 本地图片就是 127.0.0.1——已知信任边界）：
-        # 覆盖整个 127.0.0.0/8 与 localhost / ::1
-        loopback = host in ("localhost", "::1") or (host or "").startswith("127.")
-        if not loopback and host not in allowed_hosts:
-            return False, f"host_rejected:{host}"
+        allowed = [str(h).lower() for h in allowed_hosts]
+    if allowed_hosts and not loopback and host not in allowed:
+        return False, f"host_rejected:{host}"
+    if not allowed_hosts and not loopback:
+        # 默认（无白名单）：拒绝私网/链路本地/云元数据（SSRF 防线），放行公有 IP
+        try:
+            host_pure = host.split(":")[0]
+            if host_pure in ("localhost", "::1"):
+                return True, ""
+            if any(d in host_pure for d in (".local",)):
+                return False, "host_mDNS_private"
+            ip = None
+            try:
+                ip = ipaddress.ip_address(host_pure)
+            except ValueError:
+                pass
+            if ip is not None and (ip.is_private or ip.is_loopback or ip.is_link_local
+                                   or ip.is_reserved or ip.is_multicast):
+                return False, f"host_private:{host_pure}"
+        except Exception:  # noqa: BLE001 - 解析失败按拒绝处理
+            return False, "host_parse_failed"
     return True, ""
 
 

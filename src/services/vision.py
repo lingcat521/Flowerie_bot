@@ -110,8 +110,7 @@ class VisionService:
                                 "GET",
                                 image_url,
                                 timeout=timeout,
-                                follow_redirects=True,
-                                max_redirects=max(1, self.config.IMAGE_DOWNLOAD_MAX_REDIRECTS),
+                                follow_redirects=False,
                             ) as resp:
                                 if resp.status_code != 200:
                                     logger.error(f"Image fetch failed HTTP {resp.status_code} (attempt {attempt + 1}): {self._url_for_log(image_url)}")

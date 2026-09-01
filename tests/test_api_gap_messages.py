@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+# 仅在需要 SDK 的测试内局部加载（避免全局 path 污染叠加测试副本）
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "plugin_sdk"))
 
 from src.plugins.manager import PluginManager

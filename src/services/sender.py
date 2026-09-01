@@ -28,6 +28,10 @@ class Sender:
         if self.session:
             await self.session.close()
 
+    def _headers(self) -> dict:
+        """OneBot HTTP API 无鉴权头（token 在 URL/底座层）；图片发送与 _post 同策略。"""
+        return {}
+
     async def _post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
         """通用 OneBot/Lagrange 端点调用（薄封装；统一返回 {ok, data|error}）。"""
         try:
