@@ -52,6 +52,65 @@ class PluginPanelMixin:
                                  plugin_configs=plugin_configs, protection_warning=protection == "unsafe",
                                  webui_links=webui_links)
 
+    def _webui_files_approved(self, pid: str) -> bool:
+        row = self._plugin_manager.get_plugin(pid) if self._plugin_manager else None
+        return bool(row and row.get("enabled")
+                    and "web_ui.files" in (row.get("approved_permissions") or []))
+
+    async def _handle_panel_webui_upload(self, request: web.Request) -> web.Response:
+        """插件 WebUI 文件上传（multipart→插件空间；扩展名+魔数+大小+固定名）。"""
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        pid = str(request.match_info.get("pid", ""))[:64]
+        page = str(request.match_info.get("page", ""))[:64]
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", pid):
+            return web.HTTPFound("/panel?tab=plugins&err=1&msg=" + quote("非法插件"))
+        if not self._webui_files_approved(pid):
+            return web.HTTPFound("/panel?tab=plugins&err=1&msg="
+                                 + quote("插件未批准 web_ui.files 权限"))
+        reader = await request.multipart()
+        saved = []
+        try:
+            while True:
+                part = await reader.next()
+                if part is None:
+                    break
+                if part.name != "file":
+                    await part.read()
+                    continue
+                fname = part.filename or ""
+                blob = await part.read()
+                try:
+                    name, size = self._plugin_manager.webui_save_upload(pid, fname, blob)
+                    saved.append(name)
+                except ValueError as e:
+                    return web.HTTPFound(
+                        f"/panel/plugins/webui/{pid}/{page}?err=1&msg=" + quote(f"上传拒绝: {e}"))
+        except Exception as e:  # noqa: BLE001
+            return web.HTTPFound(f"/panel/plugins/webui/{pid}/{page}?err=1&msg="
+                                 + quote(f"上传失败: {type(e).__name__}"))
+        return web.HTTPFound(f"/panel/plugins/webui/{pid}/{page}?msg="
+                             + quote(f"已上传 {len(saved)} 个文件") + ("&files=" + quote(",".join(saved)) if saved else ""))
+
+    async def _handle_panel_webui_download(self, request: web.Request) -> web.Response:
+        """插件 WebUI 文件下载（仅插件空间 + 白名单名 + 大小上限）。"""
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        pid = str(request.match_info.get("pid", ""))[:64]
+        name = str(request.match_info.get("name", ""))[:80]
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", pid):
+            return web.HTTPFound("/panel?tab=plugins&err=1&msg=" + quote("非法插件"))
+        if not self._webui_files_approved(pid):
+            return web.HTTPFound("/panel?tab=plugins&err=1&msg="
+                                 + quote("插件未批准 web_ui.files 权限"))
+        try:
+            blob, safe_name, ext = self._plugin_manager.webui_read_file(pid, name)
+        except ValueError as e:
+            return web.HTTPFound("/panel?tab=plugins&err=1&msg=" + quote(str(e)))
+        return web.Response(
+            body=blob, content_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{safe_name}"'})
+
     async def _handle_panel_plugin_webui(self, request: web.Request) -> web.Response:
         """Plugin WebUI 页面：GET=渲染（params 从 query），POST=form 提交（动态重渲染）。
 

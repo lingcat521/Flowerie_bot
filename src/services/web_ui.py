@@ -163,6 +163,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/test/model", self._handle_panel_model_test)
         app.router.add_get("/panel/plugins/webui/{pid}/{page}", self._handle_panel_plugin_webui)
         app.router.add_post("/panel/plugins/webui/{pid}/{page}", self._handle_panel_plugin_webui)
+        app.router.add_post("/panel/plugins/webui/upload/{pid}/{page}", self._handle_panel_webui_upload)
+        app.router.add_get("/panel/plugins/webui/files/{pid}/{name}", self._handle_panel_webui_download)
         app.router.add_get("/panel/logout", self._handle_panel_logout)
         # 注销管理员账号（需当前密码验证；只清账号密码，其他配置不动）
         app.router.add_post("/panel/account/unregister", self._handle_panel_unregister)
