@@ -908,7 +908,9 @@ class PluginManager:
             try:
                 import glob
                 logs = []
-                for lp in glob.glob(str(self._plugin_dir()) + "/../logs/*.log")[:2]:
+                import os
+                logs_dir = os.path.join(os.path.dirname(str(self._plugin_dir())), "logs")
+                for lp in glob.glob(os.path.join(logs_dir, "*.log"))[:2]:
                     with open(lp, "r", encoding="utf-8", errors="replace") as f:
                         tail = f.readlines()[-50:]
                     logs.extend(line2 for line2 in tail if tid and tid in line2)
@@ -1097,12 +1099,17 @@ class PluginManager:
                 return {"ok": False, "error": f"未找到 MCP 服务器: {name}"}
             url = str(server.get("url") or "")
             timeout = max(3, min(30, int(getattr(cfg, "MCP_TIMEOUT", 15) or 15)))
+            mcp_headers = {"Content-Type": "application/json"}
+            srv_headers = server.get("headers") if isinstance(server, dict) else None
+            if isinstance(srv_headers, dict):
+                for hk, hv in list(srv_headers.items())[:8]:
+                    mcp_headers[str(hk)[:64]] = str(hv)[:256]
             if action == "mcp_status":
                 try:
                     async with httpx.AsyncClient(timeout=timeout) as c:
                         resp = await c.post(url, json={"jsonrpc": "2.0", "id": 1,
                                                        "method": "tools/list", "params": {}},
-                                            headers={"Content-Type": "application/json"})
+                                            headers=mcp_headers)
                         ok = resp.status_code == 200
                         return {"ok": ok, "status": "online" if ok else f"HTTP {resp.status_code}"}
                 except httpx.HTTPError as e:
@@ -1122,7 +1129,7 @@ class PluginManager:
                                                    "method": "tools/call",
                                                    "params": {"name": tool,
                                                               "arguments": payload.get("arguments") or {}}},
-                                        headers={"Content-Type": "application/json"})
+                                        headers=mcp_headers)
                     data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
                     if resp.status_code != 200:
                         return {"ok": False, "error": f"HTTP {resp.status_code}: {(resp.text or '')[:160]}"}
