@@ -734,7 +734,7 @@ class PluginManager:
             return await self._sender_forward(plugin_id, alias[action], payload)
         if action == "poke":
             if payload.get("user_id") and not payload.get("group_id"):
-                return await self._sender_forward(plugin_id, "friend_poke", payload)
+                return await self._sender_forward(plugin_id, "user_poke", payload)
             return {"ok": False, "error": "poke: 群戳 v1 无端点（仅好友戳支持）"}
         # ---- 插件空间文件（安全校验复用 webui 文件闸门） ----
         try:
