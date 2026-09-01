@@ -8,6 +8,31 @@ from src.services.webui_render.category_constants import (
 )
 from src.services.webui_render.util import _esc
 
+# ---------- 花语记忆：模型配置链状态徽标（零 JS；未配置/缺配置/已配置） ----------
+_BLOSSOM_MODEL_KEYS = {
+    "BLOSSOM_MEMORY_EMBEDDING_MODEL": ("BLOSSOM_MEMORY_EMBEDDING_ENABLED",
+                                       "BLOSSOM_MEMORY_EMBEDDING_API_URL"),
+    "BLOSSOM_MEMORY_RERANKER_MODEL": ("BLOSSOM_MEMORY_RERANKER_ENABLED",
+                                      "BLOSSOM_MEMORY_RERANKER_API_URL"),
+}
+
+
+def _blossom_model_status_badge(cfgs, c: dict) -> str:
+    """模型/API 配置行的链状态：未启用 / ⚠️ 缺模型或地址 / 已配置。"""
+    key = c["key"]
+    if key not in _BLOSSOM_MODEL_KEYS:
+        return ""
+    sub_switch, url_key = _BLOSSOM_MODEL_KEYS[key]
+    cur = {x["key"]: str(x.get("current") or "") for x in cfgs}
+    enabled = cur.get(sub_switch, "false").lower() in ("true", "1")
+    if not enabled:
+        return '<span class="badge">未启用</span>'
+    model_ok = bool(cur.get(key, "").strip())
+    url_ok = bool(cur.get(url_key, "").strip())
+    if model_ok and url_ok:
+        return '<span class="badge ok">已配置</span>'
+    return '<span class="badge warn">⚠️ 缺模型或地址</span>'
+
 
 def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_test_status=None, mcp_tool_counts=None,
                            category_order=None, category_labels=None) -> str:
@@ -43,7 +68,9 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
                 continue
             if c["key"] in _BLOSSOM_SUB_CONFIG_KEYS and not _blossom_sub_switch_on(by_cat[cat], c["key"]):
                 continue
-            rows_html.append(_render_config_row(c))
+            extra = _blossom_model_status_badge(by_cat[cat], c)
+            rows_html.append(_render_config_row(c, extra_badges=extra))
+
         body = (
             f'<form method="post" action="{action}">{"".join(rows_html)}'
             '<div class="group-actions"><button type="submit" class="btn">保存本组</button></div>'
@@ -216,10 +243,12 @@ def _render_cat_nav(active: str, cats, labels) -> str:
         links.append(f'<a class="cat{active_cls}" href="/panel?cat={_esc(cat)}">{_esc(label)}</a>')
     return '<nav class="cats">' + "".join(links) + '</nav>'
 
-def _render_config_row(c: dict) -> str:
+def _render_config_row(c: dict, extra_badges: str = "") -> str:
     key = c["key"]
     cur = c.get("current") or ""
     badges = []
+    if extra_badges:
+        badges.append(extra_badges)
     if c.get("secret"):
         badges.append('<span class="badge">密钥</span>')
     if not c.get("hot_reload"):

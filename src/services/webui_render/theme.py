@@ -255,6 +255,7 @@ box-shadow:var(--shadow);padding:16px 18px 18px;margin-bottom:18px}
 .row-title{font-size:13.5px;color:var(--text)}
 .row-key{font-size:11px;color:var(--text-muted);font-family:ui-monospace,Menlo,Consolas,monospace}
 .badges{display:flex;gap:6px;margin-top:3px;flex-wrap:wrap}
+.badge.ok{background:color-mix(in srgb, var(--ok) 14%, transparent);color:var(--ok)}
 .badge{font-size:10.5px;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
 .badge.warn{background:rgba(210,153,34,.15);color:#d2a32a}
 .row-control{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}

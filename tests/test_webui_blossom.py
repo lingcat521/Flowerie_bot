@@ -89,3 +89,36 @@ def test_specific_view_also_open():
                                   category_labels={"AI": "AI 配置", "BlossomMemory": "花语记忆"})
     # 特定分类视图同样默认展开（用户要求所有分类不折叠）；分类本身只显示选中项
     assert html.count('<details class="cfg-group" open>') == 1, "特定分类默认展开"
+
+
+# ---------- 模型配置链状态徽标 ----------
+def test_model_status_badges():
+    from src.services.webui_render.config_panel import render_config_sections
+    cfgs = [
+        _cfg("BLOSSOM_MEMORY_ENABLED", "true"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_ENABLED", "true"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_MODEL", "text-embedding-3-small", "str"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_API_URL", "http://127.0.0.1:1/v1", "str"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_API_KEY", "abc12345"),
+        _cfg("BLOSSOM_MEMORY_RERANKER_ENABLED", "true"),
+        _cfg("BLOSSOM_MEMORY_RERANKER_MODEL", "", "str"),
+        _cfg("BLOSSOM_MEMORY_RERANKER_API_URL", "", "str"),
+    ]
+    html = render_config_sections([c | {"category": "BlossomMemory"} for c in cfgs],
+                                  category_order=["BlossomMemory"],
+                                  category_labels={"BlossomMemory": "花语记忆"})
+    assert "已配置" in html, "embedding 配置齐全应显示已配置"
+    assert "⚠️ 缺模型或地址" in html, "reranker 缺配置应显示警告"
+
+
+def test_model_status_badge_disabled():
+    from src.services.webui_render.config_panel import render_config_sections
+    cfgs = [
+        _cfg("BLOSSOM_MEMORY_ENABLED", "false"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_MODEL", "", "str"),
+    ]
+    html = render_config_sections([c | {"category": "BlossomMemory"} for c in cfgs],
+                                  category_order=["BlossomMemory"],
+                                  category_labels={"BlossomMemory": "花语记忆"})
+    assert "未启用" in html, "链关闭应显示未启用"
+    assert "⚠️" not in html, "链关闭不应报缺配置"
