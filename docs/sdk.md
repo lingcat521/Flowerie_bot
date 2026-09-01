@@ -454,7 +454,7 @@ bot.like(user_id)
 bot.friends()                    # 好友列表（list[dict]）
 ```
 
-## 14. v2.0.1 拉格朗日补齐（并入上方语义表；端点仅 Sender/适配层）
+## 14. v2.0.1 拉格朗日补齐 + v2.1 缺口 SDK 矩阵（见文末；并入上方语义表；端点仅 Sender/适配层）
 
 | SDK 方法 | OneBot 端点（仅 Sender，开发者不接触） | 权限 | Lagrange |
 | --- | --- | --- | --- |

@@ -67,7 +67,7 @@
 | `emoji(payload)` | Emoji 回应（message_id + emoji；等价反应） | `send_message` |
 | `emoji_list(payload)` | 表情回应列表（v1 无查询端点→not supported） | `read_message_history` |
 | `essence_list(payload)` | 群精华消息列表。 | `read_group_info` |
-| `like(payload)` | 点赞（user_id；等价点赞好友资料） | `send_message` |
+| `like(payload)` | 点赞（user_id；等价点赞好友资料） | `read_user_info` |
 | `poke(payload)` | 戳一戳（user_id→好友戳；group_id+user_id→群戳，群戳 v1 无端点） | `send_message` |
 | `react(payload)` | 消息表情回应（NapCat/Lagrange 自动适配）。 | `read_message` |
 | `reaction(payload)` | 表情回应（message_id + react_type；等价 react） | `send_message` |

@@ -1,6 +1,6 @@
 # 安全模型（Security Model）
 
-> v1.2.0 新增。描述 Flowerie 的整体安全边界与防护设计。
+> v2.1.0 更新。描述 Flowerie 的整体安全边界与防护设计（含 Review 已知边界）。
 > 插件开发侧的接口性安全规范见 [plugin-developer-guide.md](https://github.com/lingcat521/Flowerie_bot/blob/main/docs/plugin-developer-guide.md)，本节侧重架构性保证。
 
 ---

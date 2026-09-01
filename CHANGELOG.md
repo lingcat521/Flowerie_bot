@@ -2,7 +2,60 @@
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [1.5.0] - 2026-08-31
+## [2.1.0] - 2026-09-02（当前 main）
+
+### Added——Plugin WebUI（新网络功能，零 JS 红线）
+- 插件自有管理控制台：受控 DSL（25+ 组件/页面/tab/breadcrumb/文件/权限 `web_ui`+`web_ui.files`）
+- 渲染器先转义后结构化；URL scheme/属性/style 白名单；上传魔数/大小/名称/穿越四道闸
+- `webui_page(page, action, params, values)` hook（4s 超时/异常降级）；路由 GET/POST 零 JS 重渲染
+- 一致性钉死：docs 组件表 ↔ 渲染器双向（test_plugin_webui_consistency）
+
+### Added——API/SDK 缺口池全覆盖（~180 项）
+- PluginApi 60→**160 个语义方法**（消息/好友/群/社交/文件/AI/Memory/MCP/插件/Web/数据/运行时/开发）
+- 无端点能力一律**显式** `not supported in v1`（绝不静默/绝不假功能）；可用为本地实现或复用生产客户端
+- SDK：gap_sdk 层（分面 ai/memory/mcp/db/cache/task/i18n/config/mock + 上下文 + TaskManager（专用后台 loop）真）
+- Matcher 组合器 rule_or/rule_all/rule_not（主进程 any_of/all_of/not 真支持）
+- 权限 +2（`plugin_admin`）；`scripts/gen_api_md.py` 自动生成 api.md（永不漂移）
+
+### Fixed——全库白盒 Review（28 条发现）
+- **启动崩溃**：config.py 错位校验（启用花语记忆+重排即 NameError）
+- **功能失效**：sender._headers 未定义（表情包图片发送）、语义记忆检索死代码、group_res 参数名、
+  PluginRuntime hook 通道缺失（WebUI 页/插件互调）、重复回复误杀、纯记忆回合重试空转
+- **安全**：图片下载 SSRF（默认拒绝私网/元数据/重定向）、登录限速失效（爆破）、Excel zip 炸弹预检、
+  MCP 鉴权头透传、跟踪日志路径、sticker 上下文清洗、service 注册名校验
+- 测试：真进程黑盒（gap 9 类 API 往返）+ 白盒审计 37 项 + 一致性 6 项；子集 521+ 绿；CI 双绿
+
+## [2.0.1] - 2026-08-31
+
+### Fixed——"保存被拦截/关不掉/什么都没填也报错"修复
+- **根因**：`BLOSSOM_MEMORY_*_API_KEY`/`DATABASE_URL` 为 secret 型但 `is_secret=False`
+  → 空/短值不过保密跳过 → 误报"值不合法"；修复后扫描 0 残留
+- `_chain_needs_secret` 优先读本次提交值（区分关闭开关 vs 错误提交）
+- 每日提取上限放宽 (0,500)；全配置保存路径回归测试补齐
+
+## [2.0.0] - 2026-08-30
+
+### 架构重构（v2 主线）
+- 语义层与 OneBot 低耦合：端点串只在 `sender.py`+适配层；语义层零 `/send_` `/get_` 字符串
+- Web UI 零 JS 化（HTML+CSS+表单）；模型/API 配置行链状态徽标
+- 花语记忆：SQLite 默认 + PostgreSQL 可选；BlossomMemory（向量/重排/每日限额/提取）
+- 配置保存智能：保密跳过/热重载分组/校验提示
+
+## [1.7.0] - 2026-08-29
+
+### Added——拉格朗日能力对齐 + 低耦合
+- 群文件/公告/精华/荣誉/资料（group_folder_*、group_notice_*、essence_list 等 ~15）
+- `_SENDER_ACTIONS` 转发表（22+ 动作 → 端点；参数白名单；不支持显式报错）
+- SDK 语义门面（group(user)/user(me)/top-level 动作）；OneBot 端点耦合审计测试
+
+## [1.6.0] - 2026-08-28
+
+### Added——Web UI 开关治理 + 持久记忆
+- 面板全部配置组可折叠（零 JS `<details>`）；开关状态可视化；余额预警
+- 持久记忆（SQLite；可选 PostgreSQL）；LivingMemory → 花语记忆 BlossomMemory
+- 文档二层结构：quick-start（10 分钟）+ 完整参考分离
+
+
 
 ### Added（能力对标主流网关；形态自有特色——语义化分组上下文，端点只在适配层）
 
