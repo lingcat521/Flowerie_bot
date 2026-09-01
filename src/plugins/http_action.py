@@ -99,19 +99,19 @@ async def plugin_http_request(payload: Dict[str, Any],
                 timeout=httpx.Timeout(timeout, connect=min(timeout, 5.0)),
                 follow_redirects=False) as client:
             if method == "POST":
-                req = client.post(url, headers=clean_headers,
+                req = await client.post(url, headers=clean_headers,
                                   content=body if body is not None else None,
                                   json=json_data)
             elif method == "GET":
-                req = client.get(url, headers=clean_headers)
+                req = await client.get(url, headers=clean_headers)
             elif method == "PUT":
-                req = client.put(url, headers=clean_headers,
+                req = await client.put(url, headers=clean_headers,
                                  content=body if body is not None else None,
                                  json=json_data)
             elif method == "HEAD":
-                req = client.head(url, headers=clean_headers)
+                req = await client.head(url, headers=clean_headers)
             else:  # DELETE
-                req = client.delete(url, headers=clean_headers)
+                req = await client.delete(url, headers=clean_headers)
             async with req as resp:
                 if resp.status_code >= 300:
                     return {"ok": False, "error": f"HTTP {resp.status_code}（重定向一律拒绝）",
