@@ -742,7 +742,7 @@ class PluginManager:
         if action in NS:
             return {"ok": False, "error": f"{action}: v1 明确不支持（零 JS+安全红线）"}
         if action == "webhook":
-            return await self._sender_forward(plugin_id, "http_request", payload)
+            return await self._run_action(plugin_id, "http_request", payload)
         if action == "router":
             try:
                 mf = self._manifest_of(self.get_plugin(plugin_id))
