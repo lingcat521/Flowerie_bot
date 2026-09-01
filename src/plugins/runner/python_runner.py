@@ -108,6 +108,68 @@ class PluginApi:
         """引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义）"""
         return self._send_action("quote_chain", payload)
 
+    # ---------- v2.1 缺口池：社交互动 ----------
+    def reaction(self, payload):
+        """表情回应（message_id + react_type；等价 react）"""
+        return self._send_action("reaction", payload)
+
+    def poke(self, payload):
+        """戳一戳（user_id→好友戳；group_id+user_id→群戳，群戳 v1 无端点）"""
+        return self._send_action("poke", payload)
+
+    def like(self, payload):
+        """点赞（user_id；等价点赞好友资料）"""
+        return self._send_action("like", payload)
+
+    def emoji(self, payload):
+        """Emoji 回应（message_id + emoji；等价反应）"""
+        return self._send_action("emoji", payload)
+
+    def emoji_list(self, payload):
+        """表情回应列表（v1 无查询端点→not supported）"""
+        return self._send_action("emoji_list", payload)
+
+    # ---------- v2.1 缺口池：文件/媒体 ----------
+    def file_upload(self, payload):
+        """文件上传到插件 WebUI 空间（web_ui.files 权限；安全校验）"""
+        return self._send_action("file_upload", payload)
+
+    def file_download(self, payload):
+        """文件下载（仅插件空间）"""
+        return self._send_action("file_download", payload)
+
+    def file_info(self, payload):
+        """文件信息（大小/类型/图片尺寸；插件空间）"""
+        return self._send_action("file_info", payload)
+
+    def file_delete(self, payload):
+        """删除插件空间文件"""
+        return self._send_action("file_delete", payload)
+
+    def file_convert(self, payload):
+        """文件转换（v1 无转换器→not supported）"""
+        return self._send_action("file_convert", payload)
+
+    def image_compress(self, payload):
+        """图片压缩（v1 无图像库→not supported）"""
+        return self._send_action("image_compress", payload)
+
+    def image_resize(self, payload):
+        """图片缩放（v1 无图像库→not supported）"""
+        return self._send_action("image_resize", payload)
+
+    def image_screenshot(self, payload):
+        """图片截图（v1 无图像能力→not supported）"""
+        return self._send_action("image_screenshot", payload)
+
+    def audio_info(self, payload):
+        """音频信息（大小/格式；时长需网关辅助）"""
+        return self._send_action("audio_info", payload)
+
+    def video_info(self, payload):
+        """视频信息（大小/格式；时长需网关辅助）"""
+        return self._send_action("video_info", payload)
+
     # ---------- v2.1 缺口池：群 ----------
     def group_member_search(self, payload):
         """群成员搜索（group_id + query；成员列表本地过滤）"""
@@ -156,10 +218,6 @@ class PluginApi:
     def group_admins(self, payload):
         """群管理员列表（成员列表本地过滤 admin/owner）"""
         return self._send_action("group_admins", payload)
-
-    def group_honor(self, payload):
-        """群荣誉（等价 group_honor）"""
-        return self._send_action("group_honor", payload)
 
     # ---------- v2.1 缺口池：好友 ----------
     def friend_detail(self, payload):

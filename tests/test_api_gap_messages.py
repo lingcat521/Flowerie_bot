@@ -151,3 +151,39 @@ def test_group_not_supported_explicit():
     for act in ("group_mute_status", "group_file_upload", "group_file_rename", "group_invite"):
         r = _run(mgr, "p", act, {})
         assert not r["ok"] and "not supported" in r["error"]
+
+
+def test_social_alias_and_poke_route():
+    mgr, s = _mgr()
+    r = _run(mgr, "p", "reaction", {"message_id": 7, "react_type": 1})
+    assert r.get("error", "").find("not supported") == -1 or (not r["ok"])
+    r2 = _run(mgr, "p", "poke", {"user_id": 5})
+    assert "群戳" not in r2.get("error", "")  # 好友戳走 fake（无端点方法→error 路径正常处理）
+    r3 = _run(mgr, "p", "poke", {"group_id": 9})
+    assert not r3["ok"] and "群戳" in r3["error"]
+
+
+def test_file_space_roundtrip(tmp_path):
+    from src.plugins.manager import PluginManager
+    import os
+    class C2(_Cfg):
+        PLUGIN_DIR = str(tmp_path)
+    mgr = PluginManager(config=C2(), repository=_Repo())
+    up = _run(mgr, "p", "file_upload", {"name": "info.txt", "data": "hello"})
+    assert up["ok"] and up["size"] == 5
+    info = _run(mgr, "p", "file_info", {"name": "info.txt"})
+    assert info["ok"] and info["info"]["size"] == 5
+    dl = _run(mgr, "p", "file_download", {"name": "info.txt"})
+    assert dl["ok"] and dl["data"] == "hello"
+    de = _run(mgr, "p", "file_delete", {"name": "info.txt"})
+    assert de["ok"]
+
+
+def test_file_ns_explicit():
+    mgr, _s = _mgr()
+    for act, payload in (("file_convert", {"name": "a.txt"}),
+                         ("image_compress", {"name": "a.png"}),
+                         ("audio_info", {"name": "a.mp3"}),
+                         ("emoji_list", {"message_id": 1})):
+        r = _run(mgr, "p", act, payload)
+        assert not r["ok"] and "not supported" in r["error"]

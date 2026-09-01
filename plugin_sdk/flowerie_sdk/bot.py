@@ -274,6 +274,75 @@ class FlowerieBot:
         """好友在线状态。"""
         return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
 
+    # ---------- v2.1 缺口池：社交互动 / 文件 / 媒体 ----------
+    def reaction(self, message_id, react_type):
+        """表情回应（等价 react）。"""
+        return self._api.reaction({"message_id": message_id,
+                                   "react_type": react_type}) if self._api else self._no_api()
+
+    def poke(self, user_id=None, group_id=None):
+        """戳一戳（好友戳真；群戳网关需支持）。"""
+        return self._api.poke({"user_id": user_id,
+                               "group_id": group_id}) if self._api else self._no_api()
+
+    def like(self, user_id):
+        """点赞。"""
+        return self._api.like({"user_id": user_id}) if self._api else self._no_api()
+
+    def emoji(self, message_id, emoji):
+        """Emoji 回应（等价反应）。"""
+        return self._api.emoji({"message_id": message_id,
+                                "emoji": emoji}) if self._api else self._no_api()
+
+    def emoji_list(self, message_id):
+        """表情回应列表（网关需支持）。"""
+        return self._api.emoji_list({"message_id": message_id}) if self._api else self._no_api()
+
+    def file_upload(self, name, data):
+        """上传文件到插件 WebUI 空间（web_ui.files 权限）。"""
+        return self._api.file_upload({"name": name,
+                                      "data": data}) if self._api else self._no_api()
+
+    def file_download(self, name):
+        """下载插件空间文件。"""
+        return self._api.file_download({"name": name}) if self._api else self._no_api()
+
+    def file_info(self, name):
+        """文件信息（大小/类型/图片宽高）。"""
+        return self._api.file_info({"name": name}) if self._api else self._no_api()
+
+    def file_delete(self, name):
+        """删除插件空间文件。"""
+        return self._api.file_delete({"name": name}) if self._api else self._no_api()
+
+    def file_convert(self, name, target_format):
+        """文件转换（网关需支持）。"""
+        return self._api.file_convert({"name": name,
+                                       "target_format": target_format}) if self._api else self._no_api()
+
+    def image_compress(self, name, quality=80):
+        """图片压缩（网关需支持）。"""
+        return self._api.image_compress({"name": name,
+                                         "quality": quality}) if self._api else self._no_api()
+
+    def image_resize(self, name, width, height=0):
+        """图片缩放（网关需支持）。"""
+        return self._api.image_resize({"name": name, "width": width,
+                                       "height": height}) if self._api else self._no_api()
+
+    def image_screenshot(self, name, box=None):
+        """图片截图（网关需支持）。"""
+        return self._api.image_screenshot({"name": name,
+                                           "box": box}) if self._api else self._no_api()
+
+    def audio_info(self, name):
+        """音频信息（大小/格式）。"""
+        return self._api.audio_info({"name": name}) if self._api else self._no_api()
+
+    def video_info(self, name):
+        """视频信息（大小/格式）。"""
+        return self._api.video_info({"name": name}) if self._api else self._no_api()
+
     # ---------- v2.1 缺口池：群 ----------
     def group_member_search(self, group_id, query="", count=100):
         """群成员搜索（昵称/群名片/ID 模糊）。"""

@@ -64,8 +64,13 @@
 **社交互动**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
+| `emoji(payload)` | Emoji 回应（message_id + emoji；等价反应） | `send_message` |
+| `emoji_list(payload)` | 表情回应列表（v1 无查询端点→not supported） | `read_message_history` |
 | `essence_list(payload)` | 群精华消息列表。 | `read_group_info` |
+| `like(payload)` | 点赞（user_id；等价点赞好友资料） | `send_message` |
+| `poke(payload)` | 戳一戳（user_id→好友戳；group_id+user_id→群戳，群戳 v1 无端点） | `send_message` |
 | `react(payload)` | 消息表情回应（NapCat/Lagrange 自动适配）。 | `read_message` |
+| `reaction(payload)` | 表情回应（message_id + react_type；等价 react） | `send_message` |
 | `tap(payload)` | 群内戳一戳。 | `read_group_info` |
 
 **记忆/存储**
@@ -100,9 +105,15 @@
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
 | `__init__(payload)` |  | `—` |
+| `audio_info(payload)` | 音频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
 | `call(payload)` | 通用语义化动作调用（v1.5；封装唯一，动作名白名单由主进程校验）。 | `—` |
 | `edit_message(payload)` | 编辑消息（网关需支持；不支持时返回 not supported in v1） | `delete_message` |
 | `favorite_message(payload)` | 收藏消息（网关需支持；当前 v1 无端点→not supported） | `read_message_history` |
+| `file_convert(payload)` | 文件转换（v1 无转换器→not supported） | `filesystem_read` |
+| `file_delete(payload)` | 删除插件空间文件 | `filesystem_write` |
+| `file_download(payload)` | 文件下载（仅插件空间） | `filesystem_read` |
+| `file_info(payload)` | 文件信息（大小/类型/图片尺寸；插件空间） | `filesystem_read` |
+| `file_upload(payload)` | 文件上传到插件 WebUI 空间（web_ui.files 权限；安全校验） | `filesystem_write` |
 | `format_time(payload)` |  | `—` |
 | `forward_message(payload)` | 转发消息（payload 含 group_id/user_id + message_id；自动选群/私聊） | `send_message` |
 | `get_group(payload)` |  | `read_group_info` |
@@ -112,6 +123,9 @@
 | `get_memory(payload)` |  | `read_memory` |
 | `handle_friend_request(payload)` |  | `request_handle` |
 | `handle_group_request(payload)` |  | `request_handle` |
+| `image_compress(payload)` | 图片压缩（v1 无图像库→not supported） | `filesystem_read` |
+| `image_resize(payload)` | 图片缩放（v1 无图像库→not supported） | `filesystem_read` |
+| `image_screenshot(payload)` | 图片截图（v1 无图像能力→not supported） | `filesystem_read` |
 | `log(payload)` |  | `—` |
 | `mark_message(payload)` | 标记消息（已读/未读；v1 无端点→not supported） | `delete_message` |
 | `merge_message(payload)` | 消息合并（payload 段列表 → 单条消息负载；纯本地语义） | `send_message` |
@@ -122,4 +136,5 @@
 | `read_status(payload)` | 消息已读状态查询（v1 无端点→not supported） | `read_message_history` |
 | `search_message(payload)` | 消息搜索（user_id/group_id + query + count：拉取历史并在本地过滤） | `read_message_history` |
 | `split_message(payload)` | 消息拆段（payload.text；按段/长度拆分，纯本地语义） | `read_message` |
+| `video_info(payload)` | 视频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
 | `write_memory(payload)` |  | `write_memory` |

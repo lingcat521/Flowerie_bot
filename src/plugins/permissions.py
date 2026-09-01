@@ -90,6 +90,21 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "login_info": "read_user_info",    # 登录信息
     "devices": "read_user_info",       # 在线设备
     "status": "read_user_info",        # 运行状态
+    "reaction": "send_message",
+    "poke": "send_message",
+    "like": "send_message",
+    "emoji": "send_message",
+    "emoji_list": "read_message_history",
+    "file_upload": "filesystem_write",
+    "file_download": "filesystem_read",
+    "file_info": "filesystem_read",
+    "file_delete": "filesystem_write",
+    "file_convert": "filesystem_read",
+    "image_compress": "filesystem_read",
+    "image_resize": "filesystem_read",
+    "image_screenshot": "filesystem_read",
+    "audio_info": "filesystem_read",
+    "video_info": "filesystem_read",
     "group_member_search": "read_group_info",
     "group_member_update": "group_manage",
     "group_mute_status": "read_group_info",

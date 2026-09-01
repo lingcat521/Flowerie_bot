@@ -711,6 +711,10 @@ class PluginManager:
                                         "friend_detail", "friend_remark", "friend_delete",
                                         "friend_group", "friend_category", "friend_online"})
 
+    _SOCIAL_EXT = frozenset({"reaction", "poke", "like", "emoji", "emoji_list",
+                             "file_upload", "file_download", "file_info", "file_delete",
+                             "file_convert", "image_compress", "image_resize",
+                             "image_screenshot", "audio_info", "video_info"})
     _GROUP_EXT = frozenset({"group_member_search", "group_member_update", "group_mute_status",
                             "group_title", "group_notice_create", "group_notice_update",
                             "group_file_upload", "group_file_rename", "group_essence",
@@ -718,6 +722,79 @@ class PluginManager:
     _EXT_NS = {"edit_message", "favorite_message", "mark_message", "read_status",
                "friend_remark", "friend_delete", "friend_group", "friend_category",
                "friend_online"}
+
+    async def _ext_social(self, plugin_id: str, action: str, payload: dict) -> dict:
+        """社交/文件/媒体语义：别名路由 + 插件空间文件（真）+ 明确 NS。"""
+        NS = {"emoji_list", "file_convert", "image_compress", "image_resize",
+              "image_screenshot", "audio_info", "video_info"}
+        if action in NS:
+            return {"ok": False, "error": f"{action}: 网关 v1 无对应能力（not supported）"}
+        alias = {"reaction": "react", "emoji": "react", "like": "like"}
+        if action in alias:
+            return await self._sender_forward(plugin_id, alias[action], payload)
+        if action == "poke":
+            if payload.get("user_id") and not payload.get("group_id"):
+                return await self._sender_forward(plugin_id, "friend_poke", payload)
+            return {"ok": False, "error": "poke: 群戳 v1 无端点（仅好友戳支持）"}
+        # ---- 插件空间文件（安全校验复用 webui 文件闸门） ----
+        try:
+            space_dir = self.plugin_webui_dir(plugin_id)
+        except ValueError as e:
+            return {"ok": False, "error": str(e)}
+        if action in ("file_upload", "file_download", "file_info", "file_delete"):
+            name = str(payload.get("name") or payload.get("file_name") or "")
+            if action == "file_upload":
+                data = payload.get("data") or payload.get("content") or ""
+                blob = data.encode("utf-8") if isinstance(data, str) else bytes(data or b"")
+                if not blob:
+                    return {"ok": False, "error": "file_upload 需要 data/content"}
+                try:
+                    saved, size = self.webui_save_upload(plugin_id, name, blob)
+                    return {"ok": True, "name": saved, "size": size}
+                except ValueError as e:
+                    return {"ok": False, "error": f"file_upload: {e}"}
+            if action == "file_download":
+                try:
+                    blob2, safe, ext = self.webui_read_file(plugin_id, name)
+                    return {"ok": True, "name": safe, "ext": ext,
+                            "data": blob2.decode("utf-8", errors="replace")}
+                except ValueError as e:
+                    return {"ok": False, "error": f"file_download: {e}"}
+            if action == "file_info":
+                import os
+                target = os.path.join(space_dir, name)
+                if not os.path.isfile(target):
+                    return {"ok": False, "error": "file_info: 文件不存在"}
+                st = os.stat(target)
+                info = {"name": os.path.basename(target), "size": st.st_size,
+                        "mtime": int(st.st_mtime), "type": "unknown"}
+                ext = os.path.splitext(target)[1].lower()
+                info["format"] = ext.lstrip(".") or "txt"
+                img_sig = {".png": (8, b"\x89PNG"), ".gif": (6, b"GIF89a"),
+                           ".jpg": (3, b"\xff\xd8"), ".jpeg": (3, b"\xff\xd8")}
+                if ext in img_sig:
+                    with open(target, "rb") as f:
+                        head = f.read(32)
+                    n, sig = img_sig[ext]
+                    if head[:n] == sig:
+                        info["type"] = "image"
+                        if ext in (".png", ".gif"):
+                            info["width"], info["height"] = int.from_bytes(
+                                head[16:20], "big"), int.from_bytes(head[20:24], "big")
+                        elif ext in (".jpg", ".jpeg"):
+                            info["width"], info["height"] = int.from_bytes(
+                                head[24:26], "big"), int.from_bytes(head[26:28], "big")
+                return {"ok": True, "info": info}
+            if action == "file_delete":
+                import os
+                target = os.path.join(space_dir, name)
+                if not target.startswith(os.path.abspath(space_dir) + os.sep):
+                    return {"ok": False, "error": "file_delete: 路径穿越拒绝"}
+                if not os.path.isfile(target):
+                    return {"ok": False, "error": "file_delete: 文件不存在"}
+                os.remove(target)
+                return {"ok": True, "deleted": name}
+        return {"ok": False, "error": f"{action}: 未知语义"}
 
     async def _ext_group(self, plugin_id: str, action: str, payload: dict) -> dict:
         """群语义：本地实现/等价别名/组合/明确 not supported。"""
@@ -845,6 +922,8 @@ class PluginManager:
             return await self._ext_msg_friend(plugin_id, action_type, payload)
         if action_type in self._GROUP_EXT:
             return await self._ext_group(plugin_id, action_type, payload)
+        if action_type in self._SOCIAL_EXT:
+            return await self._ext_social(plugin_id, action_type, payload)
         if action_type == "test":
             return {"ok": True, "plugin": plugin_id}
         if action_type == "log":
