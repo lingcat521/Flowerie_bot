@@ -13,6 +13,8 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
+[![Tests](https://img.shields.io/badge/tests-930%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Acceptance Tests](https://img.shields.io/badge/acceptance-37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
 
@@ -201,7 +203,8 @@ Web UI「群聊知识」页管理；详细设计见 [docs/memory.md](docs/memory
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 535 个测试（含 Persona / Meme / Web UI 新套件）
+pytest              # 930 个测试（CI：Python 3.9/3.12 + PostgreSQL）
+acceptance          # 37 项黑盒验收（tests/acceptance_check.py）
 ruff check .        # 代码检查
 ```
 
