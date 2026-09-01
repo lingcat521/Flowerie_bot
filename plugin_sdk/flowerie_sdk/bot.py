@@ -210,6 +210,73 @@ class FlowerieBot:
                 self._waiters.remove(waiter)
 
     # ---------- 调度（轻量：interval/delay/daily；无第三方依赖） ----------
+    # ---------- v2.1 缺口池：消息 / 好友 ----------
+    def edit_message(self, message_id, **kw):
+        """编辑已发送消息（网关支持时；否则返回 not supported）。"""
+        return self._api.edit_message({"message_id": message_id, **kw}) if self._api else self._no_api()
+
+    def forward_message(self, messages, group_id=None, user_id=None, text=None):
+        """转发消息（messages=段列表或 text=纯文本；自动选群/私聊通道）。"""
+        return self._api.forward_message({"messages": messages, "text": text,
+                                          "group_id": group_id,
+                                          "user_id": user_id}) if self._api else self._no_api()
+
+    def split_message(self, text, limit=2000):
+        """把长文本按 limit 拆段（纯本地；返回 segments 列表）。"""
+        return self._api.split_message({"text": str(text), "limit": limit}) if self._api else self._no_api()
+
+    def merge_message(self, segments):
+        """段列表合并为文本。"""
+        return self._api.merge_message({"segments": list(segments)}) if self._api else self._no_api()
+
+    def favorite_message(self, message_id):
+        """收藏消息（v1 网关可能不支持）。"""
+        return self._api.favorite_message({"message_id": message_id}) if self._api else self._no_api()
+
+    def mark_message(self, message_id, read=True):
+        """标记消息已读/未读。"""
+        return self._api.mark_message({"message_id": message_id, "read": read}) if self._api else self._no_api()
+
+    def read_status(self, message_id=None):
+        """会话/消息已读状态。"""
+        return self._api.read_status({"message_id": message_id}) if self._api else self._no_api()
+
+    def search_message(self, query="", group_id=None, user_id=None, count=20):
+        """消息搜索（本地过滤历史；返回 results）。"""
+        return self._api.search_message({"query": query, "group_id": group_id,
+                                         "user_id": user_id, "count": count}) if self._api else self._no_api()
+
+    def quote_chain(self, message_id, depth=3):
+        """引用链（message_id 回溯，≤depth 层）。"""
+        return self._api.quote_chain({"message_id": message_id, "depth": depth}) if self._api else self._no_api()
+
+    def friend_detail(self, user_id):
+        """好友详细信息。"""
+        return self._api.friend_detail({"user_id": user_id}) if self._api else self._no_api()
+
+    def friend_remark(self, user_id, remark):
+        """设置好友备注。"""
+        return self._api.friend_remark({"user_id": user_id, "remark": remark}) if self._api else self._no_api()
+
+    def friend_delete(self, user_id):
+        """删除好友。"""
+        return self._api.friend_delete({"user_id": user_id}) if self._api else self._no_api()
+
+    def friend_group(self, user_id=None, group_name=None):
+        """好友分组管理。"""
+        return self._api.friend_group({"user_id": user_id, "group_name": group_name}) if self._api else self._no_api()
+
+    def friend_category(self, user_id=None, category=None):
+        """好友分类（等价 friend_group）。"""
+        return self._api.friend_category({"user_id": user_id, "category": category}) if self._api else self._no_api()
+
+    def friend_online(self, user_id):
+        """好友在线状态。"""
+        return self._api.friend_online({"user_id": user_id}) if self._api else self._no_api()
+
+    def _no_api(self):
+        return {"ok": False, "error": "未 attach（api 不可用）"}
+
     def schedule_cancel(self, schedule_id: str) -> dict:
         """取消定时任务（api.schedule_cancel 的 bot 门面转发）。"""
         if self._api is None:

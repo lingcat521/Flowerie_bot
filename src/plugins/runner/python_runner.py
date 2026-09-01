@@ -71,6 +71,68 @@ class PluginApi:
     def log(self, level: str, message: str) -> Dict[str, Any]:
         return self._send_action("log", {"level": level, "message": message})
 
+    # ---------- v2.1 缺口池：消息 ----------
+    def edit_message(self, payload):
+        """编辑消息（网关需支持；不支持时返回 not supported in v1）"""
+        return self._send_action("edit_message", payload)
+
+    def forward_message(self, payload):
+        """转发消息（payload 含 group_id/user_id + message_id；自动选群/私聊）"""
+        return self._send_action("forward_message", payload)
+
+    def split_message(self, payload):
+        """消息拆段（payload.text；按段/长度拆分，纯本地语义）"""
+        return self._send_action("split_message", payload)
+
+    def merge_message(self, payload):
+        """消息合并（payload 段列表 → 单条消息负载；纯本地语义）"""
+        return self._send_action("merge_message", payload)
+
+    def favorite_message(self, payload):
+        """收藏消息（网关需支持；当前 v1 无端点→not supported）"""
+        return self._send_action("favorite_message", payload)
+
+    def mark_message(self, payload):
+        """标记消息（已读/未读；v1 无端点→not supported）"""
+        return self._send_action("mark_message", payload)
+
+    def read_status(self, payload):
+        """消息已读状态查询（v1 无端点→not supported）"""
+        return self._send_action("read_status", payload)
+
+    def search_message(self, payload):
+        """消息搜索（user_id/group_id + query + count：拉取历史并在本地过滤）"""
+        return self._send_action("search_message", payload)
+
+    def quote_chain(self, payload):
+        """引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义）"""
+        return self._send_action("quote_chain", payload)
+
+    # ---------- v2.1 缺口池：好友 ----------
+    def friend_detail(self, payload):
+        """好友详细信息（user_id；列表内匹配详情）"""
+        return self._send_action("friend_detail", payload)
+
+    def friend_remark(self, payload):
+        """设置好友备注（网关需支持；v1 无端点→not supported）"""
+        return self._send_action("friend_remark", payload)
+
+    def friend_delete(self, payload):
+        """删除好友（v1 无端点→not supported）"""
+        return self._send_action("friend_delete", payload)
+
+    def friend_group(self, payload):
+        """好友分组管理（v1 无端点→not supported）"""
+        return self._send_action("friend_group", payload)
+
+    def friend_category(self, payload):
+        """好友分类（等价 friend_group；v1 无端点→not supported）"""
+        return self._send_action("friend_category", payload)
+
+    def friend_online(self, payload):
+        """好友在线状态（v1 无端点→not supported）"""
+        return self._send_action("friend_online", payload)
+
     def call(self, action: str, payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """通用语义化动作调用（v1.5；封装唯一，动作名白名单由主进程校验）。"""
         return self._send_action(str(action), dict(payload or {}))

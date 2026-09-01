@@ -90,6 +90,21 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "login_info": "read_user_info",    # 登录信息
     "devices": "read_user_info",       # 在线设备
     "status": "read_user_info",        # 运行状态
+    "edit_message": "delete_message",      # 编辑消息（同撤回级敏感）
+    "forward_message": "send_message",     # 转发（发送动作）
+    "split_message": "read_message",       # 拆段（纯本地）
+    "merge_message": "send_message",       # 合并（发送动作）
+    "favorite_message": "read_message_history",
+    "mark_message": "delete_message",      # 标记（同消息管理级）
+    "read_status": "read_message_history",
+    "search_message": "read_message_history",
+    "quote_chain": "read_message_history",
+    "friend_detail": "read_user_info",
+    "friend_remark": "read_user_info",     # 备注（写；同用户信息级）
+    "friend_delete": "read_user_info",
+    "friend_group": "read_user_info",
+    "friend_category": "read_user_info",
+    "friend_online": "read_user_info",
     "profile_set": "bot_profile",      # 改 Bot 资料
     "group_whole_ban": "group_manage",
     "group_rename": "group_manage",
