@@ -161,8 +161,9 @@ def test_social_alias_and_poke_route():
     assert r.get("error", "").find("not supported") == -1 or (not r["ok"])
     r2 = _run(mgr, "p", "poke", {"user_id": 5})
     assert "群戳" not in r2.get("error", "")  # 好友戳走 fake（无端点方法→error 路径正常处理）
-    r3 = _run(mgr, "p", "poke", {"group_id": 9})
-    assert not r3["ok"] and "群戳" in r3["error"]
+    r3 = _run(mgr, "p", "poke", {"group_id": 9, "user_id": 5})
+    # 群戳走 tap(send_poke)：fake sender 无该方法 → 明确"网关不支持该能力"
+    assert not r3["ok"] and "不支持" in r3["error"]
 
 
 def test_file_space_roundtrip(tmp_path):
