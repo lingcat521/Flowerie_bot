@@ -534,15 +534,6 @@ class FlowerieBot:
         return self._api.poke({"user_id": user_id,
                                "group_id": group_id}) if self._api else self._no_api()
 
-    def like(self, user_id):
-        """点赞。"""
-        return self._api.like({"user_id": user_id}) if self._api else self._no_api()
-
-    def emoji(self, message_id, emoji):
-        """Emoji 回应（等价反应）。"""
-        return self._api.emoji({"message_id": message_id,
-                                "emoji": emoji}) if self._api else self._no_api()
-
     def emoji_list(self, message_id):
         """表情回应列表（网关需支持）。"""
         return self._api.emoji_list({"message_id": message_id}) if self._api else self._no_api()

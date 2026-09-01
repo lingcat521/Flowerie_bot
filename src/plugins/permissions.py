@@ -150,7 +150,6 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "ai_budget": "ai_chat",
     "reaction": "send_message",
     "poke": "send_message",
-    "like": "send_message",
     "emoji": "send_message",
     "emoji_list": "read_message_history",
     "file_upload": "filesystem_write",
