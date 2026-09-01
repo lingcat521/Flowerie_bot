@@ -345,3 +345,16 @@ def test_task_ns_and_cache_alias():
     assert not r["ok"] and "TaskManager" in r["error"]
     r2 = _run(mgr, "p", "debug", {})
     assert not r2["ok"]
+
+
+def test_poke_group_routing():
+    mgr, s = _mgr()
+
+    class S3(_FakeSender):
+        async def send_poke(self, group_id, user_id):
+            self.calls.append(("sp", group_id, user_id))
+            return {"ok": True}
+
+    mgr2 = PluginManager(config=_Cfg(), repository=_Repo(), sender=S3())
+    r = _run(mgr2, "p", "poke", {"group_id": 9, "user_id": 5})
+    assert r["ok"] and ("sp", 9, 5) in mgr2.sender.calls

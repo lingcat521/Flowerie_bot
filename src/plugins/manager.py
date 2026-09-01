@@ -1290,9 +1290,12 @@ class PluginManager:
         if action in alias:
             return await self._sender_forward(plugin_id, alias[action], payload)
         if action == "poke":
-            if payload.get("user_id") and not payload.get("group_id"):
+            # 好友戳（v1.7 user_poke→friend_poke）；群戳（tap→send_poke，NapCat 支持）
+            if payload.get("group_id"):
+                return await self._sender_forward(plugin_id, "tap", payload)
+            if payload.get("user_id"):
                 return await self._sender_forward(plugin_id, "user_poke", payload)
-            return {"ok": False, "error": "poke: 群戳 v1 无端点（仅好友戳支持）"}
+            return {"ok": False, "error": "poke: 需要 user_id 或 group_id(user_id)"}
         # ---- 插件空间文件（安全校验复用 webui 文件闸门） ----
         try:
             space_dir = self.plugin_webui_dir(plugin_id)
