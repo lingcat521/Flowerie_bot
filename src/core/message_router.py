@@ -13,7 +13,7 @@ from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
 from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
-from src.core.sanitizer import validate_memory_content, sanitize_untrusted_text
+from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
 from src.services.file_parser import FileParser
