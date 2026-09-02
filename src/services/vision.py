@@ -75,76 +75,86 @@ class VisionService:
 
             # 1) 获取图片字节（支持 http(s) url 与 data: URI），下载失败重试 1 次
             # P2-7 SSRF/资源防线：scheme 白名单、大小上限、MIME 嗅探、重定向上限。
-            # 注：NapCat 本地图片 url 是 127.0.0.1 loopback，因此故意放行 loopback。
-            image_bytes = b""
-            try:
-                if image_url.startswith("data:"):
-                    # data: URI 同样受大小上限约束（防超大 base64 内存轰炸），且必须声明 image/ 类型
-                    if not image_url.lower().startswith("data:image/"):
-                        logger.error(f"Image data: URI not an image type: {self._url_for_log(image_url)}")
-                        return None
-                    size_cap = self.config.MAX_IMAGE_DOWNLOAD_BYTES
-                    # base64 体积 ≈ 原始字节 × 4/3，加少量余量后仍超上限直接拒绝
-                    b64_cap = int(size_cap * 1.4) + 1024
-                    b64_part = image_url.split(",", 1)[1] if "," in image_url else ""
-                    if not b64_part or len(b64_part) > b64_cap:
-                        logger.error(f"Image data: URI too large (> {size_cap} bytes): {self._url_for_log(image_url)}")
-                        return None
-                    image_bytes = base64.b64decode(b64_part)
-                    if not _looks_like_image(image_bytes):
-                        logger.error(f"Image data: URI content is not an image: {self._url_for_log(image_url)}")
-                        return None
-                else:
-                    # SSRF 第一道闸（scheme 白名单 + 可选主机白名单，loopback 放行）——纯函数便于测试
-                    ok, reason = check_image_url(image_url, getattr(self.config, "IMAGE_ALLOWED_HOSTS", None))
-                    if not ok:
-                        logger.error(f"Image url rejected ({reason}): {self._url_for_log(image_url)}")
-                        return None
-                    for attempt in range(2):
-                        try:
-                            # 流式下载 + content-length 预检：超上限立刻中止，不等下载完再拒绝
-                            size_cap = self.config.MAX_IMAGE_DOWNLOAD_BYTES
-                            body = b""
-                            rejected = False
-                            async with self.client.stream(
-                                "GET",
-                                image_url,
-                                timeout=timeout,
-                                follow_redirects=False,
-                            ) as resp:
-                                if resp.status_code != 200:
-                                    logger.error(f"Image fetch failed HTTP {resp.status_code} (attempt {attempt + 1}): {self._url_for_log(image_url)}")
-                                else:
-                                    # Content-Length 预检
-                                    cl = resp.headers.get("content-length")
-                                    if cl and cl.isdigit() and int(cl) > size_cap:
-                                        logger.error(f"Image content-length too large: {cl} bytes > {size_cap}")
-                                        rejected = True
-                                    else:
-                                        async for chunk in resp.aiter_bytes():
-                                            body += chunk
-                                            if len(body) > size_cap:
-                                                rejected = True
-                                                body = b""
-                                                break
-                            if rejected:
-                                logger.error(f"Image too large (> {size_cap} bytes), download aborted: {self._url_for_log(image_url)}")
-                                break  # 超大/超限不重试
-                            if body and _looks_like_image(body):
-                                image_bytes = body
-                                break
-                            if body:
-                                logger.error(f"Downloaded content is not an image: {self._url_for_log(image_url)}")
-                        except Exception as e:
-                            logger.error(f"Image fetch error (attempt {attempt + 1}): {e}")
-                        if attempt == 0:
-                            await asyncio.sleep(2)
-            except Exception as e:
-                logger.error(f"Image fetch error: {e}")
-
+            image_bytes = await self._download_image(image_url, timeout)
             if not image_bytes:
                 return None
             return await self._describe_image_bytes(image_bytes, model, api_url, api_key, timeout)
+
+    async def _download_image(self, image_url: str, timeout: float = 10.0) -> Optional[bytes]:
+        """下载图片字节（http(s)/data: URI；SSRF/大小/魔数校验 + 每跳校验重定向）。"""
+        # P2-7 SSRF/资源防线：scheme 白名单、大小上限、MIME 嗅探、重定向上限。
+        # 注：NapCat 本地图片 url 是 127.0.0.1 loopback，因此故意放行 loopback。
+        if image_url.startswith("data:"):
+            if not image_url.lower().startswith("data:image/"):
+                logger.error(f"Image data: URI not an image type: {self._url_for_log(image_url)}")
+                return None
+            size_cap = self.config.MAX_IMAGE_DOWNLOAD_BYTES
+            b64_cap = int(size_cap * 1.4) + 1024
+            b64_part = image_url.split(",", 1)[1] if "," in image_url else ""
+            if not b64_part or len(b64_part) > b64_cap:
+                logger.error(f"Image data: URI too large (> {size_cap} bytes): {self._url_for_log(image_url)}")
+                return None
+            image_bytes = base64.b64decode(b64_part)
+            if not _looks_like_image(image_bytes):
+                logger.error(f"Image data: URI content is not an image: {self._url_for_log(image_url)}")
+                return None
+            return image_bytes
+        ok, reason = check_image_url(image_url, getattr(self.config, "IMAGE_ALLOWED_HOSTS", None))
+        if not ok:
+            logger.error(f"Image url rejected ({reason}): {self._url_for_log(image_url)}")
+            return None
+        size_cap = self.config.MAX_IMAGE_DOWNLOAD_BYTES
+        from urllib.parse import urljoin
+        current_url = image_url
+        redirects = 0
+        for attempt in range(2):
+            try:
+                body = b""
+                rejected = False
+                while True:
+                    async with self.client.stream("GET", current_url, timeout=timeout,
+                                                  follow_redirects=False) as resp:
+                        if resp.status_code in (301, 302, 303, 307, 308):
+                            loc = resp.headers.get("location", "")
+                            if not loc or redirects >= 3:
+                                return None
+                            nxt = urljoin(str(current_url), loc)
+                            ok2, reason2 = check_image_url(
+                                nxt, getattr(self.config, "IMAGE_ALLOWED_HOSTS", None))
+                            if not ok2:
+                                logger.error(f"Image redirect rejected ({reason2}): {self._url_for_log(nxt)}")
+                                return None
+                            current_url = nxt
+                            redirects += 1
+                            continue
+                        if resp.status_code != 200:
+                            logger.error(f"Image fetch failed HTTP {resp.status_code} (attempt {attempt + 1}): {self._url_for_log(image_url)}")
+                            break
+                        cl = resp.headers.get("content-length")
+                        if cl and cl.isdigit() and int(cl) > size_cap:
+                            logger.error(f"Image content-length too large: {cl} bytes > {size_cap}")
+                            rejected = True
+                            break
+                        async for chunk in resp.aiter_bytes():
+                            body += chunk
+                            if len(body) > size_cap:
+                                rejected = True
+                                body = b""
+                                break
+                        break
+                if rejected:
+                    logger.error(f"Image too large (> {size_cap} bytes), download aborted: {self._url_for_log(image_url)}")
+                    return None
+                if body and _looks_like_image(body):
+                    return body
+                if body:
+                    logger.error(f"Downloaded content is not an image: {self._url_for_log(image_url)}")
+            except Exception as e:
+                logger.error(f"Image fetch error (attempt {attempt + 1}): {e}")
+            if attempt == 0:
+                await asyncio.sleep(2)
+        return None
+
 
     async def _describe_image_bytes(self, image_bytes: bytes, model: str, api_url: str,
                                         api_key: str, timeout: float) -> Optional[str]:
