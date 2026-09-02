@@ -44,6 +44,7 @@ class VisionService:
     def __init__(self, config, client_provider):
         self.config = config
         self._client_provider = client_provider  # () -> httpx.AsyncClient
+        self.last_error = ""  # 最近一次下载/描述失败原因（供上层日志）
 
     @property
     def client(self) -> httpx.AsyncClient:
@@ -77,10 +78,14 @@ class VisionService:
             # P2-7 SSRF/资源防线：scheme 白名单、大小上限、MIME 嗅探、重定向上限。
             image_bytes = await self._download_image(image_url, timeout)
             if not image_bytes:
+                if not self.last_error:
+                    self.last_error = "下载返回空或非图片"
+                logger.warning(f"Vision download failed ({self.last_error}): {self._url_for_log(image_url)}")
                 return None
             return await self._describe_image_bytes(image_bytes, model, api_url, api_key, timeout)
 
     async def _download_image(self, image_url: str, timeout: float = 10.0) -> Optional[bytes]:
+        self.last_error = ""
         """下载图片字节（http(s)/data: URI；SSRF/大小/魔数校验 + 每跳校验重定向）。"""
         # P2-7 SSRF/资源防线：scheme 白名单、大小上限、MIME 嗅探、重定向上限。
         # 注：NapCat 本地图片 url 是 127.0.0.1 loopback，因此故意放行 loopback。
