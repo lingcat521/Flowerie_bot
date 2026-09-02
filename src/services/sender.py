@@ -50,6 +50,8 @@ class Sender:
                     return {"ok": True, "data": resp.get("data")}
                 return {"ok": False, "error": f"WS retcode={resp.get('retcode') if isinstance(resp, dict) else resp}"}
             except Exception as e:  # noqa: BLE001
+                logger.error("message_send_action_failed action=%s err=%s", endpoint, e,
+                             extra={"event": "message_send_failed", "action": endpoint})
                 return {"ok": False, "error": f"{type(e).__name__}: {e}"}
         try:
             async with self.session.post(
