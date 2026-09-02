@@ -11,6 +11,7 @@
 8. 无效 persistent config 不导致 Bot 启动进入危险状态
 9. Web UI 显示值与实际运行配置一致
 """
+import json
 import os
 import tempfile
 
@@ -226,7 +227,6 @@ def test_apply_persisted_without_env_unchanged():
 
 def test_coerce_accepts_json_list_from_db(monkeypatch, tmp_path):
     """修复回归：settings.db 里 Web UI 保存的 JSON 数组（"[786368680]"）直接到 _coerce。"""
-    import json
     from src.services.config_service import ConfigService
 
     # 静态方法直测（不需完整环境）
@@ -242,4 +242,3 @@ def test_coerce_accepts_json_list_from_db(monkeypatch, tmp_path):
     assert v("ALLOWED_GROUP_IDS", "list-int", "[786368680]") == "786368680"
     assert v("TOXIC_GROUP_IDS", "list-str", '["a","b"]') == "a,b"
     assert v("ALLOWED_GROUP_IDS", "list-int", "786368680,123") == "786368680,123"
-assert 1 == 1
