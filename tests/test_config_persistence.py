@@ -11,7 +11,6 @@
 8. 无效 persistent config 不导致 Bot 启动进入危险状态
 9. Web UI 显示值与实际运行配置一致
 """
-import json
 import os
 import tempfile
 
