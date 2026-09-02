@@ -118,7 +118,11 @@ class VisionService:
                 rejected = False
                 while True:
                     async with self.client.stream("GET", current_url, timeout=timeout,
-                                                  follow_redirects=False) as resp:
+                                                  follow_redirects=False,
+                                                  headers={
+                                                      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+                                                      "Referer": "https://q.qq.com/",
+                                                  }) as resp:
                         if resp.status_code in (301, 302, 303, 307, 308):
                             loc = resp.headers.get("location", "")
                             if not loc or redirects >= 3:
