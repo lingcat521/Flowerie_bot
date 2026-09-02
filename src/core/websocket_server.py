@@ -42,7 +42,7 @@ class WebSocketServer:
 
     async def send_action(self, action: str, params: dict, timeout: float = 8.0) -> dict:
         """经 OneBot WS 发送 API 调用（NapCat 反向 WS 支持 action/echo）。失败抛异常。"""
-        if self.ws is None or self.ws.closed:
+        if self.ws is None:
             raise ConnectionError("WS 未连接")
         import uuid
         echo = uuid.uuid4().hex
