@@ -236,8 +236,8 @@ def test_coerce_accepts_json_list_from_db(monkeypatch, tmp_path):
     assert coerce("list-int", "[]") == []
     assert coerce("list-str", "[]") == []
 
-    # validate：JSON 数组规范化（回写 .env 时用逗号）
-    v = ConfigService._validate
+    # validate：JSON 数组规范化（回写 .env 时用逗号）——实例方法需绑定实例
+    v = ConfigService._validate.__get__(ConfigService.__new__(ConfigService))
     assert v("ALLOWED_GROUP_IDS", "list-int", "[786368680]") == "786368680"
     assert v("TOXIC_GROUP_IDS", "list-str", '["a","b"]') == "a,b"
     assert v("ALLOWED_GROUP_IDS", "list-int", "786368680,123") == "786368680,123"
