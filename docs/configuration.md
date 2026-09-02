@@ -25,7 +25,7 @@ Web UI 修改的配置存于 `data/settings.db`，重启后优先使用。
 
 | 变量 | 说明 | 默认 |
 | :--- | :--- | :--- |
-| `BOT_NICKNAME` | 昵称 | `花璃` |
+| `BOT_NICKNAME（群特色昵称未配置时的全局默认；可在 Web UI「群昵称」逐群覆盖）` | 昵称 | `花璃` |
 | `WS_HOST` / `WS_PORT` | 反向 WS 监听（NapCat 连这里） | `127.0.0.1` / `3001` |
 | `HTTP_API_BASE` | NapCat HTTP API | `http://127.0.0.1:3000` |
 | `WS_TOKEN` | 反向 WS 鉴权 token（可选） | 空 |
@@ -270,3 +270,9 @@ Web UI「人格」页管理（全局 / 群聊 / 自定义）。详见 [persona.m
 - PG 平行实现：`PostgresMemoryRepository` / `PostgresBlossomMemoryRepository`
   （psycopg 软依赖；向量=存储+内存 cosine，pgvector 列为未来优化）
 - 迁移：`python -m src.services.storage_migrate --sqlite ./data/memory.db --postgres <dsn> [--blossom ./data/blossom_memory.db]`
+
+
+## 群特色昵称（v2.1.1）
+- 每群可设专属称呼（Web UI「群昵称」tab）；优先级：群配置 > BOT_NICKNAME
+- 存储：`GROUP_NICKNAMES_PATH`（默认 `./data/nicknames.json`）；留空=恢复默认
+- 注入：群聊 AI 提示词【本群专属称呼】段（与默认相同不注入）

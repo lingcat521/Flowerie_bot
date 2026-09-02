@@ -2,7 +2,22 @@
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [2.1.0] - 2026-09-02（当前 main）
+## [2.1.1] - 2026-09-02
+
+### Added——群特色昵称（BOT_NICKNAME 按群隔离）
+- 每个群可设专属称呼（Web UI 新增「群昵称」tab：列表/新增/批量改/留空恢复默认，零 JS）
+- 注入链：group nickname store（./data/nicknames.json，原子持久化/≤20字/控制字符剥离）
+  → AiGateway → 常规与工具路径 → system prompt【本群专属称呼】段（与默认相同不注入=零行为变化）
+- 指令菜单随群昵称（{昵称}指令菜单）；默认仍为 BOT_NICKNAME=花璃
+- 配置：GROUP_NICKNAMES_PATH（schema 注册）；与 Web UI 共享同一 store 实例
+- 一致性加固：动作表↔Sender 方法、NS↔端点、动作↔权限映射 三项防回归测试（poke 类断链永久拦截）
+
+### Fixed
+- poke 群戳路由（send_poke 端点实际存在——能力不再被"无端点"埋没）
+- webui_panels 导出遗漏（NicknamePanelMixin）、message_router 行数守护（650）/is_secret 类评审发现 4 项
+- 图片 SSRF 默认拒绝私网/元数据 + 登录限速对面板登录生效（安全加固）
+
+
 
 ### Added——Plugin WebUI（新网络功能，零 JS 红线）
 - 插件自有管理控制台：受控 DSL（25+ 组件/页面/tab/breadcrumb/文件/权限 `web_ui`+`web_ui.files`）
