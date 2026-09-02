@@ -16,6 +16,6 @@ from src.services.webui_panels.prompt_panel import PromptPanelMixin
 
 __all__ = [
     "AccountPanelMixin", "AppearancePanelMixin", "AuthPanelMixin", "ConfigPanelMixin",
-    "KnowledgePanelMixin", "McpPanelMixin", "PersonaPanelMixin", "PluginPanelMixin",
-    "PromptPanelMixin",
+    "KnowledgePanelMixin", "McpPanelMixin", "NicknamePanelMixin", "PersonaPanelMixin",
+    "PluginPanelMixin", "PromptPanelMixin",
 ]
