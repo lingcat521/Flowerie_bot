@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Optional
+from typing import Dict, Optional
 
 import websockets
 
@@ -31,12 +31,28 @@ class WebSocketServer:
         self.config = config
         self.message_router = message_router
         self.ws: Optional[websockets.WebSocketServerProtocol] = None
+        self._pending: Dict[str, asyncio.Future] = {}
         self._running = True
         self._draining = False  # shutdown 已开始：不再接收新事件
         self._drain_timeout = 15.0  # 等待 in-flight 事件处理的上限（秒）
         self._server_task: Optional[asyncio.Task] = None
         self._handler_task: Optional[asyncio.Task] = None  # 当前连接的处理任务（shutdown 时等待/取消）
         self._server: Optional[websockets.Server] = None
+
+
+    async def send_action(self, action: str, params: dict, timeout: float = 8.0) -> dict:
+        """经 OneBot WS 发送 API 调用（NapCat 反向 WS 支持 action/echo）。失败抛异常。"""
+        if self.ws is None or self.ws.closed:
+            raise ConnectionError("WS 未连接")
+        import uuid
+        echo = uuid.uuid4().hex
+        fut: asyncio.Future = asyncio.get_running_loop().create_future()
+        self._pending[echo] = fut
+        try:
+            await self.ws.send(json.dumps({"action": action, "params": params, "echo": echo}))
+            return await asyncio.wait_for(fut, timeout=timeout)
+        finally:
+            self._pending.pop(echo, None)
 
     async def run(self):
         """启动 WebSocket 服务器（带自动重连与逐档递增退避）。"""
@@ -172,6 +188,12 @@ class WebSocketServer:
                         data = json.loads(message)
                     else:
                         data = message
+                    # API 响应（echo 匹配）：解掉等待中的 send_action 请求
+                    if isinstance(data, dict) and data.get("echo"):
+                        fut = self._pending.get(str(data["echo"]))
+                        if fut is not None and not fut.done():
+                            fut.set_result(data)
+                        continue
                     # 每条事件独立 trace_id：并发处理多条消息时互不污染
                     with trace_context() as tid:
                         logger.info(

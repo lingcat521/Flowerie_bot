@@ -2,7 +2,6 @@
 import asyncio
 
 import httpx
-import pytest
 
 from src.services.vision import VisionService
 

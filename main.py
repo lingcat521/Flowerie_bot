@@ -196,6 +196,7 @@ async def main():
                         str(getattr(config, "NAPCAT_WS_URL", "") or ""))
         else:
             ws_server = WebSocketServer(config, message_router)
+            sender._ws_sender = ws_server.send_action  # SEND_VIA_WS=true 时经 WS 发送
 
         # 启动后台任务（主动聊天 / 上下文备份，经 TaskManager 统一管理）
         await message_router.start()

@@ -12,9 +12,15 @@ _M_SEND_FAIL = registry.counter("message_send_failure_total", "消息发送失�
 
 
 class Sender:
-    def __init__(self, config: Settings):
+    def __init__(self, config: Settings, ws_sender=None):
         self.config = config
         self.session: aiohttp.ClientSession = None
+        # WS 发送通道（SEND_VIA_WS=true 时生效）：async (action, params) -> dict
+        self._ws_sender = ws_sender
+
+    @property
+    def _use_ws(self) -> bool:
+        return bool(getattr(self.config, "SEND_VIA_WS", False) and self._ws_sender)
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -33,7 +39,18 @@ class Sender:
         return {}
 
     async def _post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
-        """通用 OneBot/Lagrange 端点调用（薄封装；统一返回 {ok, data|error}）。"""
+        """通用 OneBot/Lagrange 端点调用（薄封装；统一返回 {ok, data|error}）。
+
+        SEND_VIA_WS=true 时经 WS 通道（NapCat 只需开 WebSocket，不必开 HTTP）。
+        """
+        if self._use_ws:
+            try:
+                resp = await self._ws_sender(endpoint.lstrip("/"), payload)
+                if isinstance(resp, dict) and resp.get("status") in ("ok", None):
+                    return {"ok": True, "data": resp.get("data")}
+                return {"ok": False, "error": f"WS retcode={resp.get('retcode') if isinstance(resp, dict) else resp}"}
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
         try:
             async with self.session.post(
                     f"{self.config.HTTP_API_BASE}{endpoint}",
@@ -55,10 +72,13 @@ class Sender:
         if text and text.strip():
             segments.append({"type": "text", "data": {"text": text[: self.config.MAX_REPLY_LENGTH]}})
         segments.append({"type": "image", "data": {"file": f"file://{image_path}"}})
-        url = f"{self.config.HTTP_API_BASE}/send_group_msg"
         payload = {"group_id": group_id, "message": segments}
         logger.info("message_send_started group=%s image=%s", group_id, image_path,
                     extra={"event": "message_send_started"})
+        if self._use_ws:
+            r = await self._post("send_group_msg", payload)
+            return bool(r.get("ok"))
+        url = f"{self.config.HTTP_API_BASE}/send_group_msg"
         for attempt in range(max(1, retries + 1)):
             try:
                 async with self.session.post(url, json=payload, headers=self._headers(),
@@ -87,9 +107,11 @@ class Sender:
             return False
         if len(message) > self.config.MAX_REPLY_LENGTH:
             message = message[:self.config.MAX_REPLY_LENGTH] + "..."
-        url = f"{self.config.HTTP_API_BASE}/send_group_msg"
         payload = {"group_id": group_id, "message": message}
         logger.info("message_send_started group=%s", group_id, extra={"event": "message_send_started"})
+        if self._use_ws:
+            return bool((await self._post("send_group_msg", payload)).get("ok"))
+        url = f"{self.config.HTTP_API_BASE}/send_group_msg"
         for attempt in range(max(1, retries + 1)):
             try:
                 async with self.session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as resp:
@@ -491,8 +513,10 @@ class Sender:
     async def send_private_message(self, user_id: int, message: str) -> bool:
         if not message:
             return False
-        url = f"{self.config.HTTP_API_BASE}/send_private_msg"
         payload = {"user_id": user_id, "message": message}
+        if self._use_ws:
+            return bool((await self._post("send_private_msg", payload)).get("ok"))
+        url = f"{self.config.HTTP_API_BASE}/send_private_msg"
         try:
             async with self.session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as resp:
                 if resp.status != 200:
