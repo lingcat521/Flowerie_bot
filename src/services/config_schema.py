@@ -48,7 +48,8 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "VISION_FORWARD_IMAGES": ("AI", "bool", False, True, "识别合并转发里的图片（省视觉 token，默认关）"),
     # ---------- 基础配置 ----------
     "BOT_QQ": ("Bot", "int", False, False, "机器人 QQ 号（需重启）"),
-    "BOT_NICKNAME": ("Bot", "str", False, True, "机器人昵称"),
+    "BOT_NICKNAME": ("Bot", "str", False, True, "机器人昵称（群特色昵称未配置时使用；Web UI 可逐群覆盖）"),
+    "GROUP_NICKNAMES_PATH": ("Bot", "str", False, False, "群特色昵称存储路径"),
     "ONLY_REPLY_WHEN_AT": ("Bot", "bool", False, True, "仅回复 @ 消息（哑巴模式）"),
     "MAX_REPLY_LENGTH": ("Bot", "int", False, True, "最大回复长度"),
     "MAX_CONSECUTIVE_REPLIES": ("Bot", "int", False, True, "连续回复上限"),

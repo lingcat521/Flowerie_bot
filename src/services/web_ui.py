@@ -49,6 +49,7 @@ from src.services.webui_panels import (
     ConfigPanelMixin,
     KnowledgePanelMixin,
     McpPanelMixin,
+    NicknamePanelMixin,
     PersonaPanelMixin,
     PluginPanelMixin,
     PromptPanelMixin,
@@ -66,13 +67,14 @@ _LOGIN_FAIL_WINDOW = 60
 
 class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, AppearancePanelMixin,
                   McpPanelMixin, PromptPanelMixin, PersonaPanelMixin,
-                  KnowledgePanelMixin, PluginPanelMixin):
+                  KnowledgePanelMixin, PluginPanelMixin, NicknamePanelMixin):
 
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
                  persona_manager=None, meme_manager=None, prompt_manager=None,
-                 plugin_manager=None):
+                 plugin_manager=None, group_nicknames=None):
         self.config = config
+        self.group_nicknames = group_nicknames
         self.config_service = config_service
         # status_provider: 可调用，返回状态 dict（ws_connected/uptime 等），由 main 注入
         self._status_provider = status_provider
@@ -330,6 +332,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             body_html = self._render_account_page()
         elif tab == "persona":
             body_html = self._render_persona_page(edit_id, new_persona, prompt_gid)
+        elif tab == "nicknames":
+            body_html = self._render_nicknames_page()
         elif tab == "knowledge":
             body_html = self._render_knowledge_page(gid, search)
         elif tab == "plugins":

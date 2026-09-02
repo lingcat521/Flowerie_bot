@@ -148,6 +148,10 @@ async def main():
             state_provider=_plugin_state_provider, context_manager=policy_engine.context,
             ai_client=ai_client,
         )
+        from src.services.group_nicknames import GroupNicknameStore
+        group_nicknames = GroupNicknameStore(
+            getattr(config, "GROUP_NICKNAMES_PATH", "./data/nicknames.json"),
+            getattr(config, "BOT_NICKNAME", "花璃"))
         if config.WEB_UI_ENABLED:
             def _status_provider():
                 return {
@@ -158,7 +162,7 @@ async def main():
                 config, config_service, status_provider=_status_provider,
                 tool_manager=tool_manager, persona_manager=persona_manager,
                 meme_manager=meme_manager, prompt_manager=prompt_manager,
-                plugin_manager=plugin_manager,
+                plugin_manager=plugin_manager, group_nicknames=group_nicknames,
             )
         file_parser = FileParser(config)
         # 共享 AI 预算实例：聊天与每日梗总结复用同一套全局/群计数（总结不绕过预算）
@@ -183,6 +187,7 @@ async def main():
             event_parser=adapters.parser,
             blossom_memory=blossom_memory,
         )
+        message_router.group_nicknames = group_nicknames  # 与 Web UI 共享同一 store
         # NapCat WebSocket：反向（NapCat 连过来，原有行为）或正向（连接 NapCat 的 WS server），二选一
         if str(getattr(config, "NAPCAT_WS_MODE", "reverse") or "reverse").lower() == "forward":
             from src.core.napcat_forward_client import NapCatForwardClient

@@ -122,8 +122,12 @@ class CommandHandler:
 
     # ---------- 各指令实现 ----------
     async def _cmd_help(self, group_id: int, is_admin: bool) -> None:
+        nick = self.config.BOT_NICKNAME
+        store = getattr(getattr(self, "router", None), "group_nicknames", None)
+        if store is not None:
+            nick = store.get(group_id)
         lines = [
-            "花璃指令菜单：",
+            f"{nick}指令菜单：",
             "/help 显示本菜单",
             "/memory 看看我记住了你什么",
             "/forget 关键词 删掉包含该词的记忆",
@@ -132,7 +136,7 @@ class CommandHandler:
         if is_admin:
             lines.append("/memory_clear 清空本群所有记忆（管理员）")
             lines.append("/memory_dump 导出本群记忆（管理员）")
-        lines.append("另外 @花璃 或在群里聊天就有机会被她接话～")
+        lines.append(f"另外 @{self.config.BOT_NICKNAME} 或在群里聊天就有机会被{self.config.BOT_NICKNAME}接话～")
         await self.sender.send_group_message(group_id, "\n".join(lines))
 
     async def _cmd_memory(self, user_id: int, group_id: int) -> None:

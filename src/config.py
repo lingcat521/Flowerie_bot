@@ -86,6 +86,7 @@ class Settings(BaseSettings):
     # Bot
     BOT_QQ: int = Field(...)  # 环境变量名 = 字段名
     BOT_NICKNAME: str = "花璃"
+    GROUP_NICKNAMES_PATH: str = "./data/nicknames.json"   # 群特色昵称存储
 
     # Connection
     WS_HOST: str = "127.0.0.1"

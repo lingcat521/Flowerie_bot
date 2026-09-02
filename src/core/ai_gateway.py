@@ -35,7 +35,7 @@ class AiGateway:
 
     def __init__(self, config, ai_client, budget, prompt_manager=None,
                  tool_manager=None, persona_manager=None, meme_manager=None,
-                 blossom_memory=None):
+                 blossom_memory=None, nicknames=None):
         """ai_client/tool_manager 等可变依赖以 provider（可调用）传入：
         动态读取宿主（MessageRouter）当前属性，支持测试/运行期热替换。"""
         self.config = config
@@ -43,7 +43,8 @@ class AiGateway:
         self._budget = budget if callable(budget) else (lambda: budget)
         self._prompt_manager = prompt_manager if callable(prompt_manager) else (lambda: prompt_manager)
         self._tool_manager = tool_manager if callable(tool_manager) else (lambda: tool_manager)
-        self._persona_manager = persona_manager if callable(persona_manager) else (lambda: persona_manager)
+        self._persona_manager = persona_manager
+        self._nicknames = nicknames if callable(nicknames) else (lambda: nicknames) if callable(persona_manager) else (lambda: persona_manager)
         self._meme_manager = meme_manager if callable(meme_manager) else (lambda: meme_manager)
         # 花语记忆（BlossomMemory）：默认 None（不含重资源；main 按开关注入）
         self._blossom_memory = blossom_memory if callable(blossom_memory) or blossom_memory is None \
@@ -186,6 +187,11 @@ class AiGateway:
                             _gid, kwargs.get("user_message") or "")
                     except Exception as e:  # noqa: BLE001 - 语义记忆故障绝不影响主 AI 流程
                         logger.warning("blossom_search_fail group=%s err=%s", _gid, e)
+            # 群特色昵称（group nickname）：本群有配置 → 覆盖默认 BOT_NICKNAME
+            _ns = self._nicknames()
+            if _ns is not None and kwargs.get("group_id") is not None:
+                kwargs["bot_nickname"] = _ns.get(kwargs["group_id"])
+                kwargs["default_nickname"] = _ns.default
             reply, memory_update = await self.ai_client.chat_once(**kwargs)
             if reply and reply.strip() or (memory_update and reply is None):
                 # 纯记忆回合（reply 空但有记忆产出）视为成功，不再浪费预算重试

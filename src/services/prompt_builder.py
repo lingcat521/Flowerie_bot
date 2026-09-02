@@ -45,7 +45,8 @@ def build_system_prompt(config, memory_manager, user_message: str, context: str,
                     user_id: Optional[int], group_id: Optional[int],
                     custom_prompt: str, is_mentioned: bool,
                     persona_text: str = "", meme_context: str = "",
-                    retrieved_memory: str = ""):
+                    retrieved_memory: str = "", bot_nickname: str = "",
+                    default_nickname: str = "花璃"):
     """预处理：输入截断/清洗/记忆组装/system prompt 构建。
 
     人格注入：persona_text 为组合好的人格块（PersonaManager 解析的
@@ -108,6 +109,17 @@ def build_system_prompt(config, memory_manager, user_message: str, context: str,
         persona_text = default_persona_text()
     persona_block = persona_text.strip() + "\n"
 
+    # 群特色昵称（Group Nickname）：与全局默认不同时注入为"本群专属称呼"
+    nickname_block = ""
+    nick = (bot_nickname or "").strip()
+    if nick and nick != default_nickname:
+        safe_nick = nick.replace("\n", " ").replace("\r", " ")
+        nickname_block = (
+            "【本群专属称呼】群友们习惯叫你「" + safe_nick + "」——"
+            "这是你在本群的昵称：介绍自己、署名回应时用这个称呼；"
+            "没有被点名时仍然按上面的人格自由发挥。\n"
+        )
+
     # 群聊知识块（不可信上下文知识）：只放入【不可信数据区】，绝不成为指令。
     # 注入前二次清洗：写入路径已有闸门，这里兜底 DB 被手工改库的脏数据
     meme_block = ""
@@ -126,6 +138,7 @@ def build_system_prompt(config, memory_manager, user_message: str, context: str,
 
     system_prompt = (
         f"{persona_block}"
+        f"{nickname_block}"
         f"{GLOBAL_STYLE_RULES}\n"
         "\n【记忆功能】\n"
         "你必须主动记住群友的特点和喜好，例如：某人喜欢喝奶茶、某人怕黑、某人昵称叫XX等。\n"

@@ -65,6 +65,7 @@ def render_panel_page(*, theme_class: str, bg_rules: str, msg_html: str,
         ("config", "/panel", "配置"),
         ("persona", "/panel?tab=persona", "人格"),
         ("knowledge", "/panel?tab=knowledge", "群聊知识"),
+        ("nicknames", "/panel?tab=nicknames", "群昵称"),
         ("plugins", "/panel?tab=plugins", "插件"),
         ("appearance", "/panel?tab=appearance", "外观"),
         ("logs", "/panel?tab=logs", "日志"),
@@ -76,7 +77,7 @@ def render_panel_page(*, theme_class: str, bg_rules: str, msg_html: str,
     )
     titles = {"config": "配置管理", "appearance": "外观美化", "logs": "日志",
               "persona": "人格管理", "knowledge": "群聊知识管理", "account": "用户状态",
-              "plugins": "插件管理"}
+              "plugins": "插件管理", "nicknames": "群特色昵称"}
     title = titles.get(active_tab, "配置管理")
     # panel_bg_css：服务端算好的具体 rgba(r,g,b,a) 卡片背景（保证兼容）；为空则由 CSS 主题接管
     inline_style = f' style="--panel-bg:{panel_bg_css}"' if panel_bg_css else ""
