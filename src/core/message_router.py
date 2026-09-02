@@ -17,7 +17,6 @@ from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
 from src.services.file_parser import FileParser
-from src.services.group_nicknames import GroupNicknameStore
 from src.services.mcp_tool_manager import McpToolManager
 from src.services.meme_knowledge_manager import MemeKnowledgeManager
 from src.services.meme_summary import MemeSummaryService
@@ -112,10 +111,7 @@ class MessageRouter:
             blossom_memory=lambda: getattr(self, "blossom_memory", None),
             nicknames=lambda: getattr(self, "group_nicknames", None),
         )
-        # 群特色昵称（Group > 默认 BOT_NICKNAME）：router 持有、gateway 动态读取
-        self.group_nicknames = GroupNicknameStore(
-            getattr(config, "GROUP_NICKNAMES_PATH", "./data/nicknames.json"),
-            getattr(config, "BOT_NICKNAME", "花璃"))
+        # 群特色昵称：由 main 创建并注入（与 Web UI 共享同一实例；gateway provider 动态读）
         # 花语记忆（可写 provider：测试可热替换）
         self.blossom_memory = blossom_memory
         # 兼容属性：熔断器/群级熔断容器由 AiGateway 持有（旧调用路径）
