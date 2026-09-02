@@ -222,3 +222,24 @@ def test_apply_persisted_without_env_unchanged():
         repo.close()
     finally:
         tmp.cleanup()
+
+
+def test_coerce_accepts_json_list_from_db(monkeypatch, tmp_path):
+    """修复回归：settings.db 里 Web UI 保存的 JSON 数组（"[786368680]"）直接到 _coerce。"""
+    import json
+    from src.services.config_service import ConfigService
+
+    # 静态方法直测（不需完整环境）
+    coerce = ConfigService._coerce
+    assert coerce("list-int", "[786368680]") == [786368680]
+    assert coerce("list-str", '["a","b"]') == ["a", "b"]
+    assert coerce("list-int", "786368680,123") == [786368680, 123]   # .env 旧写法兼容
+    assert coerce("list-int", "[]") == []
+    assert coerce("list-str", "[]") == []
+
+    # validate：JSON 数组规范化（回写 .env 时用逗号）
+    v = ConfigService._validate
+    assert v("ALLOWED_GROUP_IDS", "list-int", "[786368680]") == "786368680"
+    assert v("TOXIC_GROUP_IDS", "list-str", '["a","b"]') == "a,b"
+    assert v("ALLOWED_GROUP_IDS", "list-int", "786368680,123") == "786368680,123"
+assert 1 == 1

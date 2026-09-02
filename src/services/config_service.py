@@ -567,7 +567,16 @@ class ConfigService:
                     return None
                 return ",".join(str(x) for x in items)
             if ctype == "list-str":
-                items = [x.strip() for x in raw.split(",") if x.strip()]
+                if raw.startswith("["):
+                    try:
+                        data = json.loads(raw)
+                    except json.JSONDecodeError:
+                        return None
+                    if not isinstance(data, list) or any(not isinstance(x, str) for x in data):
+                        return None
+                    items = [x.strip() for x in data if str(x).strip()]
+                else:
+                    items = [x.strip() for x in raw.split(",") if x.strip()]
                 return ",".join(items)
             if ctype == "textarea":
                 items = [x.strip() for x in raw.splitlines() if x.strip()]
@@ -613,10 +622,20 @@ class ConfigService:
             return float(value)
         if ctype == "bool":
             return value.lower() in ("true", "1")
-        if ctype == "list-int":
-            return [int(x) for x in value.split(",") if x.strip()]
-        if ctype == "list-str":
-            return [x.strip() for x in value.split(",") if x.strip()]
+        if ctype in ("list-int", "list-str"):
+            raw = str(value).strip()
+            # Web UI/db 保存为 JSON 数组（"[1,2]"）；.env 手工写法为逗号列表（"1,2"）
+            items = None
+            if raw.startswith("["):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        items = parsed
+                except ValueError:
+                    items = None
+            if items is None:
+                items = [x.strip() for x in raw.split(",") if x.strip()]
+            return [int(x) for x in items] if ctype == "list-int" else [str(x) for x in items]
         if ctype == "textarea":
             return [x for x in value.split("\n") if x.strip()]
         return value
