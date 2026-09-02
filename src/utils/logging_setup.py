@@ -164,6 +164,10 @@ def init_logging(level: str = "INFO", fmt: str = "text", log_file: Optional[str]
 
     if log_file:
         try:
+            import os
+            _log_dir = os.path.dirname(os.path.abspath(log_file))
+            if _log_dir:
+                os.makedirs(_log_dir, exist_ok=True)
             file_handler = logging.handlers.RotatingFileHandler(
                 log_file, maxBytes=500 * 1024 * 1024, backupCount=3, encoding="utf-8",
             )
