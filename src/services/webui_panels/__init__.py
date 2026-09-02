@@ -10,6 +10,7 @@ from src.services.webui_panels.auth_panel import AuthPanelMixin
 from src.services.webui_panels.config_panel import ConfigPanelMixin
 from src.services.webui_panels.knowledge_panel import KnowledgePanelMixin
 from src.services.webui_panels.mcp_panel import McpPanelMixin
+from src.services.webui_panels.nickname_panel import NicknamePanelMixin
 from src.services.webui_panels.persona_panel import PersonaPanelMixin
 from src.services.webui_panels.plugin_panel import PluginPanelMixin
 from src.services.webui_panels.prompt_panel import PromptPanelMixin
