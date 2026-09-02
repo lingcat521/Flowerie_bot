@@ -2,7 +2,16 @@
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [2.1.1] - 2026-09-02
+## [2.1.2] - 2026-09-02
+
+### Fixed——配置列表持久化双格式崩溃（config_persisted_apply_failed）
+- **根因**：Web UI 保存列表到 settings.db 为 JSON 数组（`[786368680]`），启动 `apply_persisted`
+  的 `_coerce`/`_validate` 仅按逗号 split → `ValueError`（ALLOWED_GROUP_IDS/TOXIC_GROUP_IDS）
+- **修复**：list-int / list-str 均"JSON 数组优先（元素类型校验）+ 逗号列表兜底（.env 旧写法）"
+  ——与 pydantic（`List[int]` 强制 JSON）双向兼容，两种 .env 写法都能启动
+- 回归：`test_coerce_accepts_json_list_from_db`（coerce/validate 双格式钉死）
+
+
 
 ### Added——群特色昵称（BOT_NICKNAME 按群隔离）
 - 每个群可设专属称呼（Web UI 新增「群昵称」tab：列表/新增/批量改/留空恢复默认，零 JS）
