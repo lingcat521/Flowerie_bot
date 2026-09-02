@@ -2,7 +2,21 @@
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [2.1.2] - 2026-09-02
+## [2.1.4] - 2026-09-03
+
+> 📦 **维护状态：停更一年（2026-09-03 起）**——由于 bug 太多懒得修，本项目停更一年，来年再更新。
+> 已发布版本可继续使用；期间遇到问题可提 Issue（不保证修复）。
+
+### Fixed——实战修复（Termux 真机验证）
+- **WS 发送通道**（SEND_VIA_WS）：NapCat 只开 WebSocket（不开 3000 HTTP）也能发消息；
+  OneBot action/echo 请求-响应匹配；HTTP 路径保留（默认 false 零行为变化）
+- **图片识图恢复**：NT 图 URL 302→CDN 重定向（每跳 SSRF 校验跟随）+ 浏览器 UA/Referer
+- **名字唤起必回**：文本含 BOT_NICKNAME/群特色昵称 = 点名（不带 @ 也必回）
+- **日志落盘修复**：RotatingFileHandler 不建目录 → 自动建 `logs/`（之前静默无日志文件）
+- sender 失败输出完整原因（message_send_action_failed）+ vision last_error
+- websockets 新版 ServerConnection 兼容
+
+
 
 ### Fixed——配置列表持久化双格式崩溃（config_persisted_apply_failed）
 - **根因**：Web UI 保存列表到 settings.db 为 JSON 数组（`[786368680]`），启动 `apply_persisted`
