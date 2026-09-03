@@ -2,7 +2,23 @@
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-## [2.1.4] - 2026-09-03
+## [2.2.0] - 2026-09-03
+
+> 🔄 **维护状态更新：恢复更新**（此前 v2.1.4 宣布的"停更一年"说明已撤销并移至此处——Flowerie 继续开发）。
+
+### Added——OneBot v11 全平台兼容
+- **图片识图 file 优先**：`image.file` 标准字段本地读取（绕开 NT CDN 302/UA/引用过期——真·换实现不用改代码）；URL 兜底；`file://`/相对路径容错
+- **发送通道 auto**：`SEND_VIA_WS=auto`（默认）WS 优先→HTTP 自动回退；`true/false` 显式；旧布尔配置兼容
+- 连接三模式（反向 WS/正向 WS/HTTP）；能力探测 + 明确降级（无端点显式报错）
+- docs/onebot-compatibility.md 兼容矩阵
+
+### Fixed
+- `_use_ws` 布尔 `False` 被 `or` 短路成 auto（旧布尔配置失效）→ 显式布尔关闭正确
+
+### 兼容声明
+> NapCat / Lagrange / LLOneBot / Koishi 等 OneBot v11 实现：同一 Flowerie 直接跑；能力有的用、没有显式报错。
+
+
 
 > 📦 **维护状态：停更一年（2026-09-03 起）**——由于 bug 太多懒得修，本项目停更一年，来年再更新。
 > 已发布版本可继续使用；期间遇到问题可提 Issue（不保证修复）。
