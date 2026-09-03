@@ -1,5 +1,5 @@
 """内置描述升级：旧默认/空→升级；用户改过→不再覆盖。"""
-from src.services.persona_manager import PersonaManager, _LEGACY_BUILTIN_DESCRIPTIONS
+from src.services.persona_manager import _LEGACY_BUILTIN_DESCRIPTIONS
 from src.services.persona_presets import BUILTIN_PERSONAS
 
 
@@ -18,7 +18,7 @@ class _Repo:
 def _should_upgrade(desc, preset_id):
     """复现 seed 门控逻辑。"""
     preset = next(p for p in BUILTIN_PERSONAS if p["id"] == preset_id)
-    if desc is None or desc == _LEGACY_BUILTIN_DESCRIPTIONS.get(preset_id, "__none__"):
+    if desc is None or desc == "" or desc == _LEGACY_BUILTIN_DESCRIPTIONS.get(preset_id, "__none__"):
         return desc != preset["description"]
     return False
 

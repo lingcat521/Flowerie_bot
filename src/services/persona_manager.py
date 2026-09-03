@@ -63,7 +63,7 @@ class PersonaManager:
                 })
                 seeded += 1
             elif existing.get("description") in (
-                        None, _LEGACY_BUILTIN_DESCRIPTIONS.get(preset["id"], "__none__")):
+                        None, "", _LEGACY_BUILTIN_DESCRIPTIONS.get(preset["id"], "__none__")):
                 # 仅在「空」或「旧默认描述」时升级（如 v2.2.2 官方来源标注）——
                 # 用户手动改过的内置描述**不再覆盖**（尊重用户侧）
                 if existing.get("description") != preset.get("description"):
