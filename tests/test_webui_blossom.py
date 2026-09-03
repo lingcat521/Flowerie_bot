@@ -137,6 +137,5 @@ def test_model_ping_button_rendered():
     html = render_config_sections([c | {"category": "BlossomMemory"} for c in cfgs],
                                   category_order=["BlossomMemory"],
                                   category_labels={"BlossomMemory": "花语记忆"})
-    assert html.count('action="/panel/test/model"') == 2, "两个模型行应各有测按钮"
-    assert 'name="target" value="embedding"' in html
-    assert 'name="target" value="reranker"' in html
+    # 配置页行内测按钮已移除（连通性测试统一在用户状态页）；不残留 target 表单
+    assert html.count('action="/panel/test/model"') == 0, "配置页不应再内嵌测试表单"
