@@ -64,7 +64,7 @@ class NicknamePanelMixin:
         except Exception:  # noqa: BLE001
             personas = []
         return render_nicknames_tab(nicknames, default, msg, group_ids=list(group_ids),
-                                    personas=personas) + rules_html
+                                    personas=personas)
 
     async def _handle_panel_nicknames_save(self, request: web.Request) -> web.Response:
         form = await request.post()
