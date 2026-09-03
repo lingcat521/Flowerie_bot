@@ -1,7 +1,7 @@
 """防回归：所有 sqlite 仓库在「不存在的父目录」下构造——自动建目录（logs 同类坑）。"""
 import os
 
-from src.repositories.blossom_memory_repository import BlossomMemoryRepository
+from src.repositories.blossom_memory_repository import SQLiteBlossomMemoryRepository
 from src.repositories.meme_knowledge_repository import MemeKnowledgeRepository
 from src.repositories.settings_repository import SettingsRepository
 from src.repositories.sticker_repository import StickerRepository
@@ -27,7 +27,7 @@ def test_meme_repo_creates_dirs(tmp_path):
 
 def test_blossom_repo_creates_dirs(tmp_path):
     p = _fresh_path(str(tmp_path))
-    r = BlossomMemoryRepository("sqlite://" + p)
+    r = SQLiteBlossomMemoryRepository("sqlite://" + p)
     r._conn.close()
     assert os.path.exists(p)
 
