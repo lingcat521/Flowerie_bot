@@ -27,7 +27,7 @@ def test_meme_repo_creates_dirs(tmp_path):
 
 def test_blossom_repo_creates_dirs(tmp_path):
     p = _fresh_path(str(tmp_path))
-    r = SQLiteBlossomMemoryRepository("sqlite://" + p)
+    r = SQLiteBlossomMemoryRepository(p)
     r._conn.close()
     assert os.path.exists(p)
 
