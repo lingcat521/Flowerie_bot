@@ -87,6 +87,7 @@ class Settings(BaseSettings):
     # Bot
     BOT_QQ: int = Field(...)  # 环境变量名 = 字段名
     BOT_NICKNAME: str = "花璃"
+    GROUP_STYLE_RULES_PATH: str = "./data/style_rules.json"
     GLOBAL_STYLE_RULES: str = (
         "【全局说话风格 & 标点规则（最高优先级，所有人格必须遵守）】\n"
         "- 回复尽量在15～20字以内 简洁自然 严禁话唠\n"

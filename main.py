@@ -149,9 +149,12 @@ async def main():
             ai_client=ai_client,
         )
         from src.services.group_nicknames import GroupNicknameStore
+        from src.services.group_style_rules import GroupStyleRuleStore
         group_nicknames = GroupNicknameStore(
             getattr(config, "GROUP_NICKNAMES_PATH", "./data/nicknames.json"),
             getattr(config, "BOT_NICKNAME", "花璃"))
+        group_style_rules = GroupStyleRuleStore(
+            getattr(config, "GROUP_STYLE_RULES_PATH", "./data/style_rules.json"))
         if config.WEB_UI_ENABLED:
             def _status_provider():
                 return {
@@ -188,7 +191,8 @@ async def main():
             event_parser=adapters.parser,
             blossom_memory=blossom_memory,
         )
-        message_router.group_nicknames = group_nicknames  # 与 Web UI 共享同一 store
+        message_router.group_nicknames = group_nicknames
+        message_router.group_style_rules = group_style_rules  # 与 Web UI 共享同一 store
         # NapCat WebSocket：反向（NapCat 连过来，原有行为）或正向（连接 NapCat 的 WS server），二选一
         if str(getattr(config, "NAPCAT_WS_MODE", "reverse") or "reverse").lower() == "forward":
             from src.core.napcat_forward_client import NapCatForwardClient

@@ -46,7 +46,8 @@ def build_system_prompt(config, memory_manager, user_message: str, context: str,
                     custom_prompt: str, is_mentioned: bool,
                     persona_text: str = "", meme_context: str = "",
                     retrieved_memory: str = "", bot_nickname: str = "",
-                    default_nickname: str = "花璃"):
+                    default_nickname: str = "花璃",
+                    group_style_rules: str = ""):
     """预处理：输入截断/清洗/记忆组装/system prompt 构建。
 
     人格注入：persona_text 为组合好的人格块（PersonaManager 解析的
@@ -139,7 +140,7 @@ def build_system_prompt(config, memory_manager, user_message: str, context: str,
     system_prompt = (
         f"{persona_block}"
         f"{nickname_block}"
-        f"{getattr(config, 'GLOBAL_STYLE_RULES', '') or GLOBAL_STYLE_RULES}\n"
+        f"{group_style_rules or getattr(config, 'GLOBAL_STYLE_RULES', '') or GLOBAL_STYLE_RULES}\n"
         "\n【记忆功能】\n"
         "你必须主动记住群友的特点和喜好，例如：某人喜欢喝奶茶、某人怕黑、某人昵称叫XX等。\n"
         "**重要：无论你是否被 @，只要用户在群聊中说出“我喜欢...”、“我讨厌...”、“我害怕...”、“我是...”、“我的...是...”等明确表达个人偏好或特征的句子，你必须在回复中主动记录。\n"

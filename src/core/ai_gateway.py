@@ -35,7 +35,7 @@ class AiGateway:
 
     def __init__(self, config, ai_client, budget, prompt_manager=None,
                  tool_manager=None, persona_manager=None, meme_manager=None,
-                 blossom_memory=None, nicknames=None):
+                 blossom_memory=None, nicknames=None, style_rules=None):
         """ai_client/tool_manager 等可变依赖以 provider（可调用）传入：
         动态读取宿主（MessageRouter）当前属性，支持测试/运行期热替换。"""
         self.config = config
@@ -45,6 +45,7 @@ class AiGateway:
         self._tool_manager = tool_manager if callable(tool_manager) else (lambda: tool_manager)
         self._persona_manager = persona_manager
         self._nicknames = nicknames if callable(nicknames) else (lambda: nicknames) if callable(persona_manager) else (lambda: persona_manager)
+        self._style_rules = style_rules if callable(style_rules) else (lambda: style_rules)
         self._meme_manager = meme_manager if callable(meme_manager) else (lambda: meme_manager)
         # 花语记忆（BlossomMemory）：默认 None（不含重资源；main 按开关注入）
         self._blossom_memory = blossom_memory if callable(blossom_memory) or blossom_memory is None \
@@ -196,6 +197,12 @@ class AiGateway:
                     if callable(getattr(self, "_persona_manager", None)) else None)
                 kwargs["bot_nickname"] = _ns.get(kwargs["group_id"], _pid)
                 kwargs["default_nickname"] = _ns.default
+            # 群专属发言规则（覆盖全局 GLOBAL_STYLE_RULES；无配置 → 回退全局）
+            _sr = self._style_rules() if callable(getattr(self, "_style_rules", None)) else None
+            if _sr is not None and kwargs.get("group_id") is not None:
+                _rule = _sr.get(kwargs["group_id"])
+                if _rule:
+                    kwargs["group_style_rules"] = _rule
             reply, memory_update = await self.ai_client.chat_once(**kwargs)
             if reply and reply.strip() or (memory_update and reply is None):
                 # 纯记忆回合（reply 空但有记忆产出）视为成功，不再浪费预算重试

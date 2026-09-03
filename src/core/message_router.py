@@ -111,6 +111,7 @@ class MessageRouter:
             meme_manager=lambda: self.meme_manager,
             blossom_memory=lambda: getattr(self, "blossom_memory", None),
             nicknames=lambda: getattr(self, "group_nicknames", None),
+            style_rules=lambda: getattr(self, "group_style_rules", None),
         )
         # 群特色昵称：由 main 创建并注入（与 Web UI 共享同一实例；gateway provider 动态读）
         # 花语记忆（可写 provider：测试可热替换）

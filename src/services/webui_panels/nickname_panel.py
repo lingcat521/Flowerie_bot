@@ -1,4 +1,6 @@
 """Web UI 群特色昵称面板（GET 展示 / POST 保存，零 JS 重渲染）。"""
+from html import escape as _e
+
 from aiohttp import web
 
 from src.services.group_nicknames import GroupNicknameStore
@@ -33,6 +35,10 @@ class NicknamePanelMixin:
     def _nickname_store(self) -> GroupNicknameStore:
         return getattr(self, "group_nicknames", None)
 
+    @property
+    def _style_rule_store(self):
+        return getattr(self, "group_style_rules", None)
+
     async def _handle_panel_nicknames(self, request: web.Request) -> web.Response:
         return web.Response(text=self._render_nicknames_page(),
                             content_type="text/html", charset="utf-8")
@@ -58,8 +64,46 @@ class NicknamePanelMixin:
                             for p in (pm.list_personas() or [])]
         except Exception:  # noqa: BLE001
             personas = []
+        rules_html = ""
+        sr = self._style_rule_store
+        if sr is not None:
+            rules = sr.all()
+            rule_rows = "".join(
+                f'<tr><td>{_e(gid)}</td><td><textarea name="rule_{gid}" rows="3">'
+                f'{_e(r)}</textarea></td></tr>'
+                for gid, r in sorted(rules.items(), key=lambda kv: int(kv[0])))
+            rules_html = (
+                '<fieldset class="group"><legend>群专属发言规则（覆盖全局 GLOBAL_STYLE_RULES）</legend>'
+                '<form method="post" action="/panel/grouprules">'
+                '<table><tr><th>群号</th><th>规则（多行；留空＝回退全局）</th></tr>'
+                + rule_rows +
+                '</table>'
+                '<p>新增/修改：<input list="gidlist" name="group_id" placeholder="群号" pattern="[0-9]+">'
+                '<textarea name="rules" rows="4" placeholder="该群专属发言规则"></textarea>'
+                '<button type="submit">保存</button></p>'
+                '</form></fieldset>'
+            )
         return render_nicknames_tab(nicknames, default, msg, group_ids=list(group_ids),
-                                    personas=personas)
+                                    personas=personas) + rules_html
+
+    async def _handle_panel_grouprules_save(self, request: web.Request) -> web.Response:
+        form = await request.post()
+        sr = self._style_rule_store
+        if sr is None:
+            return web.Response(text=self._render_nicknames_page(msg="未初始化（重启后重试）"),
+                                content_type="text/html", charset="utf-8")
+        saved = 0
+        for key in form:
+            if key.startswith("rule_") and key[5:].isdigit():
+                sr.set(int(key[5:]), str(form.get(key) or ""))
+                saved += 1
+        gid = str((form.get("group_id") or "")).strip()
+        if gid.isdigit() and int(gid) > 0:
+            sr.set(int(gid), str(form.get("rules") or ""))
+            saved += 1
+        msg = f"已保存 {saved} 个群的发言规则" if saved else "无变更"
+        return web.Response(text=self._render_nicknames_page(msg=msg),
+                            content_type="text/html", charset="utf-8")
 
     async def _handle_panel_nicknames_save(self, request: web.Request) -> web.Response:
         form = await request.post()
