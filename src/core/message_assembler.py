@@ -70,18 +70,26 @@ class MessageAssembler:
     async def _describe_images(self, event) -> List[str]:
         descriptions = []
         max_images = max(1, self.config.MAX_IMAGES_PER_MESSAGE)
-        # 历史行为：仅 http(s) url 触发识图（file 路径本地图不描述）——保持等价
-        images = [i for i in (event.images or []) if str(i).startswith(("http://", "https://"))]
-        for url in images[:max_images]:
+        # OneBot 全实现兼容：本地 file 字段优先（任何实现都会给；绕开 CDN/UA/过期），
+        # URL 仅兜底（file 缺失或不可读时）。
+        file_paths = [f for f in (getattr(event, "image_files", None) or []) if f]
+        urls = [i for i in (event.images or [])
+                if str(i).startswith(("http://", "https://"))]
+        pending = [("file", f) for f in file_paths]
+        pending += [("url", u) for u in urls if u not in file_paths]
+        for kind, src in pending[:max_images]:
             try:
-                desc = await self.ai_client.describe_image(url)
+                if kind == "file":
+                    desc = await self.ai_client.describe_image_file(src)
+                else:
+                    desc = await self.ai_client.describe_image(src)
             except Exception as e:  # noqa: BLE001 - 描述失败不阻断组装
-                logger.warning(f"Vision describe failed for image url: {url[:80]} ({e})")
+                logger.warning(f"Vision describe failed for image {kind}: {src[:80]} ({e})")
                 desc = ""
             if desc:
                 descriptions.append(desc)
             else:
-                logger.warning(f"Vision describe failed for image url: {url[:80]}")
+                logger.warning(f"Vision describe failed for image {kind}: {src[:80]}")
         return descriptions
 
     # ---------- 回复/@ 扫描 ----------

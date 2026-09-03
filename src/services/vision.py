@@ -201,9 +201,19 @@ class VisionService:
             return None
 
     async def describe_image_file(self, file_path: str) -> Optional[str]:
-            """描述本地图片文件（表情包索引用），失败返回 None。"""
+            """描述本地图片文件（表情包/群消息图），失败返回 None。"""
             try:
-                size = os.path.getsize(file_path)
+                fp = str(file_path or "")
+                if fp.startswith("file://"):
+                    fp = fp[len("file://"):]
+                if not os.path.isabs(fp):
+                    # 相对路径：先试 CWD，再试 NapCat 默认图目录（实现差异兜底）
+                    for base in (os.getcwd(), "/storage/emulated/0/Android/data"):
+                        candidate = os.path.join(base, fp.lstrip("/"))
+                        if os.path.exists(candidate):
+                            fp = candidate
+                            break
+                size = os.path.getsize(fp)
                 cap = self.config.MAX_IMAGE_DOWNLOAD_BYTES
                 if size <= 0 or size > cap:
                     logger.error("Sticker file size out of range: %s (%s bytes)", file_path, size)

@@ -20,7 +20,12 @@ class Sender:
 
     @property
     def _use_ws(self) -> bool:
-        return bool(getattr(self.config, "SEND_VIA_WS", False) and self._ws_sender)
+        mode = str(getattr(self.config, "SEND_VIA_WS", "auto") or "auto").lower()
+        if mode == "false":
+            return False
+        if mode == "true":
+            return bool(self._ws_sender)
+        return bool(self._ws_sender)  # auto：WS 优先（不可用时 _post 内部回退 HTTP）
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()

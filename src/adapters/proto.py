@@ -27,7 +27,8 @@ class InternalEvent:
     # 内容（解析后结构化；等价于 file_parser.extract_mention_and_text / 段扫描）
     text: str = ""                     # 纯文本（at/text 段拼合后 strip）
     mentions: List[str] = field(default_factory=list)   # @ 的 QQ 列表（含 all）
-    images: List[str] = field(default_factory=list)     # 图片 url（url 优先，file 兜底）
+    images: List[str] = field(default_factory=list)     # 图片 url 列表（url 优先，file 兜底——兼容视图）
+    image_files: List[str] = field(default_factory=list)  # 图片本地 file 路径（OneBot 标准字段，识别优先）
     reply_id: Optional[int] = None     # 引用消息 id
     notice_kind: str = ""              # poke / group_increase / group_upload / ...
     request_kind: str = ""             # friend / group（申请类事件）

@@ -80,6 +80,7 @@ class OneBotEventParser:
         text_parts: List[str] = []
         mentions: List[str] = []
         images: List[str] = []
+        image_files: List[str] = []
         reply_id: Optional[int] = None
         is_reply_to_bot = has_reply_to_other = has_at_others = False
         summary: List[tuple] = []
@@ -101,6 +102,11 @@ class OneBotEventParser:
                 url = str(data.get("url") or data.get("file") or "")
                 if url:
                     images.append(url)
+                fp = str(data.get("file") or "").strip()
+                if fp:
+                    _f = fp[len("file://"):] if fp.startswith("file://") else fp
+                    if _f:
+                        image_files.append(_f)
             elif seg_type == "reply":
                 try:
                     reply_id = int(data.get("id"))
@@ -121,6 +127,7 @@ class OneBotEventParser:
         event.text = "".join(text_parts).strip()
         event.mentions = mentions
         event.images = images
+        event.image_files = image_files
         event.reply_id = reply_id
         event.is_reply_to_bot = is_reply_to_bot
         event.has_reply_to_other = has_reply_to_other
