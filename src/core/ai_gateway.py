@@ -187,10 +187,14 @@ class AiGateway:
                             _gid, kwargs.get("user_message") or "")
                     except Exception as e:  # noqa: BLE001 - 语义记忆故障绝不影响主 AI 流程
                         logger.warning("blossom_search_fail group=%s err=%s", _gid, e)
-            # 群特色昵称（group nickname）：本群有配置 → 覆盖默认 BOT_NICKNAME
+            # 群特色昵称（group nickname × persona）：按 群+当前人设 解析
+            #（人设精确命中 → 群级 → BOT_NICKNAME 默认）
             _ns = self._nicknames()
             if _ns is not None and kwargs.get("group_id") is not None:
-                kwargs["bot_nickname"] = _ns.get(kwargs["group_id"])
+                _pid = kwargs.pop("persona_id", None) or (
+                    self._persona_manager().resolve_persona_id(kwargs["group_id"])
+                    if callable(getattr(self, "_persona_manager", None)) else None)
+                kwargs["bot_nickname"] = _ns.get(kwargs["group_id"], _pid)
                 kwargs["default_nickname"] = _ns.default
             reply, memory_update = await self.ai_client.chat_once(**kwargs)
             if reply and reply.strip() or (memory_update and reply is None):

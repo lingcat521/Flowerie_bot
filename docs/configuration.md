@@ -272,7 +272,7 @@ Web UI「人格」页管理（全局 / 群聊 / 自定义）。详见 [persona.m
 - 迁移：`python -m src.services.storage_migrate --sqlite ./data/memory.db --postgres <dsn> [--blossom ./data/blossom_memory.db]`
 
 
-## 群特色昵称（v2.1.1）
+## 群特色昵称（v2.1.1；x人设隔离 2.2.1）
 - 每群可设专属称呼（Web UI「群昵称」tab）；优先级：群配置 > BOT_NICKNAME
 - 存储：`GROUP_NICKNAMES_PATH`（默认 `./data/nicknames.json`）；留空=恢复默认
 - 注入：群聊 AI 提示词【本群专属称呼】段（与默认相同不注入）

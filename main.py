@@ -157,6 +157,7 @@ async def main():
                 return {
                     "ws_connected": message_router.global_state.ws_connected,
                     "groups": len(message_router.policy_engine.groups),
+                    "group_ids": sorted(message_router.policy_engine.groups.keys()),
                 }
             web_ui = WebUIServer(
                 config, config_service, status_provider=_status_provider,

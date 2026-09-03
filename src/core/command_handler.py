@@ -125,7 +125,9 @@ class CommandHandler:
         nick = self.config.BOT_NICKNAME
         store = getattr(getattr(self, "router", None), "group_nicknames", None)
         if store is not None:
-            nick = store.get(group_id)
+            _pm = getattr(getattr(self, "router", None), "persona_manager", None)
+            _pid = _pm.resolve_persona_id(group_id) if _pm is not None else None
+            nick = store.get(group_id, _pid)
         lines = [
             f"{nick}指令菜单：",
             "/help 显示本菜单",

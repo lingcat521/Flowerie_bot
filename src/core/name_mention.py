@@ -17,7 +17,10 @@ def detect(msg: Any, config: Any, store: Any = None) -> bool:
         names = {str(getattr(config, "BOT_NICKNAME", "花璃")).strip() or "花璃"}
         if store is not None:
             try:
-                names.add(store.get(msg.group_id))
+                # 该群全部有效昵称（人设维度 + 群级）都参与唤起
+                for _pid, _name in store.entries_for(msg.group_id):
+                    if _name:
+                        names.add(_name)
             except Exception:  # noqa: BLE001
                 pass
         return any(n and n in text for n in names)
