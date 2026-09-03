@@ -87,47 +87,49 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
             '（在「配置」页设置 <code>MCP_ENABLED=true</code> 并配置 server）</span></div></div></fieldset>'
         )
 
-    # ---- API 厂商连接状态（配置层面） ----
-    def _api_card(label, st):
-        st = st or {}
-        key_state = '<span class="badge ok">已配置</span>' if st.get("key_set") else '<span class="badge warn">未配置 Key</span>'
-        return (
-            '<div class="mcp-card">'
-            f'<div class="mcp-card-head"><b>{_esc(label)}</b>{key_state}</div>'
-            f'<div class="mcp-card-url">地址：{_esc(st.get("url", "N/A"))} · 模型：{_esc(st.get("model", "N/A"))}'
-            + (' · Key：' + _esc(st.get("key")) if st.get("key") else "")
-            + '</div>'
-            '</div>'
-        )
-    api_status = api_status or {}
-    def _test_form(tg, label):
-        return (
-            f'<form method="post" action="/panel/test/model" class="inline-form">'
-            f'<input type="hidden" name="target" value="{tg}">'
-            f'<input type="hidden" name="back" value="account">'
-            f'<button type="submit" class="btn-mini">连通性测试</button></form>')
-
+    # ---- API 厂商连接状态（连通性测试） ----
     result = ""
     if msg:
         result = ('<p style="color:%s"><b>%s</b></p>'
                   % ("#d73a49" if err else "#2ea043", _esc(msg)))
-    def _test_form(tg):
-        return (f'<form method="post" action="/panel/test/model" class="inline-form">'
-                f'<input type="hidden" name="target" value="{tg}">'
-                f'<input type="hidden" name="back" value="account">'
-                f'<button type="submit" class="btn-mini">连通性测试</button></form>')
-
     api_block = (
         '<fieldset class="group"><legend>API 厂商连接状态（连通性测试）</legend>'
-        + _api_card("DeepSeek（聊天主厂商）", api_status.get("deepseek"))
-        + _api_card("视觉识图", api_status.get("vision"))
-        + _api_card("引战检测", api_status.get("toxic"))
-        + _api_card("向量模型（花语记忆）", api_status.get("embedding"))
-        + _api_card("重排模型（花语记忆）", api_status.get("reranker"))
-        + (f'<p>{_test_form("deepseek")}{_test_form("vision")}{_test_form("toxic")}</p>'
-           '<div class="hint">花语记忆（向量/重排）的测试请在配置页（BlossomMemory）操作。</div>')
+        + _api_card("DeepSeek（聊天主厂商）", api_status.get("deepseek"), "deepseek")
+        + _api_card("视觉识图", api_status.get("vision"), "vision")
+        + _api_card("引战检测", api_status.get("toxic"), "toxic")
+        + _api_card("向量模型（花语记忆）", api_status.get("embedding"), "embedding")
+        + _api_card("重排模型（花语记忆）", api_status.get("reranker"), "reranker")
         + '<div class="hint">发送最小 ping 请求验证真实连通性；视觉/引战未独立配置时回退用 DeepSeek。</div>'
         '</fieldset>'
     )
 
     return account_block + result + sys_block + mcp_block + api_block
+
+
+def _api_card(label, st, test_tg=None):
+    """API 状态卡（配置层面）+ 可选「连通性测试」按钮（零 JS 表单，在卡内）。"""
+    st = st or {}
+    label_state = _esc(st.get("label") or label)
+    key_state = ""
+    if st.get("key_set"):
+        key_state = '<span class="badge ok">已配置 Key</span>'
+    elif st.get("url") and st.get("model") and st.get("url") != "未启用" and st.get("model") != "未启用":
+        key_state = '<span class="badge warn">未配置 Key</span>'
+    else:
+        key_state = '<span class="badge warn">未启用</span>'
+    test_btn = ""
+    if test_tg:
+        test_btn = (
+            f'<form method="post" action="/panel/test/model" class="inline-form">'
+            f'<input type="hidden" name="target" value="{test_tg}">'
+            f'<input type="hidden" name="back" value="account">'
+            f'<button type="submit" class="btn-mini">连通性测试</button></form>')
+    return (
+        '<div class="mcp-card">'
+        f'<div class="mcp-card-head"><b>{label_state}</b>{key_state}</div>'
+        f'<div class="mcp-card-url">地址：{_esc(st.get("url", "N/A"))} · '
+        f'模型：{_esc(st.get("model", "N/A"))}'
+        + (' · Key：' + _esc(st.get("key")) if st.get("key") else "")
+        + f'</div>{test_btn}'
+        '</div>'
+    )
