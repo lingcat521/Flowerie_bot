@@ -27,6 +27,12 @@ logger = get_logger(__name__)
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,31}$")
 
 
+# 旧版内置默认描述（v2.2.2 升级前）——与该值相等视为"用户未改过"，允许升级
+_LEGACY_BUILTIN_DESCRIPTIONS = {
+    "flowerie": "官方内置：冬川花璃（小恶魔系青梅竹马）",
+}
+
+
 class PersonaManager:
     """人格管理：内置预设播种 / CRUD / 全局与群聊绑定 / 生效解析 / Prompt 组装。"""
 
@@ -56,14 +62,17 @@ class PersonaManager:
                     "created_at": time.time(),
                 })
                 seeded += 1
-            elif existing.get("description") != preset.get("description"):
-                # 内置描述权威同步（如 v2.2.2 官方来源标注升级）——名称/正文保留用户侧
-                self.repository.upsert_persona({
-                    **existing,
-                    "description": preset.get("description", existing.get("description", "")),
-                    "builtin": True,
-                })
-                seeded += 1
+            elif existing.get("description") in (
+                        None, _LEGACY_BUILTIN_DESCRIPTIONS.get(preset["id"], "__none__")):
+                # 仅在「空」或「旧默认描述」时升级（如 v2.2.2 官方来源标注）——
+                # 用户手动改过的内置描述**不再覆盖**（尊重用户侧）
+                if existing.get("description") != preset.get("description"):
+                    self.repository.upsert_persona({
+                        **existing,
+                        "description": preset.get("description", existing.get("description", "")),
+                        "builtin": True,
+                    })
+                    seeded += 1
         if seeded:
             logger.info("persona_builtins_seeded count=%d", seeded, extra={"event": "persona_seeded"})
         return seeded
