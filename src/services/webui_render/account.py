@@ -122,7 +122,10 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
         + _api_card("DeepSeek（聊天主厂商）", api_status.get("deepseek"))
         + _api_card("视觉识图", api_status.get("vision"))
         + _api_card("引战检测", api_status.get("toxic"))
-        + f'<p>{_test_form("deepseek")}{_test_form("vision")}{_test_form("toxic")}</p>'
+        + _api_card("向量模型（花语记忆）", api_status.get("embedding"))
+        + _api_card("重排模型（花语记忆）", api_status.get("reranker"))
+        + (f'<p>{_test_form("deepseek")}{_test_form("vision")}{_test_form("toxic")}</p>'
+           '<div class="hint">花语记忆（向量/重排）的测试请在配置页（BlossomMemory）操作。</div>')
         + '<div class="hint">发送最小 ping 请求验证真实连通性；视觉/引战未独立配置时回退用 DeepSeek。</div>'
         '</fieldset>'
     )

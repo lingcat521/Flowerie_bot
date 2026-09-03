@@ -16,6 +16,9 @@ from src.services.web_ui_assets import render_account_tab
 
 # API 厂商连接状态展示所需的配置键（配置层面：URL/模型/Key 是否设置/是否独立）
 _API_KEYS = ("DEEPSEEK_API_URL", "DEEPSEEK_MODEL", "DEEPSEEK_API_KEY",
+             "BLOSSOM_MEMORY_EMBEDDING_MODEL", "BLOSSOM_MEMORY_EMBEDDING_API_URL",
+             "BLOSSOM_MEMORY_EMBEDDING_API_KEY", "BLOSSOM_MEMORY_RERANKER_MODEL",
+             "BLOSSOM_MEMORY_RERANKER_API_URL", "BLOSSOM_MEMORY_RERANKER_API_KEY",
              "VISION_API_URL", "VISION_MODEL", "VISION_API_KEY",
              "TOXIC_API_URL", "TOXIC_MODEL", "TOXIC_API_KEY")
 
@@ -83,6 +86,20 @@ class AccountPanelMixin:
             "key": _masked("TOXIC_API_KEY"),
             "key_set": bool(values.get("TOXIC_API_KEY")),
             "label": "引战检测",
+        }
+        out["embedding"] = {
+            "url": values.get("BLOSSOM_MEMORY_EMBEDDING_API_URL") or "未启用",
+            "model": values.get("BLOSSOM_MEMORY_EMBEDDING_MODEL") or "未启用",
+            "key": _masked("BLOSSOM_MEMORY_EMBEDDING_API_KEY"),
+            "key_set": bool(values.get("BLOSSOM_MEMORY_EMBEDDING_API_KEY")),
+            "label": "向量模型（花语记忆）",
+        }
+        out["reranker"] = {
+            "url": values.get("BLOSSOM_MEMORY_RERANKER_API_URL") or "未启用",
+            "model": values.get("BLOSSOM_MEMORY_RERANKER_MODEL") or "未启用",
+            "key": _masked("BLOSSOM_MEMORY_RERANKER_API_KEY"),
+            "key_set": bool(values.get("BLOSSOM_MEMORY_RERANKER_API_KEY")),
+            "label": "重排模型（花语记忆）",
         }
         return out
 
