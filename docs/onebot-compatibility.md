@@ -1,4 +1,4 @@
-# OneBot v11 全平台兼容（v2.1.4+）
+# OneBot v11 全平台兼容（v2.2.2 封版）
 
 > 目标：同一 Flowerie 实例，**不区分** NapCat / Lagrange / LLOneBot / Koishi 等
 > OneBot v11 实现——收发、识图、动作尽力而为：支持则该用，不支持显式报错（绝不静默）。

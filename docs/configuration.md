@@ -272,12 +272,12 @@ Web UI「人格」页管理（全局 / 群聊 / 自定义）。详见 [persona.m
 - 迁移：`python -m src.services.storage_migrate --sqlite ./data/memory.db --postgres <dsn> [--blossom ./data/blossom_memory.db]`
 
 
-## 群特色昵称（v2.1.1；x人设隔离 2.2.1）
+## 群特色昵称（v2.1.1；×人设隔离 v2.2.0+）
 - 每群可设专属称呼（Web UI「群昵称」tab）；优先级：群配置 > BOT_NICKNAME
 - 存储：`GROUP_NICKNAMES_PATH`（默认 `./data/nicknames.json`）；留空=恢复默认
 - 注入：群聊 AI 提示词【本群专属称呼】段（与默认相同不注入）
 
-### 识图总开关（VISION_ENABLED）
+### 识图总开关（VISION_ENABLED，v2.2.1+）
 - `VISION_ENABLED=true`（默认）：群聊图片/转发图自动识图描述
 - `false`：完全关闭识图（不调用视觉模型）——省 token、减少图片隐私顾虑
 - 独立于 VISION_API_URL/VISION_MODEL（视觉厂商配置）；Web UI 配置页（AI 分类）可调

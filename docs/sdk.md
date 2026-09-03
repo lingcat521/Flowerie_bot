@@ -561,7 +561,7 @@ bot.friends()                    # 好友列表（list[dict]）
 - 依赖倒置验证：`grep -rn "post_type\|sub_type" src/sdk/*.py`（除 onebot/ 与注释）应为空
 
 
-## v2.1 缺口 SDK 矩阵（api/sdk 缺口池 → 入口 → 状态）
+## v2.1 缺口 SDK 矩阵（历史记录；v2.2 已实现全量 OneBot 动作 → 状态）
 
 > 状态：**可用**（真实现）｜**等价**（转发已有能力）｜**受限**（详见列出的明确错误）｜**NS**（v1 明确不支持，抛 `PluginFeatureError`）。
 > 入口：`bot.方法(...)` / `bot.sdk()[分面].方法(...)` / `from flowerie_sdk import 类`。

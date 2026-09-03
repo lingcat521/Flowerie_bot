@@ -1,4 +1,6 @@
-# Flowerie 文档中心（导航）
+# Flowerie 文档
+
+> 文档对应 **v2.2.2（封版最终版）**；更早版本见 `docs/archive/`。中心（导航）
 
 > 阅读顺序：**插件新人先看 [quick-start](quick-start.md)（第一层）** → 深入再看 [plugin-developer-guide](plugin-developer-guide.md)（第二层·完整参考）+ [sdk](sdk.md) + [api](api.md)；运维/配置 → [configuration](configuration.md) + [web-ui](web-ui.md) + [install-termux](install-termux.md)。
 
