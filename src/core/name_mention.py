@@ -1,20 +1,25 @@
-"""名字唤起检测（不带 @ 的点名）：消息文本含 BOT_NICKNAME（环境变量/配置）→ 必回。
+"""名字唤起检测（不带 @ 的点名）→ 必回。
 
-语义：只与 BOT_NICKNAME 绑定——改这个变量，叫这个名字即 100% 回复；
-群特色昵称（Group Nickname）是展示/描述用，不参与唤起（避免它误触发）。
+参与名字：BOT_NICKNAME（环境变量/配置）+ 群特色昵称（Group Nickname 配置）
+——两个都触发 100% 回复（改 BOT_NICKNAME 即生效；群特色昵称亦可唤起）。
 """
 from typing import Any
 
 
 def detect(msg: Any, config: Any, store: Any = None) -> bool:
-    """msg: GroupMessage；config: Settings（读 BOT_NICKNAME）。store 保留兼容签名（不再使用）。"""
+    """msg: GroupMessage；config: Settings（BOT_NICKNAME）；store: GroupNicknameStore（可 None）。"""
     try:
         text = str(getattr(msg, "clean_text", "") or "") or \
                str(getattr(msg, "full_text", "") or "") or \
                str(getattr(msg, "raw_message", "") or "")
         if not text:
             return False
-        name = str(getattr(config, "BOT_NICKNAME", "花璃")).strip() or "花璃"
-        return name in text
+        names = {str(getattr(config, "BOT_NICKNAME", "花璃")).strip() or "花璃"}
+        if store is not None:
+            try:
+                names.add(store.get(msg.group_id))
+            except Exception:  # noqa: BLE001
+                pass
+        return any(n and n in text for n in names)
     except Exception:  # noqa: BLE001
         return False
