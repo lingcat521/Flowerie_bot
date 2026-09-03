@@ -33,3 +33,8 @@
 curl "http://127.0.0.1:3000/get_status"   # HTTP 连通性
 # 或用任一实现启动后直接聊天/发图，看 message_send_finished + Vision 无警告
 ```
+
+
+## 名字唤起（100% 回复）
+- 消息文本含 `BOT_NICKNAME`（环境变量/配置）→ 必回（不带 @ 也回）
+- **只与 BOT_NICKNAME 绑定**：改这个变量，叫新名字即触发；群特色昵称仅展示不参与唤起

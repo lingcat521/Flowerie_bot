@@ -32,9 +32,11 @@ def test_default_name_triggers():
     assert r._should_reply(_msg("花璃在吗")) is True
 
 
-def test_group_nickname_triggers():
+def test_group_nickname_does_NOT_trigger():
+    # 群特色昵称不参与唤起（仅与 BOT_NICKNAME 绑定）
     r = _router(_Store("小彩"))
-    assert r._should_reply(_msg("小彩你好")) is True
+    r.policy_engine = type("P", (), {"should_reply_by_context": lambda self, g: False})()
+    assert r._should_reply(_msg("小彩你好")) is False
 
 
 def test_no_name_falls_to_probability():
