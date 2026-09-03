@@ -75,8 +75,14 @@ class GroupNicknameStore:
                 name = self._data.get(gid, "")
         return _clean(name) or self._default
 
-    def set(self, group_id, persona_id: Optional[str], nickname: str) -> str:
-        """设置 (群 × 人设) 昵称；空 → 删除该键（级联回退）。返回生效昵称。"""
+    def set(self, group_id, persona_id: Optional[str], nickname: Optional[str] = None) -> str:
+        """设置 (群 × 人设) 昵称；空 → 删除该键（级联回退）。返回生效昵称。
+
+        兼容旧双参调用 set(gid, name)（等效群级）。
+        """
+        if nickname is None:
+            nickname = persona_id
+            persona_id = None
         key = _key(group_id, persona_id)
         clean = _clean(nickname)
         with self._lock:
