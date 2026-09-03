@@ -50,6 +50,9 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     # ---------- 基础配置 ----------
     "BOT_QQ": ("Bot", "int", False, False, "机器人 QQ 号（需重启）"),
     "BOT_NICKNAME": ("Bot", "str", False, True, "机器人昵称（群特色昵称未配置时使用；Web UI 可逐群覆盖）"),
+    "GROUP_STYLE_RULES_PATH": ("Bot", "str", False, False, "群专属发言规则存储路径（需重启）"),
+    "GLOBAL_STYLE_RULES": ("AI", "textarea", False, False,
+                           "全局发言规则（注入所有人格，最高优先级；多行）"),
     "GROUP_NICKNAMES_PATH": ("Bot", "str", False, False, "群特色昵称存储路径"),
     "SEND_VIA_WS": ("Bot", "str", False, True, "发送通道：auto（WS 优先→HTTP 回退）/ true（仅 WS）/ false（仅 HTTP）"),
     "ONLY_REPLY_WHEN_AT": ("Bot", "bool", False, True, "仅回复 @ 消息（哑巴模式）"),
