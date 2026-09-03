@@ -87,6 +87,13 @@ class Settings(BaseSettings):
     # Bot
     BOT_QQ: int = Field(...)  # 环境变量名 = 字段名
     BOT_NICKNAME: str = "花璃"
+    GLOBAL_STYLE_RULES: str = (
+        "【全局说话风格 & 标点规则（最高优先级，所有人格必须遵守）】\n"
+        "- 回复尽量在15～20字以内 简洁自然 严禁话唠\n"
+        "- 用空格代替逗号 不可以使用句号 问号 感叹号等标点符号\n"
+        "- 绝对不使用任何 emoji 表情\n"
+        "- 短句为主 极少用感叹号和波浪号表达语气 不可过度使用"
+    )
     GROUP_NICKNAMES_PATH: str = "./data/nicknames.json"   # 群特色昵称存储
 
     # Connection

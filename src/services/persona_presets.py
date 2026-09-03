@@ -220,7 +220,7 @@ BUILTIN_PERSONAS: List[Dict[str, str]] = [
     {
         "id": "flowerie",
         "name": "花璃",
-        "description": "官方内置：冬川花璃（小恶魔系青梅竹马）",
+        "description": "官方内置：冬川花璃（小恶魔系青梅竹马），由《童话般的你开始了恋爱猛攻》改编而来",
         "system_prompt": _FLOWERIE_SYSTEM_PROMPT,
         "vocabulary": _FLOWERIE_VOCABULARY,
         "behavior_rules": "",
