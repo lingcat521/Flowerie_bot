@@ -41,6 +41,15 @@ class PersonaPanelMixin:
         # 管理员补充发言规则（全局文本；每行一条，热更新立即生效）
         admin_rules = list(getattr(self.config, "ADMIN_RESPONSE_RULES", None) or [])
         rules_text = "\n".join(str(r) for r in admin_rules)
+        sr = self._style_rule_store
+        group_rules = sr.all() if sr is not None else {}
+        group_gids = []
+        try:
+            st = getattr(self, "_status_provider", None)
+            if callable(st):
+                group_gids = (st() or {}).get("group_ids") or []
+        except Exception:  # noqa: BLE001
+            group_gids = []
         return render_persona_tab(
             personas, global_id, bindings,
             edit_persona=edit_persona, new=new_persona, enabled=True,
@@ -48,7 +57,28 @@ class PersonaPanelMixin:
             global_prompt=global_prompt, group_prompt=group_prompt, prompt_gid=prompt_gid,
             persona_configs=persona_configs,
             admin_rules=admin_rules, rules_text=rules_text,
+            group_rules=group_rules, group_gids=list(group_gids),
         )
+
+    async def _handle_panel_persona_grouprules(self, request: web.Request) -> web.Response:
+        """保存群专属发言规则（GroupStyleRuleStore；留空＝回退全局）。"""
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        form = await request.post()
+        sr = self._style_rule_store
+        if sr is None:
+            return web.HTTPFound("/panel?tab=persona&msg=未初始化（重启后重试）&err=1")
+        saved = 0
+        for key in form:
+            if key.startswith("rule_") and key[5:].isdigit():
+                sr.set(int(key[5:]), str(form.get(key) or ""))
+                saved += 1
+        gid = str((form.get("group_id") or "")).strip()
+        if gid.isdigit() and int(gid) > 0:
+            sr.set(int(gid), str(form.get("rules") or ""))
+            saved += 1
+        msg = f"已保存 {saved} 个群的发言规则" if saved else "无变更"
+        return web.HTTPFound(f"/panel?tab=persona&msg={quote(msg)}&err=")
 
     async def _handle_panel_persona_admin_rules(self, request: web.Request) -> web.Response:
         """保存管理员补充发言规则（ConfigService 双写 + 热更新，立即生效）。"""

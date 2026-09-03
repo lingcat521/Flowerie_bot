@@ -187,6 +187,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/persona/delete", self._handle_panel_persona_delete)
         app.router.add_post("/panel/persona/group", self._handle_panel_persona_group)
         app.router.add_post("/panel/persona/admin-rules", self._handle_panel_persona_admin_rules)
+        app.router.add_post("/panel/persona/grouprules", self._handle_panel_persona_grouprules)
         # 群聊自定义 Prompt 管理（零 JS 表单：全局 / 按群读写，按群隔离）
         app.router.add_post("/panel/prompt/global", self._handle_panel_prompt_global)
         app.router.add_post("/panel/prompt/group", self._handle_panel_prompt_group)

@@ -7,7 +7,8 @@ from src.services.webui_render.util import _esc
 def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=False,
                        enabled=True, default_persona_id="flowerie", default_persona_name="",
                        global_prompt="", group_prompt="", prompt_gid=None,
-                       persona_configs=None, admin_rules=None, rules_text="") -> str:
+                       persona_configs=None, admin_rules=None, rules_text="",
+                       group_rules=None, group_gids=None) -> str:
     """人格管理页（零 JS）：默认人格 / 全局人格 / 人格列表 / 编辑表单 / 群聊人格绑定 /
     群聊自定义 Prompt（<details> 原生折叠，无 JS）。"""
     if not enabled:
@@ -54,7 +55,10 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
     rules_block = (
         '<fieldset class="group"><legend>管理员补充发言规则（Admin Response Rules）</legend>'
         '<p class="hint">每行一条，追加在所有生效人格的发言规则之后：'
-        '例如「回复尽量简短」「允许在高兴时使用感叹号」。'
+        '示例：<br><pre>回复尽量在15～20字以内 简洁自然 严禁话唠\n'
+        '用空格代替逗号 不可以使用句号 问号 感叹号等标点符号\n'
+        '绝对不使用任何 emoji 表情\n'
+        '短句为主 极少用感叹号和波浪号表达语气 不可过度使用</pre>'
         '<b>不能覆盖安全策略</b>：运行时记忆校验 / 注入清洗 / 预算限制等不受此文本影响。</p>'
         '<form method="post" action="/panel/persona/admin-rules">'
         f'<textarea name="rules" rows="6" placeholder="每条规则占一行">{_esc(rules_text or "")}</textarea>'
@@ -62,6 +66,24 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '</form>'
         + (f'<div class="mcp-card-meta">当前规则（{len(admin_rules or [])} 条）：</div>' + rules_lines if admin_rules else "")
         + '</fieldset>'
+    )
+
+    # ---- 群专属发言规则（按群覆盖；零 JS） ----
+    gr = group_rules or {}
+    gr_rows = "".join(
+        f'<tr><td>{_esc(g)}</td><td><textarea name="rule_{g}" rows="3">{_esc(r)}</textarea></td></tr>'
+        for g, r in sorted(gr.items(), key=lambda kv: int(kv[0])))
+    gopts = "".join(f'<option value="{_esc(g)}">' for g in (group_gids or []))
+    group_rules_block = (
+        '<fieldset class="group"><legend>群专属发言规则（按群覆盖；留空＝回退全局）</legend>'
+        '<p class="hint">优先级：群专属 &gt; 管理员补充规则 &gt; 内置默认。</p>'
+        '<form method="post" action="/panel/persona/grouprules">'
+        '<table><tr><th>群号</th><th>规则（多行）</th></tr>' + gr_rows + '</table>'
+        '<p>新增/修改：<input list="gidlist" name="group_id" placeholder="群号" pattern="[0-9]+">'
+        f'<datalist id="gidlist">{gopts}</datalist>'
+        '<textarea name="rules" rows="4" placeholder="该群专属发言规则"></textarea>'
+        '<button type="submit">保存</button></p>'
+        '</form></fieldset>'
     )
 
     # ---- 自定义人格 vs 自定义 Prompt 的区别说明 ----
@@ -277,5 +299,5 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '</fieldset>'
     )
 
-    return default_block + global_block + rules_block + config_block + explain_block + prompt_block + edit_block + list_block + group_block
+    return default_block + global_block + rules_block + group_rules_block + config_block + explain_block + prompt_block + edit_block + list_block + group_block
 
