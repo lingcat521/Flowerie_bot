@@ -254,7 +254,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         msg = request.query.get("msg", "")
         err = request.query.get("err", "") == "1"
         tab = request.query.get("tab", "")
-        if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins"):
+        if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins",
+                       "nicknames"):
             tab = "config"
         cat = request.query.get("cat", "")
         if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
