@@ -1,6 +1,4 @@
 """群专属发言规则：按群覆盖全局规则 + 存储容错。"""
-import os
-
 from src.services.group_style_rules import GroupStyleRuleStore
 
 
