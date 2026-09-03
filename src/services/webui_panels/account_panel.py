@@ -23,13 +23,14 @@ _API_KEYS = ("DEEPSEEK_API_URL", "DEEPSEEK_MODEL", "DEEPSEEK_API_KEY",
 class AccountPanelMixin:
     """用户状态页：账户 / 注销 / 服务器与集成状态。"""
 
-    def _render_account_page(self) -> str:
+    def _render_account_page(self, msg: str = "", err: str = "") -> str:
         """组装「用户状态」页：当前用户 + 注销表单 + 服务器/MCP/API 状态。"""
         username, source = self._credential_info()
         system_info = collect_system_status()
         mcp_status = self._mcp_status()
         api_status = self._config_status()
-        return render_account_tab(username, source, system_info, mcp_status, api_status)
+        return render_account_tab(username, source, system_info, mcp_status, api_status,
+                                  msg=msg, err=err)
 
     def _credential_info(self) -> tuple:
         """(当前管理员名, 凭据来源)。settings.db 有注册账号 → 已注册；否则回退 .env 初始。"""

@@ -22,9 +22,14 @@ class ConfigPanelMixin:
         form = await request.post()
         target = str(form.get("target", "") or "")
         cat = "BlossomMemory" if target in ("embedding", "reranker") else "AI"
+        back = str(form.get("back", "") or "")
         try:
-            if target == "chat":
+            if target == "chat" or target == "deepseek":
                 ok, msg = await self._ping_chat()
+            elif target == "vision":
+                ok, msg = await self._ping_vision()
+            elif target == "toxic":
+                ok, msg = await self._ping_toxic()
             elif target == "embedding":
                 ok, msg = await self._ping_embedding()
             elif target == "reranker":
@@ -33,6 +38,8 @@ class ConfigPanelMixin:
                 ok, msg = False, "未知测试目标"
         except Exception as e:  # noqa: BLE001 - 测试失败即结果
             ok, msg = False, f"{type(e).__name__}: {e}"
+        if back == "account":
+            return web.HTTPFound(f"/panel?tab=account&msg={quote(msg)}&err={'1' if not ok else ''}")
         return web.HTTPFound(f"/panel?cat={cat}&msg={quote(msg)}&err={'1' if not ok else ''}")
 
     async def _ping_chat(self):
@@ -50,6 +57,45 @@ class ConfigPanelMixin:
                                "max_tokens": 1}, headers={"Authorization": f"Bearer {key}"})
                 if resp.status_code == 200:
                     return True, "连接成功（模型已响应 ping）"
+                return False, f"HTTP {resp.status_code}：{(resp.text or '')[:160]}"
+        except httpx.HTTPError as e:
+            return False, f"连接失败：{type(e).__name__}: {e}"
+
+    async def _ping_vision(self):
+        import httpx
+        cfg = self.config
+        url = str(getattr(cfg, "VISION_API_URL", "") or "").strip()
+        key = str(getattr(cfg, "VISION_API_KEY", "") or "").strip()
+        model = str(getattr(cfg, "VISION_MODEL", "") or "").strip()
+        if not url or not key:
+            # 未独立配置 → 回退 DeepSeek（生产行为一致）
+            return await self._ping_chat()
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    url, json={"model": model, "messages": [{"role": "user", "content": "ping"}],
+                               "max_tokens": 1}, headers={"Authorization": f"Bearer {key}"})
+                if resp.status_code == 200:
+                    return True, "视觉识图连接成功"
+                return False, f"HTTP {resp.status_code}：{(resp.text or '')[:160]}"
+        except httpx.HTTPError as e:
+            return False, f"连接失败：{type(e).__name__}: {e}"
+
+    async def _ping_toxic(self):
+        import httpx
+        cfg = self.config
+        url = str(getattr(cfg, "TOXIC_API_URL", "") or "").strip()
+        key = str(getattr(cfg, "TOXIC_API_KEY", "") or "").strip()
+        model = str(getattr(cfg, "TOXIC_MODEL", "") or "").strip()
+        if not url or not key:
+            return await self._ping_chat()
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    url, json={"model": model, "messages": [{"role": "user", "content": "ping"}],
+                               "max_tokens": 1}, headers={"Authorization": f"Bearer {key}"})
+                if resp.status_code == 200:
+                    return True, "引战检测连接成功"
                 return False, f"HTTP {resp.status_code}：{(resp.text or '')[:160]}"
         except httpx.HTTPError as e:
             return False, f"连接失败：{type(e).__name__}: {e}"

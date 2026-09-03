@@ -329,7 +329,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             logs = "\n".join(get_recent_logs(200))
             body_html = f'<pre class="log">{_html.escape(logs)}</pre>'
         elif tab == "account":
-            body_html = self._render_account_page()
+            body_html = self._render_account_page(msg=msg, err=err)
         elif tab == "persona":
             body_html = self._render_persona_page(edit_id, new_persona, prompt_gid)
         elif tab == "nicknames":

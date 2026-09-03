@@ -4,7 +4,7 @@ from src.services.webui_render.util import _esc
 
 
 def render_account_tab(username, credential_source, system_info, mcp_status, api_status,
-                       enabled=True) -> str:
+                       enabled=True, msg: str = "", err: str = "") -> str:
     """用户状态页：账户信息 + 注销表单 + 服务器/MCP/API 状态。"""
     if not enabled:
         return '<div class="msg err">用户状态页未接入</div>'
@@ -100,14 +100,31 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
             '</div>'
         )
     api_status = api_status or {}
+    def _test_form(tg, label):
+        return (
+            f'<form method="post" action="/panel/test/model" class="inline-form">'
+            f'<input type="hidden" name="target" value="{tg}">'
+            f'<input type="hidden" name="back" value="account">'
+            f'<button type="submit" class="btn-mini">连通性测试</button></form>')
+
+    result = ""
+    if msg:
+        result = ('<p style="color:%s"><b>%s</b></p>'
+                  % ("#d73a49" if err else "#2ea043", _esc(msg)))
+    def _test_form(tg):
+        return (f'<form method="post" action="/panel/test/model" class="inline-form">'
+                f'<input type="hidden" name="target" value="{tg}">'
+                f'<input type="hidden" name="back" value="account">'
+                f'<button type="submit" class="btn-mini">连通性测试</button></form>')
+
     api_block = (
-        '<fieldset class="group"><legend>API 厂商连接状态（配置层面）</legend>'
+        '<fieldset class="group"><legend>API 厂商连接状态（连通性测试）</legend>'
         + _api_card("DeepSeek（聊天主厂商）", api_status.get("deepseek"))
         + _api_card("视觉识图", api_status.get("vision"))
         + _api_card("引战检测", api_status.get("toxic"))
-        + '<div class="hint">此处展示的是配置状态（地址/模型/Key 是否设置），'
-        '实际连通性取决于网络与凭据有效性；视觉/引战未独立配置时回退使用 DeepSeek。</div>'
+        + f'<p>{_test_form("deepseek")}{_test_form("vision")}{_test_form("toxic")}</p>'
+        + '<div class="hint">发送最小 ping 请求验证真实连通性；视觉/引战未独立配置时回退用 DeepSeek。</div>'
         '</fieldset>'
     )
 
-    return account_block + sys_block + mcp_block + api_block
+    return account_block + result + sys_block + mcp_block + api_block

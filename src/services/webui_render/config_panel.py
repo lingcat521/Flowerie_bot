@@ -261,7 +261,7 @@ def _render_config_row(c: dict, extra_badges: str = "") -> str:
         control_suffix = (
             f'<form method="post" action="/panel/test/model" class="inline-form">'
             f'<input type="hidden" name="target" value="{ping_target}">'
-            f'<button type="submit" class="btn-mini">测</button></form>')
+            f'<button type="submit" class="btn-mini">测试</button></form>')
     else:
         control_suffix = ""
     ctype = c["type"]
