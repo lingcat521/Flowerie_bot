@@ -20,7 +20,12 @@ class Sender:
 
     @property
     def _use_ws(self) -> bool:
-        mode = str(getattr(self.config, "SEND_VIA_WS", "auto") or "auto").lower()
+        raw = getattr(self.config, "SEND_VIA_WS", "auto")
+        # False/None 显式关闭（旧布尔配置兼容）；str/True → 三值 auto/true/false
+        if raw is False or raw is None or raw is True:
+            mode = "true" if raw is True else "false"
+        else:
+            mode = str(raw).strip().lower()
         if mode == "false":
             return False
         if mode == "true":
