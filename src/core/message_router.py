@@ -38,7 +38,6 @@ _M_RECEIVED = registry.counter("received_messages_total", "收到的群消息总
 _M_PROCESSED = registry.counter("processed_messages_total", "通过去重、进入处理流程的消息总数")
 _M_REJECTED = registry.counter("rejected_messages_total", "被拒绝的消息总数（按原因）", ["reason"])
 
-
 class MessageRouter:
     """事件分发与消息处理（流程编排）。
 
