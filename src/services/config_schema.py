@@ -45,6 +45,7 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "VISION_API_URL": ("AI", "str", False, True, "视觉识图 API 地址（留空回退 DeepSeek）"),
     "VISION_MODEL": ("AI", "str", False, True, "视觉识图模型"),
     "VISION_TIMEOUT": ("AI", "int", False, True, "识图超时（秒）"),
+    "VISION_ENABLED": ("AI", "bool", False, True, "图片识图总开关（关闭后不描述群图/转发图）"),
     "VISION_FORWARD_IMAGES": ("AI", "bool", False, True, "识别合并转发里的图片（省视觉 token，默认关）"),
     # ---------- 基础配置 ----------
     "BOT_QQ": ("Bot", "int", False, False, "机器人 QQ 号（需重启）"),
