@@ -8,6 +8,7 @@ if TYPE_CHECKING:  # pragma: no cover - 仅类型注解
 
 from src.adapters import InternalEvent, OneBotEventParser  # 消息边界（Phase 5）
 from src.config import Settings
+from src.core import name_mention as _name_mention
 from src.core.ai_gateway import AiGateway
 from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
@@ -483,30 +484,10 @@ class MessageRouter:
         else:
             if msg.is_mentioned or msg.is_reply_to_bot:
                 return True
-            # 名字唤起：消息文本里出现 bot 的名字（默认昵称/群特色昵称）→ 必回
-            if self._is_name_mention(msg):
+            if _name_mention.detect(msg, self.config, getattr(self, "group_nicknames", None)):
                 return True
             if self.policy_engine.should_reply_by_context(msg.group_id):
                 return True
-            return False
-
-    def _is_name_mention(self, msg: GroupMessage) -> bool:
-        """名字唤起（不带 @）：文本含 bot 昵称（全局默认或本群特色昵称）视为点名。"""
-        try:
-            text = str(getattr(msg, "clean_text", "") or "") or \
-                   str(getattr(msg, "full_text", "") or "") or \
-                   str(getattr(msg, "raw_message", "") or "")
-            if not text:
-                return False
-            names = {str(getattr(self.config, "BOT_NICKNAME", "花璃")).strip()}
-            store = getattr(self, "group_nicknames", None)
-            if store is not None:
-                try:
-                    names.add(store.get(msg.group_id))
-                except Exception:  # noqa: BLE001
-                    pass
-            return any(n and n in text for n in names)
-        except Exception:  # noqa: BLE001
             return False
 
     # ---------- 群级记忆隐私开关（P3-13） ----------
