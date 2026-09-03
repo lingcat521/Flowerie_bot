@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     # 视觉识图（花璃看图用；可选，留空回退用 DeepSeek key/网址）
     VISION_API_KEY: Optional[str] = None
     VISION_API_URL: Optional[str] = None
+    VISION_ENABLED: bool = True       # 图片识图总开关（关闭：不描述群图/转发图，省 token+隐私）
     VISION_MODEL: Optional[str] = None
     VISION_TIMEOUT: int = 30
 

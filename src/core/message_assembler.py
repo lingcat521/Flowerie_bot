@@ -68,6 +68,8 @@ class MessageAssembler:
 
     # ---------- 顶层图片识图 ----------
     async def _describe_images(self, event) -> List[str]:
+        if not getattr(self.config, "VISION_ENABLED", True):
+            return []  # 图片识图总开关：关闭 → 不调用视觉模型（省 token）
         descriptions = []
         max_images = max(1, self.config.MAX_IMAGES_PER_MESSAGE)
         # OneBot 全实现兼容：本地 file 字段优先（任何实现都会给；绕开 CDN/UA/过期），
@@ -106,7 +108,8 @@ class MessageAssembler:
                 logger.warning("疑似提示词注入已过滤（转发内容）")
             block += f"\n[用户转发了多条消息，内容如下：]\n{forward_text}\n[转发内容结束]"
         # 转发里的图片：由 VISION_FORWARD_IMAGES 开关控制（默认关，省视觉 token）
-        if forward_image_urls and self.config.VISION_FORWARD_IMAGES:
+        if (forward_image_urls and self.config.VISION_FORWARD_IMAGES
+                and getattr(self.config, "VISION_ENABLED", True)):
             forward_image_descriptions = []
             max_images = max(1, self.config.MAX_IMAGES_PER_MESSAGE)
             for fwd_url in forward_image_urls[:max_images]:
