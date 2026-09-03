@@ -43,7 +43,6 @@ def test_prompt_priority():
     from src.services.prompt_builder import build_system_prompt
 
     class C:
-        GLOBAL_STYLE_RULES = "【全局】"
         BOT_NICKNAME = "花璃"
         MAX_AI_INPUT_CHARS = 99999
         MAX_CONTEXT_CHARS = 99999
@@ -53,4 +52,5 @@ def test_prompt_priority():
                               group_style_rules="【群专属】")
     p = out[1] if isinstance(out, tuple) else out
     assert "【群专属】" in p
-    assert "【全局】" not in p
+    from src.services.prompt_builder import GLOBAL_STYLE_RULES
+    assert GLOBAL_STYLE_RULES[:4] not in p  # 群规则覆盖内置默认

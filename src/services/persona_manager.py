@@ -48,11 +48,20 @@ class PersonaManager:
         """把官方预设写入 personas 表（已存在则跳过）。返回播种条数。"""
         seeded = 0
         for preset in BUILTIN_PERSONAS:
-            if self.repository.get_persona(preset["id"]) is None:
+            existing = self.repository.get_persona(preset["id"])
+            if existing is None:
                 self.repository.upsert_persona({
                     **preset,
                     "builtin": True,
                     "created_at": time.time(),
+                })
+                seeded += 1
+            elif existing.get("description") != preset.get("description"):
+                # 内置描述权威同步（如 v2.2.2 官方来源标注升级）——名称/正文保留用户侧
+                self.repository.upsert_persona({
+                    **existing,
+                    "description": preset.get("description", existing.get("description", "")),
+                    "builtin": True,
                 })
                 seeded += 1
         if seeded:

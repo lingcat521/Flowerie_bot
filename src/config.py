@@ -88,13 +88,6 @@ class Settings(BaseSettings):
     BOT_QQ: int = Field(...)  # 环境变量名 = 字段名
     BOT_NICKNAME: str = "花璃"
     GROUP_STYLE_RULES_PATH: str = "./data/style_rules.json"
-    GLOBAL_STYLE_RULES: str = (
-        "【全局说话风格 & 标点规则（最高优先级，所有人格必须遵守）】\n"
-        "- 回复尽量在15～20字以内 简洁自然 严禁话唠\n"
-        "- 用空格代替逗号 不可以使用句号 问号 感叹号等标点符号\n"
-        "- 绝对不使用任何 emoji 表情\n"
-        "- 短句为主 极少用感叹号和波浪号表达语气 不可过度使用"
-    )
     GROUP_NICKNAMES_PATH: str = "./data/nicknames.json"   # 群特色昵称存储
 
     # Connection
@@ -216,7 +209,12 @@ class Settings(BaseSettings):
     PERSONA_MAX_COUNT: int = 200           # 自定义人格总数上限（内置不计，防无限增长）
     # 管理员补充发言规则（每行一条；优先级：安全策略 > 人格 > 人格内置规则 > 本条；
     # 不得覆盖安全策略——运行时策略/清洗/记忆校验不会被任何 prompt 文本绕过）
-    ADMIN_RESPONSE_RULES: List[str] = []
+    ADMIN_RESPONSE_RULES: List[str] = [
+        "回复尽量在15～20字以内 简洁自然 严禁话唠",
+        "用空格代替逗号 不可以使用句号 问号 感叹号等标点符号",
+        "绝对不使用任何 emoji 表情",
+        "短句为主 极少用感叹号和波浪号表达语气 不可过度使用",
+    ]
 
     # ===== 插件系统（Plugin System v1：受控插件运行时） =====
     # 插件目录：扫描其中的 */manifest.json 自动发现（发现 ≠ 自动执行，默认禁用）
