@@ -674,6 +674,12 @@ class PluginRunner:
 
     def __init__(self, plugin_dir: str, entry: str, plugin_id: str):
         self.plugin_dir = os.path.abspath(plugin_dir)
+        # 插件数据目录：plugins/<plugin_id>/data/（自动创建；位于插件目录内，防穿越）
+        self.data_dir = os.path.join(self.plugin_dir, "data")
+        try:
+            os.makedirs(self.data_dir, exist_ok=True)
+        except OSError:
+            self.data_dir = self.plugin_dir
         self.entry = entry
         self.plugin_id = plugin_id
         self.module = None
@@ -785,6 +791,7 @@ class PluginRunner:
                     self._error(req_id, err)
                     return
                 ctx = {"plugin_id": self.plugin_id, "plugin_dir": self.plugin_dir,
+                       "data_dir": self.data_dir,
                        "api_version": "1", **params.get("context", {})}
                 hook_err = self._call_hook("on_startup", ctx, self.api)
                 if isinstance(hook_err, dict) and "__error__" in hook_err:

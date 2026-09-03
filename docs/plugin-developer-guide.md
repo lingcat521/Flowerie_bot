@@ -488,3 +488,10 @@ def on_message(event, api):
 - 破坏性变更会提升 `api_version` 并发布新指南；旧插件在升级后需更新 manifest
 - 保留字段（`execute_process` / `webhook`）在 v1 中**不会**被实现；
   出现时只允许作为 manifest 权限声明（启用即被拒绝），不要作为功能使用
+
+
+### 插件数据目录（data_dir）
+- `on_startup(ctx, api)` 的 `ctx["data_dir"]`：**`plugins/<plugin_id>/data/`**（自动创建）
+- 插件读写自己的数据（配置/缓存/资源）放这里——**无需自己建目录**
+- 目录位于插件目录内（防穿越）；创建失败时回退插件目录本体
+- 环境变量 `FLOWERIE_PLUGIN_DATA_DIR` 供子进程/工具脚本使用（后续版本）
