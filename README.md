@@ -3,9 +3,6 @@
 <p align="center">
   <b>银发灰瞳的小恶魔系青梅竹马 · DeepSeek 驱动 · NapCat OneBot11</b>
 </p>
-<div align="center">
-<a href="https://railway.app/template?repository=https://github.com/lingcat521/Flowerie_bot"><img src="https://railway.app/button.svg" alt="Deploy on Railway" height="24"></a> <a href="https://zeabur.com/template?repository=https://github.com/lingcat521/Flowerie_bot"><img src="https://zeabur.com/button.svg" alt="Deploy on Zeabur" height="24"></a>
-</div>
 
 
 <p align="center">
@@ -38,7 +35,6 @@
 | 🎭 人格系统（Persona） | 全局 / 群聊 / 自定义三级人格，内置花璃 + 亚托莉（ATRI）+ 艾拉（Isla）三套官方预设，Web UI 管理 |
 | 💬 群聊梗知识（Meme） | 每群独立梗/黑话知识库，按消息命中注入，24h 批量总结 + MCP 辅助检索 |
 | 🎭 自定义 Prompt | 全局 + 群聊两级人格补充（`/prompt` 命令，管理员可改） |
-| 🗣️ 发言规则配置化 | 说话风格规则归属各 Persona；管理员可另加 `ADMIN_RESPONSE_RULES` 补充（不覆盖安全策略） |
 | 🎲 主动发言概率配置化 | `PROACTIVE_MESSAGE_*` 上下文随机回复概率 + `ACTIVE_CHAT_*` 主动聊天循环，全部可配置 |
 | 🗣️ 发言规则 | 管理员补充规则（人格页，默认 4 行）+ 按群专属覆盖，注入所有人格最高优先级 |
 | 🧩 插件系统（Plugin System v1） | 受控插件运行时：Python / Node / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
@@ -59,11 +55,6 @@
 - DeepSeek API Key
 
 ### 安装
-### 🐳 Docker（官方镜像）
-```bash
-docker run -d -v ./env:/app/.env lingcat/flowerie
-```
-（`./env` 放你的 `.env`；也可用 `docker compose up -d`——数据持久化见 docker-compose.yml）
 
 
 ```bash
