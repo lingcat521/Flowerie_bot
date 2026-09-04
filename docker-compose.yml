@@ -1,0 +1,26 @@
+# Flowerie_bot —— 一键部署（docker compose up -d）
+# .env：把 bot 的配置（DEEPSEEK_API_KEY / BOT_QQ / WS_PORT 等）放 ./env
+services:
+  flowerie:
+    build: .
+    image: lingcat/flowerie:latest
+    container_name: flowerie
+    restart: unless-stopped
+    volumes:
+      # 挂载配置文件（宿主机放一份 .env）
+      - ./env:/app/.env
+      # 数据持久化（SQLite / 群昵称 / 群规则 / 日志 / 插件）
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./plugins:/app/plugins
+    ports:
+      - "8080:8080"   # Web UI（可用 WEB_UI_HOST/WEB_UI_PORT 调整）
+      - "3001:3001"   # OneBot 反向 WebSocket（NapCat 连入）
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/', timeout=5)"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

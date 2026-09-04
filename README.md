@@ -3,6 +3,10 @@
 <p align="center">
   <b>银发灰瞳的小恶魔系青梅竹马 · DeepSeek 驱动 · NapCat OneBot11</b>
 </p>
+<div align="center">
+<a href="https://railway.app/template?repository=https://github.com/lingcat521/Flowerie_bot"><img src="https://railway.app/button.svg" alt="Deploy on Railway" height="24"></a> <a href="https://zeabur.com/template?repository=https://github.com/lingcat521/Flowerie_bot"><img src="https://zeabur.com/button.svg" alt="Deploy on Zeabur" height="24"></a>
+</div>
+
 
 <p align="center">
   <b>「戳我干嘛，再戳就不理你了哦」</b>
@@ -55,6 +59,12 @@
 - DeepSeek API Key
 
 ### 安装
+### 🐳 Docker（官方镜像）
+```bash
+docker run -d -v ./env:/app/.env lingcat/flowerie
+```
+（`./env` 放你的 `.env`；也可用 `docker compose up -d`——数据持久化见 docker-compose.yml）
+
 
 ```bash
 git clone https://github.com/lingcat521/Flowerie_bot.git
