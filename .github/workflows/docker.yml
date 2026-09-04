@@ -10,6 +10,8 @@ on:
 
 env:
   IMAGE: ${{ github.repository }}
+  DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
 jobs:
   build-push:
@@ -24,7 +26,7 @@ jobs:
 
       - name: Docker Hub login
         uses: docker/login-action@v3
-        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        if: env.DH_USER != ''
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -37,7 +39,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push (Docker Hub)
-        if: ${{ secrets.DOCKERHUB_USERNAME != '' }}
+        if: env.DH_USER != '' 
         uses: docker/build-push-action@v6
         with:
           context: .
