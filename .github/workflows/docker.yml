@@ -10,6 +10,7 @@ on:
 
 env:
   IMAGE: ${{ github.repository }}
+  ISLOWER: ${{ github.repository }}
   DH_USER: ${{ secrets.DOCKERHUB_USERNAME }}
   DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -55,6 +56,6 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ env.IMAGE }}:latest
-            ghcr.io/${{ env.IMAGE }}:${{ github.ref_name }}
+            ghcr.io/flowerie-bot:latest
+            ghcr.io/flowerie-bot:${{ github.ref_name }}
           platforms: linux/amd64,linux/arm64
