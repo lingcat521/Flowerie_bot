@@ -40,7 +40,7 @@
 | 🎭 自定义 Prompt | 全局 + 群聊两级人格补充（`/prompt` 命令，管理员可改） |
 | 🗣️ 发言规则配置化 | 说话风格规则归属各 Persona；管理员可另加 `ADMIN_RESPONSE_RULES` 补充（不覆盖安全策略） |
 | 🎲 主动发言概率配置化 | `PROACTIVE_MESSAGE_*` 上下文随机回复概率 + `ACTIVE_CHAT_*` 主动聊天循环，全部可配置 |
-| 🗣️ 发言规则 | 全局（GLOBAL_STYLE_RULES）+ 按群专属覆盖，注入所有人格最高优先级 |
+| 🗣️ 发言规则 | 管理员补充规则（人格页，默认 4 行）+ 按群专属覆盖，注入所有人格最高优先级 |
 | 🧩 插件系统（Plugin System v1） | 受控插件运行时：Python / Node / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
 | 🖼️ 表情包 | 目录扫描 + Vision 索引缓存，模型按语境选择发送 |

@@ -282,13 +282,13 @@ Web UI「人格」页管理（全局 / 群聊 / 自定义）。详见 [persona.m
 - `false`：完全关闭识图（不调用视觉模型）——省 token、减少图片隐私顾虑
 - 独立于 VISION_API_URL/VISION_MODEL（视觉厂商配置）；Web UI 配置页（AI 分类）可调
 
-### 全局发言规则（GLOBAL_STYLE_RULES，v2.2.2）
-- 多行文本（Web UI 配置页 AI 分类 textarea 编辑）；注入所有人格，**最高优先级**
+### 全局发言规则（管理员补充规则，v2.2.2）
+- 位置：**Web UI 人格页**「管理员补充发言规则」（textarea；此前误置配置页已撤回）
 - 默认：回复 15～20 字以内 / 空格代替逗号 / 不使用句号问号感叹号 / 无 emoji / 短句为主
-- 官方花璃 prompt：由《童话般的你开始了恋爱猛攻》改编而来
+- 官方花璃 prompt：由《童话般的你开始了恋爱猛攻》改编而来（人格页花璃卡片简介）
 
 ### 群专属发言规则（v2.2.2）
 - 存储：`data/style_rules.json`（GroupStyleRuleStore，原子写）
-- 优先级：**群专属 > 全局 GLOBAL_STYLE_RULES > 内置默认**
-- Web UI：群昵称页下方「群专属发言规则」表 + 新增/修改（/panel/grouprules，零 JS）
+- 优先级：**群专属 > 管理员补充规则 > 内置默认**
+- Web UI：**人格页**「群专属发言规则」区块（/panel/persona/grouprules，零 JS）
 - 留空/删除该群规则 → 回退全局
