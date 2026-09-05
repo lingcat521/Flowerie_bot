@@ -48,6 +48,10 @@
 
 ## 快速开始
 
+> 💻 **Windows 用户**：下载 Release 里的 `.exe`，使用说明见 [Windows exe 指南](docs/install-release-windows.md)
+
+
+
 ### 环境要求
 
 - Python 3.9+（Linux / macOS / Termux）
