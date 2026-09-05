@@ -60,7 +60,7 @@ def _default_env_text() -> str:
         if name.startswith("_"):
             continue
         default = field.default
-        required = default is PydanticUndefined or isinstance(default, PydanticUndefined)
+        required = field.is_required() or (default is PydanticUndefined)
         if required:
             value = _REQUIRED_PLACEHOLDERS.get(name, "")
         elif default is None:
