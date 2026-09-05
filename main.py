@@ -35,35 +35,66 @@ logger = get_logger(__name__)
 
 
 
-# 首次启动自动生成的 .env 模板（构建产物不含 .env；用户填 key 后重启生效）
-_DEFAULT_ENV_TEMPLATE = (
-    "# Flowerie .env 配置模板（首次启动自动生成；编辑后重启生效）\n"
-    "# 必填：DeepSeek API Key（https://platform.deepseek.com 获取）\n"
-    "DEEPSEEK_API_KEY=sk-your-key-here\n"
-    "# 以下有默认值（可保持或按需修改）\n"
-    "DEEPSEEK_API_URL=https://api.deepseek.com/chat/completions\n"
-    "DEEPSEEK_MODEL=deepseek-v4-flash\n"
-    "BOT_QQ=10001\n"
-    "WS_HOST=127.0.0.1\n"
-    "WS_PORT=3001\n"
-    "WS_TOKEN=\n"
-    "HTTP_API_BASE=http://127.0.0.1:3000\n"
-    "HTTP_API_TOKEN=\n"
-    "WEB_UI_ENABLED=true\n"
-    "WEB_UI_PASSWORD=\n"
-)
+# 首次启动自动生成的完整 .env 模板（构建产物不含 .env；从 Settings 模型全量导出）
+# 必填项用占位值（sk-your-key-here / 10001），填真实值后重启生效
+_REQUIRED_PLACEHOLDERS = {
+    "DEEPSEEK_API_KEY": "sk-your-key-here",  # https://platform.deepseek.com 获取
+    "BOT_QQ": "10001",                       # 机器人 QQ 号
+}
+
+
+def _default_env_text() -> str:
+    """从 Settings.model_fields 全量导出（含默认值）；必填项给占位。"""
+    import json as _json
+
+    from pydantic_core import PydanticUndefined
+
+    from src.config import Settings
+
+    lines = [
+        "# Flowerie .env 完整配置模板（首次启动自动生成；编辑后重启生效）",
+        "# 必填项为占位值——请替换后再启动；Web UI 保存的配置也会写回本文件",
+        "",
+    ]
+    for name, field in Settings.model_fields.items():
+        if name.startswith("_"):
+            continue
+        default = field.default
+        required = default is PydanticUndefined or isinstance(default, PydanticUndefined)
+        if required:
+            value = _REQUIRED_PLACEHOLDERS.get(name, "")
+        elif default is None:
+            value = ""
+        elif isinstance(default, bool):
+            value = "true" if default else "false"
+        elif isinstance(default, (list, dict)):
+            value = _json.dumps(default, ensure_ascii=False)
+        else:
+            value = str(default)
+        # 注释扩展（ModelField 描述）
+        desc = ""
+        try:
+            if field.description:
+                desc = "  # " + str(field.description).replace("\n", " ")
+        except Exception:  # noqa: BLE001
+            desc = ""
+        if required:
+            desc = "  # ⚠️ 必填" + desc
+        lines.append(f"{name}={value}{desc}")
+    return "\n".join(lines) + "\n"
 
 
 def ensure_env_template(path: str = ".env") -> bool:
-    """无 .env 时释放默认模板（构建产物/首次运行友好）。返回是否新建。"""
+    """无 .env 时释放完整配置模板（构建产物/首次运行友好）。返回是否新建。"""
     p = Path(path)
     if p.exists():
         return False
     try:
-        p.write_text(_DEFAULT_ENV_TEMPLATE, encoding="utf-8")
+        p.write_text(_default_env_text(), encoding="utf-8")
     except OSError:
         return False
-    print(f"[startup] 未检测到 {path}，已生成配置模板：{Path(path).resolve()}（请填入 DEEPSEEK_API_KEY 后重启）")
+    print(f"[startup] 未检测到 {path}，已生成完整配置模板：{Path(path).resolve()}"
+          "（请填入占位项后重启，例如 DEEPSEEK_API_KEY / BOT_QQ）")
     return True
 
 
