@@ -35,7 +35,40 @@ logger = get_logger(__name__)
 
 
 
+# 首次启动自动生成的 .env 模板（构建产物不含 .env；用户填 key 后重启生效）
+_DEFAULT_ENV_TEMPLATE = (
+    "# Flowerie .env 配置模板（首次启动自动生成；编辑后重启生效）\n"
+    "# 必填：DeepSeek API Key（https://platform.deepseek.com 获取）\n"
+    "DEEPSEEK_API_KEY=sk-your-key-here\n"
+    "# 以下有默认值（可保持或按需修改）\n"
+    "DEEPSEEK_API_URL=https://api.deepseek.com/chat/completions\n"
+    "DEEPSEEK_MODEL=deepseek-v4-flash\n"
+    "BOT_QQ=10001\n"
+    "WS_HOST=127.0.0.1\n"
+    "WS_PORT=3001\n"
+    "WS_TOKEN=\n"
+    "HTTP_API_BASE=http://127.0.0.1:3000\n"
+    "HTTP_API_TOKEN=\n"
+    "WEB_UI_ENABLED=true\n"
+    "WEB_UI_PASSWORD=\n"
+)
+
+
+def ensure_env_template(path: str = ".env") -> bool:
+    """无 .env 时释放默认模板（构建产物/首次运行友好）。返回是否新建。"""
+    p = Path(path)
+    if p.exists():
+        return False
+    try:
+        p.write_text(_DEFAULT_ENV_TEMPLATE, encoding="utf-8")
+    except OSError:
+        return False
+    print(f"[startup] 未检测到 {path}，已生成配置模板：{Path(path).resolve()}（请填入 DEEPSEEK_API_KEY 后重启）")
+    return True
+
+
 async def main():
+    ensure_env_template()
     config = load_config()
     # P2-2：启动阶段先加载持久化配置（settings.db）覆盖 .env/代码默认，
     # 使"Persistent Config > Environment > Code Default"对**运行时组件**真正生效

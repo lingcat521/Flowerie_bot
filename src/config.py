@@ -443,7 +443,8 @@ def validate_config(config: Settings) -> None:
     - 取值范围问题在此集中报错，避免运行期才炸
     """
     if not getattr(config, "DEEPSEEK_API_KEY", "") or getattr(config, "DEEPSEEK_API_KEY", "").startswith("sk-your"):
-        raise ValueError("DEEPSEEK_API_KEY 未配置或仍为占位值（.env 中设置真实 Key 后再启动）")
+        raise ValueError(
+            "DEEPSEEK_API_KEY 未配置或仍为占位值（已生成 .env 模板的，请填入真实 Key 后重启）")
     if getattr(config, "BOT_QQ", 0) <= 0:
         raise ValueError(f"BOT_QQ 必须为正整数，当前: {getattr(config, 'BOT_QQ', 0)}")
     if not (0 < getattr(config, "WS_PORT", 0) < 65536):
