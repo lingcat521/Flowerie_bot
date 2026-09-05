@@ -48,7 +48,7 @@
 
 ## 快速开始
 
-> 💻 **Windows 用户**：下载 Release 里的 `.exe`，使用说明见 [Windows exe 指南](docs/install-release-windows.md)
+> 💿 **安装说明**：[Windows exe](docs/install-release-windows.md) · [Linux/macOS/Termux](docs/install-release-guide.md)
 
 
 
