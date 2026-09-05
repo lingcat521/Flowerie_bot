@@ -229,8 +229,3 @@ CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 - **AI / 长期记忆 / 主动聊天 / 复读 / 防刷 / 戳戳 / 表情包 / MCP / 存档 / 群梗学习**：Web UI「配置」按分类折叠，每分类顶部开关徽标
 - **花语记忆（BlossomMemory，默认关闭）**：语义长期记忆（向量化检索+可重排+自动提取+群隔离）；开启后展开子开关与模型配置
 - **存储后端**：默认 SQLite；可选 PostgreSQL（`STORAGE_BACKEND=postgres` + `DATABASE_URL`，迁移工具 `python -m src.services.storage_migrate`）
-- 
-- **常见问题**
-- 
-- Q：使用自动化构建版本后，为什么无法正常配置？
-- A：某些自动化构建版本不含.env配置文件 请自行下载源码后结合md文档使用
