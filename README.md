@@ -48,7 +48,7 @@
 
 ## 快速开始
 
-> 💿 **安装说明**：[Windows exe](docs/install-release-windows.md) · [Linux/macOS/Termux](docs/install-release-guide.md)
+> 💿 **安装说明**：[Windows exe](docs/install-release-windows.md) · [Linux/macOS/Termux](docs/install-release-guide.md) · [Milky 协议](docs/milky-protocol.md)
 
 
 
