@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import aiohttp
 
@@ -12,11 +13,21 @@ _M_SEND_FAIL = registry.counter("message_send_failure_total", "消息发送失�
 
 
 class Sender:
+    _MILKY_ACTIONS = {
+        "send_group_msg": "send_group_message",
+        "send_private_msg": "send_private_message",
+    }
+
     def __init__(self, config: Settings, ws_sender=None):
         self.config = config
         self.session: aiohttp.ClientSession = None
         # WS 发送通道（SEND_VIA_WS=true 时生效）：async (action, params) -> dict
         self._ws_sender = ws_sender
+
+    @property
+    def _milky(self) -> bool:
+        """Milky 协议模式（QQ_PROTOCOL=milky）：/api/<action> + Bearer。"""
+        return str(getattr(self.config, "QQ_PROTOCOL", "onebot")).lower() == "milky"
 
     @property
     def _use_ws(self) -> bool:
@@ -52,7 +63,31 @@ class Sender:
         """通用 OneBot/Lagrange 端点调用（薄封装；统一返回 {ok, data|error}）。
 
         SEND_VIA_WS=true 时经 WS 通道（NapCat 只需开 WebSocket，不必开 HTTP）。
+        QQ_PROTOCOL=milky 时走 Milky /api/<action>（Bearer 鉴权；action 名映射）。
         """
+        if self._milky:
+            action = self._MILKY_ACTIONS.get(endpoint.lstrip("/"), endpoint.lstrip("/"))
+            url = f"{str(getattr(self.config, 'MILKY_API_BASE', '')).rstrip('/')}/api/{action}"
+            headers = {"Content-Type": "application/json"}
+            tok = str(getattr(self.config, "MILKY_ACCESS_TOKEN", "") or "")
+            if tok:
+                headers["Authorization"] = f"Bearer {tok}"
+            try:
+                async with self.session.post(url, json=payload, headers=headers,
+                                             timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
+                    body = await resp.text()
+                    try:
+                        j = json.loads(body) if body else {}
+                    except ValueError:
+                        j = {}
+                    retcode = (j.get("retcode") if isinstance(j, dict) else None)
+                    if resp.status == 200 and (retcode in (0, None)):
+                        return {"ok": True, "data": j.get("data")}
+                    return {"ok": False, "error": f"HTTP {resp.status} retcode={retcode} {body[:160]}"}
+            except Exception as e:  # noqa: BLE001
+                logger.error("milky_action_failed action=%s err=%s", action, e,
+                             extra={"event": "message_send_failed", "action": action})
+                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
         if self._use_ws:
             try:
                 resp = await self._ws_sender(endpoint.lstrip("/"), payload)

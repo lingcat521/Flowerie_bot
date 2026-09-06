@@ -257,8 +257,12 @@ async def main():
         )
         message_router.group_nicknames = group_nicknames
         message_router.group_style_rules = group_style_rules  # 与 Web UI 共享同一 store
-        # NapCat WebSocket：反向（NapCat 连过来，原有行为）或正向（连接 NapCat 的 WS server），二选一
-        if str(getattr(config, "NAPCAT_WS_MODE", "reverse") or "reverse").lower() == "forward":
+        # 协议切换：Milky（应用端主动连 /event）优先于 OneBot（NapCat 反向/正向）
+        if str(getattr(config, "QQ_PROTOCOL", "onebot") or "onebot").lower() == "milky":
+            from src.core.milky_client import MilkyClient
+            ws_server = MilkyClient(config, message_router)
+            logger.info("协议=Milky（事件 %s）", str(getattr(config, "MILKY_EVENT_URL", "")))
+        elif str(getattr(config, "NAPCAT_WS_MODE", "reverse") or "reverse").lower() == "forward":
             from src.core.napcat_forward_client import NapCatForwardClient
             ws_server = NapCatForwardClient(config, message_router)
             logger.info("NapCat WS 模式: forward（连接 %s）",

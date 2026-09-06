@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str = ""            # postgres://user:pass@host:5432/db（postgres 后端必填）
 
     # DeepSeek
+    QQ_PROTOCOL: str = "onebot"          # 协议端：onebot（NapCat 等）| milky（Milky 协议端，如 Lagrange.Milky/Yogurt）
+    MILKY_API_BASE: str = "http://127.0.0.1:8080"   # Milky 协议端 HTTP 根（/api/<action>）
+    MILKY_EVENT_URL: str = "ws://127.0.0.1:8080/event"  # Milky 事件推送 WebSocket
+    MILKY_ACCESS_TOKEN: str = ""         # Bearer 鉴权（协议端 access_token）
     DEEPSEEK_API_KEY: str = Field(...)  # 环境变量名 = 字段名（pydantic-settings）
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
     DEEPSEEK_MODEL: str = "deepseek-v4-flash"
