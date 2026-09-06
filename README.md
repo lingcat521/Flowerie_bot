@@ -96,7 +96,7 @@ OneBot WebSocket connected
 
 ## 配置
 
-完整配置见 [docs/configuration.md](docs/configuration.md)，常用项：
+完整配置见 [配置](docs/configuration.md)，常用项：
 
 | 变量 | 说明 | 默认 |
 | :--- | :--- | :--- |
@@ -151,10 +151,10 @@ OneBot WebSocket connected
   服务器状态（平台/内存/CPU负载）、MCP 工具状态、API 厂商连接状态（DeepSeek/视觉/引战）
 - **插件**：插件系统（Plugin System v1）管理：保护措施开关（normal/relaxed/unsafe）、插件列表、上传 ZIP / URL 安装、刷新扫描、启用（含权限批准）、禁用、卸载、插件系统配置
 
-完整功能指南（配置中心 / 人格管理 / 群聊知识 / 主题美化 / MCP 卡片管理 / 插件管理 / 安全）见 **[docs/web-ui.md](docs/web-ui.md)**；
-人格系统设计见 [docs/persona.md](docs/persona.md)，记忆/知识体系见 [docs/memory.md](docs/memory.md)；
-插件开发（Plugin API）见 **[docs/plugin-developer-guide.md](docs/plugin-developer-guide.md)**，安全模型见 **[docs/security.md](docs/security.md)**；
-变量说明见 [docs/configuration.md](docs/configuration.md)。
+完整功能指南（配置中心 / 人格管理 / 群聊知识 / 主题美化 / MCP 卡片管理 / 插件管理 / 安全）见 **[Web UI 说明](docs/web-ui.md)**；
+人格系统设计见 [人格系统](docs/persona.md)，记忆/知识体系见 [记忆与知识](docs/memory.md)；
+插件开发（Plugin API）见 **[插件开发指南](docs/plugin-developer-guide.md)**，安全模型见 **[安全模型](docs/security.md)**；
+变量说明见 [配置](docs/configuration.md)。
 
 ### 如何开启
 
@@ -172,13 +172,13 @@ OneBot WebSocket connected
 
 ## MCP
 
-默认关闭。配置 `MCP_ENABLED=true` + `MCP_SERVER_URL`（或插件式多 server：`MCP_SERVERS` JSON，可自行添加任意数量的 MCP 服务，支持本地/内网地址）后，模型可调用白名单内的工具获取实时信息。群聊梗知识的每日总结也会在需要时通过 MCP 检索验证新梗。详见 [docs/mcp.md](docs/mcp.md)。
+默认关闭。配置 `MCP_ENABLED=true` + `MCP_SERVER_URL`（或插件式多 server：`MCP_SERVERS` JSON，可自行添加任意数量的 MCP 服务，支持本地/内网地址）后，模型可调用白名单内的工具获取实时信息。群聊梗知识的每日总结也会在需要时通过 MCP 检索验证新梗。详见 [MCP 工具](docs/mcp.md)。
 
 ## Persona（人格系统）
 
 内置三套官方人格：**花璃**（默认）、**亚托莉（ATRI）** 与 **艾拉（Isla）**；管理员可创建完全独立的自定义人格。
 人格优先级：**群聊人格 > 全局人格 > 内置默认**，切换人格不影响记忆与上下文。
-Web UI「人格」页管理；详细设计见 [docs/persona.md](docs/persona.md)。
+Web UI「人格」页管理；详细设计见 [人格系统](docs/persona.md)。
 
 ## 插件系统（Plugin System v1）
 插件开发支持 **SDK 模式**（推荐）与经典声明式模式：SDK 提供统一 Event /
@@ -187,7 +187,7 @@ Message / Matcher / Permission 与 Bot Adapter 分层，插件**不接触 OneBot
 
 - [SDK 三层架构与 API](docs/sdk.md)
 - [API 概览](docs/api.md)
-- [插件开发](docs/plugin-developer-guide.md)（文档中心 [docs/README.md](docs/README.md)）
+- [插件开发](docs/plugin-developer-guide.md)（文档中心 [文档中心](docs/README.md)）
 - [插件开发指南（完整）](docs/plugin-developer-guide.md)
 
 
@@ -197,13 +197,13 @@ Message / Matcher / Permission 与 Bot Adapter 分层，插件**不接触 OneBot
 （**发现 ≠ 自动执行**，默认 disabled，须管理员启用并批准权限）。
 保护级别 `PLUGIN_PROTECTION`（`normal`/`relaxed`/`unsafe`）只影响运行时限制，**任何级别都不豁免**
 权限检查 / 进程隔离 / 日志 / 崩溃保护 / 资源限制 / manifest 校验 / 管理员权限。
-详细开发文档见 **[docs/plugin-developer-guide.md](docs/plugin-developer-guide.md)**。
+详细开发文档见 **[插件开发指南](docs/plugin-developer-guide.md)**。
 
 ## 群聊梗知识（Meme Knowledge）
 
 每个群拥有**完全隔离**的梗/黑话知识库：消息命中时只注入相关词条（不可信上下文知识），
 `MEME_LEARNING_ENABLED=true` 时每 24 小时批量总结一次群聊并写入新梗（必要时经 MCP 检索验证）。
-Web UI「群聊知识」页管理；详细设计见 [docs/memory.md](docs/memory.md)。
+Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/memory.md)。
 
 ## 开发
 
@@ -216,8 +216,8 @@ ruff check .        # 代码检查
 
 CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 
-更多工程细节：架构审计见 [docs/architecture-audit.md](docs/architecture-audit.md)，表情包见 [docs/stickers.md](docs/stickers.md)，
-安全模型见 [docs/security.md](docs/security.md)。
+更多工程细节：架构审计见 [架构审计](docs/architecture-audit.md)，表情包见 [表情包](docs/stickers.md)，
+安全模型见 [安全模型](docs/security.md)。
 
 ## License
 
@@ -229,3 +229,32 @@ CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 - **AI / 长期记忆 / 主动聊天 / 复读 / 防刷 / 戳戳 / 表情包 / MCP / 存档 / 群梗学习**：Web UI「配置」按分类折叠，每分类顶部开关徽标
 - **花语记忆（BlossomMemory，默认关闭）**：语义长期记忆（向量化检索+可重排+自动提取+群隔离）；开启后展开子开关与模型配置
 - **存储后端**：默认 SQLite；可选 PostgreSQL（`STORAGE_BACKEND=postgres` + `DATABASE_URL`，迁移工具 `python -m src.services.storage_migrate`）
+
+## 📚 文档目录
+
+**入门**
+- [快速开始](docs/quick-start.md)
+- [配置](docs/configuration.md)
+
+**功能使用**
+- [Web UI 说明](docs/web-ui.md)
+- [人格系统](docs/persona.md)
+- [记忆与知识](docs/memory.md)
+- [MCP 工具](docs/mcp.md)
+- [表情包](docs/stickers.md)
+- [安全模型](docs/security.md)
+
+**插件与开发**
+- [插件开发指南](docs/plugin-developer-guide.md)
+- [插件 WebUI](docs/plugin-webui.md)
+- [SDK 三层架构](docs/sdk.md)
+- [API 概览](docs/api.md)
+- [开发说明](docs/development.md)
+
+**协议与安装**
+- [OneBot 兼容](docs/onebot-compatibility.md)
+- [Milky 协议](docs/milky-protocol.md)
+- [Windows exe 安装](docs/install-release-windows.md)
+- [Linux/macOS 安装](docs/install-release-guide.md)
+- [Termux 安装](docs/install-termux.md)
+- [文档中心](docs/README.md)
