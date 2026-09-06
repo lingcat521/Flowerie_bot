@@ -35,8 +35,6 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
     raw = dict(raw or {})
     ev = InternalEvent(raw_data=raw)
     ev.timestamp = raw.get("time") or raw.get("timestamp")
-    if bot_qq is not None:
-        ev.raw_data["self_id"] = raw.get("self_id")
 
     event_type = str(raw.get("event_type") or "unknown")
     data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
