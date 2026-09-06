@@ -1,7 +1,7 @@
 # 花璃 · QQ 群聊机器人
 
 <p align="center">
-  <b>银发灰瞳的小恶魔系青梅竹马 · DeepSeek 驱动 · NapCat OneBot11</b>
+  <b>银发灰瞳的小恶魔系青梅竹马 · DeepSeek 驱动 ·  OneBot11/Milky</b>
 </p>
 
 
