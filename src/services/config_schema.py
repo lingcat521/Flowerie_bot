@@ -49,6 +49,10 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "VISION_FORWARD_IMAGES": ("AI", "bool", False, True, "识别合并转发里的图片（省视觉 token，默认关）"),
     # ---------- 基础配置 ----------
     "BOT_QQ": ("Bot", "int", False, False, "机器人 QQ 号（需重启）"),
+    "QQ_PROTOCOL": ("Bot", "str", False, False, "协议端：onebot（NapCat 等）/ milky（Milky 协议端）"),
+    "MILKY_API_BASE": ("Bot", "str", False, False, "Milky 协议端 HTTP 根（/api/<action>）"),
+    "MILKY_EVENT_URL": ("Bot", "str", False, False, "Milky 事件推送 WebSocket（/event）"),
+    "MILKY_ACCESS_TOKEN": ("Bot", "str", False, False, "Milky Bearer 鉴权 token"),
     "BOT_NICKNAME": ("Bot", "str", False, True, "机器人昵称（群特色昵称未配置时使用；Web UI 可逐群覆盖）"),
     "GROUP_STYLE_RULES_PATH": ("Bot", "str", False, False, "群专属发言规则存储路径（需重启）"),
     "GROUP_NICKNAMES_PATH": ("Bot", "str", False, False, "群特色昵称存储路径"),
