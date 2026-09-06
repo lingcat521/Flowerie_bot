@@ -123,3 +123,14 @@ def _event_id(ev: InternalEvent) -> str:
     m = ev.message_id if ev.message_id is not None else ""
     t = ev.timestamp if ev.timestamp is not None else ""
     return f"{ev.kind}:{ev.scope}:{g}:{a}:{m}:{t}"
+
+
+class MilkyEventParser:
+    """Milky raw dict → InternalEvent（EventParser 契约实现）。"""
+
+    def __init__(self, bot_qq: Optional[int] = None, note: str = ""):
+        self._bot_qq = bot_qq
+        self._note = note
+
+    def parse(self, raw: Dict[str, Any]) -> InternalEvent:
+        return parse_milky_event(raw, self._bot_qq)

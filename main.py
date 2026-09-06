@@ -156,7 +156,7 @@ async def main():
         # 依赖链: Settings(config) → Sender(config) → make_adapters(BOT_QQ, sender)
         #         → OneBotEventParser + Adapters{parser, sender}
         # 契约校验：sender 不满足 MessageSender 契约 → 启动期即失败（Behavior 不变）
-        adapters = make_adapters(config.BOT_QQ, sender)
+        adapters = make_adapters(config.BOT_QQ, sender, protocol=config.QQ_PROTOCOL)
         if adapters.sender is not sender:
             raise RuntimeError("adapters 必须复用现有的 sender 实例")
         sticker_repo = StickerRepository(config.STICKER_DB_PATH)

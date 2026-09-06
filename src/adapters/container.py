@@ -41,16 +41,22 @@ def _missing_sender_methods(sender: Any) -> list:
     return missing
 
 
-def make_adapters(bot_qq: Optional[int], sender: Any) -> Adapters:
+def make_adapters(bot_qq: Optional[int], sender: Any, protocol: str = "onebot") -> Adapters:
     """组装组合根：解析器 + 现有 Sender（不重复构造任何网络资源）。
 
     - sender 必须满足 MessageSender 契约（启动期校验，失败即 RuntimeError）
-    - parser 为 OneBotEventParser（未来 adapter 时替换 make_adapters 内部实现即可）
+    - protocol=onebot → OneBotEventParser；protocol=milky → MilkyEventParser
     """
     from src.adapters.onebot_parser import OneBotEventParser
 
     missing = _missing_sender_methods(sender)
     if missing:
         raise RuntimeError(f"sender 不满足 MessageSender 契约（缺 {missing}）")
-    parser: EventParser = OneBotEventParser(bot_qq=bot_qq)
-    return Adapters(parser=parser, sender=sender, bot_qq=bot_qq, transport="onebot")
+    if str(protocol or "onebot").lower() == "milky":
+        from src.adapters.milky_parser import MilkyEventParser
+        parser: EventParser = MilkyEventParser(bot_qq=bot_qq)
+        transport = "milky"
+    else:
+        parser = OneBotEventParser(bot_qq=bot_qq)
+        transport = "onebot"
+    return Adapters(parser=parser, sender=sender, bot_qq=bot_qq, transport=transport)
