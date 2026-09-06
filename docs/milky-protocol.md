@@ -32,17 +32,48 @@ python main.py
 | 事件推送 | WebSocket（`/event`）|
 | access_token | 与 `MILKY_ACCESS_TOKEN` 一致 |
 
-## 适配层（实现说明）
-| 文件 | 职责 |
-| --- | --- |
-| `src/adapters/milky_parser.py` | EventEnvelope → InternalEvent（event_type/message_scene/peer_id；段扫描与 OneBot 等价）|
-| `src/services/sender.py` | Milky 模式：`/api/<action>` + Bearer（send_group_msg→send_group_message 映射）|
-| `src/core/milky_client.py` | WS 客户端连 `/event`（access_token 参数；断线重连 5→60s 退避；事件并发）|
-| `main.py` | `QQ_PROTOCOL=milky` → MilkyClient（替代 NapCat 反向/正向）|
+## 事件格式（EventEnvelope）
+```json
+{
+  "time": 1234567890,
+  "event_type": "message_receive",
+  "data": {
+    "message_scene": "group",
+    "peer_id": 786368680,
+    "sender_id": 297205104,
+    "segments": [ ... ]
+  }
+}
+```
 
-## 消息段（段表与 OneBot 相同）
-`text` / `at`（`data.qq`）/ `image`（`data.file`+`data.url`）/ `reply`（`data.id`）/ `forward`/`json` 等——
-与 OneBot 段结构一致；图片识图沿用 file 优先策略。
+### 消息段（已按官方 SDK 对齐）
+| 语义 | 段 `type` | `data` 字段 | 说明 |
+| --- | --- | --- | --- |
+| 文本 | `text` | `text` | |
+| @某人 | `mention` | `user_id` | 与 OneBot `at/qq` 不同 |
+| @全体 | `mention_all` | — | |
+| 图片 | `image` | `temp_url` + `resource_id`（+width/height/summary/sub_type）| 识图用 temp_url |
+| 回复 | `reply` | `message_seq` | 引用消息序列号 |
+| 表情 | `face` | `face_id` | |
+| 语音 | `record` | `resource_id` + `temp_url` + `duration` | |
+| 视频 | `video` | `resource_id` + `temp_url` | |
+| 转发 | `forward` | — | |
+
+⚠️ **与 OneBot 的差异**：
+- 段容器字段是 **`segments`**（OneBot 是 `message`）
+- @ 用 **`mention`/`user_id`**（OneBot `at`/`qq`）
+- 图片用 **`temp_url`**（临时 URL；OneBot `file/url`）
+- 回复用 **`message_seq`**（OneBot `id`）
+
+## API 调用（发送）
+```
+POST {MILKY_API_BASE}/api/send_group_message
+POST {MILKY_API_BASE}/api/send_private_message
+Authorization: Bearer <access_token>
+{"group_id": 123, "message": [{"type": "text", "data": {"text": "hi"}}]}
+```
+- 消息必须是 **OutgoingSegment 数组**（字符串自动转 text 段）
+- action 名与 OneBot 的映射：`send_group_msg→send_group_message`、`send_private_msg→send_private_message`
 
 ## 事件类型（当前映射）
 | event_type | 处理 |
@@ -52,9 +83,17 @@ python main.py
 | `lifecycle` | 生命周期 |
 | 其他 | 按 unknown 忽略（不阻塞主流程）|
 
+## 适配层（实现说明）
+| 文件 | 职责 |
+| --- | --- |
+| `src/adapters/milky_parser.py` | EventEnvelope → InternalEvent（event_type/message_scene/peer_id；段扫描 segments/mention/temp_url/message_seq）|
+| `src/services/sender.py` | Milky 模式：`/api/<action>` + Bearer（action 映射；消息自动转 OutgoingSegment 数组）|
+| `src/core/milky_client.py` | WS 客户端连 `/event`（access_token 参数；断线重连 5→60s 退避；事件并发）|
+| `main.py` | `QQ_PROTOCOL=milky` → MilkyClient（替代 NapCat 反向/正向）|
+
 ## 已知边界（真机联调时请反馈）
-- 消息段**具体 type/字段名**（image/at/reply 若与 OneBot 有差异，发一条真实事件 JSON 即可修正）
-- notice 的 event_type 命名（目前按 notice_receive 匹配）
+- **发送图片/语音段**：Milky 发送段 data（resource_id 需先上传）——Flowerie 当前 text 发送完整可用；多媒体发送待联调
+- notice 的 event_type 完整命名（目前按 notice_receive 匹配）
 - 响应 retcode 语义（200 + retcode 0/None = 成功）
 
 > 使用问题可提 Issue（不保证修复——项目停更中）。
