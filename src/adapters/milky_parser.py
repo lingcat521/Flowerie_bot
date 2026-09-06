@@ -52,7 +52,8 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
         elif scene == "group":
             ev.group_id = int(peer_id) if peer_id else None
         ev.message_id = data.get("message_id") or data.get("msg_id")
-        _scan_segments(ev, data.get("message"), bot_qq)
+        # Milky 段容器字段：segments（SDK 标准）；兼容 message（旧样例）
+        _scan_segments(ev, data.get("segments", data.get("message")), bot_qq)
     elif ev.kind == "notice":
         ev.actor_id = int(sender_id) if sender_id else None
         ev.notice_kind = data.get("notice_type") or event_type.replace("notice_", "")
@@ -79,15 +80,20 @@ def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> N
         data = seg.get("data") if isinstance(seg.get("data"), dict) else {}
         if seg_type == "text":
             text_parts.append(str(data.get("text") or ""))
-        elif seg_type == "at":
-            qq = str(data.get("qq") or "")
-            ev.mentions.append(qq)
-            if qq == bot:
-                ev.is_mentioned = True
-            elif qq != "all":
-                ev.has_at_others = True
+        elif seg_type in ("mention", "at"):
+            # Milky: mention/data.user_id；OneBot 兼容: at/data.qq
+            qq = str(data.get("user_id") or data.get("qq") or "")
+            if qq:
+                ev.mentions.append(qq)
+                if qq == bot:
+                    ev.is_mentioned = True
+                elif qq != "all":
+                    ev.has_at_others = True
+        elif seg_type in ("mention_all",):
+            ev.mentions.append("all")   # @全体（与 OneBot at qq=all 等价：不置 is_mentioned）
         elif seg_type == "image":
-            url = str(data.get("url") or data.get("file") or "")
+            # Milky: data.temp_url（临时 URL）+ resource_id；OneBot 兼容: data.url/file
+            url = str(data.get("temp_url") or data.get("url") or "")
             if url:
                 ev.images.append(url)
             fp = str(data.get("file") or "").strip()
@@ -95,9 +101,13 @@ def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> N
                 fp = fp[len("file://"):] if fp.startswith("file://") else fp
                 if fp:
                     ev.image_files.append(fp)
+            elif data.get("resource_id") and not url:
+                # 无 URL 时记录资源 id（由上层按 resource_id 后续获取）
+                ev.images.append("resource:" + str(data.get("resource_id")))
         elif seg_type == "reply":
             try:
-                ev.reply_id = int(data.get("id"))
+                # Milky: data.message_seq；OneBot 兼容: data.id
+                ev.reply_id = int(data.get("message_seq") or data.get("id"))
             except (TypeError, ValueError):
                 ev.reply_id = None
         elif seg_type:

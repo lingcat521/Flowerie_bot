@@ -68,6 +68,11 @@ class Sender:
         if self._milky:
             action = self._MILKY_ACTIONS.get(endpoint.lstrip("/"), endpoint.lstrip("/"))
             url = f"{str(getattr(self.config, 'MILKY_API_BASE', '')).rstrip('/')}/api/{action}"
+            # Milky 消息必须是段数组（OutgoingSegment）；字符串自动转 text 段
+            _m = payload.get("message")
+            if isinstance(_m, str):
+                payload = dict(payload)
+                payload["message"] = [{"type": "text", "data": {"text": _m}}]
             headers = {"Content-Type": "application/json"}
             tok = str(getattr(self.config, "MILKY_ACCESS_TOKEN", "") or "")
             if tok:
