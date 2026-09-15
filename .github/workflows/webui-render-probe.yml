@@ -1,6 +1,6 @@
 name: WebUI Render Probe
 
-# 临时诊断工作流（探针分支专用）：多视口渲染真实面板并截图，用于定位「手机正常、平板/电脑异常」。
+# 临时诊断工作流（探针分支专用）：多视口渲染真实面板并截图，用于定位/验证「手机正常、平板电脑排版不对」。
 # 只读：不修改产品代码，不向页面注入脚本，浏览器上下文关闭 JavaScript。
 on:
   push:
@@ -12,7 +12,7 @@ on:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -24,8 +24,14 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install playwright
+          pip install pytest pytest-asyncio ruff playwright
           python -m playwright install --with-deps chromium
+
+      - name: Ruff check (webui render layer)
+        run: ruff check src/services/webui_render src/services/webui_panels src/services/web_ui.py src/services/web_ui_assets.py
+
+      - name: Web UI tests (pytest subset, no PG needed)
+        run: python -m pytest -q tests/test_web_ui.py tests/test_web_ui_panel.py tests/test_web_ui_nicknames.py tests/test_web_ui_persona_knowledge.py tests/test_webui_auth_bootstrap.py tests/test_webui_plugin_panel.py tests/test_web_password.py
 
       - name: Run render probe (multi-viewport screenshots)
         run: python scripts/webui_render_probe.py
