@@ -1,0 +1,41 @@
+name: WebUI Render Probe
+
+# 临时诊断工作流（探针分支专用）：多视口渲染真实面板并截图，用于定位「手机正常、平板/电脑异常」。
+# 只读：不修改产品代码，不向页面注入脚本，浏览器上下文关闭 JavaScript。
+on:
+  push:
+    branches:
+      - fix/webui-responsive-render
+      - probe/**
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Run render probe (multi-viewport screenshots)
+        run: python scripts/webui_render_probe.py
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webui-render-shots
+          path: probe-out/
+          retention-days: 7
+          if-no-files-found: warn
+
