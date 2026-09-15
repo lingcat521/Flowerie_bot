@@ -87,7 +87,7 @@ async def login_token(session) -> str:
 
 def build_synth_pages(configs) -> dict:
     """用渲染层直出需要注入管理器才能看到的页面（人格/知识/插件/昵称/玻璃）。"""
-    from src.services.webui_render.account import render_account_tab              # noqa: F401
+    from src.services.webui_render.account import render_account_tab  # noqa: F401
     from src.services.webui_render.appearance import render_appearance
     from src.services.webui_render.config_panel import render_config_sections
     from src.services.webui_render.knowledge import render_knowledge_tab
