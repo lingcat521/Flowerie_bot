@@ -160,6 +160,9 @@ def build_synth_pages(configs) -> dict:
         "synth-appearance": page(render_appearance(
             "default", theme_default_bg("default"), 100, "cover", "center", False,
             panel_opacity=90, panel_style="clear"), "appearance"),
+        "synth-appearance-glass": page(render_appearance(
+            "default", theme_default_bg("default"), 100, "cover", "center", False,
+            panel_opacity=90, panel_style="glass"), "appearance", glass=True),
     }
     return pages
 
@@ -192,6 +195,18 @@ async def measure(page, selector: str):
 async def shoot(page, path: str) -> bool:
     try:
         await page.screenshot(path=path)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+async def shoot_filtered(page, selector: str, text: str, path: str) -> bool:
+    """按文本过滤后对单个元素截图（纯 Playwright API，不注入脚本）。"""
+    try:
+        locator = page.locator(selector).filter(has_text=text)
+        if await locator.count() == 0:
+            return False
+        await locator.first.screenshot(path=path)
         return True
     except Exception:  # noqa: BLE001
         return False
@@ -241,6 +256,10 @@ async def run_probe(report: dict, synth_paths: dict) -> None:
                         page, "fieldset.group", os.path.join(OUT, "%s-%s-group.png" % (pname, vname)))
                     entry["row_shot"] = await shoot_element(
                         page, ".row", os.path.join(OUT, "%s-%s-row.png" % (pname, vname)))
+                    if pname in ("synth-persona", "persona"):
+                        entry["bind_group_shot"] = await shoot_filtered(
+                            page, "fieldset.group", "群聊人格",
+                            os.path.join(OUT, "%s-%s-bindgroup.png" % (pname, vname)))
                     entry["nested_row_count"] = await page.locator(".row .row").count()
                     entry["nested_control_count"] = await page.locator(".row-control .row-control").count()
                     entry["form_count"] = await page.locator("form").count()
