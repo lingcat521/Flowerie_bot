@@ -294,8 +294,8 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<span class="hint">优先级：本群人格 &gt; 全局人格 &gt; 内置默认；解除绑定自动回退</span>'
         '</div></form>'
         '<div class="row"><label class="row-info"><span class="row-title">当前绑定</span>'
-        '<span class="row-key">bindings</span></label>'
-        '<div class="row-control">' + bind_rows + '</div></div>'
+        '<span class="row-key">bindings</span></label></div>'
+        + bind_rows +
         '</fieldset>'
     )
 
