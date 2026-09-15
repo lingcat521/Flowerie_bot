@@ -25,8 +25,10 @@ OUT = os.path.join(ROOT, "probe-out")
 HTML_DIR = os.path.join(OUT, "html")
 PORT = 18099
 BASE = "http://127.0.0.1:%d" % PORT
-USERNAME = "admin"
-PASSWORD = "secret123"
+# 面板口令：由运行环境注入（CI step env / 本地 export），代码内不硬编码明文口令。
+# 探针只在本机 127.0.0.1 上创建一次性 .env 供自己启动的 Web UI 登录，跑完即销毁。
+USERNAME = os.environ.get("FLOWERIE_PROBE_USER", "admin")
+PASSWORD = os.environ.get("FLOWERIE_PROBE_PASSWORD", "")
 
 VIEWPORTS = [
     ("phone-390x844", 390, 844),
@@ -285,6 +287,9 @@ async def run_probe(report: dict, synth_paths: dict) -> None:
 async def main() -> int:
     import aiohttp
 
+    if not PASSWORD:
+        print("[probe] 缺少 FLOWERIE_PROBE_PASSWORD 环境变量（仅用于本机临时面板登录）")
+        return 2
     os.makedirs(OUT, exist_ok=True)
     write_env()
     report = {"port": PORT, "viewports": {}, "token": ""}
