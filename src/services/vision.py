@@ -65,11 +65,11 @@ class VisionService:
             """下载图片并调用视觉模型识别，返回一句话描述；失败返回 None。
 
             视觉模型/网址/key 由环境变量 VISION_MODEL / VISION_API_URL / VISION_API_KEY
-            独立配置，留空时回退用 DeepSeek 的 key/网址，默认模型 deepseek-v4-flash-vision-exp。
+            独立配置，留空时回退用 DeepSeek 的 key/网址，默认模型 deepseek-flash。
             """
             if not image_url:
                 return None
-            model = self.config.VISION_MODEL or "deepseek-v4-flash-vision-exp"
+            model = self.config.VISION_MODEL or "deepseek-flash"
             api_url = self.config.VISION_API_URL or self.config.DEEPSEEK_API_URL
             api_key = self.config.VISION_API_KEY or self.config.DEEPSEEK_API_KEY
             timeout = self.config.VISION_TIMEOUT or 30
@@ -226,7 +226,7 @@ class VisionService:
             except OSError as e:
                 logger.error("Sticker file read error: %s err=%s", file_path, e)
                 return None
-            model = self.config.VISION_MODEL or "deepseek-v4-flash-vision-exp"
+            model = self.config.VISION_MODEL or "deepseek-flash"
             api_url = self.config.VISION_API_URL or self.config.DEEPSEEK_API_URL
             api_key = self.config.VISION_API_KEY or self.config.DEEPSEEK_API_KEY
             timeout = self.config.VISION_TIMEOUT or 30

@@ -49,18 +49,18 @@ class Settings(BaseSettings):
     MILKY_ACCESS_TOKEN: str = ""         # Bearer 鉴权（协议端 access_token）
     DEEPSEEK_API_KEY: str = Field(...)  # 环境变量名 = 字段名（pydantic-settings）
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
-    DEEPSEEK_MODEL: str = "deepseek-v4-flash"
+    DEEPSEEK_MODEL: str = "deepseek-flash"      # 官方模型列表：deepseek-flash / deepseek-v4-pro
 
     # 引战检测 AI（可选；留空则回退用 DeepSeek 的 key/网址/模型）
     TOXIC_API_KEY: Optional[str] = None
     TOXIC_API_URL: Optional[str] = None
-    TOXIC_MODEL: Optional[str] = None
+    TOXIC_MODEL: Optional[str] = "deepseek-flash"
 
     # 视觉识图（花璃看图用；可选，留空回退用 DeepSeek key/网址）
     VISION_API_KEY: Optional[str] = None
     VISION_API_URL: Optional[str] = None
     VISION_ENABLED: bool = True       # 图片识图总开关（关闭：不描述群图/转发图，省 token+隐私）
-    VISION_MODEL: Optional[str] = None
+    VISION_MODEL: Optional[str] = "deepseek-flash"
     VISION_TIMEOUT: int = 30
 
     # 是否识别合并转发（聊天记录）里的图片（默认关闭，可省视觉 token；想开在 .env 里设 true）

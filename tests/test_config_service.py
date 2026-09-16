@@ -6,10 +6,10 @@ class FakeSettings:
     """轻量 Settings 替身：仅含 ConfigService.SCHEMA 涉及的字段（含默认值）。"""
 
     DEFAULTS = {
-        "DEEPSEEK_MODEL": "deepseek-v4-flash",
+        "DEEPSEEK_MODEL": "deepseek-flash",
         "DEEPSEEK_API_KEY": "sk-real-key-123456",
         "DEEPSEEK_API_URL": "https://api.deepseek.com/chat/completions",
-        "VISION_MODEL": "deepseek-v4-flash-vision-exp",
+        "VISION_MODEL": "deepseek-flash",
         "MAX_REPLY_LENGTH": 40,
         "BOT_NICKNAME": "花璃",
         "USER_COOLDOWN": 5,

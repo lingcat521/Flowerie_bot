@@ -15,8 +15,8 @@ Web UI 修改的配置存于 `data/settings.db`，重启后优先使用。
 | 变量 | 说明 | 默认 |
 | :--- | :--- | :--- |
 | `DEEPSEEK_API_URL` | API 地址 | `https://api.deepseek.com/chat/completions` |
-| `DEEPSEEK_MODEL` | 群聊模型 | `deepseek-v4-flash` |
-| `VISION_MODEL` / `VISION_API_URL` / `VISION_API_KEY` | 识图视觉模型（留空回退 DeepSeek） | `deepseek-v4-flash-vision-exp` |
+| `DEEPSEEK_MODEL` | 群聊模型 | `deepseek-flash` |
+| `VISION_MODEL` / `VISION_API_URL` / `VISION_API_KEY` | 识图视觉模型（留空回退 DeepSeek） | `deepseek-flash` |
 | `VISION_TIMEOUT` | 识图超时（秒） | `30` |
 | `MAX_REPLY_LENGTH` | 最大回复长度 | `40` |
 | `MAX_AI_INPUT_CHARS` | 单次 AI 输入上限 | `8000` |

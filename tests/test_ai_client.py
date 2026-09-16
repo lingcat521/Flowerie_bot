@@ -21,7 +21,7 @@ def make_config(**overrides):
     base = dict(
         DEEPSEEK_API_KEY="sk-test",
         DEEPSEEK_API_URL="https://api.deepseek.com/chat/completions",
-        DEEPSEEK_MODEL="deepseek-v4-flash",
+        DEEPSEEK_MODEL="deepseek-flash",
         MAX_REPLY_LENGTH=40,
         MAX_AI_INPUT_CHARS=8000,
         TOXIC_MODEL=None,
