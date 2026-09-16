@@ -4,6 +4,7 @@ import builtins
 from src.utils.banner import (
     BANNER,
     MADE_BY,
+    QUIPS,
     app_version,
     banner_lines,
     banner_text,
@@ -164,4 +165,22 @@ def test_art_width_fits_80_columns():
     """含 2 空格缩进后必须能塞进 80 列终端。"""
     width = max(len(line) for line in BANNER.strip("\n").split("\n"))
     assert width + 2 <= 80
+
+
+
+# ---------- 台词人设一致性 ----------
+def test_quips_follow_persona_style():
+    """台词必须贴合花璃的说话规则：无标点符号、无 emoji、不超 20 字。
+
+    人格设定原文：「回复尽量在15～20字以内 简洁自然 严禁话唠」
+                「用空格代替逗号 不可以使用句号 问号 感叹号等标点符号」
+    """
+    import re
+    banned_punct = re.compile(r"[，。！？、,.!?;；:：\"'“”‘’()（）\[\]【】…—-]")
+    emoji = re.compile(r"[\U0001F300-\U0001FAFF\U00002600-\U000027BF]")
+    for quip in QUIPS:
+        assert not banned_punct.search(quip), "台词含标点: %r" % quip
+        assert not emoji.search(quip), "台词含 emoji: %r" % quip
+        assert 1 <= len(quip) <= 20, "台词长度越界: %r" % quip
+        assert " " in quip or len(quip) <= 8, "长句应使用空格断句: %r" % quip
 
