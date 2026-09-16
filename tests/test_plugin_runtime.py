@@ -235,8 +235,13 @@ async def test_exec_shell_plugin_executes(tmp_path):
         await rt.shutdown()
 
 
-def test_exec_build_command_points_at_entry(tmp_path):
-    """exec runtime：命令就是入口文件本身（不经 shell、不经任何解释器）。"""
+@pytest.mark.asyncio
+async def test_exec_build_command_points_at_entry(tmp_path):
+    """exec runtime：命令就是入口文件本身（不经 shell、不经任何解释器）。
+
+    必须是 async：PluginRuntime 构造时会创建 asyncio.Lock/Semaphore，
+    Python 3.9 在无运行中事件循环时会抛 "There is no current event loop"。
+    """
     dir_path = _deploy(tmp_path, "minimal_exec_plugin")
     rt = _make_runtime(dir_path)
     cmd, env = rt._build_command()
