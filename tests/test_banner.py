@@ -44,7 +44,7 @@ def test_banner_contains_art_head_summary_and_signature():
 
 def test_banner_without_version_or_summary():
     lines = banner_lines()
-    assert lines[7].strip() == "Flowerie · 花璃"   # 无版本号时不带 vX
+    assert lines[6].strip() == "Flowerie · 花璃"   # 无版本号时不带 vX（5 行艺术字 + 空行）
     assert MADE_BY in "\n".join(lines)
 
 
@@ -156,7 +156,7 @@ def test_art_spells_flowerie():
     assert "/ _ \\" in BANNER                    # O
     assert "|_ _|" in BANNER                     # I
     assert "|  _ \\" in BANNER                   # R
-    assert "\\ \\    / /" in BANNER              # W
+    assert "\\ \\ /\\ / /" in BANNER             # W（两个 V 并排；别画成单个 V）
     assert BANNER.count("|_____|") >= 3          # L + 两个 E 的底线
 
 
