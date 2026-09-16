@@ -59,7 +59,7 @@ def render_env_template(schema: Mapping[str, tuple],
         lines.append("# ========== %s ==========" % category_labels.get(cat, cat))
         for key in keys:
             meta = schema[key]
-            type_name, is_secret, hot_reload, desc = meta[1], meta[2], meta[3], meta[4]
+            is_secret, hot_reload, desc = meta[2], meta[3], meta[4]
             raw = placeholders[key] if key in placeholders else defaults.get(key, "")
             marks = []
             if key in placeholders:
