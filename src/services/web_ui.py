@@ -1,7 +1,8 @@
 """Web UI 管理后台（aiohttp，无 JS 纯服务端渲染）。
 
 安全设计：
-- 默认 WEB_UI_ENABLED=false；启用必须设置 WEB_UI_PASSWORD（启动校验）
+- 默认 WEB_UI_ENABLED=true，但只监听 127.0.0.1（对外必须显式 WEB_UI_ALLOW_LAN=true）
+- WEB_UI_PASSWORD 允许为空 = UNINITIALIZED：此时注册页是创建第一个管理员的唯一入口
 - 认证：POST /api/login 换取 token（secrets.token_hex，内存存储 + TTL）；
   请求带 Authorization: Bearer <token>（无 cookie → 天然防 CSRF）；
   无 JS 面板走 Cookie 会话（fb_token，httponly + SameSite=Strict）

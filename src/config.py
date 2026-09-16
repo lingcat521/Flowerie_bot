@@ -196,7 +196,7 @@ class Settings(BaseSettings):
     MCP_CIRCUIT_FAILURES: int = 5       # MCP 独立熔断：连续失败阈值（每个 server 各自独立）
     MCP_CIRCUIT_PAUSE_SECONDS: int = 60 # MCP 熔断冷却
     # Web UI（管理后台）：默认关闭；必须认证；端口与反向 WS 端口（WS_PORT）错开
-    WEB_UI_ENABLED: bool = False
+    WEB_UI_ENABLED: bool = True       # 默认开启（只监听 127.0.0.1）；对外需显式 WEB_UI_ALLOW_LAN=true
     WEB_UI_HOST: str = "127.0.0.1"
     # 显式开关：true 时强制绑定 0.0.0.0（局域网/公网可访问）。默认 false=仅本机，
     # 请勿把管理后台直接暴露公网；开启后启动日志会输出安全警告。

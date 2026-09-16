@@ -130,8 +130,10 @@ OneBot WebSocket connected
 
 ## Web UI
 
-默认关闭。启用后访问 `http://127.0.0.1:8080/panel`（无 JS 兼容面板，手机浏览器也能用）
-用 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD` 登录。
+**默认开启**（只监听本机回环 `127.0.0.1`，不对外）—— 访问 `http://127.0.0.1:8080/panel`
+（无 JS 兼容面板，手机浏览器也能用）。首次进入是**注册页**，创建第一个管理员即可；
+也可提前在 `.env` 设 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD`。
+想彻底关闭：`WEB_UI_ENABLED=false`；想让局域网设备访问：`WEB_UI_ALLOW_LAN=true`（默认关闭）。
 
 面板八个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
 

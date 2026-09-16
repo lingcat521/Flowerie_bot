@@ -241,9 +241,17 @@ async def main():
         await message_router.start()
         # 启动插件运行时（enabled 插件；发现新插件默认 disabled）
         await plugin_manager.start_all()
-        # Web UI（默认关闭；启用时需认证，端口已与 WS_PORT 错开校验）
+        # Web UI（默认开启，仅监听本机回环；端口已与 WS_PORT 错开校验）
         if web_ui is not None:
-            await web_ui.start()
+            try:
+                await web_ui.start()
+            except OSError as exc:
+                # 默认开启后端口可能被占用：Web UI 起不来不该拖垮 bot 本体
+                logger.error(
+                    "Web UI 启动失败（WEB_UI_PORT=%s 可能已被占用）：%s；bot 继续运行 —— "
+                    "可改 WEB_UI_PORT，或设 WEB_UI_ENABLED=false 关闭",
+                    getattr(config, "WEB_UI_PORT", 8080), exc)
+                web_ui = None
 
         # 启动 WebSocket 服务（会自动阻塞直到中断）
         try:

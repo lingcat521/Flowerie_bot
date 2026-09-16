@@ -7,15 +7,19 @@
 
 ## 如何开启
 
-1. 编辑项目根目录 `.env`，追加：
-   ```ini
-   WEB_UI_ENABLED=true
-   WEB_UI_PORT=8080            # 不能与 WS_PORT(3001) 相同
-   WEB_UI_USERNAME=admin
-   WEB_UI_PASSWORD=你的密码      # 必填，留空会拒绝启动
-   ```
-2. 重启：`bash run.sh` 或 `python main.py`
-3. 浏览器打开 `http://127.0.0.1:8080/panel`
+**默认已开启**（`WEB_UI_ENABLED=true`），且**只监听本机回环** `127.0.0.1` —— 不对外暴露：
+
+1. 启动：`bash run.sh` 或 `python main.py`
+2. 浏览器打开 `http://127.0.0.1:8080/panel`
+3. 首次进入是**注册页**：创建第一个管理员即可（也可提前在 `.env` 写 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD`）
+
+可调项（`.env`）：
+```ini
+WEB_UI_ENABLED=true            # 想彻底关闭改 false
+WEB_UI_PORT=8080               # 不能与 WS_PORT(3001) 相同
+WEB_UI_USERNAME=admin          # 可留空，走注册页创建
+WEB_UI_PASSWORD=               # 可留空（= UNINITIALIZED，注册页是唯一入口）
+```
 
 > 首次可在登录页点 **注册管理员账号**（密码以 scrypt 哈希存 `data/settings.db`，优先于 `.env`，永不写明文）。
 > **注册 Bootstrap Lock**：公开注册仅在系统**尚未初始化**（`.env` 或 `settings.db` 无管理凭据）时可用，用于创建第一个管理员；

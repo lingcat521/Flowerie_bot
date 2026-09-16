@@ -121,7 +121,7 @@ Web UI 修改的配置存于 `data/settings.db`，重启后优先使用。
 
 | 变量 | 说明 | 默认 |
 | :--- | :--- | :--- |
-| `WEB_UI_ENABLED` | 管理后台开关 | `false` |
+| `WEB_UI_ENABLED` | 管理后台开关（默认开启；只监听 127.0.0.1，不对外） | `true` |
 | `WEB_UI_HOST` / `WEB_UI_PORT` | 监听地址/端口 | `127.0.0.1` / `8080` |
 | `WEB_UI_ALLOW_LAN` | 显式开关：true 时绑定 `0.0.0.0`（局域网/公网可访问；默认仅本机，开启后启动日志输出安全警告） | `false` |
 | `WEB_UI_USERNAME` / `WEB_UI_PASSWORD` | 登录账号/密码（启用时必须设置） | `admin` / 空 |

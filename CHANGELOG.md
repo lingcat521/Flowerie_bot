@@ -21,6 +21,10 @@
 
 ### 变更
 
+- **Web UI 默认开启（仅本机回环）**：@B@WEB_UI_ENABLED@B@ 默认 @B@false -> true@B@（@B@.env_example@B@ 同步），
+  而 @B@WEB_UI_ALLOW_LAN@B@ **仍默认 @B@false@B@** —— 只监听 @B@127.0.0.1@B@，不对外暴露；
+  首次启动进入注册页创建管理员即可。配套加固：Web UI 端口被占用时只记错误日志、
+  bot 继续运行（此前默认关闭，不会遇到这种情况）。
 - **默认模型统一为 deepseek-flash**（聊天 / 视觉识图 / 引战检测）：
   官方 /models 当前只提供 deepseek-flash 与 deepseek-v4-pro，
   原默认 deepseek-v4-flash 与视觉默认 deepseek-v4-flash-vision-exp 均已不在列表中。
