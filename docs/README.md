@@ -1,6 +1,6 @@
 # Flowerie 文档
 
-> 文档对应 **v2.2.222**（v2.2.2 封版后的兼容性维护：任意语言插件 + Web UI 排版修复）；更早版本见 `docs/archive/`。中心（导航）
+> 文档对应 **v2.2.2222**（v2.2.2 封版后的兼容性维护：任意语言插件 + .env 模板同源 + 默认模型 deepseek-flash）；更早版本见 `docs/archive/`。中心（导航）
 
 > 阅读顺序：**插件新人先看 [quick-start](quick-start.md)（第一层）** → 深入再看 [plugin-developer-guide](plugin-developer-guide.md)（第二层·完整参考）+ [sdk](sdk.md) + [api](api.md)；运维/配置 → [configuration](configuration.md) + [web-ui](web-ui.md) + [install-termux](install-termux.md)。
 
