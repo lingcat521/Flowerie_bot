@@ -1,7 +1,7 @@
 # 插件开发者指南（Plugin Developer Guide·第二层·完整参考）
 
 > **新手请先看 [第一层 quick-start.md](quick-start.md)**（10 分钟上手）；
-> 本文档是完整参考（Manifest 规则 / Python·Node·JSON / 生命周期 / Event·Action·Permission
+> 本文档是完整参考（Manifest 规则 / Python·Node·JSON / 任意语言 exec / 生命周期 / Event·Action·Permission
 > API / 超时 / 资源限制 / 安全边界 / 打包 / Web UI 安装 / API Version）。
 > 本手册尽力做到**不需要看源码**——所有 API、参数、示例、权限、错误、限制都在文档里。
 
@@ -73,7 +73,7 @@ def on_schedule(event, api=None):
 
 ## 1. Plugin API 概览
 
-插件是**独立子进程**（Python / Node）或**进程内声明式规则**（JSON），通过统一协议与
+插件是**独立子进程**（Python / Node / 任意语言 exec）或**进程内声明式规则**（JSON），通过统一协议与
 Flowerie 通信。插件**不能** `import Flowerie` 内部模块（进程隔离 + Python `-I` 隔离模式），
 一切能力都来自本 API：
 
@@ -112,8 +112,9 @@ PermissionManager 检查后执行。插件永远无法绕过权限。
 | `id` | ✅ | 小写字母开头，`[a-z0-9_-]`，≤32 字符 |
 | `name` | ✅ | 1~64 字符 |
 | `version` | ✅ | `x.y.z`（semver 三字段） |
-| `runtime` | ✅ | `python` / `node` / `json` |
-| `entry` | ✅ | 相对路径文件名（禁止绝对路径/`..`/反斜杠）；`json` 可留空 |
+| `runtime` | ✅ | `python` / `node` / `json` / `exec`（任意语言，见 §4.5） |
+| `entry` | ✅ | 相对路径文件名（禁止绝对路径/`..`/反斜杠）；`json` 可留空；`exec` 为可执行文件 |
+| `platform` / `arch` | ❌ | 仅 `runtime=exec` 允许：多平台分包时声明宿主（见 §4.5） |
 | `api_version` | ✅ | 仅支持 `"1"` |
 | `permissions` | ✅ | 数组，见 §9；未知键会被拒绝 |
 | `author` / `description` / `config` | ❌ | 元数据（config 为 JSON 对象，≤16KB） |

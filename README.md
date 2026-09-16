@@ -22,7 +22,7 @@
 ---
 ## 这是什么
 
-**花璃** 是一个基于 **DeepSeek API** 的 **QQ 群聊机器人**：像真实群友一样聊天、识图、看转发、记记忆、被戳会回应，还能自定义人格、发表情包、用 MCP 工具上网查信息，并且可以通过 Web UI 管理配置（当前版本 **v2.2.2**）。
+**花璃** 是一个基于 **DeepSeek API** 的 **QQ 群聊机器人**：像真实群友一样聊天、识图、看转发、记记忆、被戳会回应，还能自定义人格、发表情包、用 MCP 工具上网查信息，并且可以通过 Web UI 管理配置（当前版本 **v2.2.222**）。
 
 ## 功能
 
@@ -37,7 +37,7 @@
 | 🎭 自定义 Prompt | 全局 + 群聊两级人格补充（`/prompt` 命令，管理员可改） |
 | 🎲 主动发言概率配置化 | `PROACTIVE_MESSAGE_*` 上下文随机回复概率 + `ACTIVE_CHAT_*` 主动聊天循环，全部可配置 |
 | 🗣️ 发言规则 | 管理员补充规则（人格页，默认 4 行）+ 按群专属覆盖，注入所有人格最高优先级 |
-| 🧩 插件系统（Plugin System v1） | 受控插件运行时：Python / Node / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
+| 🧩 插件系统（Plugin System v1） | 受控插件运行时：Python / Node / **任意语言（exec：Go·Rust·C/C++·C#·PHP·Ruby·Java…）** / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
 | 🖼️ 表情包 | 目录扫描 + Vision 索引缓存，模型按语境选择发送 |
 | 🔧 MCP 工具 | 外部工具调用（如搜索），插件式多 server + 工具白名单 + 独立熔断 |
@@ -133,7 +133,7 @@ OneBot WebSocket connected
 默认关闭。启用后访问 `http://127.0.0.1:8080/panel`（无 JS 兼容面板，手机浏览器也能用）
 用 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD` 登录。
 
-面板七个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
+面板八个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
 
 - **配置**：全部配置变量按功能分组（fieldset 表单），
   bool/int/secret/文本/列表/JSON 各有对应控件（checkbox/number/password/textarea/select）；
@@ -142,6 +142,7 @@ OneBot WebSocket connected
 - **人格**：全局人格设置、人格库 CRUD（创建/编辑/删除/设为全局）、群聊人格绑定与解除、
   人格配置（`PERSONA_*`）+ 自定义人格 vs 自定义 Prompt 区别说明
 - **群聊知识**：输入群号查看该群梗知识，搜索/新增/编辑/删除/清空 + 知识配置（`MEME_*`），严格按群隔离
+- **群昵称**：群特色昵称（× 人设隔离）——按群配置专属称呼，群绑定人设后唤名联动；留空恢复默认
 - **外观**：7 套内置主题（默认/深色/浅色/Sakura/Ocean/Forest/AMOLED）、
   自定义背景颜色、背景图片上传（PNG/JPEG/WEBP/GIF，≤5MB，魔数校验，持久化到
   `data/webui/background/`）、图片透明度、显示方式（cover/contain + 位置）、
@@ -191,7 +192,7 @@ Message / Matcher / Permission 与 Bot Adapter 分层，插件**不接触 OneBot
 - [插件开发指南（完整）](docs/plugin-developer-guide.md)
 
 
-受控插件运行时：插件以**独立子进程**运行（Python / Node），或为**进程内声明式规则**（JSON，无代码执行），
+受控插件运行时：插件以**独立子进程**运行（Python / Node / 任意语言 exec），或为**进程内声明式规则**（JSON，无代码执行），
 通过 stdin/stdout JSON-Lines 协议与 Flowerie 通信，由 PermissionManager 强制检查动作权限。
 安装途径：Web UI 上传 ZIP / URL 下载（SSRF 防护 + 大小限制），或放入 `plugins/` 目录自动发现
 （**发现 ≠ 自动执行**，默认 disabled，须管理员启用并批准权限）。
