@@ -62,10 +62,11 @@ def ensure_env_template(path: str = ".env") -> bool:
 async def main():
     ensure_env_template()
     config = load_config()
-    # 启动横幅：text 日志格式下的第一屏（json 格式自动跳过，见 src/utils/banner.py）
-    from src.utils.banner import print_banner
+    # 启动横幅：text 日志格式下的第一屏（json 格式自动跳过；非终端自动去色）
+    # 摘要只取非敏感项，密钥一律只显示「已配置 / 未配置」——见 src/utils/banner.py
+    from src.utils.banner import print_banner, summary_lines
 
-    print_banner(getattr(config, "LOG_FORMAT", "text"))
+    print_banner(getattr(config, "LOG_FORMAT", "text"), summary=summary_lines(config))
     # P2-2：启动阶段先加载持久化配置（settings.db）覆盖 .env/代码默认，
     # 使"Persistent Config > Environment > Code Default"对**运行时组件**真正生效
     # （而非仅 UI 显示层）。合并后再做启动校验，保证最终运行配置合法。
