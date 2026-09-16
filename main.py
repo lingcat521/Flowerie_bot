@@ -35,53 +35,14 @@ logger = get_logger(__name__)
 
 
 
-# 首次启动自动生成的完整 .env 模板（构建产物不含 .env；从 Settings 模型全量导出）
-# 必填项用占位值（sk-your-key-here / 10001），填真实值后重启生效
-_REQUIRED_PLACEHOLDERS = {
-    "DEEPSEEK_API_KEY": "sk-your-key-here",  # https://platform.deepseek.com 获取
-    "BOT_QQ": "10001",                       # 机器人 QQ 号
-}
-
-
+# 首次启动释放的 .env 模板：以 config_schema.SCHEMA 为单源（分组 + 中文说明），
+# 与 Web UI 配置页同源、不会漂移；实现见 src/services/env_template.py
 def _default_env_text() -> str:
-    """从 Settings.model_fields 全量导出（含默认值）；必填项给占位。"""
-    import json as _json
-
-    from pydantic_core import PydanticUndefined
-
+    """首次释放的 .env 全文（SCHEMA 分组 + 中文说明 + Settings 默认值 + 必填占位）。"""
     from src.config import Settings
+    from src.services.env_template import default_env_text
 
-    lines = [
-        "# Flowerie .env 完整配置模板（首次启动自动生成；编辑后重启生效）",
-        "# 必填项为占位值——请替换后再启动；Web UI 保存的配置也会写回本文件",
-        "",
-    ]
-    for name, field in Settings.model_fields.items():
-        if name.startswith("_"):
-            continue
-        default = field.default
-        required = field.is_required() or (default is PydanticUndefined)
-        if required:
-            value = _REQUIRED_PLACEHOLDERS.get(name, "")
-        elif default is None:
-            value = ""
-        elif isinstance(default, bool):
-            value = "true" if default else "false"
-        elif isinstance(default, (list, dict)):
-            value = _json.dumps(default, ensure_ascii=False)
-        else:
-            value = str(default)
-        # 注释扩展（ModelField 描述）
-        desc = ""
-        try:
-            if field.description:
-                desc = "  # " + str(field.description).replace("\n", " ")
-        except Exception:  # noqa: BLE001
-            desc = ""
-        if required:
-            desc = "  # ⚠️ 必填" + desc
-        lines.append(f"{name}={value}{desc}")
-    return "\n".join(lines) + "\n"
+    return default_env_text(Settings)
 
 
 def ensure_env_template(path: str = ".env") -> bool:
