@@ -34,7 +34,7 @@ def test_art_is_pure_ascii():
 
 def test_banner_contains_art_head_summary_and_signature():
     text = banner_text("2.2.2222", [("协议", "milky"), ("模型", "deepseek-flash")])
-    assert "______" in text                      # 艺术字
+    assert "|  ___|" in text and "/ _ \\" in text   # 艺术字（F 与 O）
     assert "Flowerie · 花璃" in text
     assert "v2.2.2222" in text
     assert "协议" in text and "deepseek-flash" in text
@@ -145,4 +145,23 @@ def test_print_banner_accepts_quip(capsys, monkeypatch):
     monkeypatch.delenv("FORCE_COLOR", raising=False)
     assert print_banner("text", version="1.0", quip="固定台词") is True
     assert "「固定台词」" in capsys.readouterr().out
+
+
+
+# ---------- 艺术字拼写防回归 ----------
+def test_art_spells_flowerie():
+    """防回归：艺术字必须真的是 FLOWERIE（曾经凭记忆拼成残字）。"""
+    assert "|  ___|" in BANNER                   # F 的开头
+    assert BANNER.count("| ____|") == 2          # 两个 E 的开头
+    assert "/ _ \\" in BANNER                    # O
+    assert "|_ _|" in BANNER                     # I
+    assert "|  _ \\" in BANNER                   # R
+    assert "\\ \\    / /" in BANNER              # W
+    assert BANNER.count("|_____|") >= 3          # L + 两个 E 的底线
+
+
+def test_art_width_fits_80_columns():
+    """含 2 空格缩进后必须能塞进 80 列终端。"""
+    width = max(len(line) for line in BANNER.strip("\n").split("\n"))
+    assert width + 2 <= 80
 
