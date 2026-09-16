@@ -122,3 +122,52 @@ def test_load_oversized_manifest(tmp_path):
     p.write_text(json.dumps(_base(description="x" * 70000)), encoding="utf-8")
     with pytest.raises(PluginManifestError, match="大小上限"):
         PluginManifest.load(str(p))
+
+
+# ---------- exec runtime（任意语言插件） ----------
+def test_valid_exec_manifest():
+    m = PluginManifest.from_dict(_base(runtime="exec", entry="bin/plugin-linux-x64",
+                                       platform="linux", arch="x64"))
+    assert m.runtime == "exec"
+    assert m.entry == "bin/plugin-linux-x64"
+    assert m.platform == "linux" and m.arch == "x64"
+
+
+def test_exec_manifest_defaults_any_platform():
+    m = PluginManifest.from_dict(_base(runtime="exec", entry="bin/plugin"))
+    assert m.platform == "any" and m.arch == "any"
+    ok, why = m.matches_host()
+    assert ok is True and why == ""
+
+
+def test_exec_manifest_requires_entry():
+    with pytest.raises(PluginManifestError):
+        PluginManifest.from_dict(_base(runtime="exec", entry=""))
+
+
+def test_exec_manifest_rejects_traversal_entry():
+    for bad in ("../evil", "/etc/passwd", "bin\\evil"):
+        with pytest.raises(PluginManifestError):
+            PluginManifest.from_dict(_base(runtime="exec", entry=bad))
+
+
+def test_platform_only_allowed_for_exec():
+    with pytest.raises(PluginManifestError):
+        PluginManifest.from_dict(_base(runtime="python", entry="plugin.py", platform="linux"))
+
+
+def test_invalid_platform_and_arch_rejected():
+    with pytest.raises(PluginManifestError):
+        PluginManifest.from_dict(_base(runtime="exec", entry="bin/p", platform="plan9"))
+    with pytest.raises(PluginManifestError):
+        PluginManifest.from_dict(_base(runtime="exec", entry="bin/p", arch="sparc"))
+
+
+def test_exec_matches_host_rejects_foreign_platform():
+    from src.plugins.manifest import host_platform
+    foreign = "windows" if host_platform() != "windows" else "linux"
+    m = PluginManifest.from_dict(_base(runtime="exec", entry="bin/p", platform=foreign))
+    ok, why = m.matches_host()
+    assert ok is False
+    assert foreign in why
+

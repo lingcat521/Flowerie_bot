@@ -36,7 +36,8 @@ DEFAULT_MAX_ZIP_BYTES = 5 * 1024 * 1024          # 压缩包大小上限 5MB
 DEFAULT_MAX_UNZIPPED_BYTES = 50 * 1024 * 1024    # 解压后总大小上限 50MB
 DEFAULT_MAX_FILES = 200                          # 文件数上限
 DEFAULT_MAX_DEPTH = 16                           # 目录深度上限
-DEFAULT_MAX_ENTRY_BYTES = 1024 * 1024            # 单个条目（入口文件）上限 1MB
+DEFAULT_MAX_ENTRY_BYTES = 1024 * 1024            # 脚本入口（python/node）上限 1MB
+DEFAULT_MAX_EXEC_ENTRY_BYTES = 32 * 1024 * 1024  # exec 入口（编译产物）上限 32MB
 DEFAULT_DOWNLOAD_MAX_BYTES = 5 * 1024 * 1024     # URL 下载最大字节数
 DEFAULT_DOWNLOAD_TIMEOUT = 15.0                  # URL 下载超时（秒）
 DEFAULT_DOWNLOAD_MAX_REDIRECTS = 0               # 重定向：0 = 一律拒绝（防 redirect SSRF）
@@ -86,6 +87,7 @@ class PluginInstaller:
                  max_files: int = DEFAULT_MAX_FILES,
                  max_depth: int = DEFAULT_MAX_DEPTH,
                  max_entry_bytes: int = DEFAULT_MAX_ENTRY_BYTES,
+                 max_exec_entry_bytes: int = DEFAULT_MAX_EXEC_ENTRY_BYTES,
                  download_max_bytes: int = DEFAULT_DOWNLOAD_MAX_BYTES,
                  download_timeout: float = DEFAULT_DOWNLOAD_TIMEOUT,
                  download_max_redirects: int = DEFAULT_DOWNLOAD_MAX_REDIRECTS,
@@ -96,10 +98,23 @@ class PluginInstaller:
         self.max_files = int(max_files)
         self.max_depth = int(max_depth)
         self.max_entry_bytes = int(max_entry_bytes)
+        self.max_exec_entry_bytes = int(max_exec_entry_bytes)
         self.download_max_bytes = int(download_max_bytes)
         self.download_timeout = float(download_timeout)
         self.download_max_redirects = int(download_max_redirects)
         self.max_plugins = int(max_plugins)
+
+    @staticmethod
+    def _mark_executable(entry_path: str) -> None:
+        """exec runtime：解包后补上执行位（手工解压不保留 Unix 权限位）。"""
+        if os.name == "nt":
+            return
+        try:
+            os.chmod(entry_path, os.stat(entry_path).st_mode | 0o755)
+        except OSError:
+            # 某些文件系统（FAT/exFAT、部分 Android 共享目录）不支持 chmod：
+            # 不阻断安装，运行时会再尝试并给出真实错误。
+            logger.warning("plugin_chmod_failed path=%s", entry_path)
 
     # ---------- 入口 ----------
     def install_from_bytes(self, data: bytes, source: str = "upload",
@@ -263,13 +278,18 @@ class PluginInstaller:
                     with open(manifest_path, "w", encoding="utf-8") as f:
                         f.write(manifest.to_json())
                     entry_path = os.path.join(target_dir, manifest.entry) if manifest.entry else ""
-                    if manifest.runtime in ("python", "node"):
+                    if manifest.runtime in ("python", "node", "exec"):
                         if not entry_path or not os.path.isfile(entry_path):
                             raise PluginInstallError(f"入口文件不存在: {manifest.entry}")
                         if os.path.islink(entry_path):
                             raise PluginInstallError("入口文件不能是符号链接")
-                        if os.path.getsize(entry_path) > self.max_entry_bytes:
-                            raise PluginInstallError(f"入口文件超过大小上限（{self.max_entry_bytes} 字节）")
+                        # exec 是编译产物/自包含二进制，单独放宽；脚本类仍按 1MB 严控
+                        entry_limit = (self.max_exec_entry_bytes if manifest.runtime == "exec"
+                                       else self.max_entry_bytes)
+                        if os.path.getsize(entry_path) > entry_limit:
+                            raise PluginInstallError(f"入口文件超过大小上限（{entry_limit} 字节）")
+                        if manifest.runtime == "exec":
+                            self._mark_executable(entry_path)
                     # 拒绝解包目录下任何符号链接（防通过链接读取插件目录外文件）
                     for root, _dirs, files in os.walk(target_dir):
                         for fname in files:

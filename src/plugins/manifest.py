@@ -4,8 +4,10 @@
 - id           小写字母开头，[a-z0-9_-]，≤32 字符
 - name         1~64 字符
 - version      x.y.z
-- runtime      python | node | json
+- runtime      python | node | json | exec
 - entry        相对路径文件名（禁止绝对路径 / .. / \\）
+- platform     仅 runtime=exec：any | linux | windows | darwin | android（默认 any）
+- arch         仅 runtime=exec：any | x64 | arm64 | x86（默认 any）
 - api_version  仅支持 "1"
 - permissions  允许的权限键列表（见 permissions.ALL_PERMISSIONS）
 - author / description / config 可选
@@ -16,7 +18,7 @@
 """
 import json
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.plugins.permissions import ALL_PERMISSIONS
 
@@ -24,13 +26,37 @@ from src.plugins.permissions import ALL_PERMISSIONS
 _ALLOWED_KEYS = frozenset({
     "id", "name", "version", "author", "description", "runtime",
     "entry", "api_version", "permissions", "config", "declarations", "web_ui",
+    "platform", "arch",
 })
 
 _ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 _VERSION_RE = re.compile(r"^\d+\.\d+\.\d+$")
 # 条目路径：无前导 / 、无 .. 段、无反斜杠、每段 [A-Za-z0-9_.-]
 _ENTRY_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.\-/]{0,127}$")
-_RUNTIMES = ("python", "node", "json")
+_RUNTIMES = ("python", "node", "json", "exec")
+# exec runtime：entry 是可直接执行的文件（编译产物，或带 shebang 的可执行脚本），
+# 插件自行实现 Plugin API v1 的 stdin/stdout JSON-Lines 协议，主进程不假设任何语言。
+# platform/arch 用于同一插件的多平台分包：每包只声明自己能跑的宿主，不匹配则拒绝启用。
+_PLATFORMS = ("any", "linux", "windows", "darwin", "android")
+_ARCHS = ("any", "x64", "arm64", "x86")
+_PLATFORM_ALIASES = {"linux2": "linux", "linux": "linux", "darwin": "darwin",
+                     "win32": "windows", "cygwin": "windows", "msys": "windows"}
+_ARCH_ALIASES = {"x86_64": "x64", "amd64": "x64", "x64": "x64",
+                 "aarch64": "arm64", "arm64": "arm64",
+                 "i386": "x86", "i686": "x86", "x86": "x86"}
+
+
+def host_platform() -> str:
+    """当前宿主平台（与 manifest.platform 同一命名空间）。"""
+    import sys as _sys
+    return _PLATFORM_ALIASES.get(_sys.platform, _sys.platform)
+
+
+def host_arch() -> str:
+    """当前宿主架构（与 manifest.arch 同一命名空间）。"""
+    import platform as _platform
+    machine = (_platform.machine() or "").lower()
+    return _ARCH_ALIASES.get(machine, machine)
 _API_VERSIONS = ("1",)
 MAX_MANIFEST_BYTES = 64 * 1024          # manifest.json 大小上限（64KB）
 MAX_PERMISSIONS = 24                    # 权限声明上限
@@ -50,13 +76,14 @@ class PluginManifest:
 
     __slots__ = ("id", "name", "version", "author", "description", "runtime",
                  "entry", "api_version", "permissions", "config", "declarations",
-                 "web_ui")
+                 "web_ui", "platform", "arch")
 
     def __init__(self, id: str, name: str, version: str, runtime: str, entry: str,
                  api_version: str, permissions: List[str], author: str = "",
                  description: str = "", config: Optional[Dict[str, Any]] = None,
                  declarations: Optional[List[Dict[str, Any]]] = None,
-                 web_ui: Optional[Dict[str, Any]] = None):
+                 web_ui: Optional[Dict[str, Any]] = None,
+                 platform: str = "any", arch: str = "any"):
         self.id = id
         self.name = name
         self.version = version
@@ -69,7 +96,8 @@ class PluginManifest:
         self.config = dict(config or {})
         self.declarations = list(declarations or [])
         self.web_ui = web_ui
-        self.web_ui = web_ui
+        self.platform = platform
+        self.arch = arch
 
     # ---------- 校验 ----------
     @classmethod
@@ -109,8 +137,19 @@ class PluginManifest:
         runtime = str(data["runtime"]).strip().lower()
         if runtime not in _RUNTIMES:
             raise PluginManifestError(f"runtime 非法（可选: {'/'.join(_RUNTIMES)}），当前: {runtime!r}")
+        # platform/arch 仅 exec 有意义（声明宿主约束）；其余 runtime 声明即拒绝，避免歧义
+        platform_name = str(data.get("platform") or "any").strip().lower()
+        arch_name = str(data.get("arch") or "any").strip().lower()
+        if ("platform" in data or "arch" in data) and runtime != "exec":
+            raise PluginManifestError("platform/arch 仅 runtime=exec 的插件允许声明")
+        if platform_name not in _PLATFORMS:
+            raise PluginManifestError(
+                f"platform 非法（可选: {'/'.join(_PLATFORMS)}），当前: {platform_name!r}")
+        if arch_name not in _ARCHS:
+            raise PluginManifestError(
+                f"arch 非法（可选: {'/'.join(_ARCHS)}），当前: {arch_name!r}")
         entry = str(data["entry"]).strip()
-        if runtime in ("python", "node"):
+        if runtime in ("python", "node", "exec"):
             if not _ENTRY_RE.fullmatch(entry):
                 raise PluginManifestError(
                     "entry 非法路径：必须是相对路径文件名（仅字母/数字/下划线/点/短横线/斜杠，"
@@ -159,7 +198,19 @@ class PluginManifest:
             api_version=api_version, permissions=perms, author=author,
             description=description, config=config_raw,
             declarations=declarations, web_ui=web_ui,
+            platform=platform_name, arch=arch_name,
         )
+
+    def matches_host(self) -> Tuple[bool, str]:
+        """exec runtime：宿主平台/架构是否满足本包声明（any = 通配）。"""
+        if self.runtime != "exec":
+            return True, ""
+        host_p, host_a = host_platform(), host_arch()
+        if self.platform != "any" and self.platform != host_p:
+            return False, f"该插件包面向 {self.platform}，当前宿主为 {host_p}"
+        if self.arch != "any" and self.arch != host_a:
+            return False, f"该插件包架构为 {self.arch}，当前宿主为 {host_a}"
+        return True, ""
 
     _PAGE_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 
@@ -273,6 +324,9 @@ class PluginManifest:
             data["declarations"] = self.declarations
         if self.web_ui:
             data["web_ui"] = self.web_ui
+        if self.runtime == "exec":
+            data["platform"] = self.platform
+            data["arch"] = self.arch
         return data
 
     def to_json(self) -> str:

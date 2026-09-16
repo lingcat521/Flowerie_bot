@@ -392,6 +392,25 @@ class PluginManager:
             import shutil as _shutil
             if _shutil.which("node") is None:
                 return False, "Node.js 插件需要 node 可执行文件（环境未安装）"
+        elif manifest.runtime == "exec":
+            # 任意语言：入口必须是可执行文件（编译产物或带 shebang 的脚本），
+            # 且插件包声明的宿主平台/架构要与当前环境一致（多平台分包场景）。
+            ok_host, why_host = manifest.matches_host()
+            if not ok_host:
+                return False, why_host
+            entry_path = os.path.join(self.plugin_dir, plugin_id, manifest.entry)
+            if not os.path.isfile(entry_path):
+                return False, f"入口文件不存在: {manifest.entry}"
+            if os.name != "nt" and not os.access(entry_path, os.X_OK):
+                try:
+                    os.chmod(entry_path, os.stat(entry_path).st_mode | 0o755)
+                except OSError:
+                    pass
+                if not os.access(entry_path, os.X_OK):
+                    # 常见于 FUSE/exFAT/sdcardfs 等不支持执行位的挂载点（如 Android 共享目录）
+                    return False, (
+                        "入口文件不可执行：当前文件系统可能不支持执行位（请把插件目录放在支持 "
+                        f"chmod +x 的位置）: {manifest.entry}")
         protection = (protection or row.get("protection") or "normal")
         if protection not in PermissionManager.PROTECTION_LEVELS:
             return False, f"保护级别非法: {protection}"

@@ -216,3 +216,30 @@ async def test_plugin_output_overflow_killed(tmp_path):
     finally:
         await rt.shutdown()
     assert rt.status in ("crashed",)
+
+
+# ---------- exec runtime（任意语言插件，端到端） ----------
+@pytest.mark.asyncio
+async def test_exec_shell_plugin_executes(tmp_path):
+    """POSIX shell 插件：exec runtime 直跑入口，全程不依赖 Python/Node runner。"""
+    dir_path = _deploy(tmp_path, "minimal_exec_plugin")
+    rt = _make_runtime(dir_path)
+    received = []
+    rt.set_action_handler(
+        lambda pid, action, payload: received.append((pid, action, payload)) or {"ok": True})
+    await rt.start()
+    try:
+        actions = await rt.dispatch_event("message", {"text": "hi"})
+        assert any(a.get("message") == "exec-ok" for a in actions), actions
+    finally:
+        await rt.shutdown()
+
+
+def test_exec_build_command_points_at_entry(tmp_path):
+    """exec runtime：命令就是入口文件本身（不经 shell、不经任何解释器）。"""
+    dir_path = _deploy(tmp_path, "minimal_exec_plugin")
+    rt = _make_runtime(dir_path)
+    cmd, env = rt._build_command()
+    assert cmd == [os.path.join(dir_path, "plugin.sh")]
+    assert "PATH" in env or env == {}
+

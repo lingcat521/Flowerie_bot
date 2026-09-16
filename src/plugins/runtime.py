@@ -3,6 +3,9 @@
 管理一个插件子进程（Python：`python3 -I python_runner.py`；Node：`node node_runner.js`），
 通过 stdin/stdout JSON-Lines 完成 Plugin API v1 协议交互。
 
+exec runtime：直接执行插件自带入口（编译产物或带 shebang 的脚本），语言不限，
+插件自行实现同一套 JSON-Lines 协议，主进程不经 shell、不假设任何语言。
+
 关键不变式：
 - 子进程独立：插件无法 import Flowerie 内部类（python -I 隔离模式 + 最小化环境变量，
   环境变量白名单不含任何 API Key / Secret）
@@ -179,9 +182,29 @@ class PluginRuntime:
                    os.path.join(runner_dir, "python_runner.py"),
                    "--dir", self.plugin_dir, "--entry", self.manifest.entry,
                    "--plugin-id", self.plugin_id]
+        elif self.manifest.runtime == "exec":
+            # 任意语言：入口文件即进程（编译产物 / 带 shebang 的可执行脚本）。
+            # 插件自行实现 Plugin API v1 协议，主进程不假设任何语言、不经 shell。
+            entry_path = os.path.abspath(os.path.join(self.plugin_dir, self.manifest.entry))
+            self._ensure_executable(entry_path)
+            cmd = [entry_path]
         else:
             raise RuntimeError(f"runtime {self.manifest.runtime} 不适用于子进程")
         return cmd, env
+
+    @staticmethod
+    def _ensure_executable(entry_path: str) -> None:
+        """exec runtime：保证入口可执行（ZIP 解包不保留 Unix 执行位；Windows 无此概念）。"""
+        if os.name == "nt":
+            return
+        try:
+            mode = os.stat(entry_path).st_mode
+            if not (mode & 0o111):
+                os.chmod(entry_path, mode | 0o755)
+        except OSError:
+            # 权限/文件系统异常留给启动阶段的真实错误呈现，不在这里吞掉语义
+            logger.warning("plugin_chmod_failed path=%s", entry_path,
+                           extra={"event": "plugin_lifecycle"})
 
     # ---------- 协议 ----------
     async def _write(self, obj: Dict[str, Any]) -> None:

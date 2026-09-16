@@ -1,0 +1,12 @@
+{
+  "id": "minimal_exec_plugin",
+  "name": "Minimal Exec Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：POSIX shell 直接实现 Plugin API v1（exec runtime）",
+  "runtime": "exec",
+  "entry": "plugin.sh",
+  "api_version": "1",
+  "permissions": []
+}
+

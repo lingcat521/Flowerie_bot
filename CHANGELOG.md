@@ -2,7 +2,36 @@
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
 
+## [2.2.222] - 2026-09-17
+
+> 📦 **维护状态：停更一年（2026-09-04 起）** —— 本版为停更期间的兼容性维护。
+
+### 新增：任意语言插件（`runtime: "exec"`）
+
+- **插件语言不再受限**：`entry` 直接作为进程执行（编译产物，或带 shebang 的可执行脚本），
+  主进程**不经 shell、不假设任何语言** —— Go / Rust / C / C++ / C# / PHP / Ruby / Java / JS / TS……
+  只要实现同一套 stdin/stdout JSON-Lines 协议（Plugin API v1），它就是合法插件
+- **多平台分包**：新增 `platform`（any/linux/windows/darwin/android）与 `arch`（any/x64/arm64/x86）
+  两个 manifest 字段（**仅 exec 允许声明**）；与宿主不匹配时拒绝启用，并说明具体原因
+- **入口大小分级**：脚本类（python/node）保持 1MB 上限；`exec` 编译产物放宽到 **32MB**
+  （解压后总量仍受 50MB 上限约束）
+- **执行位自动补齐**：ZIP 安装与运行时各补一次 `chmod +x`（Windows 无需）
+- **零行为变更**：python / node / json 三种 runtime 完全不受影响；权限模型、进程隔离、
+  超时与输出上限一律照旧
+
+### 修复：Web UI 平板 / 电脑排版
+
+- 外观页「卡片效果」与人格页「当前绑定」两处 `.row` 嵌套解除：
+  桌面端标签回到左标签列并带上分隔线，手机端渲染逐项一致
+
+### 测试
+
+- 新增 `tests/plugins/minimal_exec_plugin/`（POSIX shell 插件）：真启动子进程、真跑
+  initialize / event / shutdown 协议，证明「任意语言无需语言专用 runner」
+- manifest 测试补齐 exec 的平台/架构校验、非法值拒绝、平台不匹配用例
+
 ## [2.2.2] - 2026-09-04
+
 
 > 📦 **封版（最终版）——维护状态：停更一年（2026-09-04 起）**
 >

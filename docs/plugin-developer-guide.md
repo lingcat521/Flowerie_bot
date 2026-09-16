@@ -5,7 +5,7 @@
 > API / 超时 / 资源限制 / 安全边界 / 打包 / Web UI 安装 / API Version）。
 > 本手册尽力做到**不需要看源码**——所有 API、参数、示例、权限、错误、限制都在文档里。
 
-> Flowerie Plugin API **v1**（版本 `2.2.2`）
+> Flowerie Plugin API **v1**（版本 `2.2.222`）
 >
 > 本手册尽力做到**不需要看源码**：所有 API、参数、示例、权限、错误、限制都在本文档。
 
@@ -200,7 +200,85 @@ exports.on_shutdown = async function (context, api) {};
 运行方式由 Flowerie 统一处理（`node node_runner.js --dir <dir> --entry index.js`），
 插件只需要导出钩子。
 
+## 4.5 任意语言插件（exec runtime）
+
+`runtime=exec`：**entry 就是进程本身** —— 编译产物（Go / Rust / C / C++ / C# AOT）或带
+shebang 的可执行脚本（PHP / Ruby / shell / Java 包装脚本）。Flowerie **不经 shell、不假设任何语言**：
+只要程序会说同一套 JSON-Lines 协议，它就是合法插件。
+
+```
+my_anylang_plugin/
+├── manifest.json            # { "runtime": "exec", "entry": "bin/plugin-linux-x64" }
+└── bin/
+    └── plugin-linux-x64     # 可执行文件（安装时自动补 chmod +x；Windows 用 .exe）
+```
+
+### 协议（Plugin API v1 · stdin/stdout JSON-Lines）
+
+| 方向 | 报文 |
+| --- | --- |
+| 收（主进程 → 插件） | `{"id": 1, "method": "initialize", "params": {"context": {...}}}` |
+| 收 | `{"id": 2, "method": "event", "params": {"event": "message", "payload": {...}}}` |
+| 收 | `{"id": 3, "method": "health", "params": {}}` / `{"id": 4, "method": "shutdown", "params": {}}` |
+| 回（插件 → 主进程） | `{"id": 1, "result": {"ok": true, "api_version": "1"}}` |
+| 回（事件结果） | `{"id": 2, "result": {"actions": [{"type": "...", "payload": {...}}]}}` |
+| 插件主动调能力 | `{"id": 1000001, "method": "action", "params": {"action": "send_message", "payload": {...}}}` |
+
+约定：
+
+- **一行一个 JSON**（换行结尾）、UTF-8；解析失败的行会被忽略
+- 插件发起的 action 请求 id 请用 **≥ 1000000**（与主进程请求 id 隔离，互不相撞）
+- `initialize` 必须在启动超时内返回；事件超时 / 输出字节超限会**杀掉进程**（阈值由保护级别决定）
+- action 的返回由主进程回写：`{"id": 1000001, "result": {"ok": true, ...}}`
+
+### 最小可跑示例（POSIX shell；仓库里有同名测试夹具）
+
+```sh
+#!/bin/sh
+while IFS= read -r line; do
+  id=$(printf '%s' "$line" | sed -n 's/.*"id": *\([0-9][0-9]*\).*/\1/p')
+  method=$(printf '%s' "$line" | sed -n 's/.*"method": *"\([a-zA-Z_]*\)".*/\1/p')
+  [ -z "$id" ] && continue
+  case "$method" in
+    initialize) printf '{"id":%s,"result":{"ok":true,"api_version":"1"}}\n' "$id" ;;
+    event)      printf '{"id":%s,"result":{"actions":[]}}\n' "$id" ;;
+    health)     printf '{"id":%s,"result":{"ok":true}}\n' "$id" ;;
+    shutdown)   printf '{"id":%s,"result":{"ok":true}}\n' "$id" ;;
+  esac
+done
+```
+
+> 完整用例见 `tests/plugins/minimal_exec_plugin/` —— 测试会真的把它当子进程启动并跑完整协议。
+
+### 多平台分包（`platform` / `arch`）
+
+编译型语言按平台分发时，**每个包只声明自己能跑的宿主**，不匹配会被拒绝启用：
+
+| 字段 | 可选值 | 说明 |
+| --- | --- | --- |
+| `platform` | `any`（默认）/ `linux` / `windows` / `darwin` / `android` | 宿主平台（Termux 上是 `android`） |
+| `arch` | `any`（默认）/ `x64` / `arm64` / `x86` | 宿主架构 |
+
+```json
+{ "runtime": "exec", "entry": "bin/plugin-linux-x64", "platform": "linux", "arch": "x64" }
+```
+
+- 两个字段**仅 `exec` 允许声明**（其余 runtime 声明即拒绝，避免歧义）
+- 不匹配时启用会被拒绝，并说明具体原因（如「该插件包面向 windows，当前宿主为 android」）
+
+### 注意事项
+
+1. **执行位**：ZIP 安装与运行时各补一次 `chmod +x`（Windows 无此概念，入口请用 `.exe`）
+2. **不经 shell**：`entry` 被直接执行，不做 shell 展开，因此 `.bat`/`.cmd` 不会被特殊处理
+3. **入口大小**：脚本类上限 1MB，`exec` 放宽到 32MB（编译产物）；解压后总量仍受 50MB 上限
+4. **权限照旧**：任何语言都必须经 PermissionManager 批准，插件进程无法绕过
+5. **环境变量白名单**：只透传 `PATH/HOME/LANG/TMPDIR/TEMP/TMP/NODE_PATH/LD_LIBRARY_PATH`，
+   不注入任何 API Key（需要网络的插件用 `http_request` 权限走主进程代理）
+6. **各语言落地**：Go/Rust/C/C++ 直接编译出二进制；PHP/Ruby 首行加 `#!/usr/bin/env php` /
+   `#!/usr/bin/env ruby`；Java/C# 用几行包装脚本（`#!/bin/sh` + `exec java -jar app.jar "$@"`）
+
 ## 5. JSON 声明式插件（Declarative Plugin）
+
 
 `runtime=json`：**无代码执行**。声明式规则在进程内做模板匹配与动作转发，
 行为受同样的权限检查约束：
