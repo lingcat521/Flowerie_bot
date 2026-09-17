@@ -54,4 +54,4 @@ jobs:
       - name: Run tests (pytest)
         env:
           TEST_POSTGRES_URL: postgresql://flowerie:flowerie@127.0.0.1:5432/flowerie_test
-        run: pytest -q
+        run: pytest -q -rs
