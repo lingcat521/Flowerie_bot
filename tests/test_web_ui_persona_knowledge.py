@@ -364,7 +364,8 @@ async def test_prompt_management_renders_details_and_default_id():
                                                       cookies={"fb_token": cookie}))
         text2 = _resp_text(page2)
         assert "群100测试" in text2
-        assert 'name="group_id" placeholder="群号" required style="max-width:200px" value="100"' in text2
+        # 群号预填（宽度样式改用 .w-gid 工具类，断言只看语义属性）
+        assert 'name="group_id" placeholder="群号" required value="100"' in text2
         # 群 200 不出现群 100 的内容（群隔离）
         page3 = await server._handle_panel(FakeRequest(query={"tab": "persona", "prompt_gid": "200"},
                                                       cookies={"fb_token": cookie}))
