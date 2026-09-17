@@ -34,7 +34,6 @@ from src.config import Settings
 from src.services.config_service import ConfigService, verify_password
 from src.services.web_ui_assets import (
     THEMES,
-    asset_path,
     background_rules,
     panel_asset_body,
     render_appearance,
@@ -182,7 +181,13 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             return web.Response(status=404, text="Not Found")
         resp = web.Response(text=body, content_type="text/css", charset="utf-8")
         resp.headers["X-Content-Type-Options"] = "nosniff"
-        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        # 必须回源校验：这份 CSS 是 Python 注入主题变量后生成的，
+        # 内容可能在不改 URL 的情况下变化（改注入逻辑时），长缓存会让浏览器一直用旧样式。
+        etag = 'W/"' + PANEL_CSS_REV + '"'
+        resp.headers["ETag"] = etag
+        resp.headers["Cache-Control"] = "no-cache"
+        if request.headers.get("If-None-Match") == etag:
+            return web.Response(status=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
         return resp
 
     def build_app(self) -> web.Application:
