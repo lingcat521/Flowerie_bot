@@ -49,7 +49,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
 
     # ---- 管理员补充发言规则（全局；优先级：安全策略 > 人格 > 人格内置规则 > 本条） ----
     rules_lines = "".join(
-        f'<div class="row"><div class="row-info"><div class="row-title">{_esc(r)}</div></div></div>'
+        f'<li>{_esc(r)}</li>'
         for r in (admin_rules or [])
     )
     rules_block = (
@@ -64,7 +64,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         f'<textarea name="rules" rows="6" placeholder="每条规则占一行">{_esc(rules_text or "")}</textarea>'
         '<div class="group-actions"><button type="submit" class="btn">保存发言规则</button></div>'
         '</form>'
-        + (f'<div class="mcp-card-meta">当前规则（{len(admin_rules or [])} 条）：</div>' + rules_lines if admin_rules else "")
+        + (f'<div class="mcp-card-meta">当前规则（{len(admin_rules or [])} 条）：</div><ul class="rules">{rules_lines}</ul>' + '' if admin_rules else "")
         + '</fieldset>'
     )
 
@@ -78,11 +78,11 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<fieldset class="group"><legend>群专属发言规则（按群覆盖；留空＝回退全局）</legend>'
         '<p class="hint">优先级：群专属 &gt; 管理员补充规则 &gt; 内置默认。</p>'
         '<form method="post" action="/panel/persona/grouprules">'
-        '<table><tr><th>群号</th><th>规则（多行）</th></tr>' + gr_rows + '</table>'
-        '<p>新增/修改：<input list="gidlist" name="group_id" placeholder="群号" pattern="[0-9]+">'
+        '<div class="table-wrap"><table class="rules-table"><thead><tr><th>群号</th><th>规则（多行）</th></tr></thead><tbody>' + gr_rows + '</tbody></table></div>'
+        '<div class="rule-add"><input list="gidlist" name="group_id" placeholder="群号" pattern="[0-9]+">'
         f'<datalist id="gidlist">{gopts}</datalist>'
         '<textarea name="rules" rows="4" placeholder="该群专属发言规则"></textarea>'
-        '<button type="submit">保存</button></p>'
+        '<button type="submit" class="btn small">保存</button></div>'
         '</form></fieldset>'
     )
 
@@ -139,13 +139,13 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<input type="hidden" name="tab" value="persona">'
         '<div class="row"><label class="row-info"><span class="row-title">查看某群 Prompt</span>'
         '<span class="row-key">group_id</span></label>'
-        '<div class="row-control" style="flex-direction:row;gap:10px">'
-        f'<input type="text" name="prompt_gid" placeholder="群号" required style="max-width:200px"{gid_placeholder}>'
+        '<div class="row-control form-inline">'
+        f'<input class="w-gid" type="text" name="prompt_gid" placeholder="群号" required{gid_placeholder}>'
         '<button type="submit" class="btn small">查看</button></div></div></form>'
         '<form method="post" action="/panel/prompt/group">'
         '<div class="row"><label class="row-info"><span class="row-title">群号</span>'
         '<span class="row-key">group_id</span></label>'
-        f'<div class="row-control"><input type="text" name="group_id" placeholder="群号" required style="max-width:200px"{gid_placeholder}></div></div>'
+        f'<div class="row-control"><input class="w-gid" type="text" name="group_id" placeholder="群号" required{gid_placeholder}></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">内容</span>'
         '<span class="row-key">group_prompt</span></label>'
         f'<div class="row-control"><textarea name="content" rows="6">{group_prompt_esc}</textarea>'
@@ -287,8 +287,8 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<div class="row"><label class="row-info"><span class="row-title">绑定人格到群</span>'
         '<span class="row-key">group_id + persona_id</span></label>'
         '<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-        '<input type="text" name="group_id" placeholder="群号" required style="max-width:200px">'
-        f'<select name="persona_id" style="max-width:220px">{gopts}</select>'
+        '<input class="w-gid" type="text" name="group_id" placeholder="群号" required>'
+        f'<select class="w-gid" name="persona_id">{gopts}</select>'
         '<input type="hidden" name="action" value="set">'
         '<button type="submit" class="btn small">绑定</button></div>'
         '<span class="hint">优先级：本群人格 &gt; 全局人格 &gt; 内置默认；解除绑定自动回退</span>'

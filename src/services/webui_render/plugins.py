@@ -133,7 +133,7 @@ def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
         if key not in allowed:
             continue
         cfg_rows += (
-            '<div class="row"><div class="row-info"><div class="row-title">'
+            '<div class="row single"><div class="row-info"><div class="row-title">'
             f'{_esc(key)}</div><div class="small">{_esc(entry.get("description", ""))}</div></div>'
             f'<div class="row-control"><input type="text" name="{_esc(key)}" value="{_esc(entry.get("current", ""))}"></div></div>'
         )

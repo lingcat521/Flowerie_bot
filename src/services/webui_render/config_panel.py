@@ -224,7 +224,7 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
         '<div class="row"><label class="row-info"><span class="row-title">工具白名单</span><span class="row-key">allowed_tools</span></label>'
         f'<div class="row-control"><input type="text" name="mcp_tools" value="{tools}" placeholder="web_search, fetch_page（逗号分隔，留空=放行所有）"></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">超时（秒）</span><span class="row-key">timeout</span></label>'
-        f'<div class="row-control"><div class="range-row"><input type="number" name="mcp_timeout" min="1" max="3600" value="{timeout}" style="max-width:140px"></div></div></div>'
+        f'<div class="row-control"><div class="range-row"><input class="w-sm" type="number" name="mcp_timeout" min="1" max="3600" value="{timeout}"></div></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">启用</span><span class="row-key">enabled</span></label>'
         f'<div class="row-control"><input type="checkbox" name="mcp_enabled" value="1"{checked}></div></div>'
         f'<p class="hint">{hint}</p>'

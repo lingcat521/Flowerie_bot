@@ -282,9 +282,10 @@ box-shadow:var(--shadow);padding:16px 18px 18px;margin-bottom:18px}
 .plugin-form{margin:6px 0}
 .auth-card{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .group legend{font-size:14px;font-weight:600;color:var(--accent);padding:0 8px;letter-spacing:.5px}
-.row{display:flex;gap:14px;align-items:flex-start;padding:11px 4px;border-bottom:1px dashed var(--panel-border)}
+.row{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,1fr);gap:6px 18px;align-items:start;padding:12px 4px;border-bottom:1px dashed var(--panel-border)}
+.row.single{grid-template-columns:minmax(0,1fr)}
 .row:last-of-type{border-bottom:none}
-.row-info{flex:0 0 300px;display:flex;flex-direction:column;gap:2px;cursor:default}
+.row-info{min-width:0;display:flex;flex-direction:column;gap:3px;cursor:default}
 .row-title{font-size:13.5px;color:var(--text)}
 .row-key{font-size:11px;color:var(--text-muted);font-family:ui-monospace,Menlo,Consolas,monospace}
 .badges{display:flex;gap:6px;margin-top:3px;flex-wrap:wrap}
@@ -368,5 +369,63 @@ border-radius:16px;box-shadow:var(--shadow);padding:30px 32px}
   .auth-card{margin:4vh 12px;padding:24px 20px}
 }
 @media (max-width:420px){.theme-grid{grid-template-columns:1fr}}
+
+/* ---------- 通用表格（裸 table 此前无样式，列宽会塌缩成竖条）---------- */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid var(--panel-border);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--accent-soft);color:var(--heading);font-weight:600;white-space:nowrap}
+td textarea,td input[type=text],td input[type=number]{width:100%;min-height:64px}
+table textarea{resize:vertical}
+
+/* ---------- 代码块 / 示例文本（此前无样式，长行会横向溢出）---------- */
+pre{white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;background:var(--input-bg);
+border:1px solid var(--input-border);border-radius:9px;padding:9px 12px;margin:8px 0;font-size:12px;
+line-height:1.65;font-family:ui-monospace,Menlo,Consolas,monospace}
+.hint pre{margin:6px 0}
+
+/* ---------- 规则列表（替代「只有半边」的 .row）---------- */
+.rules{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.rules li{background:var(--input-bg);border:1px solid var(--input-border);border-radius:9px;
+padding:7px 11px;font-size:13px;color:var(--text);word-break:break-word}
+
+/* ---------- 行内表单：自动换列，窄屏堆叠 ---------- */
+.form-inline{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;align-items:center}
+.row-control.form-inline{flex-direction:row}
+.rule-add{display:grid;grid-template-columns:9.5rem minmax(0,1fr) auto;gap:8px;align-items:start;margin-top:10px}
+.rule-add textarea{min-height:76px}
+
+/* ---------- 宽度工具类（取代散落的 style="max-width:NNNpx"）---------- */
+.w-sm{width:100%;max-width:150px}
+.w-gid{width:100%;max-width:220px}
+.w-md{width:100%;max-width:300px}
+.w-lg{width:100%;max-width:380px}
+
+/* ---------- 自适应断点 ---------- */
+@media (max-width:980px){
+  .wrap{padding:14px 16px 64px}
+  .row{grid-template-columns:minmax(160px,220px) minmax(0,1fr)}
+}
+@media (max-width:860px){
+  .row{grid-template-columns:minmax(0,1fr);gap:6px}
+  .rule-add{grid-template-columns:minmax(0,1fr)}
+  .form-inline{grid-template-columns:minmax(0,1fr)}
+  th{white-space:normal}
+  table{font-size:12.5px}
+  th,td{padding:7px 8px}
+  .w-sm,.w-gid,.w-md,.w-lg{max-width:none}
+}
+
+
+/* ---------- 群昵称卡片 ---------- */
+.nick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin:12px 0}
+.nick-card{gap:9px;padding:12px 14px;margin:0}
+.nick-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nick-gid{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--heading)}
+.nick-persona{font-size:11.5px;padding:1px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.nick-persona.group{background:var(--input-bg);color:var(--text-muted);border:1px solid var(--input-border)}
+.nick-card input{width:100%}
+.nick-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) auto;gap:8px;align-items:center;margin-top:4px}
+@media (max-width:860px){.nick-add{grid-template-columns:minmax(0,1fr)}}
+
 """
 
