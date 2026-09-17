@@ -19,12 +19,12 @@
   现在与手工维护的 .env_example 同样详细，且两处永不漂移。
   main._default_env_text 改为调用该模块（旧实现 1563 字符 -> 345 字符）。
 
-- **任意语言插件（\`runtime: "exec"\`）13 种语言实测**：仓库新增 \`tests/plugins/multilang/\`（C · C++ · Go · Rust ·
+- **任意语言插件（`runtime: "exec"`）13 种语言实测**：仓库新增 `tests/plugins/multilang/`（C · C++ · Go · Rust ·
   Java · C# · Kotlin · PHP · Lua · Ruby · Perl · R · TypeScript，每种一份最小可运行插件）与
-  \`tests/test_plugin_multilang.py\`——CI 里**逐语言真实编译 + 启动子进程**跑完整协议
+  `tests/test_plugin_multilang.py`——CI 里**逐语言真实编译 + 启动子进程**跑完整协议
   （initialize 握手 → message 事件 → 断言返回值 → shutdown），缺工具链则自动 skip（不误报失败）；
-  \`ci.yml\` 补装 \`lua5.4\` 与 \`r-base-core\`（runner 镜像自带其余 11 种），13 种**全部真实执行**。
-  JVM/.NET/tsc 三类用 3 行 \`run.sh\` 包装（产物不是可执行文件），脚本语言走 shebang + 执行位。
+  `ci.yml` 补装 `lua5.4` 与 `r-base-core`（runner 镜像自带其余 11 种），13 种**全部真实执行**。
+  JVM/.NET/tsc 三类用 3 行 `run.sh` 包装（产物不是可执行文件），脚本语言走 shebang + 执行位。
 
 ### 变更
 
@@ -44,7 +44,7 @@
 
 - 全量同步过时文档：README / docs 索引 / Web UI 文档的版本号、runtime 说明（补任意语言 exec）、
   页签数（七个 -> **八个**，补「群昵称」）；插件开发指南新增 §4.5 与 §31（13 种语言清单 + 落地经验）。
-- **文档去重与死链修复**：根目录 \`AUDIT.md\` 与 \`docs/archive/architecture-audit.md\` 内容 90% 重复，
+- **文档去重与死链修复**：根目录 `AUDIT.md` 与 `docs/archive/architecture-audit.md` 内容 90% 重复，
   已合并为后者一份（保留两版各自的独有章节）并删除根文件；修复 3 条死链
   （README / development.md 指向已移动的 architecture-audit.md 与 qwq-final-report.md）；
   README 由 263 行精简到 222 行（Web UI 页签详解、插件链接三连、文档目录等改为指向权威文档），
@@ -55,6 +55,9 @@
 - 新增 tests/test_env_template.py（10 用例，纯函数、零第三方依赖）。
 - 新增 tests/test_plugin_multilang.py（13 种语言参数化黑盒端到端 + 夹具自检）与
   tests/test_banner.py（16 用例）；CI 的 pytest 计数 **930 → 1038**，跳过数 **0**。
+- **发布流程加固**：资产上传由 `softprops/action-gh-release` 改为逐文件 + 重试
+  （`gh release upload --clobber`，每文件最多 5 次）——此前 GitHub 偶发 500（Unicorn 错误页）
+  会中断整步，出现「11 个资产其实都传上去了、job 却是红的」假失败。
 
 ## [2.2.222] - 2026-09-17
 

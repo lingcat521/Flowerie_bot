@@ -297,16 +297,48 @@ jobs:
 
     - name: Upload release assets
 
-      uses: softprops/action-gh-release@v2
+      # 逐文件上传 + 重试：GitHub 偶发 500（Unicorn 错误页）会让 action-gh-release 整体中止，
 
-      with:
+      # 导致「资产其实传完了、job 却红」的假失败（2026-09-17 实际发生过两次）。
 
-        files: |
+      env:
 
-          release/**/*.zip
+        GH_TOKEN: ${{ github.token }}
 
-          release/**/*.exe
+        TAG: ${{ github.event.release.tag_name }}
 
-          release/**/Flowerie_bot-*-builtin
+      run: |
 
-          release/**/*.tar.gz
+        set -u
+
+        shopt -s nullglob
+
+        files=(release/*/*.zip release/*/*.exe release/*/Flowerie_bot-*-builtin release/*/*.tar.gz)
+
+        echo "待上传 ${#files[@]} 个文件"
+
+        if [ "${#files[@]}" -lt 11 ]; then echo "::warning::只匹配到 ${#files[@]} 个文件（预期 11 个），请检查打包步骤"; fi
+
+        fail=0
+
+        for f in "${files[@]}"; do
+
+          name=$(basename "$f")
+
+          ok=0
+
+          for attempt in 1 2 3 4 5; do
+
+            if gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY"; then ok=1; break; fi
+
+            echo "⚠️ $name 第 $attempt 次上传失败，5 秒后重试"
+
+            sleep 5
+
+          done
+
+          if [ "$ok" = "1" ]; then echo "✅ $name"; else echo "❌ $name 重试 5 次仍失败"; fail=1; fi
+
+        done
+
+        exit $fail
