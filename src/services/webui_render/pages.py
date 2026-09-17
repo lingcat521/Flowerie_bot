@@ -1,6 +1,6 @@
 """webui_render 页面壳：登录 / 注册 / 面板页。"""
 
-from src.services.webui_render.theme import PANEL_CSS
+from src.services.webui_render.theme import PANEL_CSS, PANEL_CSS_REV
 from src.services.webui_render.util import _esc
 
 
@@ -94,6 +94,7 @@ def render_panel_page(*, theme_class: str, bg_rules: str, msg_html: str,
         '<a class="tab danger" href="/panel/logout">退出</a></nav></header>'
         f'<h1 class="page-title">{title}</h1>'
         + msg_html + body_html +
+        '<footer class="panel-foot">花璃 · 管理后台 · 面板样式 #' + PANEL_CSS_REV + '</footer>' +
         '</div></body></html>'
     )
 

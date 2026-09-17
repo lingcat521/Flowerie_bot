@@ -2,6 +2,7 @@
 
 零 JavaScript 保证：只输出 CSS 变量与样式规则。
 """
+import hashlib
 THEMES = {
     "default": {
         "label": "默认",
@@ -427,5 +428,8 @@ padding:7px 11px;font-size:13px;color:var(--text);word-break:break-word}
 .nick-add{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.2fr) auto;gap:8px;align-items:center;margin-top:4px}
 @media (max-width:860px){.nick-add{grid-template-columns:minmax(0,1fr)}}
 
+.panel-foot{margin:26px 0 8px;text-align:center;font-size:11.5px;color:var(--text-muted);opacity:.75}
 """
 
+# 面板样式指纹：改了 CSS 就会变，用来核对「服务端跑的是哪一版样式」
+PANEL_CSS_REV = hashlib.sha256(PANEL_CSS.encode("utf-8")).hexdigest()[:8]

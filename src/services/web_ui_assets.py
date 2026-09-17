@@ -26,6 +26,7 @@ from src.services.webui_render.plugins import render_plugin_tab
 from src.services.webui_render.theme import (
     DEFAULT_THEME,
     PANEL_CSS,
+    PANEL_CSS_REV,
     THEME_ORDER,
     THEMES,
     background_rules,
