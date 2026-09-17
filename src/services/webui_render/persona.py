@@ -64,7 +64,8 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         f'<textarea name="rules" rows="6" placeholder="每条规则占一行">{_esc(rules_text or "")}</textarea>'
         '<div class="group-actions"><button type="submit" class="btn">保存发言规则</button></div>'
         '</form>'
-        + (f'<div class="mcp-card-meta">当前规则（{len(admin_rules or [])} 条）：</div><ul class="rules">{rules_lines}</ul>' + '' if admin_rules else "")
+        + (f'<div class="mcp-card-meta">当前规则（{len(admin_rules or [])} 条）：</div>'
+           f'<ul class="rules">{rules_lines}</ul>' if admin_rules else "")
         + '</fieldset>'
     )
 
