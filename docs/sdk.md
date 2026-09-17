@@ -2,6 +2,9 @@
 
 > 插件面向的统一开发接口。三层架构：插件（上层）→ 领域层（中层，零 OneBot 命名）→
 > OneBot 适配层（下层）。本手册为**详细版**：API 参考 + 多媒体/按钮示例 + 日志规范。
+>
+> 与 [plugin-developer-guide.md](plugin-developer-guide.md) 的分工：那份讲**插件运行时与协议**
+> （Manifest / 生命周期 / 权限 / 打包 / 任意语言），本文讲 **`flowerie_sdk` 这一层怎么用**。
 
 ## 1. 最小示例
 

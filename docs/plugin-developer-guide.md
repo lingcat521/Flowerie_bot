@@ -1,13 +1,14 @@
 # 插件开发者指南（Plugin Developer Guide·第二层·完整参考）
 
-> **新手请先看 [第一层 quick-start.md](quick-start.md)**（10 分钟上手）；
-> 本文档是完整参考（Manifest 规则 / Python·Node·JSON / 任意语言 exec / 生命周期 / Event·Action·Permission
-> API / 超时 / 资源限制 / 安全边界 / 打包 / Web UI 安装 / API Version）。
-> 本手册尽力做到**不需要看源码**——所有 API、参数、示例、权限、错误、限制都在文档里。
-
-> Flowerie Plugin API **v1**（版本 `2.2.2222`）
+> Flowerie Plugin API **v1**（版本 `2.2.2222`）· **新手请先看 [第一层 quick-start.md](quick-start.md)**（10 分钟上手）
 >
-> 本手册尽力做到**不需要看源码**：所有 API、参数、示例、权限、错误、限制都在本文档。
+> 本文档是**完整参考**：Manifest 规则 / Python·Node·JSON / 任意语言 exec（§4.5、§31）/ 生命周期 /
+> Event·Action·Permission API / 超时 / 资源限制 / 安全边界 / 打包 / Web UI 安装 / API Version。
+> 本手册尽力做到**不需要看源码**——所有 API、参数、示例、权限、错误、限制都在文档里。
+>
+> 五份插件文档的分工：[quick-start](quick-start.md) 上手 → **本文（经典 Plugin API 完整参考）** →
+> [sdk.md](sdk.md)（`flowerie_sdk` 模式 API 手册）→ [plugin-webui.md](plugin-webui.md)（插件自带管理页）→
+> [api.md](api.md)（方法 × 权限速查总表）。
 
 ---
 
