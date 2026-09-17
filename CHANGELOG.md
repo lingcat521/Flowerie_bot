@@ -19,10 +19,17 @@
   现在与手工维护的 .env_example 同样详细，且两处永不漂移。
   main._default_env_text 改为调用该模块（旧实现 1563 字符 -> 345 字符）。
 
+- **任意语言插件（\`runtime: "exec"\`）13 种语言实测**：仓库新增 \`tests/plugins/multilang/\`（C · C++ · Go · Rust ·
+  Java · C# · Kotlin · PHP · Lua · Ruby · Perl · R · TypeScript，每种一份最小可运行插件）与
+  \`tests/test_plugin_multilang.py\`——CI 里**逐语言真实编译 + 启动子进程**跑完整协议
+  （initialize 握手 → message 事件 → 断言返回值 → shutdown），缺工具链则自动 skip（不误报失败）；
+  \`ci.yml\` 补装 \`lua5.4\` 与 \`r-base-core\`（runner 镜像自带其余 11 种），13 种**全部真实执行**。
+  JVM/.NET/tsc 三类用 3 行 \`run.sh\` 包装（产物不是可执行文件），脚本语言走 shebang + 执行位。
+
 ### 变更
 
-- **Web UI 默认开启（仅本机回环）**：@B@WEB_UI_ENABLED@B@ 默认 @B@false -> true@B@（@B@.env_example@B@ 同步），
-  而 @B@WEB_UI_ALLOW_LAN@B@ **仍默认 @B@false@B@** —— 只监听 @B@127.0.0.1@B@，不对外暴露；
+- **Web UI 默认开启（仅本机回环）**：`WEB_UI_ENABLED` 默认 `false → true`（`.env_example` 同步），
+  而 `WEB_UI_ALLOW_LAN` **仍默认 `false`** —— 只监听 `127.0.0.1`，不对外暴露；
   首次启动进入注册页创建管理员即可。配套加固：Web UI 端口被占用时只记错误日志、
   bot 继续运行（此前默认关闭，不会遇到这种情况）。
 - **默认模型统一为 deepseek-flash**（聊天 / 视觉识图 / 引战检测）：
@@ -36,11 +43,18 @@
 ### 文档
 
 - 全量同步过时文档：README / docs 索引 / Web UI 文档的版本号、runtime 说明（补任意语言 exec）、
-  页签数（七个 -> **八个**，补「群昵称」）；插件开发指南新增 §4.5。
+  页签数（七个 -> **八个**，补「群昵称」）；插件开发指南新增 §4.5 与 §31（13 种语言清单 + 落地经验）。
+- **文档去重与死链修复**：根目录 \`AUDIT.md\` 与 \`docs/archive/architecture-audit.md\` 内容 90% 重复，
+  已合并为后者一份（保留两版各自的独有章节）并删除根文件；修复 3 条死链
+  （README / development.md 指向已移动的 architecture-audit.md 与 qwq-final-report.md）；
+  README 由 263 行精简到 222 行（Web UI 页签详解、插件链接三连、文档目录等改为指向权威文档），
+  **所有被删细节均已确认存在于对应权威文档**；测试数与版本号等漂移值同步（930 → 1038）。
 
 ### 测试
 
 - 新增 tests/test_env_template.py（10 用例，纯函数、零第三方依赖）。
+- 新增 tests/test_plugin_multilang.py（13 种语言参数化黑盒端到端 + 夹具自检）与
+  tests/test_banner.py（16 用例）；CI 的 pytest 计数 **930 → 1038**，跳过数 **0**。
 
 ## [2.2.222] - 2026-09-17
 

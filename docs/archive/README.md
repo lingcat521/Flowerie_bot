@@ -5,7 +5,7 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| architecture-audit.md | 架构审计（v1.2） |
+| architecture-audit.md | **架构审计全本**（阶段一 ~ 第五轮工程审计 + v1.3.0 SDK 分层，2026-08-27~09-16；原根目录 AUDIT.md 已并入此文件） |
 | onebot-coupling-audit.md / onebot-decoupling-final-report.md | OneBot 解耦工程审计+封口报告 |
 | phase2-internal-event-design.md / phase6-assembler-audit.md | 阶段设计/审计 |
 | report-v1.3.0-sdk.md / sdk-audit.md | v1.3 SDK 交付报告+审计 |

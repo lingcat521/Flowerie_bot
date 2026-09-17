@@ -3,7 +3,7 @@
 > 部署（Termux）以本文为准；v1.7 功能开关/存储后端不影响部署步骤（默认 SQLite、默认全关高级功能）。
 
 
-> 本文是 [README](../README.md) 中「安卓 (Termux) 专用」安装部分的独立文档，内容与 README 保持一致，方便单独收藏、转发或在手机上直接打开。
+> 本文是 Termux 部署的**唯一权威步骤**（[README](../README.md) 与 [Release 安装说明](install-release-guide.md) 均指向本文），方便单独收藏、转发或在手机上直接打开。
 
 由于安卓环境与 PC 不同（需绕过 `pydantic` 编译且依赖预编译库），请严格按以下步骤执行：
 

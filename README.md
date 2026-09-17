@@ -14,7 +14,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-930%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1038%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -88,7 +88,7 @@ bash run.sh
 python main.py
 ```
 
-启动成功看到：
+启动成功先看到七彩 **FLOWERIE** 启动横幅（协议 / 模型 / 人格 / Web UI 地址摘要），随后日志出现：
 
 ```
 OneBot WebSocket connected
@@ -135,43 +135,26 @@ OneBot WebSocket connected
 也可提前在 `.env` 设 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD`。
 想彻底关闭：`WEB_UI_ENABLED=false`；想让局域网设备访问：`WEB_UI_ALLOW_LAN=true`（默认关闭）。
 
-面板八个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
+八个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
 
-- **配置**：全部配置变量按功能分组（fieldset 表单），
-  bool/int/secret/文本/列表/JSON 各有对应控件（checkbox/number/password/textarea/select）；
-  每组独立保存，修改**真正写入项目根 `.env`**（原子更新、保留注释与原有变量），
-  重启后由 pydantic-settings 自动读取；Secret 只显示掩码、留空不覆盖
-- **人格**：全局人格设置、人格库 CRUD（创建/编辑/删除/设为全局）、群聊人格绑定与解除、
-  人格配置（`PERSONA_*`）+ 自定义人格 vs 自定义 Prompt 区别说明
-- **群聊知识**：输入群号查看该群梗知识，搜索/新增/编辑/删除/清空 + 知识配置（`MEME_*`），严格按群隔离
-- **群昵称**：群特色昵称（× 人设隔离）——按群配置专属称呼，群绑定人设后唤名联动；留空恢复默认
-- **外观**：7 套内置主题（默认/深色/浅色/Sakura/Ocean/Forest/AMOLED）、
-  自定义背景颜色、背景图片上传（PNG/JPEG/WEBP/GIF，≤5MB，魔数校验，持久化到
-  `data/webui/background/`）、图片透明度、显示方式（cover/contain + 位置）、
-  恢复默认主题 / 删除背景图片
-- **日志**：最近 200 条运行日志
-- **用户状态**：当前管理员与凭据来源、修改登录账号、注销账号（仅清账号密码，其他配置不动）、
-  服务器状态（平台/内存/CPU负载）、MCP 工具状态、API 厂商连接状态（DeepSeek/视觉/引战）
-- **插件**：插件系统（Plugin System v1）管理：保护措施开关（normal/relaxed/unsafe）、插件列表、上传 ZIP / URL 安装、刷新扫描、启用（含权限批准）、禁用、卸载、插件系统配置
+- **配置**：全部变量按功能分组（bool/int/secret/文本/列表/JSON 各有控件），每组独立保存，
+  修改**真正写入项目根 `.env`**（原子更新、保留注释与原变量），Secret 只显示掩码、留空不覆盖
+- **人格**：人格库 CRUD、群聊绑定与解除、`PERSONA_*` 配置 · **群聊知识**：按群查看/搜索/增删改，严格隔离
+- **群昵称**：按群专属称呼（× 人设隔离，留空恢复默认）
+- **外观**：7 套主题（默认/深色/浅色/Sakura/Ocean/Forest/AMOLED）、背景图上传（≤5MB，魔数校验）、透明度与显示方式
+- **日志**：最近 200 条运行日志 · **用户状态**：凭据来源 / 改账号 / 注销 / 服务器状态 / MCP / API 厂商连接
+- **插件**：保护级别（normal/relaxed/unsafe）、上传 ZIP / URL 安装、启用（含权限批准）、禁用、卸载
 
-完整功能指南（配置中心 / 人格管理 / 群聊知识 / 主题美化 / MCP 卡片管理 / 插件管理 / 安全）见 **[Web UI 说明](docs/web-ui.md)**；
-人格系统设计见 [人格系统](docs/persona.md)，记忆/知识体系见 [记忆与知识](docs/memory.md)；
-插件开发（Plugin API）见 **[插件开发指南](docs/plugin-developer-guide.md)**，安全模型见 **[安全模型](docs/security.md)**；
-变量说明见 [配置](docs/configuration.md)。
+完整功能指南（各页细节 + 安全说明）见 **[Web UI 说明](docs/web-ui.md)**；人格见 [人格系统](docs/persona.md)，
+记忆/知识见 [记忆与知识](docs/memory.md)，插件开发见 **[插件开发指南](docs/plugin-developer-guide.md)**，
+安全模型见 **[安全模型](docs/security.md)**，变量说明见 [配置](docs/configuration.md)。
 
 ### 如何开启
 
-1. 编辑项目根目录的 `.env`，追加：
-   ```ini
-   WEB_UI_ENABLED=true
-   WEB_UI_PORT=8080            # 不能与 WS_PORT(3001) 相同
-   WEB_UI_USERNAME=admin
-   WEB_UI_PASSWORD=你的密码      # 必填，留空会拒绝启动
-   ```
-2. 重启机器人：`python main.py`（或守护脚本 `bash run.sh`）
-3. 浏览器打开 `http://127.0.0.1:8080/panel`（无 JS 兼容面板，手机浏览器也能用），用上面的账号密码登录
+**默认已开启**，无需任何配置：浏览器打开 `http://127.0.0.1:8080/panel`，首次进入是注册页，创建管理员即可。
 
-> 同一局域网内的电脑访问：在 `.env` 加 `WEB_UI_ALLOW_LAN=true`（显式开关，绑定 0.0.0.0 并输出安全警告），然后浏览器打开 `http://局域网IP:8080/panel`（请设置强密码，勿直接暴露公网）。
+> 改端口 / 预设账号密码（`WEB_UI_PORT` 不能与 `WS_PORT` 相同）、对局域网开放（`WEB_UI_ALLOW_LAN=true`，
+> 绑定 0.0.0.0 并输出安全警告，请设强密码、勿直接暴露公网）→ 见 [Web UI 说明](docs/web-ui.md)。
 
 ## MCP
 
@@ -184,23 +167,19 @@ OneBot WebSocket connected
 Web UI「人格」页管理；详细设计见 [人格系统](docs/persona.md)。
 
 ## 插件系统（Plugin System v1）
-插件开发支持 **SDK 模式**（推荐）与经典声明式模式：SDK 提供统一 Event /
-Message / Matcher / Permission 与 Bot Adapter 分层，插件**不接触 OneBot payload**。
-最小示例：`@command("hello") async def hello(event): await event.reply("你好")`
 
-- [SDK 三层架构与 API](docs/sdk.md)
-- [API 概览](docs/api.md)
-- [插件开发](docs/plugin-developer-guide.md)（文档中心 [文档中心](docs/README.md)）
-- [插件开发指南（完整）](docs/plugin-developer-guide.md)
+受控插件运行时：插件以**独立子进程**运行（Python / Node / **任意语言 exec**），或为**进程内声明式规则**
+（JSON，无代码执行），通过 stdin/stdout JSON-Lines 协议与 Flowerie 通信，动作一律由 PermissionManager 强制鉴权。
+SDK 模式提供统一 Event / Message / Matcher / Permission 与 Bot Adapter 分层，插件**不接触 OneBot payload**
+（最小示例：`@command("hello") async def hello(event): await event.reply("你好")`）。
 
-
-受控插件运行时：插件以**独立子进程**运行（Python / Node / 任意语言 exec），或为**进程内声明式规则**（JSON，无代码执行），
-通过 stdin/stdout JSON-Lines 协议与 Flowerie 通信，由 PermissionManager 强制检查动作权限。
 安装途径：Web UI 上传 ZIP / URL 下载（SSRF 防护 + 大小限制），或放入 `plugins/` 目录自动发现
-（**发现 ≠ 自动执行**，默认 disabled，须管理员启用并批准权限）。
-保护级别 `PLUGIN_PROTECTION`（`normal`/`relaxed`/`unsafe`）只影响运行时限制，**任何级别都不豁免**
-权限检查 / 进程隔离 / 日志 / 崩溃保护 / 资源限制 / manifest 校验 / 管理员权限。
-详细开发文档见 **[插件开发指南](docs/plugin-developer-guide.md)**。
+（**发现 ≠ 自动执行**，默认 disabled，须管理员启用并批准权限）。保护级别 `PLUGIN_PROTECTION`
+（`normal`/`relaxed`/`unsafe`）只影响运行时限制，**任何级别都不豁免**权限检查 / 进程隔离 / 日志 /
+崩溃保护 / 资源限制 / manifest 校验 / 管理员权限。
+
+开发文档：**[插件开发指南](docs/plugin-developer-guide.md)（完整参考）** · [快速开始](docs/quick-start.md) ·
+[Plugin WebUI](docs/plugin-webui.md) · [SDK 手册](docs/sdk.md) · [API 速查](docs/api.md) · [文档中心](docs/README.md)
 
 ## 群聊梗知识（Meme Knowledge）
 
@@ -212,14 +191,14 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/memor
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 930 个测试（CI：Python 3.9/3.12 + PostgreSQL）
+pytest              # 1038 个测试（CI：Python 3.9/3.12 + PostgreSQL）
 acceptance          # 37 项黑盒验收（tests/acceptance_check.py）
 ruff check .        # 代码检查
 ```
 
 CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 
-更多工程细节：架构审计见 [架构审计](docs/architecture-audit.md)，表情包见 [表情包](docs/stickers.md)，
+更多工程细节：架构审计见 [架构审计](docs/archive/architecture-audit.md)（历史快照），表情包见 [表情包](docs/stickers.md)，
 安全模型见 [安全模型](docs/security.md)。
 
 ## License
@@ -230,34 +209,14 @@ CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 ## 功能开关（Web UI 可切换）
 
 - **AI / 长期记忆 / 主动聊天 / 复读 / 防刷 / 戳戳 / 表情包 / MCP / 存档 / 群梗学习**：Web UI「配置」按分类折叠，每分类顶部开关徽标
-- **花语记忆（BlossomMemory，默认关闭）**：语义长期记忆（向量化检索+可重排+自动提取+群隔离）；开启后展开子开关与模型配置
-- **存储后端**：默认 SQLite；可选 PostgreSQL（`STORAGE_BACKEND=postgres` + `DATABASE_URL`，迁移工具 `python -m src.services.storage_migrate`）
+- **花语记忆（BlossomMemory，默认关闭）**：语义长期记忆（向量化检索 + 可重排 + 自动提取 + 群隔离）
+- **存储后端**：默认 SQLite；可选 PostgreSQL——两者细节与迁移工具见 [配置说明](docs/configuration.md)
 
-## 📚 文档目录
+## 📚 文档
 
-**入门**
-- [快速开始](docs/quick-start.md)
-- [配置](docs/configuration.md)
+完整索引（含阅读顺序与「谁需要」）见 **[文档中心](docs/README.md)**，常用入口：
 
-**功能使用**
-- [Web UI 说明](docs/web-ui.md)
-- [人格系统](docs/persona.md)
-- [记忆与知识](docs/memory.md)
-- [MCP 工具](docs/mcp.md)
-- [表情包](docs/stickers.md)
-- [安全模型](docs/security.md)
-
-**插件与开发**
-- [插件开发指南](docs/plugin-developer-guide.md)
-- [插件 WebUI](docs/plugin-webui.md)
-- [SDK 三层架构](docs/sdk.md)
-- [API 概览](docs/api.md)
-- [开发说明](docs/development.md)
-
-**协议与安装**
-- [OneBot 兼容](docs/onebot-compatibility.md)
-- [Milky 协议](docs/milky-protocol.md)
-- [Windows exe 安装](docs/install-release-windows.md)
-- [Linux/macOS 安装](docs/install-release-guide.md)
-- [Termux 安装](docs/install-termux.md)
-- [文档中心](docs/README.md)
+- **安装上手**：[Windows exe](docs/install-release-windows.md) · [Linux/macOS](docs/install-release-guide.md) · [Termux](docs/install-termux.md) · [配置说明](docs/configuration.md)
+- **功能使用**：[Web UI](docs/web-ui.md) · [人格系统](docs/persona.md) · [记忆与知识](docs/memory.md) · [MCP 工具](docs/mcp.md) · [表情包](docs/stickers.md)
+- **插件开发**：[快速开始](docs/quick-start.md) · [完整指南](docs/plugin-developer-guide.md) · [Plugin WebUI](docs/plugin-webui.md) · [SDK](docs/sdk.md) · [API](docs/api.md)
+- **运维开发**：[安全模型](docs/security.md) · [开发说明](docs/development.md) · [OneBot 兼容](docs/onebot-compatibility.md) · [Milky 协议](docs/milky-protocol.md) · [历史归档](docs/archive/README.md)

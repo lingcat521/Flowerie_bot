@@ -1,3 +1,5 @@
+> 项目状态：**已封版 v2.2.2（2026-09-04，停更一年声明）**。以下为历史审计记录。
+
 # 工程质量审计报告（阶段一）
 
 > ## 📌 文档状态（2026-08-29 更新）
@@ -12,17 +14,17 @@
 > - **阶段三**：ExpiringMap 状态自治、inactive 群清理、双层熔断（provider + 群级）、Metrics 低基数 —— ✅ 全部完成
 > - **第四轮收尾**：MCP 工具额度按次硬上限、持久化配置启动合并、MCP SSRF 加固 + 工具结果不可信处理、
 >   MCP 插件式多 server（`MCP_SERVERS`）、Web UI 改为无 JS 服务端渲染面板（`/panel`，支持注册，账号持久化 `settings.db`）—— ✅ 完成
+> - **v1.0.1 新功能轮**：Persona 人格系统（全局/群聊/自定义三级 + 花璃/ATRI 双预设）、
+>   群聊 Meme Knowledge（按群隔离、命中注入、每日 24h 批量总结 + MCP 按需检索）、
+>   Web UI 人格/群聊知识管理页（零 JS）—— ✅ 完成（CI 全绿后验收通过）
 >
-> **当前基线**：测试 **535** 个（pytest + ruff 全过，CI Python 3.9 / 3.12 全绿）。
+> - **第五轮：上帝类拆分 + .env 防旧值覆盖**：WebUIServer（1129→336 行，功能域
+>   mixin 拆分）、渲染层（webui_render/ 包）、AIClient（800→353 行，拆出
+>   prompt_builder/vision/toxic_detector）、ConfigService（689→455 行，拆出
+>   config_schema）、MessageRouter（732→564 行，拆出 ai_gateway）；
+>   本地手工修改的 .env 不再被 settings.db 旧值覆盖（较新优先 + 同步）—— ✅ 完成
 >
-> **v1.1.0 现行架构说明**（本报告为 v1.0.1 前的历史审计快照，正文保留当时的架构描述）：
-> 此后已做上帝类拆分——WebUIServer 1129→336 行（功能域 mixin `webui_panels/` + 渲染层 `webui_render/`）、
-> AIClient 800→353 行（拆出 `prompt_builder`/`vision`/`toxic_detector`）、ConfigService 689→455 行（拆出 `config_schema`）、
-> MessageRouter 732→564 行（拆出 `ai_gateway`）；当前目录结构见 [development.md](development.md)。
->
-> **v1.2.0 说明**：版本 1.2.0 新增插件系统（Plugin System v1，`src/plugins/`）、第三官方人格「艾拉（Isla）」、
-> 发言规则/主动发言概率配置化、NapCat WebSocket 正向/反向二选一，以及 Web UI 注册 Bootstrap Lock 安全修复；
-> 本报告正文仍为审计当时的架构快照，未随新版更新。
+> **当前基线**：测试 **535** 个（pytest + ruff 全过，CI Python 3.9 / 3.12 全绿）。 本报告为**历史审计快照**，现行目录结构见 [development.md](../development.md)、现行文档索引见 [docs/README.md](../README.md)。
 
 > 审计对象：Flowerie_bot（NapCat 版，`/storage/emulated/0/Flowerie_bot/`）
 > 审计时间：2026-08-27
@@ -292,6 +294,114 @@ guarded_chat(group_id, user_id, ...)
 2. **ExpiringMap**（轻量 TTL 容器，monotonic + 惰性过期 + max_size 淘汰）：统一 user_last_time / user_ai_last_call / poke_last_time / last_toxic_warning / group breakers——状态自治，不再依赖 backup loop
 3. **inactive 群清理**：GroupState 增加 last_activity，超过 24h 无活动的群从 groups 移除（context 短期记忆随群清理，长期记忆在 SQLite 不受影响）
 4. **Metrics**：新增 ai_attempts_total / ai_circuit_rejections_total{level}，确认无 group_id/user_id label（低 cardinality）
+
+# 第四轮：v1.0.1 新增功能专项审计（Persona / Meme / Web UI）
+
+> 审计对象：v1.0.1 新增代码（persona_manager / persona_presets / meme_knowledge_manager /
+> meme_knowledge_repository / meme_summary / ai_client 人格注入 / web_ui 人格与知识页）
+> 审计方式：代码审查 + 本地纯模块复现 + CI 全量测试；结论：**507 测试全绿，验收通过**。
+
+## 本轮发现并修复的问题
+
+| # | 问题 | 风险 | 修复 |
+| :--- | :--- | :--- | :--- |
+| 1 | 每日梗总结的 AI 调用**绕过三层预算**（DAILY/GROUP_DAILY_AI_CALL_BUDGET） | 高：聊天额度耗尽后总结仍可烧 API，违反"新增知识层不绕过现有安全机制" | MemeSummaryService 注入共享 BudgetManager；run_once 对每个候选群先过预算闸门，耗尽即跳过（缓冲保留、不计重试）；main.py 创建共享 budget 实例注入 router 与总结任务 |
+| 2 | meme 知识注入前无二次清洗（DB 被手工改库时可带注入句式） | 中：纵深防御缺失 | ai_client 组装知识块前 sanitize_untrusted_text 兜底清洗 + 日志 |
+| 3 | 知识搜索 LIKE 通配符未转义（`%`/`_`/`\` 变通配符放大匹配） | 低：行为异常 | repository 搜索参数转义 + `ESCAPE '\\'` |
+| 4 | 自定义人格数量无上限 | 低：长期运行可无限增长（任务 23 要求有界） | `PERSONA_MAX_COUNT`（默认 200）+ 创建时拒绝 + 启动校验 + Web UI 配置项 |
+| 5 | 每轮总结后全库 enforce_caps 扫描（全表遍历） | 低：无谓开销 | 改为只治理本轮处理过的群（enforce_caps 保留作全库入口） |
+| 6 | acceptance 验收脚本未关闭 knowledge.db 连接 | 低：进程退出即回收 | 收尾补 `_mrepo.close()` |
+
+## 新增测试（本轮的 review 覆盖）
+
+- `test_summary_respects_budget_gate` / `test_summary_budget_group_gate`：全局/群预算耗尽 → 总结跳过、零 AI 调用、缓冲保留
+- `test_meme_100_groups_isolation`：100 群各自隔离、计数精确、互不串线（任务 37）
+- `test_meme_search_wildcard_escaped`：LIKE 通配符按字面匹配
+- `test_persona_count_limit`：自定义人格数量上限（内置不计）
+- `test_dirty_meme_db_content_sanitized_on_injection`：改库污染内容注入前被清洗
+- `test_meme_summary_task_registered_and_shutdown`：总结任务注册与优雅关闭无泄漏（任务 41/43）
+
+## 专项检查结论（任务 29 质量门禁逐项）
+
+- 未关闭 task：总结/备份/主动聊天等全部经 TaskManager 注册，stop 后 running_count=0 ✅
+- HTTP session 泄漏：AIClient/Sender 走 async with 生命周期 ✅（本轮未新增 HTTP 资源）
+- SQLite connection 泄漏：新增 knowledge.db 由 meme_manager.close() 关闭，测试与验收均收尾关闭 ✅
+- 无限增长 dict：消息缓冲有界（群数 LRU + deque 上限）、重试计数随放弃清理、人格/知识/绑定全有上限 ✅
+- 高 cardinality metrics：新增指标无 label 或枚举 label（reason/tool）✅
+- Prompt injection：知识写入拒绝注入词条、注入前二次清洗、知识区永远在不可信数据区内 ✅
+- MCP 安全边界：总结任务复用 McpToolManager（allowlist/熔断/SSRF/结果清洗/quota）✅
+- 群数据/Persona/Memory/Context 串线：全部按 group_id 作用域 + 双条件编辑 + 隔离测试 ✅
+- Web UI 零 JS：新页签经黑盒与渲染级扫描（`<script`/onclick/onchange/oninput/fetch/XMLHttpRequest 全无）✅
+
+# 第五轮：架构拆分专项审计（上帝类 / .env 防覆盖 / 注销 / 配置移页）
+
+> 审计对象：webui_panels / webui_render / ai_gateway / prompt_builder / vision /
+> toxic_detector / config_schema 拆分、.env 较新优先、注销账号、配置移页
+> 审计方式：AST 结构检查 + 行数门禁 + 委托链核对 + 边界场景推演；结论：全绿。
+
+## 发现并修复的问题
+
+| # | 问题 | 风险 | 修复 |
+| :--- | :--- | :--- | :--- |
+| 1 | AiGateway 的 **budget 仍是构造时快照**（ai_client/tool_manager 已是 provider）——测试会直接替换 `router.budget`，当前因 BudgetManager 无内部状态而侥幸等价，但属隐患 | 中 | budget 同样改为 provider 动态读取 |
+| 2 | 群聊知识配置保存后 **gid 丢失**（handler 读 query 而非 form，表单无隐藏域） | 低 | 表单加 `gid` 隐藏域 + handler 从 form 读取 |
+| 3 | 注销成功后若 `WEB_UI_ENABLED=true` 且 .env 密码被清除，**重启会被启动校验拒绝**（无密码不允许裸奔）——提示缺失会让用户困惑 | 低 | 注销返回消息补充说明（需重新配置密码或注册） |
+| 4 | 拆分时 @staticmethod 装饰器丢失 ×5、方法首行缩进丢失导致方法悬在类外（vision/gateway）——已在前轮修复并由 `test_split_modules_keep_class_structure` 防回归 | 已修复 | — |
+
+## 专项核验（本轮）
+
+- MRO：WebUI 全部 mixin 无重复方法定义 ✅
+- 行数门禁：web_ui 339 / web_ui_assets 43 / ai_client 353 / config_service 503 / message_router 568，全在限内 ✅
+- 委托链：router.guarded_chat/_ai_allowed/guarded_is_toxic/_get_group_breaker → AiGateway；AIClient → VisionService/ToxicDetector/PromptBuilder，provider 动态读取 ✅
+- .env 防覆盖：env_values 读取 → mtime 比较 → db 同步 → 应用，顺序正确 ✅
+- 注销：密码验证（失败计入限流）、成功清 db+.env 凭据（仅这两个 key）、强制登出、其他配置保留 ✅
+- SCHEMA 引用兼容：ConfigService.SCHEMA 类属性别名保留（测试 15 处引用全部兼容）✅
+
+## 新增测试（第五轮）
+
+- `test_knowledge_config_keeps_gid_after_save`：配置保存后仍停留在原群
+- `test_unregister_message_mentions_restart_note`：注销提示含启动说明
+
+# 第六轮：用户状态页专项审计（账户/注销/服务器/MCP/API 状态 + 登录框修复）
+
+> 审计对象：webui_panels/account_panel.py、webui_render/account.py、system_status.py、
+> 注销迁移、登录框宽度修复、MCP/API 状态接入
+> 审计方式：结构核验 + 渲染体检 + 边界推演；结论：全绿。
+
+## 本轮改动与核验
+
+| 项 | 说明 | 核验 |
+| :--- | :--- | :--- |
+| 登录框宽度 | username 输入框补 `type="text"`（原无 type → CSS `[type=text]` 选择器不匹配而变窄） | ✅ 登录/注册页一致 |
+| 用户状态页 | 导航栏新增 tab：当前管理员/凭据来源 + 注销表单（仅清账号密码）+ 服务器状态 + MCP 工具 + API 连接状态 | ✅ 全部渲染 |
+| 注销迁移 | 注销表单从面板 body 底部移入「用户状态」页（handler 迁至 AccountPanelMixin） | ✅ MRO 无重复 |
+| 服务器状态 | system_status.py 零依赖读 /proc/meminfo + loadavg + platform；失败降级 N/A | ✅ |
+| MCP/API 状态 | MCP 各 server 工具数/熔断；API 配置层面状态（URL/模型/Key/独立或回退） | ✅ |
+
+## 关键推演（无 bug）
+
+- 注销后 `_effective_credentials` 回退到 .env/config 默认（admin / 空密码）→ 无法登录，需重新配置/注册（符合"回到未注册状态"）
+- 注销成功 → token 清空 → 未登录访问 `/panel` 回登录页（msg 不显示，但语义正确）
+- MCP 未启用 / tool_manager 为 None → 状态页显示"未启用"（短路保护）
+- 所有新文件零 JS（account_panel/account/system_status 扫描无脚本特征）
+- AccountPanelMixin 方法归属类 + 无重复定义（MRO）✅
+
+## 新增测试（第六轮）
+
+- `test_account_tab_renders_all_status`：账户/注销/服务器/MCP/API 状态齐全
+- `test_unregister_form_not_in_body_bottom`：注销表单只在用户状态页
+- `test_account_tab_is_js_free`：用户状态页零 JS
+- `test_login_and_register_username_input_width_consistent`：登录/注册框一致
+- 结构防回归测试补 AccountPanelMixin
+
+## v1.3.0 SDK 审计摘要
+
+- 插件通道 OneBot 耦合已收入下层 `src/sdk/onebot/`（DTO/Transformer/Adapter）；
+  中层零 OneBot 命名（grep 校验通过），上层插件零网络依赖。
+- 消息/群/权限能力复用现有 Sender 与 ADMIN_QQ_IDS，未重写 Router/Memory/Context。
+- 已知边界：主流程（_handle_message 内）仍直接访问 OneBot 字段（Router 稳定性优先，
+  下阶段可逐步迁移至 transformer）；`get_user_info`/`get_group_info` 平台无标准端点，
+  SDK 抛 UnsupportedOperationError（文档说明）。
 
 ## v1.3.0：SDK 分层（上/中/下，依赖倒置）
 

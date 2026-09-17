@@ -1,6 +1,6 @@
 # 开发
 
-> 开发环境/仓库约定见本文件；v1.5+ 迭代与 SDK 三层架构见 [sdk.md](sdk.md)/[qwq-final-report.md](qwq-final-report.md)；存储后端扩展（SQLite 默认/PG 可选+迁移工具）见本文 §存储后端扩展。
+> 开发环境/仓库约定见本文件；SDK 三层架构见 [sdk.md](sdk.md)（v1.6.0 交付记录见 [archive/qwq-final-report.md](archive/qwq-final-report.md)）；存储后端扩展（SQLite 默认 / PG 可选 + 迁移工具）见本文 §存储后端扩展。
 
 
 ## 环境
@@ -17,7 +17,7 @@ pytest              # 全部测试
 pytest tests/xxx    # 单文件
 ```
 
-当前 535 个测试：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、**Persona 系统、群聊 Meme Knowledge、每日总结、Web UI 人格/知识页**（新增 `test_persona_manager.py` / `test_meme_knowledge.py` / `test_meme_summary.py` / `test_web_ui_persona_knowledge.py`）。
+当前 1038 个测试：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、Persona 系统、群聊 Meme Knowledge、任意语言插件（13 种语言黑盒端到端）等，详见 `tests/`。
 
 ## 代码检查
 
@@ -52,13 +52,13 @@ src/
 │   └── system_status.py     # 服务器状态采集（用户状态页用，零依赖 /proc）
 ├── repositories/   # SQLite 存储层（记忆/设置/表情包索引/梗知识）
 └── utils/          # 日志/trace/指标/熔断/过期容器/任务管理
-tests/              # 535 个测试
+tests/              # 1038 个测试
 docs/               # 文档
 ```
 
 ## 架构
 
-架构审计报告见 [architecture-audit.md](architecture-audit.md)（含三轮工程审计结论）。
+架构审计报告见 [archive/architecture-audit.md](archive/architecture-audit.md)（五轮工程审计 + v1.3.0 SDK 分层，历史快照）。
 
 ## Bot SDK 开发（v1.3.0+）
 

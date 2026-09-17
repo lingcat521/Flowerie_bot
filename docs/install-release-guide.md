@@ -66,20 +66,15 @@ chmod +x Flowerie_bot-macos-arm64-builtin
 ### 资产与约定
 - `Flowerie_bot-termux-source.tar.gz` —— **源码包**（含 `build-termux.sh`）：GitHub 跑不了 Android，**必须在你手机 Termux 内构建**（这本来就是正确姿势）。
 
-### 安装（手机 Termux）
+### 安装
 ```bash
-# 1. 下载源码包（或直接 git clone）
 pkg update && pkg install python git
-git clone https://github.com/lingcat521/Flowerie_bot.git
-cd Flowerie_bot
-
-# 2. 一键构建（自动装依赖/镜像源）
-bash build-termux.sh
-
-# 3. 首次运行（自动生成 .env 模板）
-python main.py
+git clone https://github.com/lingcat521/Flowerie_bot.git   # 或解压上面的源码包
+cd Flowerie_bot && bash build-termux.sh                      # 一键构建（自动装依赖 + 配好 Termux 用户仓库源）
+python main.py                                               # 首次运行自动生成 .env 模板
 ```
-- 若 `pydantic-core` 编译失败：`build-termux.sh` 已配置 Termux 用户仓库源（`--only-binary pydantic-core,pydantic` 分步重试）
+> 手写 pip 依赖（镜像源怎么选、`pydantic-core` 预编译包、SSL 重置与 `lxml` 编译报错排查）
+> 见专用文档 **[Termux 专用安装](install-termux.md)** —— **部署细节以那份为准**，本节只保留与 Release 资产相关的约定。
 
 ### NapCat（Android 端）
 - NapCat 建议**同机运行**：反向 WS → `ws://127.0.0.1:3001`（Termux 与 App 同机网络互通）
