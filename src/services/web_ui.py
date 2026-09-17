@@ -32,7 +32,6 @@ from aiohttp import web
 
 from src.config import Settings
 from src.services.config_service import ConfigService, verify_password
-from src.services.webui_static import handle_panel_static, no_store_html
 from src.services.web_ui_assets import (
     THEMES,
     background_rules,
@@ -59,6 +58,7 @@ from src.services.webui_panels import (
 
 # 兼容导出：拆分后常量/辅助函数移入 webui_panels.appearance_panel
 from src.services.webui_panels.appearance_panel import MAX_UPLOAD_BYTES  # noqa: F401
+from src.services.webui_static import handle_panel_static, no_store_html
 from src.utils.logging_setup import get_logger, get_recent_logs
 
 logger = get_logger(__name__)
