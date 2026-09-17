@@ -230,6 +230,12 @@ PANEL_CSS = read_asset("panel.css").replace("{{THEME_VARS}}", theme_css_block())
 # 面板样式指纹：改了 CSS 就会变，用来核对「服务端跑的是哪一版样式」
 PANEL_CSS_REV = hashlib.sha256(PANEL_CSS.encode("utf-8")).hexdigest()[:8]
 
+# 资源路由代际：只要改了「资源是怎么生成的」（不只是 CSS 内容），就 +1。
+# 目的：让引用 URL 变化 —— 浏览器即使缓存过旧样式也必然重新下载，
+# 用户不需要强刷或清缓存（手机上往往做不到强刷）。
+PANEL_ASSET_GEN = "3"
+PANEL_ASSET_VER = PANEL_CSS_REV + "-" + PANEL_ASSET_GEN
+
 
 def panel_asset_body(name: str) -> Optional[str]:
     """返回面板静态资源的响应体；None 表示不存在。

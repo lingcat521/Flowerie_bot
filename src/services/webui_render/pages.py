@@ -4,7 +4,7 @@ HTML 本体在 templates/*.html（真实文件，标准 HTML，改结构不用�
 本模块只负责准备数据并做 {{占位符}} 替换。
 """
 from src.services.webui_render.assets import render_template
-from src.services.webui_render.theme import PANEL_CSS_REV
+from src.services.webui_render.theme import PANEL_ASSET_VER
 from src.services.webui_render.util import _esc
 
 _TABS = [
@@ -28,7 +28,7 @@ _TITLES = {
 def render_login_page(msg: str = "") -> str:
     msg_html = (f'<div class="err" style="color:var(--err);font-size:13px;margin-bottom:10px">'
                 f'{_esc(msg)}</div>') if msg else ""
-    return render_template("login.html", css_rev=PANEL_CSS_REV, msg_html=msg_html)
+    return render_template("login.html", css_rev=PANEL_ASSET_VER, msg_html=msg_html)
 
 
 def render_register_page(msg: str = "", ok: bool = True, closed: bool = False) -> str:
@@ -37,7 +37,7 @@ def render_register_page(msg: str = "", ok: bool = True, closed: bool = False) -
     msg_html = f'<div class="{cls}" style="{style};font-size:13px;margin:10px 0">{_esc(msg)}</div>' if msg else ""
     # Bootstrap Lock：系统已初始化 → 公开注册入口永久关闭（对应模板不含表单，防绕过）
     name = "register_closed.html" if closed else "register.html"
-    return render_template(name, css_rev=PANEL_CSS_REV, msg_html=msg_html)
+    return render_template(name, css_rev=PANEL_ASSET_VER, msg_html=msg_html)
 
 
 def render_panel_page(*, theme_class: str, bg_rules: str, msg_html: str,
@@ -51,7 +51,7 @@ def render_panel_page(*, theme_class: str, bg_rules: str, msg_html: str,
     body_class = theme_class + (" pglass" if glass else "")
     return render_template(
         "panel.html",
-        css_rev=PANEL_CSS_REV,
+        css_rev=PANEL_ASSET_VER,
         bg_rules=bg_rules or "",
         body_class=body_class,
         inline_style=inline_style,

@@ -12,7 +12,12 @@ from src.services.webui_render.pages import (
     render_panel_page,
     render_register_page,
 )
-from src.services.webui_render.theme import PANEL_CSS, PANEL_CSS_REV, panel_asset_body
+from src.services.webui_render.theme import (
+    PANEL_ASSET_VER,
+    PANEL_CSS,
+    PANEL_CSS_REV,
+    panel_asset_body,
+)
 
 
 def test_static_css_exists_and_is_real_file():
@@ -59,7 +64,7 @@ def test_pages_link_stylesheet_and_leave_no_placeholder():
                                    panel_bg_css="rgba(24,27,31,0.9)"),
     }
     for name, html in pages.items():
-        assert "/panel/static/panel.css?v=" + PANEL_CSS_REV in html, name
+        assert "/panel/static/panel.css?v=" + PANEL_ASSET_VER in html, name
         assert not re.search(r"\{\{[a-z_]+\}\}", html), name
         assert "<!DOCTYPE html>" in html, name
 
@@ -147,3 +152,17 @@ def test_static_css_route_serves_injected_css():
     assert "input[type=text]" in body
     # 不存在的资源要返回 None（路由据此 404），不能抛异常
     assert panel_asset_body("does-not-exist.css") is None
+
+
+def test_css_url_changes_with_asset_generation():
+    """回归：CSS 引用 URL 必须带「资源代际」。
+
+    踩坑：只改服务端生成逻辑（不改 CSS 文件）时内容指纹不变，
+    浏览器会一直用缓存里的旧样式，用户怎么刷新都没用（手机上更是没法强刷）。
+    所以 URL 必须随「资源代际」变化。
+    """
+    assert PANEL_ASSET_VER.startswith(PANEL_CSS_REV)
+    assert "-" in PANEL_ASSET_VER and len(PANEL_ASSET_VER) > len(PANEL_CSS_REV)
+    html = render_login_page()
+    assert "?v=" + PANEL_ASSET_VER in html
+

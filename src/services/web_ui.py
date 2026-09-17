@@ -183,7 +183,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         resp.headers["X-Content-Type-Options"] = "nosniff"
         # 必须回源校验：这份 CSS 是 Python 注入主题变量后生成的，
         # 内容可能在不改 URL 的情况下变化（改注入逻辑时），长缓存会让浏览器一直用旧样式。
-        etag = 'W/"' + PANEL_CSS_REV + '"'
+        etag = 'W/"' + PANEL_ASSET_VER + '"'
         resp.headers["ETag"] = etag
         resp.headers["Cache-Control"] = "no-cache"
         if request.headers.get("If-None-Match") == etag:
