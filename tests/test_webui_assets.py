@@ -12,7 +12,7 @@ from src.services.webui_render.pages import (
     render_panel_page,
     render_register_page,
 )
-from src.services.webui_render.theme import PANEL_CSS, PANEL_CSS_REV
+from src.services.webui_render.theme import PANEL_CSS, PANEL_CSS_REV, panel_asset_body
 
 
 def test_static_css_exists_and_is_real_file():
@@ -132,3 +132,18 @@ def test_templates_declare_viewport():
     for name in ("panel.html", "login.html", "register.html", "register_closed.html"):
         html = template_path(name).read_text(encoding="utf-8")
         assert 'name="viewport"' in html and "width=device-width" in html, name
+
+
+def test_static_css_route_serves_injected_css():
+    """回归：静态路由必须返回**注入主题变量后**的 CSS。
+
+    直接回文件内容会残留 {{THEME_VARS}} 占位符 → .theme-default{--input-bg:...} 整段失效
+    → 输入框「透明无边框」、按钮白底白字（导致登录页看不到输入框，线上真实踩过）。
+    """
+    body = panel_asset_body("panel.css")
+    assert body == PANEL_CSS
+    assert "{{THEME_VARS}}" not in body
+    assert "--input-bg:" in body and "--accent:" in body and ".theme-default" in body
+    assert "input[type=text]" in body
+    # 不存在的资源要返回 None（路由据此 404），不能抛异常
+    assert panel_asset_body("does-not-exist.css") is None

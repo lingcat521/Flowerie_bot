@@ -32,6 +32,7 @@ from src.services.webui_render.theme import (
     THEMES,
     background_rules,
     hex_to_rgb,
+    panel_asset_body,
     theme_body_class,
     theme_css_block,
     theme_default_alpha,
@@ -40,7 +41,7 @@ from src.services.webui_render.theme import (
 
 __all__ = [
     "DEFAULT_THEME", "PANEL_CSS", "PANEL_CSS_REV", "THEMES", "THEME_ORDER", "asset_path",
-    "background_rules", "read_asset", "render_template",
+    "background_rules", "panel_asset_body", "read_asset", "render_template",
     "hex_to_rgb", "theme_body_class", "theme_css_block", "theme_default_alpha",
     "theme_default_bg", "render_appearance", "render_config_sections",
     "render_knowledge_tab", "render_login_page", "render_mcp_editor",

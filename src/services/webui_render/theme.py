@@ -4,7 +4,9 @@
 """
 import hashlib
 
-from src.services.webui_render.assets import read_asset
+from typing import Optional
+
+from src.services.webui_render.assets import asset_path, read_asset
 
 THEMES = {
     "default": {
@@ -228,3 +230,18 @@ PANEL_CSS = read_asset("panel.css").replace("{{THEME_VARS}}", theme_css_block())
 
 # 面板样式指纹：改了 CSS 就会变，用来核对「服务端跑的是哪一版样式」
 PANEL_CSS_REV = hashlib.sha256(PANEL_CSS.encode("utf-8")).hexdigest()[:8]
+
+
+def panel_asset_body(name: str) -> Optional[str]:
+    """返回面板静态资源的响应体；None 表示不存在。
+
+    注意：panel.css **不能**直接回文件内容 —— 文件里保留着 {{THEME_VARS}} 占位符，
+    必须回注入主题变量后的 PANEL_CSS，否则 .theme-default{--input-bg:...} 整段失效，
+    输入框会变成「透明无边框」（线上真实踩过这个坑）。
+    """
+    if name == "panel.css":
+        return PANEL_CSS
+    path = asset_path(name)
+    if not path.is_file():
+        return None
+    return path.read_text(encoding="utf-8")

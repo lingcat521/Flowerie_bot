@@ -35,6 +35,7 @@ from src.services.config_service import ConfigService, verify_password
 from src.services.web_ui_assets import (
     THEMES,
     asset_path,
+    panel_asset_body,
     background_rules,
     render_appearance,
     render_config_sections,
@@ -176,14 +177,10 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         name = request.match_info.get("name", "")
         if not name or "/" in name or "\\" in name or ".." in name or not name.endswith(".css"):
             return web.Response(status=404, text="Not Found")
-        path = asset_path(name)
-        if not path.is_file():
+        body = panel_asset_body(name)
+        if body is None:
             return web.Response(status=404, text="Not Found")
-        try:
-            data = path.read_bytes()
-        except OSError:  # noqa: BLE001 - 读不到就 404，不影响面板其余部分
-            return web.Response(status=404, text="Not Found")
-        resp = web.Response(body=data, content_type="text/css", charset="utf-8")
+        resp = web.Response(text=body, content_type="text/css", charset="utf-8")
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
         return resp
