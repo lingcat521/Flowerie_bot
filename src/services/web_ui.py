@@ -34,6 +34,7 @@ from src.config import Settings
 from src.services.config_service import ConfigService, verify_password
 from src.services.web_ui_assets import (
     THEMES,
+    asset_path,
     background_rules,
     render_appearance,
     render_config_sections,

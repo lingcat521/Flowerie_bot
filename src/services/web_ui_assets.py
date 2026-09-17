@@ -10,6 +10,7 @@
 零 JavaScript 保证：所有渲染函数只输出 HTML/CSS，无任何脚本。
 """
 from src.services.webui_render.account import render_account_tab
+from src.services.webui_render.assets import asset_path, read_asset, render_template
 from src.services.webui_render.appearance import render_appearance
 from src.services.webui_render.config_panel import (
     render_config_sections,
@@ -38,7 +39,8 @@ from src.services.webui_render.theme import (
 )
 
 __all__ = [
-    "DEFAULT_THEME", "PANEL_CSS", "PANEL_CSS_REV", "THEMES", "THEME_ORDER", "background_rules",
+    "DEFAULT_THEME", "PANEL_CSS", "PANEL_CSS_REV", "THEMES", "THEME_ORDER", "asset_path",
+    "background_rules", "read_asset", "render_template",
     "hex_to_rgb", "theme_body_class", "theme_css_block", "theme_default_alpha",
     "theme_default_bg", "render_appearance", "render_config_sections",
     "render_knowledge_tab", "render_login_page", "render_mcp_editor",
