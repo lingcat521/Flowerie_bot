@@ -10,8 +10,8 @@
 零 JavaScript 保证：所有渲染函数只输出 HTML/CSS，无任何脚本。
 """
 from src.services.webui_render.account import render_account_tab
-from src.services.webui_render.assets import asset_path, read_asset, render_template
 from src.services.webui_render.appearance import render_appearance
+from src.services.webui_render.assets import asset_path, read_asset, render_template
 from src.services.webui_render.config_panel import (
     render_config_sections,
     render_mcp_editor,
