@@ -574,3 +574,39 @@ def on_message(event, api):
 - 插件读写自己的数据（配置/缓存/资源）放这里——**无需自己建目录**
 - 目录位于插件目录内（防穿越）；创建失败时回退插件目录本体
 - 环境变量 `FLOWERIE_PLUGIN_DATA_DIR` 供子进程/工具脚本使用（后续版本）
+
+## 31. 任意语言最小示例（13 种语言，CI 实测）
+
+`tests/plugins/multilang/` 下每种语言一份**最小可运行插件**，全部走 `runtime="exec"`：
+
+| 语言 | 夹具 | 构建 / 启动方式 | 事件返回标记 |
+| --- | --- | --- | --- |
+| C | `multilang/c/` | `gcc -O2 -o plugin plugin.c` | `c-ok` |
+| C++ | `multilang/cpp/` | `g++ -O2 -std=c++17 -o plugin plugin.cpp` | `cpp-ok` |
+| Go | `multilang/go/` | `go build -o plugin main.go` | `go-ok` |
+| Rust | `multilang/rust/` | `rustc -O -o plugin main.rs` | `rust-ok` |
+| Java | `multilang/java/` | `javac Plugin.java`；`entry=run.sh` → `exec java -cp . Plugin` | `java-ok` |
+| C# / .NET | `multilang/csharp/` | `dotnet build -c Release`；`entry=run.sh` → `dotnet run` | `csharp-ok` |
+| Kotlin | `multilang/kotlin/` | `kotlinc plugin.kt -include-runtime -d plugin.jar`；`entry=run.sh` → `java -jar` | `kotlin-ok` |
+| PHP | `multilang/php/` | `#!/usr/bin/env php` 直接执行 | `php-ok` |
+| Lua | `multilang/lua/` | `#!/usr/bin/env lua` 直接执行 | `lua-ok` |
+| Ruby | `multilang/ruby/` | `#!/usr/bin/env ruby` 直接执行 | `ruby-ok` |
+| Perl | `multilang/perl/` | `#!/usr/bin/env perl` 直接执行 | `perl-ok` |
+| R | `multilang/r/` | `#!/usr/bin/env Rscript` 直接执行 | `r-ok` |
+| TypeScript | `multilang/typescript/` | `tsc plugin.ts --target es2019 --module commonjs`；`entry=run.sh` → `node plugin.js` | `typescript-ok` |
+
+验证方式（`tests/test_plugin_multilang.py`）**不是**语法检查，而是真的拉起子进程跑完整协议：
+`PluginRuntime.start()` → `initialize` 握手 → `dispatch_event("message")` → 断言返回标记 → `shutdown`。
+CI 中每种语言先构建再启动；镜像缺该语言工具链时用例自动 `skip`（不误报失败），
+`ci.yml` 额外补装 `lua5.4` 与 `r-base-core`，因此 13 种在 CI 中**全部真实执行**。
+
+### 三条可复用的经验
+
+1. **JVM / .NET / tsc 的产物不是可执行文件** → 用 3 行 `run.sh` 包装（`exec java -jar ... "$@"`），
+   manifest 的 `entry` 指向 `run.sh`：内核只认二进制与 shebang，不认「语言」。
+2. **脚本语言必须首行 shebang 且带执行位**（`#!/usr/bin/env php` 等）；ZIP 安装时安装器会补一次 `chmod +x`。
+   Android 的 `/storage/emulated/0` 是 FUSE，不支持执行位——exec 插件要放在可执行分区（如 `$HOME`）。
+3. **stdout 必须逐行 flush**：协议是 JSON-Lines、主进程按行读取，谁缓冲谁握手超时。
+   各语言惯用法：C `fflush(stdout)`、C++ `std::endl`、PHP `fflush(STDOUT)`、Ruby `$stdout.sync = true`、
+   Perl `$| = 1`、Lua `io.stdout:setvbuf("line")`、R `flush(stdout())`、C# `Console.Out.Flush()`；
+   Go / Rust / Java / Kotlin / Node 的 `Println`/`println!`/`println` 是按行刷新，无需额外处理。
