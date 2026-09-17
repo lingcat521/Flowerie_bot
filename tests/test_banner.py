@@ -35,7 +35,7 @@ def test_art_is_pure_ascii():
 
 def test_banner_contains_art_head_summary_and_signature():
     text = banner_text("2.2.2222", [("协议", "milky"), ("模型", "deepseek-flash")])
-    assert "|  ___|" in text and "/ _ \\" in text   # 艺术字（F 与 O）
+    assert "|  ____|" in text and "/ __ \\" in text  # 艺术字（F 与 O，figlet big）
     assert "Flowerie · 花璃" in text
     assert "v2.2.2222" in text
     assert "协议" in text and "deepseek-flash" in text
@@ -45,7 +45,9 @@ def test_banner_contains_art_head_summary_and_signature():
 
 def test_banner_without_version_or_summary():
     lines = banner_lines()
-    assert lines[6].strip() == "Flowerie · 花璃"   # 无版本号时不带 vX（5 行艺术字 + 空行）
+    art_lines = BANNER.strip("\n").split("\n")
+    # 艺术字行数可随字体调整，标题行紧随其后（艺术字 + 1 个空行）
+    assert lines[len(art_lines) + 1].strip() == "Flowerie · 花璃"   # 无版本号时不带 vX
     assert MADE_BY in "\n".join(lines)
 
 
@@ -151,14 +153,15 @@ def test_print_banner_accepts_quip(capsys, monkeypatch):
 
 # ---------- 艺术字拼写防回归 ----------
 def test_art_spells_flowerie():
-    """防回归：艺术字必须真的是 FLOWERIE（曾经凭记忆拼成残字）。"""
-    assert "|  ___|" in BANNER                   # F 的开头
-    assert BANNER.count("| ____|") == 2          # 两个 E 的开头
-    assert "/ _ \\" in BANNER                    # O
-    assert "|_ _|" in BANNER                     # I
-    assert "|  _ \\" in BANNER                   # R
-    assert "\\ \\ /\\ / /" in BANNER             # W（两个 V 并排；别画成单个 V）
-    assert BANNER.count("|_____|") >= 3          # L + 两个 E 的底线
+    """艺术字必须逐字母可辨认（figlet big 字体）。"""
+    assert "|  ____|" in BANNER                   # F 的开头
+    assert BANNER.count("|______|") == 2           # 两个 E 的底线
+    assert "/ __ \\" in BANNER                   # O
+    assert "|_   _|" in BANNER                     # I
+    assert "| |__) |" in BANNER                    # R
+    assert "\\ \\  /\\  / /" in BANNER       # W 中段：两个 V 并排
+    assert "\\/  \\/" in BANNER                 # W 底部收口（别画成单个 V）
+    assert "|______" in BANNER                     # L 的底线
 
 
 def test_art_width_fits_80_columns():
