@@ -48,6 +48,14 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio ruff psycopg psycopg-pool
 
+      # 多语言插件夹具：runner 镜像自带 gcc/g++/go/rust/java/kotlin/dotnet/php/ruby/perl/tsc，
+      # 唯独缺 lua 与 R —— 补上这两个，13 种语言全部真实编译/启动（缺则用例自动 skip）
+      - name: Install extra plugin toolchains (lua / R)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lua5.4 r-base-core
+          sudo ln -sf /usr/bin/lua5.4 /usr/local/bin/lua
+
       - name: Ruff check
         run: ruff check .
 
