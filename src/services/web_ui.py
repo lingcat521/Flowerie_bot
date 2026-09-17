@@ -35,8 +35,8 @@ from src.services.config_service import ConfigService, verify_password
 from src.services.web_ui_assets import (
     THEMES,
     asset_path,
-    panel_asset_body,
     background_rules,
+    panel_asset_body,
     render_appearance,
     render_config_sections,
     render_login_page,

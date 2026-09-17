@@ -3,7 +3,6 @@
 零 JavaScript 保证：只输出 CSS 变量与样式规则。
 """
 import hashlib
-
 from typing import Optional
 
 from src.services.webui_render.assets import asset_path, read_asset
