@@ -1,8 +1,15 @@
 // 最小「任意语言插件」示例：TypeScript 实现 Plugin API v1（stdin/stdout JSON-Lines）
 // 编译：tsc plugin.ts --target es2019 --module commonjs   -> plugin.js
 // 入口：run.sh（exec node plugin.js）
-// 注意：刻意用字符串拼接而不是模板字面量，避免插值语法在不同工具链下的歧义
-import * as readline from "readline";
+//
+// 刻意做到**零 npm 依赖**：不要求插件作者先装 @types/node，
+// 用 declare 自声明用到的最小接口 + require 取 readline 即可编译。
+// 同时用字符串拼接而不是模板字面量，避免插值语法在不同工具链下的歧义。
+
+declare const process: any;
+declare function require(name: string): any;
+
+const readline = require("readline");
 
 const ID_RE = /"id":\s*(\d+)/;
 const METHOD_RE = /"method":\s*"([a-z_]+)"/;
