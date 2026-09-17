@@ -75,3 +75,60 @@ def test_panel_page_keeps_dynamic_bits():
     assert "<div class='msg'>提示</div>" in html and "<p>正文</p>" in html
     assert "用户状态" in html and 'class="tab active"' in html
     assert "panel-foot" in html
+
+
+# ---------- 分辨率自适应（PC / 平板 / 手机）----------
+
+def _css_without_media_blocks(css: str) -> str:
+    """去掉 @media 块后的基础 CSS（用于检查「无条件的固定宽度」）。"""
+    out, i = [], 0
+    while True:
+        at = css.find("@media", i)
+        if at < 0:
+            out.append(css[i:])
+            break
+        out.append(css[i:at])
+        brace = css.find("{", at)
+        depth, j = 1, brace + 1
+        while j < len(css) and depth:
+            if css[j] == "{":
+                depth += 1
+            elif css[j] == "}":
+                depth -= 1
+            j += 1
+        i = j
+    return "".join(out)
+
+
+def test_no_fixed_width_can_overflow_a_phone():
+    """无条件的固定宽度不得 ≥320px —— 否则 360px 宽的手机必然横向溢出。"""
+    import re
+    base = _css_without_media_blocks(PANEL_CSS)
+    offenders = [(m.group(1), int(m.group(2)))
+                 for m in re.finditer(r"(?<![a-z-])(width|min-width)\s*:\s*(\d+)px", base)
+                 if int(m.group(2)) >= 320]
+    assert offenders == [], offenders
+
+
+def test_has_all_responsive_breakpoints():
+    """四档断点必须齐全：宽屏 PC / 平板横屏 / 平板竖屏 / 手机 / 小屏手机。"""
+    for bp in ("min-width:1440px", "max-width:1023px", "max-width:980px",
+               "max-width:860px", "max-width:720px", "max-width:420px"):
+        assert bp in PANEL_CSS, bp
+
+
+def test_layout_stacks_on_narrow_screens():
+    """窄屏必须堆叠：.row / .rule-add / .form-inline / .nick-add 变单列。"""
+    narrow = PANEL_CSS[PANEL_CSS.find("@media (max-width:860px)"):]
+    assert ".row{grid-template-columns:minmax(0,1fr)" in narrow
+    assert ".rule-add{grid-template-columns:minmax(0,1fr)}" in narrow
+    assert ".form-inline{grid-template-columns:minmax(0,1fr)}" in narrow
+    assert ".nick-add{grid-template-columns:minmax(0,1fr)}" in narrow
+    assert ".w-sm,.w-gid,.w-md,.w-lg{max-width:none}" in narrow
+
+
+def test_templates_declare_viewport():
+    """没有 viewport meta，手机上会按 980px 缩放渲染 —— 必查。"""
+    for name in ("panel.html", "login.html", "register.html", "register_closed.html"):
+        html = template_path(name).read_text(encoding="utf-8")
+        assert 'name="viewport"' in html and "width=device-width" in html, name

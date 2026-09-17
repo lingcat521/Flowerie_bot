@@ -207,3 +207,28 @@ padding:7px 11px;font-size:13px;color:var(--text);word-break:break-word}
 
 .panel-foot{margin:26px 0 8px;text-align:center;font-size:11.5px;color:var(--text-muted);opacity:.75}
 .auth-note{text-align:center;color:var(--text-muted);font-size:11.5px;margin-top:14px}
+
+/* ================= 分辨率自适应（PC / 平板 / 手机）=================
+   宽屏 PC   ≥1440px : 内容区放宽到 1200px，卡片网格自动多列
+   常规 PC  1024~1439: 1080px（默认）
+   平板横屏  861~1023: 略收内边距
+   平板竖屏   ≤860px : .row 单列、表单/规则/昵称新增区全部堆叠
+   手机       ≤720px : 按钮全宽、内边距收紧、主题卡两列
+   小屏手机   ≤420px : 主题卡单列
+================================================================== */
+@media (min-width:1440px){
+  .wrap{max-width:1200px}
+  .nick-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+  .theme-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+}
+@media (min-width:861px) and (max-width:1023px){
+  .wrap{padding:14px 16px 64px}
+}
+@media (max-width:720px){
+  .topbar{padding:10px 12px;border-radius:10px}
+  .brand{font-size:17px}
+  .tab{padding:6px 12px;font-size:13px}
+  .group{padding:14px 14px 16px;border-radius:12px}
+  .mcp-card{padding:12px 13px}
+  .stat-value{font-size:18px}
+}
