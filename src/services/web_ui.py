@@ -152,8 +152,22 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             pass
         return True
 
+    @staticmethod
+    @web.middleware
+    async def _no_store_html(request, handler):
+        """面板是服务端渲染的动态 HTML，绝不能被浏览器缓存。
+
+        否则会出现「代码已更新并重启，页面上还是旧布局」——用户只能靠强刷自救。
+        只对 text/html 生效，背景图等静态资源照常缓存。
+        """
+        resp = await handler(request)
+        if getattr(resp, "content_type", "") == "text/html":
+            resp.headers["Cache-Control"] = "no-store, must-revalidate"
+            resp.headers["Pragma"] = "no-cache"
+        return resp
+
     def build_app(self) -> web.Application:
-        app = web.Application()
+        app = web.Application(middlewares=[self._no_store_html])
         app.router.add_get("/", self._handle_root_redirect)
         app.router.add_get("/webui", self._handle_root_redirect)  # 旧 JS 版入口 → /panel
         # 无 JS 兼容面板（服务端渲染，任何浏览器可用，含禁用 JS 的手机浏览器）

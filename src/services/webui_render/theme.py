@@ -419,7 +419,7 @@ padding:7px 11px;font-size:13px;color:var(--text);word-break:break-word}
 
 /* ---------- 群昵称卡片 ---------- */
 .nick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin:12px 0}
-.nick-card{gap:9px;padding:12px 14px;margin:0}
+.nick-card{display:flex;flex-direction:column;gap:9px;padding:12px 14px;margin:0}
 .nick-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .nick-gid{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;color:var(--heading)}
 .nick-persona{font-size:11.5px;padding:1px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
