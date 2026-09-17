@@ -27,17 +27,13 @@ func main() {
 		}
 		switch req.Method {
 		case "initialize":
-			fmt.Fprintf(out, "{"id":%d,"result":{"ok":true,"api_version":"1"}}
-", req.ID)
+			fmt.Fprintf(out, "{\"id\":%d,\"result\":{\"ok\":true,\"api_version\":\"1\"}}\n", req.ID)
 		case "event":
-			fmt.Fprintf(out, "{"id":%d,"result":{"actions":[{"type":"test","message":"go-ok"}]}}
-", req.ID)
+			fmt.Fprintf(out, "{\"id\":%d,\"result\":{\"actions\":[{\"type\":\"test\",\"message\":\"go-ok\"}]}}\n", req.ID)
 		case "health", "shutdown":
-			fmt.Fprintf(out, "{"id":%d,"result":{"ok":true}}
-", req.ID)
+			fmt.Fprintf(out, "{\"id\":%d,\"result\":{\"ok\":true}}\n", req.ID)
 		default:
-			fmt.Fprintf(out, "{"id":%d,"error":"unknown method"}
-", req.ID)
+			fmt.Fprintf(out, "{\"id\":%d,\"error\":\"unknown method\"}\n", req.ID)
 		}
 		out.Flush()
 	}

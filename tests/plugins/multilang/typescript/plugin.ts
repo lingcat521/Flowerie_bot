@@ -1,6 +1,7 @@
 // 最小「任意语言插件」示例：TypeScript 实现 Plugin API v1（stdin/stdout JSON-Lines）
 // 编译：tsc plugin.ts --target es2019 --module commonjs   -> plugin.js
-// 入口：plugin.js（用 node 跑；发布时把编译产物一起打进 ZIP 即可）
+// 入口：run.sh（exec node plugin.js）
+// 注意：刻意用字符串拼接而不是模板字面量，避免插值语法在不同工具链下的歧义
 import * as readline from "readline";
 
 const ID_RE = /"id":\s*(\d+)/;
@@ -16,19 +17,18 @@ rl.on("line", (line: string) => {
   let payload: string;
   switch (method) {
     case "initialize":
-      payload = `{"id":${id},"result":{"ok":true,"api_version":"1"}}`;
+      payload = '{"id":' + id + ',"result":{"ok":true,"api_version":"1"}}';
       break;
     case "event":
-      payload = `{"id":${id},"result":{"actions":[{"type":"test","message":"typescript-ok"}]}}`;
+      payload = '{"id":' + id + ',"result":{"actions":[{"type":"test","message":"typescript-ok"}]}}';
       break;
     case "health":
     case "shutdown":
-      payload = `{"id":${id},"result":{"ok":true}}`;
+      payload = '{"id":' + id + ',"result":{"ok":true}}';
       break;
     default:
-      payload = `{"id":${id},"error":"unknown method"}`;
+      payload = '{"id":' + id + ',"error":"unknown method"}';
   }
-  process.stdout.write(payload + "
-");
+  process.stdout.write(payload + "\n");
 });
 

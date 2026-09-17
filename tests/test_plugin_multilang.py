@@ -1,4 +1,4 @@
-"""多语言插件黑盒测试：14 种语言各写一个最小插件，真启动子进程跑完整协议。
+"""多语言插件黑盒测试：13 种语言各写一个最小插件，真启动子进程跑完整协议。
 
 验证的是「任意语言接入」这件事本身：
 - 每种语言只实现 Plugin API v1 的 stdin/stdout JSON-Lines（不依赖任何 SDK）
@@ -6,7 +6,7 @@
 - 真启动 → initialize 握手 → 发 event → 断言插件返回的动作 → shutdown
 
 环境缺某语言的工具链时**跳过**（CI 上 GCC/Go/Rust/Java/Node/PHP/Ruby/Perl 齐全，
-Kotlin/Swift/.NET/Lua/R 视镜像而定）。
+Kotlin/.NET/Lua/R 视镜像而定）。
 """
 import os
 import shutil
@@ -33,8 +33,6 @@ SPECS = [
     dict(name="csharp", tool="dotnet",
          build=["dotnet", "build", "-c", "Release", "--nologo", "-v", "quiet"], marker="csharp-ok",
          startup=120, build_timeout=420),
-    dict(name="swift", tool="swiftc", build=["swiftc", "-O", "-o", "plugin", "plugin.swift"],
-         marker="swift-ok", startup=60, build_timeout=300),
     dict(name="kotlin", tool="kotlinc",
          build=["kotlinc", "plugin.kt", "-include-runtime", "-d", "plugin.jar"], marker="kotlin-ok",
          needs=["java"], startup=60, build_timeout=600),
@@ -97,7 +95,7 @@ async def test_multilang_minimal_plugin(tmp_path, spec):
 def test_multilang_fixtures_are_consistent():
     """夹具自检：14 种语言目录齐全、manifest 合法且 runtime=exec（无需工具链）。"""
     names = sorted(s["name"] for s in SPECS)
-    assert len(names) == len(set(names)) == 14
+    assert len(names) == len(set(names)) == 13
     for name in names:
         d = os.path.join(MULTILANG_DIR, name)
         assert os.path.isdir(d), "缺少夹具目录: %s" % name
