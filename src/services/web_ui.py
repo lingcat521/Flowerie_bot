@@ -33,6 +33,7 @@ from aiohttp import web
 from src.config import Settings
 from src.services.config_service import ConfigService, verify_password
 from src.services.web_ui_assets import (
+    PANEL_ASSET_VER,
     THEMES,
     background_rules,
     panel_asset_body,
