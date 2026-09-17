@@ -5,6 +5,7 @@
 import hashlib
 
 from src.services.webui_render.assets import read_asset
+
 THEMES = {
     "default": {
         "label": "默认",

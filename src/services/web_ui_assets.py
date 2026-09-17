@@ -38,7 +38,7 @@ from src.services.webui_render.theme import (
 )
 
 __all__ = [
-    "DEFAULT_THEME", "PANEL_CSS", "THEMES", "THEME_ORDER", "background_rules",
+    "DEFAULT_THEME", "PANEL_CSS", "PANEL_CSS_REV", "THEMES", "THEME_ORDER", "background_rules",
     "hex_to_rgb", "theme_body_class", "theme_css_block", "theme_default_alpha",
     "theme_default_bg", "render_appearance", "render_config_sections",
     "render_knowledge_tab", "render_login_page", "render_mcp_editor",
