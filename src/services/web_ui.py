@@ -32,11 +32,10 @@ from aiohttp import web
 
 from src.config import Settings
 from src.services.config_service import ConfigService, verify_password
+from src.services.webui_static import handle_panel_static, no_store_html
 from src.services.web_ui_assets import (
-    PANEL_ASSET_VER,
     THEMES,
     background_rules,
-    panel_asset_body,
     render_appearance,
     render_config_sections,
     render_login_page,
@@ -154,45 +153,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             pass
         return True
 
-    @staticmethod
-    @web.middleware
-    async def _no_store_html(request, handler):
-        """面板是服务端渲染的动态 HTML，绝不能被浏览器缓存。
-
-        否则会出现「代码已更新并重启，页面上还是旧布局」——用户只能靠强刷自救。
-        只对 text/html 生效，背景图等静态资源照常缓存。
-        """
-        resp = await handler(request)
-        if getattr(resp, "content_type", "") == "text/html":
-            resp.headers["Cache-Control"] = "no-store, must-revalidate"
-            resp.headers["Pragma"] = "no-cache"
-        return resp
-
-    async def _handle_panel_static(self, request: web.Request) -> web.Response:
-        """面板静态资源（static/*.css）。
-
-        登录页也要能加载样式，所以这里不做 token 校验；只允许白名单文件名，
-        杜绝路径穿越。引用处带 ?v=<内容指纹>，改 CSS 指纹就变、URL 变即自动失效缓存。
-        """
-        name = request.match_info.get("name", "")
-        if not name or "/" in name or "\\" in name or ".." in name or not name.endswith(".css"):
-            return web.Response(status=404, text="Not Found")
-        body = panel_asset_body(name)
-        if body is None:
-            return web.Response(status=404, text="Not Found")
-        resp = web.Response(text=body, content_type="text/css", charset="utf-8")
-        resp.headers["X-Content-Type-Options"] = "nosniff"
-        # 必须回源校验：这份 CSS 是 Python 注入主题变量后生成的，
-        # 内容可能在不改 URL 的情况下变化（改注入逻辑时），长缓存会让浏览器一直用旧样式。
-        etag = 'W/"' + PANEL_ASSET_VER + '"'
-        resp.headers["ETag"] = etag
-        resp.headers["Cache-Control"] = "no-cache"
-        if request.headers.get("If-None-Match") == etag:
-            return web.Response(status=304, headers={"ETag": etag, "Cache-Control": "no-cache"})
-        return resp
-
     def build_app(self) -> web.Application:
-        app = web.Application(middlewares=[self._no_store_html])
+        app = web.Application(middlewares=[no_store_html])
         app.router.add_get("/", self._handle_root_redirect)
         app.router.add_get("/webui", self._handle_root_redirect)  # 旧 JS 版入口 → /panel
         # 无 JS 兼容面板（服务端渲染，任何浏览器可用，含禁用 JS 的手机浏览器）
@@ -217,7 +179,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/appearance/restore", self._handle_panel_appearance_restore)
         app.router.add_post("/panel/appearance/delete-image", self._handle_panel_appearance_delete_image)
         app.router.add_get("/panel/background", self._handle_panel_background)
-        app.router.add_get("/panel/static/{name}", self._handle_panel_static)
+        app.router.add_get("/panel/static/{name}", handle_panel_static)
         # MCP server 结构化编辑（添加/编辑/删除，零 JS 表单）
         app.router.add_post("/panel/mcp/edit", self._handle_panel_mcp_edit)
         # 人格管理（零 JS 表单：默认 / 全局 / 列表 CRUD / 群绑定）
