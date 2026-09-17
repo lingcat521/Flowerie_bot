@@ -1,0 +1,12 @@
+{
+  "id": "ml_ruby",
+  "name": "Multilang Ruby Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：Ruby（最小 Plugin API v1 实现）",
+  "runtime": "exec",
+  "entry": "plugin.rb",
+  "api_version": "1",
+  "permissions": []
+}
+

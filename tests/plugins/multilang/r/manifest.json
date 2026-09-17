@@ -1,0 +1,12 @@
+{
+  "id": "ml_r",
+  "name": "Multilang R Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：R（shebang 脚本）",
+  "runtime": "exec",
+  "entry": "plugin.R",
+  "api_version": "1",
+  "permissions": []
+}
+

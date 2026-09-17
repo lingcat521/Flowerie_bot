@@ -1,0 +1,12 @@
+{
+  "id": "ml_java",
+  "name": "Multilang Java Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：Java（run.sh 包装 exec java -cp）",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": "1",
+  "permissions": []
+}
+

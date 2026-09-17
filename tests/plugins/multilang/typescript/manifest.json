@@ -1,0 +1,11 @@
+{
+  "id": "ml_typescript",
+  "name": "Multilang TypeScript Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：TypeScript（tsc 编译后用 run.sh 包装 node）",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": "1",
+  "permissions": []
+}

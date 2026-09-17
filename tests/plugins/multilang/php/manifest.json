@@ -1,0 +1,12 @@
+{
+  "id": "ml_php",
+  "name": "Multilang PHP Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：PHP（shebang 脚本）",
+  "runtime": "exec",
+  "entry": "plugin.php",
+  "api_version": "1",
+  "permissions": []
+}
+

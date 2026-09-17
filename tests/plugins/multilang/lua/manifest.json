@@ -1,0 +1,12 @@
+{
+  "id": "ml_lua",
+  "name": "Multilang Lua Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：Lua（shebang 脚本）",
+  "runtime": "exec",
+  "entry": "plugin.lua",
+  "api_version": "1",
+  "permissions": []
+}
+

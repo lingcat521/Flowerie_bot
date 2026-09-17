@@ -1,0 +1,12 @@
+{
+  "id": "ml_csharp",
+  "name": "Multilang C# Plugin",
+  "version": "1.0.0",
+  "author": "flowerie",
+  "description": "任意语言插件示例：C# / .NET（run.sh 包装 dotnet run）",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": "1",
+  "permissions": []
+}
+
