@@ -35,7 +35,7 @@ def test_art_is_pure_ascii():
 
 def test_banner_contains_art_head_summary_and_signature():
     text = banner_text("2.2.2222", [("协议", "milky"), ("模型", "deepseek-flash")])
-    assert "|  ____|" in text and "/ __ \\" in text  # 艺术字（F 与 O，figlet big）
+    assert ",------." in text and ",---." in text  # 艺术字（F 与 o，figlet soft）
     assert "Flowerie · 花璃" in text
     assert "v2.2.2222" in text
     assert "协议" in text and "deepseek-flash" in text
@@ -153,15 +153,13 @@ def test_print_banner_accepts_quip(capsys, monkeypatch):
 
 # ---------- 艺术字拼写防回归 ----------
 def test_art_spells_flowerie():
-    """艺术字必须逐字母可辨认（figlet big 字体）。"""
-    assert "|  ____|" in BANNER                   # F 的开头
-    assert BANNER.count("|______|") == 2           # 两个 E 的底线
-    assert "/ __ \\" in BANNER                   # O
-    assert "|_   _|" in BANNER                     # I
-    assert "| |__) |" in BANNER                    # R
-    assert "\\ \\  /\\  / /" in BANNER       # W 中段：两个 V 并排
-    assert "\\/  \\/" in BANNER                 # W 底部收口（别画成单个 V）
-    assert "|______" in BANNER                     # L 的底线
+    """艺术字必须逐字母可辨认（figlet soft 字体，小写 Flowerie）。"""
+    assert ",------." in BANNER                    # F 的顶
+    assert BANNER.count("`----'") == 2            # 两个 e 的底线
+    assert ",---." in BANNER and ",--.--." in BANNER   # o 与 r
+    assert "'--'   '--'" in BANNER               # w 的两个 V 底（别画成单个 V）
+    assert "`--'    `--'" in BANNER              # F 与 l 收在同一行
+
 
 
 def test_art_width_fits_80_columns():
