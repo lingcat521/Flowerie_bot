@@ -240,8 +240,10 @@ async def test_panel_topbar_opaque_over_background():
         cookie = await _login(server)
         resp = await server._handle_panel(FakeRequest(cookies={"fb_token": cookie}, query={}))
         text = _resp_text(resp)
-        # PANEL_CSS 已内联到页面 <style>
-        assert "background-color:rgb(var(--panel-rgb))" in text
+        # 样式已改为外链真实文件（static/panel.css），规则本体在 CSS 里
+        assert "/panel/static/panel.css?v=" in text
+        from src.services.webui_render.theme import PANEL_CSS as _CSS
+        assert "background-color:rgb(var(--panel-rgb))" in _CSS
 
 
 async def test_sakura_theme_default_light_pink_background():

@@ -1,0 +1,77 @@
+"""面板静态资产与模板：确保「CSS/模板是真实文件」这条路线不退化。
+
+背景：面板的 CSS 与页面壳从 Python 字符串搬到了真实文件
+（static/panel.css、templates/*.html）。这类改动最容易出的问题是
+「文件没被打进发布包」或「模板占位符忘了替换」，所以单独用一组测试盯住。
+"""
+import re
+
+from src.services.webui_render.assets import asset_path, read_asset, template_path
+from src.services.webui_render.pages import (
+    render_login_page,
+    render_panel_page,
+    render_register_page,
+)
+from src.services.webui_render.theme import PANEL_CSS, PANEL_CSS_REV
+
+
+def test_static_css_exists_and_is_real_file():
+    """CSS 必须是磁盘上的真实文件（不是 Python 字符串）。"""
+    assert asset_path("panel.css").is_file()
+    css = read_asset("panel.css")
+    assert len(css) > 8000                      # 面板样式规模
+    assert "{{THEME_VARS}}" in css               # 占位符保留在文件里，由 Python 注入主题变量
+
+
+def test_panel_css_placeholder_is_substituted():
+    """PANEL_CSS 里不能残留占位符（否则主题变量整块丢失）。"""
+    assert "{{THEME_VARS}}" not in PANEL_CSS
+    assert ".theme-default {" in PANEL_CSS        # 主题变量已注入（theme_css_block 输出）
+    assert PANEL_CSS_REV and len(PANEL_CSS_REV) == 8
+
+
+def test_panel_css_has_key_layout_rules():
+    """曾经踩过的布局坑，规则必须还在。"""
+    for rule in (
+        "grid-template-columns:minmax(180px,260px)",   # .row 自适应两列
+        "table{width:100%",                            # 表格不再塌缩
+        "pre{white-space:pre-wrap",                    # 示例文本不溢出
+        ".nick-grid{",                                 # 群昵称卡片网格
+        "w-gid",                                       # 宽度工具类
+        "@media (max-width:860px)",                    # 平板断点
+    ):
+        assert rule in PANEL_CSS, rule
+
+
+def test_templates_exist():
+    for name in ("panel.html", "login.html", "register.html", "register_closed.html"):
+        assert template_path(name).is_file(), name
+
+
+def test_pages_link_stylesheet_and_leave_no_placeholder():
+    """页面必须外链 CSS，且占位符全部替换完毕。"""
+    pages = {
+        "login": render_login_page("用户名或密码错误"),
+        "register": render_register_page("ok"),
+        "register_closed": render_register_page("", closed=True),
+        "panel": render_panel_page(theme_class="theme-dark", bg_rules="body{background:#121417}",
+                                   msg_html="", body_html="<p>hi</p>", active_tab="nicknames",
+                                   panel_bg_css="rgba(24,27,31,0.9)"),
+    }
+    for name, html in pages.items():
+        assert "/panel/static/panel.css?v=" + PANEL_CSS_REV in html, name
+        assert not re.search(r"\{\{[a-z_]+\}\}", html), name
+        assert "<!DOCTYPE html>" in html, name
+
+
+def test_panel_page_keeps_dynamic_bits():
+    """模板化之后，动态内容仍要正确注入。"""
+    html = render_panel_page(theme_class="theme-sakura", bg_rules="body{background:#FDEEF3}",
+                             msg_html="<div class='msg'>提示</div>", body_html="<p>正文</p>",
+                             active_tab="account", panel_bg_css="rgba(255,255,255,0.82)", glass=True)
+    assert "theme-sakura" in html and "pglass" in html
+    assert 'style="--panel-bg:rgba(255,255,255,0.82)"' in html
+    assert "body{background:#FDEEF3}" in html
+    assert "<div class='msg'>提示</div>" in html and "<p>正文</p>" in html
+    assert "用户状态" in html and 'class="tab active"' in html
+    assert "panel-foot" in html

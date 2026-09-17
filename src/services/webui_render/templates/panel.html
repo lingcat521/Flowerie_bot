@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>花璃 · 管理后台</title>
+<!-- 面板样式是真实文件（static/panel.css）；?v= 是内容指纹，CSS 一改就自动失效缓存 -->
+<link rel="stylesheet" href="/panel/static/panel.css?v={{css_rev}}">
+<style>{{bg_rules}}</style>
+</head>
+<body class="{{body_class}}"{{inline_style}}>
+<div class="bg-layer" aria-hidden="true"></div>
+<div class="wrap">
+<header class="topbar">
+<div class="brand">花璃<small>· 管理后台</small></div>
+<nav class="tabs">{{tabs}}<a class="tab danger" href="/panel/logout">退出</a></nav>
+</header>
+<h1 class="page-title">{{page_title}}</h1>
+{{msg_html}}
+{{body_html}}
+<footer class="panel-foot">花璃 · 管理后台 · 面板样式 #{{css_rev}}</footer>
+</div>
+</body>
+</html>

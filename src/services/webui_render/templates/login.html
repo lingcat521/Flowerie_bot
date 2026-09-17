@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>花璃 · 管理后台</title>
+<link rel="stylesheet" href="/panel/static/panel.css?v={{css_rev}}">
+</head>
+<body class="theme-default" style="background-color:#F4F6FB">
+<div class="auth-card">
+<h2>花璃 · 管理后台</h2>
+<p class="sub">登录后管理全部配置、外观美化与日志</p>
+{{msg_html}}
+<form method="post" action="/panel/login">
+<label>用户名</label><input name="username" type="text" required autocomplete="username">
+<label>密码</label><input name="password" type="password" required autocomplete="current-password">
+<button type="submit" class="btn">登录</button>
+</form>
+<p class="foot"><a href="/panel/register">没有账号？注册管理员账号</a></p>
+<p class="auth-note">无 JS 兼容面板（服务端渲染）· 任意浏览器可用</p>
+</div>
+</body>
+</html>

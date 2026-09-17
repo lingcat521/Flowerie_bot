@@ -76,13 +76,28 @@ jobs:
 
 
     - name: Build builtin version
+      shell: bash
       run: |
-        python -m PyInstaller --onefile --name Flowerie_bot-${{ matrix.name }}-builtin main.py
+        # 面板的 CSS 与模板是真实文件，必须一并打进单文件包（PyInstaller --add-data）
+        SEP=":"; if [ "$RUNNER_OS" = "Windows" ]; then SEP=";"; fi
+        D1="src/services/webui_render/static$SEP""src/services/webui_render/static"
+        D2="src/services/webui_render/templates$SEP""src/services/webui_render/templates"
+        python -m PyInstaller --onefile --name Flowerie_bot-${{ matrix.name }}-builtin \
+          --add-data "$D1" --add-data "$D2" main.py
+
 
 
     - name: Build portable version
+      shell: bash
       run: |
-        python -m PyInstaller --onedir --name Flowerie_bot-${{ matrix.name }}-portable main.py
+        SEP=":"; if [ "$RUNNER_OS" = "Windows" ]; then SEP=";"; fi
+        D1="src/services/webui_render/static$SEP""src/services/webui_render/static"
+        D2="src/services/webui_render/templates$SEP""src/services/webui_render/templates"
+        python -m PyInstaller --onedir --name Flowerie_bot-${{ matrix.name }}-portable \
+          --add-data "$D1" --add-data "$D2" main.py
+
+
+
 
 
     #

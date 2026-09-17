@@ -166,6 +166,27 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             resp.headers["Pragma"] = "no-cache"
         return resp
 
+    async def _handle_panel_static(self, request: web.Request) -> web.Response:
+        """面板静态资源（static/*.css）。
+
+        登录页也要能加载样式，所以这里不做 token 校验；只允许白名单文件名，
+        杜绝路径穿越。引用处带 ?v=<内容指纹>，改 CSS 指纹就变、URL 变即自动失效缓存。
+        """
+        name = request.match_info.get("name", "")
+        if not name or "/" in name or "\\" in name or ".." in name or not name.endswith(".css"):
+            return web.Response(status=404, text="Not Found")
+        path = asset_path(name)
+        if not path.is_file():
+            return web.Response(status=404, text="Not Found")
+        try:
+            data = path.read_bytes()
+        except OSError:  # noqa: BLE001 - 读不到就 404，不影响面板其余部分
+            return web.Response(status=404, text="Not Found")
+        resp = web.Response(body=data, content_type="text/css", charset="utf-8")
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
+
     def build_app(self) -> web.Application:
         app = web.Application(middlewares=[self._no_store_html])
         app.router.add_get("/", self._handle_root_redirect)
@@ -192,6 +213,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/appearance/restore", self._handle_panel_appearance_restore)
         app.router.add_post("/panel/appearance/delete-image", self._handle_panel_appearance_delete_image)
         app.router.add_get("/panel/background", self._handle_panel_background)
+        app.router.add_get("/panel/static/{name}", self._handle_panel_static)
         # MCP server 结构化编辑（添加/编辑/删除，零 JS 表单）
         app.router.add_post("/panel/mcp/edit", self._handle_panel_mcp_edit)
         # 人格管理（零 JS 表单：默认 / 全局 / 列表 CRUD / 群绑定）
