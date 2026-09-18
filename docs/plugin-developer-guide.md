@@ -578,6 +578,9 @@ def on_message(event, api):
 
 ## 31. 任意语言最小示例（13 种语言，CI 实测）
 
+> 📄 **每种语言的完整最小源码（含 manifest / run.sh / 协议说明 / 排查清单）已收录在
+> [plugin-multilang.md](plugin-multilang.md)** —— 想照抄代码直接看那份，下表只是速查。
+
 `tests/plugins/multilang/` 下每种语言一份**最小可运行插件**，全部走 `runtime="exec"`：
 
 | 语言 | 夹具 | 构建 / 启动方式 | 事件返回标记 |
