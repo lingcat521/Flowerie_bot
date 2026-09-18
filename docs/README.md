@@ -7,7 +7,7 @@
 
 | 你的目标 | 按顺序读 |
 | --- | --- |
-| 🧩 **写插件** | [quick-start](quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugin-webui.md) / [sdk](sdk.md) / [api](api.md)；**不用 Python/Node？** 直接看 [plugin-multilang](plugin-multilang.md)（13 种语言最小实现，照抄即可） |
+| 🧩 **写插件** | [quick-start](quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugin-webui.md) / [sdk](sdk.md) / [api](api.md)；**不用 Python/Node？** 直接看 [plugin-developer-guide](plugin-developer-guide.md) §31（13 种语言最小实现）（13 种语言最小实现，照抄即可） |
 | 🔧 **部署运维** | 安装（[Windows](install-release-windows.md) · [Linux/macOS/Termux 资产](install-release-guide.md) · [**Termux 权威步骤**](install-termux.md)）→ [configuration](configuration.md) → [web-ui](web-ui.md) → [security](security.md) |
 | 🛠 **改代码** | [development](development.md)（目录结构 / 测试 / CI）→ [sdk](sdk.md)（三层架构）→ [archive/](archive/README.md)（历史审计） |
 
@@ -20,7 +20,7 @@
 | --- | --- | --- |
 | **[quick-start.md](quick-start.md)** | **第一层·小白快速开始**（10 分钟：创建 / manifest / 收发消息 / 记忆 / HTTP / 权限 / 完整例子 / 安装测试） | 插件新人 |
 | **[plugin-developer-guide.md](plugin-developer-guide.md)** | **第二层·完整参考**（Manifest 规则 / Python·Node·JSON / **任意语言 exec §4.5** 与 **§31 十三种语言实测清单** / 生命周期 / Event·Action·Permission API / 超时·资源·安全 / 打包 / WebUI 安装） | 插件开发者 |
-| **[plugin-multilang.md](plugin-multilang.md)** | **任意语言插件**：exec 协议三分钟说明 + **13 种语言完整最小实现**（C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R）+ 构建入口速查 + 排查清单 | 非 Python/Node 的插件作者 |
+| **[plugin-developer-guide.md](plugin-developer-guide.md) §31** | **任意语言插件**：exec 协议三分钟说明 + **13 种语言完整最小实现**（C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R）+ 构建入口速查 + 排查清单 | 非 Python/Node 的插件作者 |
 | [plugin-webui.md](plugin-webui.md) | **Plugin WebUI**（DSL 组件全集 / hook / 权限 / 文件 / 安全边界） | 插件开发者 |
 | [sdk.md](sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ + **附录 A 能力与兼容矩阵**（端点映射 / 网关兼容 / v2.1 缺口台账） | 插件开发者 |
 | [api.md](api.md) | **API 权威速查总表**（方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |

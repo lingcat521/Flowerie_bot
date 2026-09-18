@@ -146,7 +146,7 @@ OneBot WebSocket connected
 - **插件**：保护级别（normal/relaxed/unsafe）、上传 ZIP / URL 安装、启用（含权限批准）、禁用、卸载
 
 完整功能指南（各页细节 + 安全说明）见 **[Web UI 说明](docs/web-ui.md)**；人格见 [人格系统](docs/persona.md)，
-记忆/知识见 [记忆与知识](docs/memory.md)，插件开发见 **[插件开发指南](docs/plugin-developer-guide.md)**，
+记忆/知识见 [记忆与知识](docs/memory.md)，插件开发见 **[插件开发指南](docs/plugin-developer-guide.md)**（§31 已内联 **13 种语言任意语言插件**完整实现：C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R），
 安全模型见 **[安全模型](docs/security.md)**，变量说明见 [配置](docs/configuration.md)。
 
 ### 如何开启
@@ -178,7 +178,7 @@ SDK 模式提供统一 Event / Message / Matcher / Permission 与 Bot Adapter �
 （`normal`/`relaxed`/`unsafe`）只影响运行时限制，**任何级别都不豁免**权限检查 / 进程隔离 / 日志 /
 崩溃保护 / 资源限制 / manifest 校验 / 管理员权限。
 
-开发文档：**[插件开发指南](docs/plugin-developer-guide.md)（完整参考）** · [快速开始](docs/quick-start.md) ·
+开发文档：**[插件开发指南](docs/plugin-developer-guide.md)（完整参考，含 §31 十三种语言任意语言插件）** · [快速开始](docs/quick-start.md) ·
 [Plugin WebUI](docs/plugin-webui.md) · [SDK 手册](docs/sdk.md) · [API 速查](docs/api.md) · [文档中心](docs/README.md)
 
 ## 群聊梗知识（Meme Knowledge）
@@ -218,5 +218,5 @@ CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 
 - **安装上手**：[Windows exe](docs/install-release-windows.md) · [Linux/macOS](docs/install-release-guide.md) · [Termux](docs/install-termux.md) · [配置说明](docs/configuration.md)
 - **功能使用**：[Web UI](docs/web-ui.md) · [人格系统](docs/persona.md) · [记忆与知识](docs/memory.md) · [MCP 工具](docs/mcp.md) · [表情包](docs/stickers.md)
-- **插件开发**：[快速开始](docs/quick-start.md) · [完整指南](docs/plugin-developer-guide.md) · [Plugin WebUI](docs/plugin-webui.md) · [SDK](docs/sdk.md) · [API](docs/api.md)
+- **插件开发**：[快速开始](docs/quick-start.md) · [完整指南](docs/plugin-developer-guide.md)（**含任意语言：13 种语言最小实现 §31**） · [Plugin WebUI](docs/plugin-webui.md) · [SDK](docs/sdk.md) · [API](docs/api.md)
 - **运维开发**：[安全模型](docs/security.md) · [开发说明](docs/development.md) · [OneBot 兼容](docs/onebot-compatibility.md) · [Milky 协议](docs/milky-protocol.md) · [历史归档](docs/archive/README.md)
