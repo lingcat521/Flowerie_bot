@@ -17,7 +17,7 @@ pytest              # 全部测试
 pytest tests/xxx    # 单文件
 ```
 
-当前 1038 个测试：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、Persona 系统、群聊 Meme Knowledge、任意语言插件（13 种语言黑盒端到端）等，详见 `tests/`。
+当前 1045 个测试（随版本增长）：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、Persona 系统、群聊 Meme Knowledge、任意语言插件（13 种语言黑盒端到端）等，详见 `tests/`。
 
 ## 代码检查
 
@@ -47,12 +47,16 @@ src/
 │   ├── web_ui.py          # Web UI 薄门面（~340 行；面板 mixin 聚合）
 │   ├── webui_panels/      # 各功能域处理器 mixin（account/auth/config/appearance/mcp/persona/knowledge/prompt）
 │   ├── webui_render/      # 渲染层（theme/pages/config_panel/appearance/persona/knowledge）
+│   │   ├── templates/       # 真实 HTML 页面壳（panel/login/register）
+│   │   ├── static/panel.css # 真实 CSS 文件（Python 只注入 {{THEME_VARS}}）
+│   │   └── assets.py        # 资源读取（兼容 PyInstaller _MEIPASS）
+│   ├── webui_static.py   # /panel/static/{name} 路由 + HTML no-store 中间件
 │   ├── persona_manager/persona_presets（人格）
 │   ├── meme_knowledge_manager/meme_summary（群聊梗知识/每日总结）
 │   └── system_status.py     # 服务器状态采集（用户状态页用，零依赖 /proc）
 ├── repositories/   # SQLite 存储层（记忆/设置/表情包索引/梗知识）
 └── utils/          # 日志/trace/指标/熔断/过期容器/任务管理
-tests/              # 1038 个测试
+tests/              # 1045 个测试（含 CI 资产/响应式回归）
 docs/               # 文档
 ```
 

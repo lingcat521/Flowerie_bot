@@ -21,10 +21,10 @@
 | **[quick-start.md](quick-start.md)** | **第一层·小白快速开始**（10 分钟：创建 / manifest / 收发消息 / 记忆 / HTTP / 权限 / 完整例子 / 安装测试） | 插件新人 |
 | **[plugin-developer-guide.md](plugin-developer-guide.md)** | **第二层·完整参考**（Manifest 规则 / Python·Node·JSON / **任意语言 exec §4.5** 与 **§31 十三种语言实测清单** / 生命周期 / Event·Action·Permission API / 超时·资源·安全 / 打包 / WebUI 安装） | 插件开发者 |
 | [plugin-webui.md](plugin-webui.md) | **Plugin WebUI**（DSL 组件全集 / hook / 权限 / 文件 / 安全边界） | 插件开发者 |
-| [sdk.md](sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ | 插件开发者 |
+| [sdk.md](sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ + **附录 A 能力与兼容矩阵**（端点映射 / 网关兼容 / v2.1 缺口台账） | 插件开发者 |
 | [api.md](api.md) | **API 权威速查总表**（方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |
 | [configuration.md](configuration.md) | 全部配置项 / `.env` / 优先级 / 功能开关表 / 存储后端与迁移工具 | 运维 |
-| [web-ui.md](web-ui.md) | Web UI 八个页签 / 如何开启 / 零 JavaScript / 注册与登录 | 运维 |
+| [web-ui.md](web-ui.md) | Web UI 八个页签 / 如何开启 / 零 JavaScript / 注册与登录 / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
 | [security.md](security.md) | **安全规则权威**：SSRF / 注入 / 权限 / 资源上限 / 指标 / 已知边界 | 运维 + 开发者 |
 | [memory.md](memory.md) | 记忆体系：Context / Memory / 群知识 / 花语记忆（BlossomMemory） | 运维 + 开发者 |
 | [persona.md](persona.md) | 人格系统（内置三套 / 群 / 全局 / 管理员补充规则） | 运维 |

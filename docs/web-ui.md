@@ -198,7 +198,10 @@ MCP 服务器以**卡片列表**展示，无需手写 JSON：
 | 配置持久化 | 项目根 `.env`（原子写入）+ `data/settings.db`（`app_config` / `webui_prefs` / `personas` / `group_persona` / `persona_global` 表） |
 | 背景图片 | `data/webui/background/` |
 | 服务端实现 | `src/services/web_ui.py`（薄门面：认证/面板壳/生命周期）+ `src/services/webui_panels/`（功能域 mixin：account/auth/config/appearance/mcp/persona/knowledge/prompt/plugin） |
-| 模板与主题 | `src/services/web_ui_assets.py`（聚合导出）+ `src/services/webui_render/`（theme/pages/config_panel/appearance/persona/knowledge/account/plugins，7 主题） |
+| 页面模板 | `src/services/webui_render/templates/*.html`（真实 HTML 页面壳：panel / login / register / register_closed） |
+| 面板样式 | `src/services/webui_render/static/panel.css`（真实 CSS 文件，含 `{{THEME_VARS}}` 占位，由 Python 注入各主题变量） |
+| 静态资源与缓存 | `src/services/webui_static.py`（`/panel/static/{name}` 路由 + HTML `no-store` 中间件） |
+| 渲染层 | `src/services/web_ui_assets.py`（聚合导出）+ `src/services/webui_render/`（theme/pages/config_panel/appearance/persona/knowledge/account/plugins，7 主题）+ `assets.py`（资源读取，兼容 PyInstaller `_MEIPASS`） |
 | 插件运行时 | `src/plugins/`（manager/runtime/manifest/permissions/installer/http_action/runner）+ `src/services/webui_panels/plugin_panel.py` |
 | 服务器状态 | `src/services/system_status.py`（用户状态页，零依赖读 /proc） |
 | 配置业务层 | `src/services/config_service.py`（配置 SCHEMA + `.env`/settings.db 双写） |
@@ -229,7 +232,13 @@ MCP 服务器以**卡片列表**展示，无需手写 JSON：
 ## 说明
 
 - 全程 **无 JavaScript**（无 `<script>`/fetch/框架），仅 HTML + CSS + 服务端
-- 移动端自适应（PC / 平板 / 手机），窄屏表单转单列、按钮紧凑横排
+- **分辨率自适应（PC / 平板 / 手机）五档断点**：宽屏 PC ≥1440px 内容区放宽到 1200px、常规 PC 1080px 居中、
+  平板横屏 861~1023px 收紧内边距、**平板竖屏 ≤860px 全部堆叠单列**（`.row` / 表单 / 规则区 / 昵称新增区）、
+  手机 ≤720px 按钮全宽与字号收紧、小屏 ≤420px 主题卡单列；窄屏表单转单列、按钮紧凑横排
+- **缓存策略**：面板 HTML 一律 `Cache-Control: no-store`（杜绝「代码更新+重启，页面还是旧的」）；
+  面板 CSS 引用 `/panel/static/panel.css?v=<内容指纹>-<资源代际>`，响应 `no-cache + ETag`（每次回源校验，未变 304）。
+  改了「样式是怎么生成的」（不只是 CSS 内容）就把 `PANEL_ASSET_GEN` 加一 —— URL 一变浏览器必然重新下载，
+  用户不需要强刷或清缓存（手机上往往做不到强刷）
 - 其它配置项说明见 [configuration.md](configuration.md)；人格详见 [persona.md](persona.md)；群聊知识详见 [memory.md](memory.md)；MCP 详见 [mcp.md](mcp.md)；插件 API 详见 [plugin-developer-guide.md](plugin-developer-guide.md)；安全模型见 [security.md](security.md)
 
 

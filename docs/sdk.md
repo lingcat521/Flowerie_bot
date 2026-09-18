@@ -1,4 +1,4 @@
-# Flowerie Bot SDK 开发手册（v1.3.0）
+# Flowerie Bot SDK 开发手册（Plugin API v1 · 版本 2.2.2222）
 
 > 插件面向的统一开发接口。三层架构：插件（上层）→ 领域层（中层，零 OneBot 命名）→
 > OneBot 适配层（下层）。本手册为**详细版**：API 参考 + 多媒体/按钮示例 + 日志规范。
@@ -457,51 +457,7 @@ bot.like(user_id)
 bot.friends()                    # 好友列表（list[dict]）
 ```
 
-## 14. v2.0.1 拉格朗日补齐 + v2.1 缺口 SDK 矩阵（见文末；并入上方语义表；端点仅 Sender/适配层）
-
-| SDK 方法 | OneBot 端点（仅 Sender，开发者不接触） | 权限 | Lagrange |
-| --- | --- | --- | --- |
-| `bot_user_history` / `user_history` | `/get_friend_msg_history` | read_user_info | ✅ |
-| `user_forward` | `/send_private_forward_msg` | read_user_info | ✅ |
-| `user_poke` | `/friend_poke` | read_user_info | ✅ |
-| `group_forward` | `/send_group_forward_msg` | group_manage | ✅ |
-| `essence_list` | `/get_essence_msg_list` | read_group_info | ✅ |
-| `group_honor` | `/get_group_honor_info` | read_group_info | ✅ |
-| `group_notice_delete` | `/_del_group_notice` | group_manage | ✅ |
-| `group_portrait` | `/set_group_portrait` | group_manage | ✅ |
-| `group_folder_create` | `/create_group_file_folder` | group_manage | ✅ |
-| `group_file_delete` | `/delete_group_file` | group_manage | ✅ |
-| `group_folder_delete` | `/delete_group_folder` | group_manage | ✅ |
-| `group_file_move` | `/move_group_file` | group_manage | ✅ |
-| `group_folder_rename` | `/rename_group_file_folder` | group_manage | ✅ |
-| `group_info` / `group_list` | `/get_group_info` / `/get_group_list` | read_group_info | ✅ |
-| `react`（表情回应） | `set_react`（NapCat 主）→ `set_group_reaction`（Lagrange 回退，自动激活） | read_message | ✅ |
-
-**网关回退机制**：动作值可为端点方法列表，按 sender 可用方法自动选择（换网关无需改代码）。
-
-## 14. 底层兼容矩阵（内部文档）
-
-> 能力清单对齐主流网关（OneBot11 标准 + 社区通用 + 扩展）；**OneBot11 标准优先**。
-> 在当前网关（NapCat）与 Lagrange 均支持的项目打 ✅；仅特定网关支持的打 ⚠️
-> （调用返回明确错误），换网关即激活。
-
-| SDK 能力 | OneBot11 | 社区通用（NapCat/Lagrange） | 说明 |
-| --- | --- | --- | --- |
-| send/reply/recall/get_message | ✅ 标准 | ✅/✅ | send_msg/delete_msg/get_msg |
-| at/图片/语音/视频/文件 | ✅ 标准 | ✅/✅ | 段数组 |
-| markdown/keyboard/json 富内容 | ⚠️ 扩展 | ✅/✅ | QQ 官方 Bot 能力 |
-| group_member(s)/mute/kick/admin | ✅ 标准 | ✅/✅ | get_group_member_info 等 |
-| whole_ban/rename/card/title | ⚠️ 扩展 | ✅/✅ | set_group_* 系列 |
-| 群公告 send/get | ⚠️ 扩展 | ✅/✅ | send_group_notice |
-| 群文件 list/url | ⚠️ 扩展 | ✅/✅ | get_group_root_files 等 |
-| pin/unpin（精华） | ⚠️ 扩展 | ✅/✅ | set_essence_msg |
-| emoji 回应 / tap（戳） | ⚠️ 扩展 | ✅/✅ | set_react / send_poke |
-| like / friends | ⚠️ 扩展 | ✅/✅ | set_friend_profile_like / get_friend_list |
-| login_info/devices/status | ✅ 标准 | ✅/✅ | get_login_info / get_online_clients |
-| profile 修改 | ⚠️ 扩展 | ⚠️/✅ | set_self_profile（自定义协议） |
-| group_config 读写 | ❌ 无 | ❌/✅ | **Lagrange 独有** |
-
-## 15. 权限与安全
+## 14. 权限与安全
 
 
 
@@ -530,7 +486,7 @@ bot.friends()                    # 好友列表（list[dict]）
 
 ---
 
-## 16. 常见问题（FAQ）
+## 15. 常见问题（FAQ）
 
 **Q: 如何只在私聊响应？**
 `@command("x", rule=rule(is_private=True))`
@@ -553,7 +509,7 @@ bot.friends()                    # 好友列表（list[dict]）
 
 ---
 
-## 17. 三层架构与扩展
+## 16. 三层架构与扩展
 
 ```text
 插件（plugin_sdk/） → 中层 src/sdk/（零 OneBot） ← 下层 src/sdk/onebot/ → NapCat/OneBot
@@ -564,7 +520,63 @@ bot.friends()                    # 好友列表（list[dict]）
 - 依赖倒置验证：`grep -rn "post_type\|sub_type" src/sdk/*.py`（除 onebot/ 与注释）应为空
 
 
-## v2.1 缺口 SDK 矩阵（历史记录；v2.2 已实现全量 OneBot 动作 → 状态）
+
+## 附录 A：能力与兼容矩阵（端点映射 / 网关兼容 / 缺口补齐状态）
+
+> 三张表互补：A.1 看「某个 SDK 方法对应哪个 OneBot 端点、要什么权限、在 Lagrange 上是否可用」；
+> A.2 看「某类能力在 OneBot11 标准与主流网关上是否支持」；
+> A.3 是 v2.1 缺口补齐的历史台账（v2.2 已实现全量 OneBot 动作）。
+
+### A.1 端点映射与权限（仅 Sender/适配层接触端点，插件不直接调 HTTP）
+
+
+| SDK 方法 | OneBot 端点（仅 Sender，开发者不接触） | 权限 | Lagrange |
+| --- | --- | --- | --- |
+| `bot_user_history` / `user_history` | `/get_friend_msg_history` | read_user_info | ✅ |
+| `user_forward` | `/send_private_forward_msg` | read_user_info | ✅ |
+| `user_poke` | `/friend_poke` | read_user_info | ✅ |
+| `group_forward` | `/send_group_forward_msg` | group_manage | ✅ |
+| `essence_list` | `/get_essence_msg_list` | read_group_info | ✅ |
+| `group_honor` | `/get_group_honor_info` | read_group_info | ✅ |
+| `group_notice_delete` | `/_del_group_notice` | group_manage | ✅ |
+| `group_portrait` | `/set_group_portrait` | group_manage | ✅ |
+| `group_folder_create` | `/create_group_file_folder` | group_manage | ✅ |
+| `group_file_delete` | `/delete_group_file` | group_manage | ✅ |
+| `group_folder_delete` | `/delete_group_folder` | group_manage | ✅ |
+| `group_file_move` | `/move_group_file` | group_manage | ✅ |
+| `group_folder_rename` | `/rename_group_file_folder` | group_manage | ✅ |
+| `group_info` / `group_list` | `/get_group_info` / `/get_group_list` | read_group_info | ✅ |
+| `react`（表情回应） | `set_react`（NapCat 主）→ `set_group_reaction`（Lagrange 回退，自动激活） | read_message | ✅ |
+
+**网关回退机制**：动作值可为端点方法列表，按 sender 可用方法自动选择（换网关无需改代码）。
+
+
+### A.2 底层网关兼容矩阵
+
+
+> 能力清单对齐主流网关（OneBot11 标准 + 社区通用 + 扩展）；**OneBot11 标准优先**。
+> 在当前网关（NapCat）与 Lagrange 均支持的项目打 ✅；仅特定网关支持的打 ⚠️
+> （调用返回明确错误），换网关即激活。
+
+| SDK 能力 | OneBot11 | 社区通用（NapCat/Lagrange） | 说明 |
+| --- | --- | --- | --- |
+| send/reply/recall/get_message | ✅ 标准 | ✅/✅ | send_msg/delete_msg/get_msg |
+| at/图片/语音/视频/文件 | ✅ 标准 | ✅/✅ | 段数组 |
+| markdown/keyboard/json 富内容 | ⚠️ 扩展 | ✅/✅ | QQ 官方 Bot 能力 |
+| group_member(s)/mute/kick/admin | ✅ 标准 | ✅/✅ | get_group_member_info 等 |
+| whole_ban/rename/card/title | ⚠️ 扩展 | ✅/✅ | set_group_* 系列 |
+| 群公告 send/get | ⚠️ 扩展 | ✅/✅ | send_group_notice |
+| 群文件 list/url | ⚠️ 扩展 | ✅/✅ | get_group_root_files 等 |
+| pin/unpin（精华） | ⚠️ 扩展 | ✅/✅ | set_essence_msg |
+| emoji 回应 / tap（戳） | ⚠️ 扩展 | ✅/✅ | set_react / send_poke |
+| like / friends | ⚠️ 扩展 | ✅/✅ | set_friend_profile_like / get_friend_list |
+| login_info/devices/status | ✅ 标准 | ✅/✅ | get_login_info / get_online_clients |
+| profile 修改 | ⚠️ 扩展 | ⚠️/✅ | set_self_profile（自定义协议） |
+| group_config 读写 | ❌ 无 | ❌/✅ | **Lagrange 独有** |
+
+
+### A.3 v2.1 缺口 SDK 矩阵（历史台账，状态已全部落地）
+
 
 > 状态：**可用**（真实现）｜**等价**（转发已有能力）｜**受限**（详见列出的明确错误）｜**NS**（v1 明确不支持，抛 `PluginFeatureError`）。
 > 入口：`bot.方法(...)` / `bot.sdk()[分面].方法(...)` / `from flowerie_sdk import 类`。
