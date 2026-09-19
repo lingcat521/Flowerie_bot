@@ -246,7 +246,10 @@ def panel_asset_body(name: str) -> Optional[str]:
     """
     if name == "panel.css":
         return PANEL_CSS
-    path = asset_path(name)
+    try:
+        path = asset_path(name)
+    except ValueError:
+        return None
     if not path.is_file():
         return None
     return path.read_text(encoding="utf-8")

@@ -28,7 +28,13 @@ def _root() -> Path:
 
 
 def asset_path(name: str) -> Path:
-    return _root() / "static" / name
+    base = (_root() / "static").resolve()
+    candidate = (base / name).resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:
+        raise ValueError("Invalid asset path") from exc
+    return candidate
 
 
 def template_path(name: str) -> Path:
