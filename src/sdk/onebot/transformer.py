@@ -13,7 +13,16 @@ from src.sdk.message import BotMessage
 from src.sdk.onebot.dto import EventDTO
 
 # [CQ:at,qq=123] / [CQ:at,qq=123,name=x]（qq 可能为 all）
-_CQ = re.compile(r"\[CQ:([a-zA-Z0-9_]+)((?:,[^\[\],][^\[\]]*)*)\]")
+# 正则只做「单一字符集重复」：嵌套量词（(?:,[^\[\]]*)*）或相邻重叠量词
+# 都会给回溯留下歧义→指数/多项式回溯（CodeQL py/redos #84）。动作名/参数在代码里切分，
+# 解析等价性由 tests/test_code_scanning_redos.py 的差分用例保证。
+_CQ = re.compile(r"\[CQ:([^\[\]]+)\]")
+
+
+def _cq_parts(m: Any) -> Any:
+    """CQ 码 → (动作名, 参数串)；参数串保留前导逗号（_parse_params 依赖该格式）。"""
+    action, _, params = m.group(1).partition(",")
+    return action, ("," + params) if params else ""
 
 
 def extract_text(message: Any) -> str:
@@ -46,9 +55,10 @@ def extract_at_list(message: Any) -> List[str]:
     result: List[str] = []
     if isinstance(message, str):
         for m in _CQ.finditer(message):
-            if m.group(1) != "at":
+            action, params = _cq_parts(m)
+            if action != "at":
                 continue
-            data = dict(_parse_params(m.group(2)))
+            data = dict(_parse_params(params))
             qq = data.get("qq")
             if qq:
                 result.append(str(qq))
@@ -66,9 +76,10 @@ def extract_images(message: Any) -> List[str]:
     result: List[str] = []
     if isinstance(message, str):
         for m in _CQ.finditer(message):
-            if m.group(1) != "image":
+            action, params = _cq_parts(m)
+            if action != "image":
                 continue
-            data = dict(_parse_params(m.group(2)))
+            data = dict(_parse_params(params))
             url = data.get("url") or data.get("file")
             if url:
                 result.append(str(url))
@@ -86,8 +97,9 @@ def extract_reply_id(message: Any) -> Any:
     """引用回复的 message_id（reply 段/CQ）。"""
     if isinstance(message, str):
         for m in _CQ.finditer(message):
-            if m.group(1) == "reply":
-                data = dict(_parse_params(m.group(2)))
+            action, params = _cq_parts(m)
+            if action == "reply":
+                data = dict(_parse_params(params))
                 if data.get("id"):
                     return data["id"]
     elif isinstance(message, list):

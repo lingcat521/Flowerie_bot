@@ -26,14 +26,6 @@ sys.path.insert(0, ROOT)
 RESULT = []  # (ok, 标题, 说明)
 
 
-def _masked_key(value):
-    """只回显长度与前缀提示，绝不打印密钥明文（Code Scanning py/clear-text-logging-sensitive-data）。"""
-    if not value:
-        return "未配置"
-    v = str(value)
-    return "已配置(长度=%d, 前缀=%s…)" % (len(v), v[:3] if len(v) >= 3 else "")
-
-
 def rec(ok, title, note=""):
     RESULT.append((ok, title, note))
     print(("[PASS] " if ok else "[FAIL] ") + title + ((" — " + note) if note else ""))
@@ -244,7 +236,10 @@ async def main():
     await http(port, ("POST", "/panel/save", urllib.parse.urlencode({"DEEPSEEK_API_KEY": ""}).encode(),
                       {"Content-Type": "application/x-www-form-urlencoded"}, auth))
     ev = EnvFileStore(os.path.join(ROOT, ".env")).read_values()
-    rec(ev.get("DEEPSEEK_API_KEY") == "sk-acceptance-key-123456", "Secret 留空不覆盖", _masked_key(ev.get("DEEPSEEK_API_KEY")))
+    # 日志实参里绝不出现密钥值或其片段：CodeQL 不认自定义脱敏函数
+    # （返回值仍被视作「由密钥派生」），所以只用布尔结论挑选常量文案。
+    _key_ok = ev.get("DEEPSEEK_API_KEY") == "sk-acceptance-key-123456"
+    rec(_key_ok, "Secret 留空不覆盖", "已配置，与预期一致" if _key_ok else "未配置或与预期不符")
     # 修改后保存
     await http(port, ("POST", "/panel/save", urllib.parse.urlencode({"DEEPSEEK_API_KEY": "sk-new-secret-abcdef"}).encode(),
                       {"Content-Type": "application/x-www-form-urlencoded"}, auth))

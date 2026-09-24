@@ -10,10 +10,10 @@
 | 审计起点（open） | **56 条**（7 类规则） |
 | 修复后实测 | **52 条**（CodeQL 分析落在 `5abfcf6` 时） |
 | 已消除 | `py/insecure-temporary-file` ×2、`actions/missing-workflow-permissions` ×2 |
-| 已修但待分析确认 | `py/redos` ×1、`py/clear-text-logging-sensitive-data` ×1（修复提交晚于该分析点） |
+| 第二轮真修 | `py/redos` ×1、`py/clear-text-logging-sensitive-data` ×1（首轮修法不彻底，重跑分析后复现；已按「形状可证」重修） |
 | 判定为误报 | `py/url-redirection` ×17、`py/full-ssrf` ×1 |
 | 真漏洞已修 | `py/path-injection`（uninstall 越界删除、`_file_*` 包含性检查失效）、`py/redos`、`py/insecure-temporary-file` ×2、`actions/missing-workflow-permissions` ×2、`py/clear-text-logging` ×1 |
-| 新增回归测试 | **5 个文件、19 条**（全部零依赖，本地可跑） |
+| 新增回归测试 | **6 个文件、25 条**（全部零依赖，本地可跑） |
 
 ## 二、逐类结论
 
@@ -84,7 +84,8 @@
 ## 四、如实声明
 
 1. **未做真机/运行时渗透验证**：以上判定基于代码路径与单元/结构性测试，不是黑盒攻击验证。
-2. **CodeQL 复跑进行中**：56 → 52 是实测；`redos` / `clear-text-logging` 的修复晚于该分析点，
-   最终数字需等下一次分析落定（本轮未能等到）。
+2. **CodeQL 复跑已完成一轮**：四条修复（mktemp ×2、workflow 权限 ×2）已从 open 列表消失；
+   但 `redos` 与 `clear-text-logging` 在新分析里**复现**（首轮修法不彻底）—— 已按「形状可证」重修，
+   并新增两条不变量测试（见 `docs/security.md` 的「第二轮」）。
 3. **两项残余风险**（见 `docs/security.md`）：installer 的 TOCTOU 窗口；CodeQL 局部数据流
    不识别跨函数自定义校验导致的「暂时无法证明」。
