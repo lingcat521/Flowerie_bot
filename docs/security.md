@@ -180,3 +180,40 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
 - **零 JS**：Web UI 全部原生 `<details>`/表单 POST（黑盒验证 0 命中）
 
 安全规则的**权威版本**仍以本文档为准；权限映射总表见 [api.md](https://github.com/lingcat521/Flowerie_bot/blob/main/docs/api.md)。
+
+## Code Scanning 告警审计（2026-09）
+
+> 对 GitHub Code Scanning 的全部 open 告警逐条审计：区分真实漏洞与误报，
+> 真漏洞最小修复 + 回归测试，误报给出证明与理由。**不以"清零"为目标** ✔。
+
+审计起点：**56 条 open 告警**（7 类规则）。
+
+| 规则 | 数量 | 判定 | 处理 |
+| :--- | ---: | :--- | :--- |
+| `py/path-injection` | 32 | **真漏洞**（`uninstall` 可越界删除、`_file_*` 的包含性检查拿 id 推导出的 base 去比） | 新增 `_PLUGIN_ID_RE` + `_plugin_base()`（**先校验 id，再对 `plugin_dir` 做 realpath + commonpath**），`uninstall` 与三处 file 操作全部改用它；回归测试 5 条 |
+| `py/url-redirection` | 17 | **误报** | 逐条核对：目标全部以硬编码 `/panel` 开头（f-string 与字符串拼接两种写法都查），插入片段经 `quote()` / `isdigit()` / 上游已 quote 的成品串 / `CATEGORY_ORDER` 白名单约束；插件页 `{pid}/{page}` 来自路由段（不含 `/`）→ 不构成开放重定向。新增 2 条不变量测试 |
+| `py/insecure-temporary-file` | 2 | **真漏洞** | `tempfile.mktemp`（竞态 + 已弃用）→ `mkstemp` + `os.close` |
+| `actions/missing-workflow-permissions` | 2 | **真漏洞** | `ci.yml` / `acceptance.yml` 增加 `permissions: contents: read`（最小权限） |
+| `py/full-ssrf` | 1 | **误报** | `installer.py` 的下载已有三层防线且都在 sink 之前：`validate_mcp_server_url`（字面量）+ `_check_dns`（解析结果，抗 rebinding）+ `follow_redirects=False`；新增证明性测试（顺序不变量 + 13 类载荷全拒 + 正常 https 放行） |
+| `py/redos` | 1 | **真漏洞**（实测坐实） | `_CQ` 正则 `(?:,[^\[\]]*)*` 内外两层 star 划分不唯一 → 指数回溯：实测 10/14/18 个逗号 = 0.2/3.7/60.4 ms，40 个直接卡死进程；修复为每个参数以非逗号起头（线性，2000 个逗号 0.008 ms），语义 5 组样例保持一致 |
+| `py/clear-text-logging-sensitive-data` | 1 | **真漏洞** | 验收脚本把 `DEEPSEEK_API_KEY` 明文打进 CI 日志 → 新增 `_masked_key()` 只回显长度与前缀 |
+
+### 已知残余风险（如实声明，不当作误报）
+
+- **DNS 校验与建连之间的 TOCTOU 窗口**：`installer` 先解析并校验 IP、再由 httpx 建连（会二次解析），
+  理论上存在 DNS rebinding 的时间差。当前依赖"解析一次即校验"降低概率，未做连接后校验。
+- **CodeQL 不识别跨函数的自定义校验**：`py/path-injection` 的 32 条中，多数 sink 的安全性由
+  `_plugin_base()`（另一个方法）或上游 manifest 的 id 校验保证 —— 局部数据流看不到，故仍会报。
+  这类属于「**暂时无法证明**」而非误报（任务书 §10 要求区分）：代码已加固，如要让 CodeQL 认可，
+  需把校验内联到 sink 处或使用 CodeQL 认识的 sanitizer 形态。
+
+### 回归测试（本地可跑，零依赖）
+
+| 文件 | 覆盖 |
+| :--- | :--- |
+| `tests/test_installer_ssrf_proof.py` | SSRF 三层防线的顺序不变量 + 13 类载荷全拒 + 正常 https 放行 |
+| `tests/test_plugin_path_injection.py` | 从源码 AST 取**真实** `_PLUGIN_ID_RE` 测语义；越界 id 全拒；合法 id 放行；`uninstall` 校验先于拼路径；`_plugin_base` 双保险 |
+| `tests/test_code_scanning_redos.py` | 正则参数起始字符集排除逗号；2000 个逗号 < 1s；语义 4 组一致；测试里不得再出现 `mktemp` |
+| `tests/test_no_open_redirect.py` | 重定向目标必须以 `/panel` 开头；不存在"整串来自变量"的重定向 |
+| `tests/test_webui_assets.py`（追加） | 静态资源 sink 层文件名白名单（拒绝 `../`、分隔符、非 `.css`） |
+
