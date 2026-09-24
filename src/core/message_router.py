@@ -437,12 +437,14 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
                     sticker_path = None
                 else:
                     self.sticker_manager.mark_sent(group_id)
+                    # 多条回复与表情包同时命中：表情包配第一条，避免把 list 当消息发
+                    reply_text = reply[0] if isinstance(reply, (list, tuple)) and reply else (reply or "")
                     success = await self.sender.send_group_message_with_image(
-                        group_id, reply or None, sticker_path)
+                        group_id, reply_text or None, sticker_path)
                     if success:
                         self.policy_engine.record_bot_reply(group_id)
-                        self.policy_engine.add_context(group_id, 0, reply or "[表情包]", is_bot=True)
-                        self.policy_engine.add_recent_reply(group_id, reply or "[表情包]")
+                        self.policy_engine.add_context(group_id, 0, reply_text or "[表情包]", is_bot=True)
+                        self.policy_engine.add_recent_reply(group_id, reply_text or "[表情包]")
                         logger.info("Sticker sent: %s", sticker_path, extra={"event": "sticker_selected"})
                     return
 
