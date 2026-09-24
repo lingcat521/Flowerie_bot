@@ -76,7 +76,8 @@ def test_file_helpers_sanitize_inline_then_use_plugin_base():
     把净化放在 sink 同函数内既更安全（纵深防御），也让静态分析能看出污染被切断。
     """
     src = _source()
-    assert src.count("_safe_id = os.path.basename(str(plugin_id or ""))") == 4,         "uninstall + 三处 file 操作都应内联 basename 净化"
+    assert src.count("_safe_id = os.path.basename(str(plugin_id or") == 4, \
+        "uninstall + 三处 file 操作都应内联 basename 净化"
     assert src.count("base = self._plugin_base(_safe_id)") == 3
     # 旧的「直接用未净化 id 拼 base」写法必须消失
     assert "base = self._plugin_base(plugin_id)" not in src
