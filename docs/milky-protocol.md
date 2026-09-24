@@ -1,6 +1,7 @@
 # Milky 协议支持（Milky 特供版）
 
-> 📦 **维护状态：停更（v2.2.2-milky 为 Milky 适配最终版）**——Flowerie 停更，本版为 Milky 协议适配的收官版本；OneBot 版 v2.2.2 资产继续保留在 [v2.2.2 Release](https://github.com/lingcat521/Flowerie_bot/releases/tag/v2.2.2)。
+> **维护状态：停更一年（2026-09-04 起）** —— 仓库不归档，停更期间的兼容性维护以 2.2.2xx 递增发布；
+> Milky 支持随维护版继续补齐（本文已同步至 Milky 协议 1.3）；OneBot 版 v2.2.2 资产仍保留在 [v2.2.2 Release](https://github.com/lingcat521/Flowerie_bot/releases/tag/v2.2.2)。
 
 ## 背景
 Milky 是新一代 QQ 机器人协议标准（Lagrange.Core V2 已放弃 OneBot 转向 Milky）；
@@ -141,7 +142,7 @@ Authorization: Bearer <access_token>
 | `get_online_clients` | Milky 未提供在线客户端列表 |
 | `delete_essence_msg` | Milky 只有开关式 `set_group_essence_message` |
 | `send_group_forward_msg` / `send_private_forward_msg` | Milky 只提供读取 `get_forwarded_messages` |
-| `set_friend_add_request` / `set_group_add_request` | Milky 只提供 `get_friend_requests` / `get_group_notifications` **读取**，无批准动作 |
+| `set_friend_add_request` / `set_group_add_request` | Milky ⚠️ **已过时（文档同步 2026-09-25）**：官方协议 1.3 已提供 `accept_friend_request` / `reject_friend_request`、`accept_group_request` / `reject_group_request`（及 `accept_group_invitation` / `reject_group_invitation`）——不再是「协议不支持」，而是**本仓库尚未接线**（见下方全量对照表） |
 | `set_group_config` | Milky 未提供群配置写接口 |
 | `set_self_profile` | Milky 拆成 `set_nickname` / `set_bio` / `set_avatar`，语义不唯一 |
 
@@ -155,6 +156,112 @@ Authorization: Bearer <access_token>
 | `send_group_msg` / `send_private_msg`（带图发送、其余直连处） | 需逐处核对调用方对返回值的用法 |
 | `delete_msg` | Milky 分 `recall_group_message` / `recall_private_message`，当前签名只有 message_id（缺场景） |
 | `get_msg` / `get_group_msg_history` / `get_group_member_info` / `get_group_member_list` | 返回体是 OneBot 结构（如 `raw_message`），需按 Milky 响应逐字段对齐后再转 |
+
+### 官方 API 全量对照（同步 2026-09-25）
+
+> 数据源：官方协议定义 [`protocol/src/ir/api/*.ts`](https://github.com/SaltifyDev/milky/tree/main/protocol/src/ir/api)（Milky 协议 **1.3**），同步页 `milky.ntqqrev.org/api/{system,message,friend,group,file}`。
+> 共 **65 个动作**：system 17 · message 9 · friend 6 · group 21 · file 12。
+> 「本仓库」列 = `src/services/sender.py::_MILKY_ACTIONS` 是否接线（`—` = 尚未使用）；未登记的新端点会让 `tests/test_milky_mapping.py` 失败。
+
+#### 系统 API（17）
+
+| 动作 | 说明 | 本仓库 |
+| :--- | :--- | :--- |
+| `get_cookies` | 获取 Cookies | — |
+| `get_csrf_token` | 获取 CSRF Token | — |
+| `get_custom_face_url_list` | 获取自定义表情 URL 列表 | — |
+| `get_friend_info` | 获取好友信息 | — |
+| `get_friend_list` | 获取好友列表 | ✓ `get_friend_list` |
+| `get_group_info` | 获取群信息 | ✓ `get_group_config` / `get_group_info` |
+| `get_group_list` | 获取群列表 | ✓ `get_group_list` |
+| `get_group_member_info` | 获取群成员信息 | — |
+| `get_group_member_list` | 获取群成员列表 | — |
+| `get_impl_info` | 获取协议端信息 | ✓ `get_status` |
+| `get_login_info` | 获取登录信息 | ✓ `get_login_info` |
+| `get_peer_pins` | 获取置顶的好友和群列表 | — |
+| `get_user_profile` | 获取用户个人信息 | — |
+| `set_avatar` | 设置 QQ 账号头像 | — |
+| `set_bio` | 设置 QQ 账号个性签名 | — |
+| `set_nickname` | 设置 QQ 账号昵称 | — |
+| `set_peer_pin` | 设置好友或群的置顶状态 | — |
+
+#### 消息 API（9）
+
+| 动作 | 说明 | 本仓库 |
+| :--- | :--- | :--- |
+| `get_forwarded_messages` | 获取合并转发消息内容 | — |
+| `get_history_messages` | 获取历史消息列表 | ✓ `get_friend_msg_history` |
+| `get_message` | 获取消息 | — |
+| `get_resource_temp_url` | 获取临时资源链接 | ✓ `get_group_res` |
+| `mark_message_as_read` | 标记消息为已读 | — |
+| `recall_group_message` | 撤回群聊消息 | — |
+| `recall_private_message` | 撤回私聊消息 | — |
+| `send_group_message` | 发送群聊消息 | ✓ `send_group_msg` |
+| `send_private_message` | 发送私聊消息 | ✓ `send_private_msg` |
+
+#### 好友 API（6）
+
+| 动作 | 说明 | 本仓库 |
+| :--- | :--- | :--- |
+| `accept_friend_request` | 同意好友请求 | — |
+| `delete_friend` | 删除好友 | — |
+| `get_friend_requests` | 获取好友请求列表 | — |
+| `reject_friend_request` | 拒绝好友请求 | — |
+| `send_friend_nudge` | 发送好友戳一戳 | ✓ `friend_poke` |
+| `send_profile_like` | 发送名片点赞 | ✓ `set_friend_profile_like` |
+
+#### 群组 API（21）
+
+| 动作 | 说明 | 本仓库 |
+| :--- | :--- | :--- |
+| `accept_group_invitation` | 同意他人邀请自身入群 | — |
+| `accept_group_request` | 同意入群/邀请他人入群请求 | — |
+| `delete_group_announcement` | 删除群公告 | ✓ `_del_group_notice` |
+| `get_group_announcements` | 获取群公告列表 | ✓ `get_group_notice` |
+| `get_group_essence_messages` | 获取群精华消息列表 | ✓ `get_essence_msg_list` |
+| `get_group_notifications` | 获取群通知列表 | — |
+| `kick_group_member` | 踢出群成员 | ✓ `set_group_kick` |
+| `quit_group` | 退出群 | — |
+| `reject_group_invitation` | 拒绝他人邀请自身入群 | — |
+| `reject_group_request` | 拒绝入群/邀请他人入群请求 | — |
+| `send_group_announcement` | 发送群公告 | ✓ `send_group_notice` |
+| `send_group_message_reaction` | 发送群消息表情回应 | ✓ `set_group_reaction` / `set_react` |
+| `send_group_nudge` | 发送群戳一戳 | ✓ `send_poke` |
+| `set_group_avatar` | 设置群头像 | ✓ `set_group_portrait` |
+| `set_group_essence_message` | 设置群精华消息 | ✓ `set_essence_msg` |
+| `set_group_member_admin` | 设置群管理员 | ✓ `set_group_admin` |
+| `set_group_member_card` | 设置群名片 | ✓ `set_group_card` |
+| `set_group_member_mute` | 设置群成员禁言 | ✓ `set_group_ban` |
+| `set_group_member_special_title` | 设置群成员专属头衔 | ✓ `set_group_special_title` |
+| `set_group_name` | 设置群名称 | ✓ `set_group_name` |
+| `set_group_whole_mute` | 设置群全员禁言 | ✓ `set_group_whole_ban` |
+
+#### 文件 API（12）
+
+| 动作 | 说明 | 本仓库 |
+| :--- | :--- | :--- |
+| `create_group_folder` | 创建群文件夹 | ✓ `create_group_file_folder` |
+| `delete_group_file` | 删除群文件 | ✓ `delete_group_file` |
+| `delete_group_folder` | 删除群文件夹 | ✓ `delete_group_folder` |
+| `get_group_file_download_url` | 获取群文件下载链接 | ✓ `get_group_file_url` |
+| `get_group_files` | 获取群文件列表 | ✓ `get_group_files_by_folder` / `get_group_root_files` |
+| `get_private_file_download_url` | 获取私聊文件下载链接 | — |
+| `move_group_file` | 移动群文件 | ✓ `move_group_file` |
+| `persist_group_file` | 转存群文件为永久文件 | — |
+| `rename_group_file` | 重命名群文件 | — |
+| `rename_group_folder` | 重命名群文件夹 | ✓ `rename_group_file_folder` |
+| `upload_group_file` | 上传群文件 | — |
+| `upload_private_file` | 上传私聊文件 | — |
+
+### 尚未接线的官方动作（32 个）
+
+- **系统**：`get_cookies` `get_csrf_token` `get_custom_face_url_list` `get_friend_info` `get_group_member_info` `get_group_member_list` `get_peer_pins` `get_user_profile` `set_avatar` `set_bio` `set_nickname` `set_peer_pin`
+- **消息**：`get_forwarded_messages` `get_message` `mark_message_as_read` `recall_group_message` `recall_private_message`
+- **好友**：`accept_friend_request` `delete_friend` `get_friend_requests` `reject_friend_request`
+- **群组**：`accept_group_invitation` `accept_group_request` `get_group_notifications` `quit_group` `reject_group_invitation` `reject_group_request`
+- **文件**：`get_private_file_download_url` `persist_group_file` `rename_group_file` `upload_group_file` `upload_private_file`
+
+> ⚠️ 上面未接线清单里的 6 个「好友/群请求与邀请的同意-拒绝」动作是**可接线缺口**（协议已支持，仓库尚未接）；接线需改 `src/services/sender.py`，本次只同步文档。
 
 ## 已知边界（真机联调时请反馈）
 - **发送图片/语音段**：Milky 发送段 data（resource_id 需先上传）——Flowerie 当前 text 发送完整可用；多媒体发送待联调

@@ -11,6 +11,7 @@
 | `get_context(payload)` |  | `read_message_history` |
 | `get_group_history(payload)` |  | `read_message_history` |
 | `get_message(payload)` |  | `read_message_history` |
+| `send_many(payload)` | 多条发送：条数/间隔由主进程 Core 统一控制。 | `send_message` |
 | `send_message(payload)` |  | `send_message` |
 | `send_private_message(payload)` |  | `send_message` |
 | `send_reply(payload)` |  | `send_message` |
