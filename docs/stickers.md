@@ -7,6 +7,14 @@ STICKER_ENABLED=true
 STICKER_DIR=/path/to/stickers   # 放图片即可（jpg/png/gif/webp/bmp）
 ```
 
+| 配置项 | 默认 | 说明 |
+| :--- | :--- | :--- |
+| `STICKER_ENABLED` | `false` | 总开关 |
+| `STICKER_DIR` | `./stickers` | 图片目录（只允许该目录内文件，路径穿越拒绝） |
+| `STICKER_DB_PATH` | `./data/stickers.db` | 视觉描述索引库（SHA-256 去重缓存） |
+| `STICKER_MAX_LIST` | `50` | 每次注入给模型的描述条数上限（防 token 膨胀） |
+| `STICKER_COOLDOWN` | `60` | 每群发送冷却（秒），防刷屏 |
+
 ## 工作机制
 
 1. **索引**：启动时扫描目录，新图片交给视觉模型生成一句话描述，缓存到 SQLite（`data/stickers.db`）
