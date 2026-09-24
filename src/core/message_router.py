@@ -448,9 +448,6 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
 
             success = await self._send_reply(reply, group_id=group_id)
             if success:
-                self.policy_engine.record_bot_reply(group_id)
-                self.policy_engine.add_context(group_id, 0, reply, is_bot=True)
-                self.policy_engine.add_recent_reply(group_id, reply)
                 logger.info("reply_sent group=%s len=%d", group_id, len(reply or ""), extra={"event": "reply_sent"})
             else:
                 logger.error("Reply send failed")
@@ -626,9 +623,6 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
             success = await self._send_reply(reply, group_id=group_id)
             if success:
                 self.policy_engine.record_active_chat()
-                self.policy_engine.record_bot_reply(group_id)
-                self.policy_engine.add_context(group_id, 0, reply, is_bot=True)
-                self.policy_engine.add_recent_reply(group_id, reply)
                 logger.info("active_chat_sent group=%s len=%d", group_id, len(reply or ""), extra={"event": "active_chat_sent"})
                 break
             else:

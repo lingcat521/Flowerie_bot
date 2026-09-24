@@ -28,11 +28,19 @@ class ReplyDispatchMixin:
             return await self.sender.send_private_message(user_id, msg)
 
         def after_sent(_idx, _res):
+            """每条都记一次：连续回复计数 + 上下文 + 最近回复（任务书 §10/§11）。
+
+            只在成功发出后记录，且**一条记一次** —— 调用点不要再重复记录，
+            否则连续回复会被双倍计数、冷却提前触发。
+            """
             target = group_id if group_id else user_id
+            text = plan.messages[_idx] if _idx < len(plan.messages) else ""
             try:
                 self.policy_engine.record_bot_reply(target)
+                self.policy_engine.add_context(target, 0, text, is_bot=True)
+                self.policy_engine.add_recent_reply(target, text)
             except Exception:
-                logger.debug("record_bot_reply failed for %s", target)
+                logger.debug("record reply failed for %s", target)
 
         try:
             results = await send_plan(plan, send_one, on_sent=after_sent)
