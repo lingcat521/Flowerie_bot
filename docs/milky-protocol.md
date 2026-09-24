@@ -145,7 +145,7 @@ Authorization: Bearer <access_token>
 | `set_group_config` | Milky 未提供群配置写接口 |
 | `set_self_profile` | Milky 拆成 `set_nickname` / `set_bio` / `set_avatar`，语义不唯一 |
 
-### 仍绕过统一入口的端点（8 处，已知缺口）
+### 仍绕过统一入口的端点（6 处，已知缺口）
 
 这些方法目前仍直接 `session.post`，**Milky 模式下会打到 OneBot 地址**；
 `tests/test_milky_mapping.py::test_direct_post_sites_only_shrink` 把它锁成"只许减少"：

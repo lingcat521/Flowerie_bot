@@ -11,7 +11,7 @@ SENDER = "src/services/sender.py"
 # 仍然绕过统一入口 _post 的端点（Milky 下会打到 OneBot 地址，属已知缺口）。
 # 约定：这个集合**只允许缩小**；新增端点必须走 _post，否则本测试失败。
 KNOWN_BYPASS = {
-    "send_group_msg", "send_private_msg",
+    "send_group_msg",          # 仅剩带图发送（send_group_message_with_image）仍直连
     "delete_msg",
     "get_msg", "get_group_msg_history",
     "get_group_member_info", "get_group_member_list",
