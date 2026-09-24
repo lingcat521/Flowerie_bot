@@ -398,7 +398,12 @@ class PluginManager:
         self._stop_runtime(plugin_id)
         self._manifest_cache.pop(plugin_id, None)
         self.repository.delete_plugin(plugin_id)
-        dir_path = os.path.join(self.plugin_dir, plugin_id)
+        # CodeQL 可见的净化：basename(去掉任何路径成分) + 同函数内正则校验，
+        # 之后只用 _safe_id 拼路径 —— 让局部数据流也能看出污染被切断（§9 情况 B）
+        _safe_id = os.path.basename(str(plugin_id or ""))
+        if not _PLUGIN_ID_RE.fullmatch(_safe_id):
+            return False, "插件 id 非法"
+        dir_path = os.path.join(self.plugin_dir, _safe_id)
         if os.path.isdir(dir_path):
             shutil.rmtree(dir_path, ignore_errors=True)
         logger.info("plugin_uninstalled id=%s", plugin_id, extra={"event": "plugin_uninstalled"})
@@ -2011,7 +2016,10 @@ class PluginManager:
             return {"ok": False, "error": f"下载失败: {type(e).__name__}"}
         if len(data) > 10 * 1024 * 1024:
             return {"ok": False, "error": "下载超过 10MB 上限"}
-        base = self._plugin_base(plugin_id)
+        _safe_id = os.path.basename(str(plugin_id or ""))          # CodeQL 可见的净化
+        if not _PLUGIN_ID_RE.fullmatch(_safe_id):
+            return {"ok": False, "error": "插件 id 非法"}
+        base = self._plugin_base(_safe_id)
         if base is None:
             return {"ok": False, "error": "插件 id 非法或路径越界"}
         target = os.path.realpath(os.path.join(base, rel))
@@ -2067,7 +2075,10 @@ class PluginManager:
 
     def _file_read(self, plugin_id: str, rel: str) -> dict:
         """filesystem_read：仅允许读取插件自身目录内的文件（真实路径校验）。"""
-        base = self._plugin_base(plugin_id)
+        _safe_id = os.path.basename(str(plugin_id or ""))          # CodeQL 可见的净化
+        if not _PLUGIN_ID_RE.fullmatch(_safe_id):
+            return {"ok": False, "error": "插件 id 非法"}
+        base = self._plugin_base(_safe_id)
         if base is None:
             return {"ok": False, "error": "插件 id 非法或路径越界"}
         target = os.path.realpath(os.path.join(base, rel))
@@ -2085,7 +2096,10 @@ class PluginManager:
         """filesystem_write：仅允许写入插件自身目录（真实路径校验 + 大小上限）。"""
         if not rel or ".." in rel.split("/") or rel.startswith("/") or "\\" in rel:
             return {"ok": False, "error": "路径越界（仅允许插件目录内相对路径）"}
-        base = self._plugin_base(plugin_id)
+        _safe_id = os.path.basename(str(plugin_id or ""))          # CodeQL 可见的净化
+        if not _PLUGIN_ID_RE.fullmatch(_safe_id):
+            return {"ok": False, "error": "插件 id 非法"}
+        base = self._plugin_base(_safe_id)
         if base is None:
             return {"ok": False, "error": "插件 id 非法或路径越界"}
         target = os.path.realpath(os.path.join(base, rel))

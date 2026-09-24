@@ -69,8 +69,17 @@ def test_plugin_base_checks_containment_against_plugin_dir():
     assert "commonpath([root, base]) != root" in body, "缺少对 plugin_dir 的包含性检查"
 
 
-def test_file_helpers_use_plugin_base():
-    """三处 file 操作都必须用 _plugin_base（而不是自己拼 base）。"""
+def test_file_helpers_sanitize_inline_then_use_plugin_base():
+    """三处 file 操作必须在**同一函数内**先 basename 净化 + 正则校验，再用 _plugin_base。
+
+    为什么要内联：CodeQL 的局部数据流看不到跨函数的自定义校验，
+    把净化放在 sink 同函数内既更安全（纵深防御），也让静态分析能看出污染被切断。
+    """
     src = _source()
-    assert src.count("base = self._plugin_base(plugin_id)") == 3
-    assert "os.path.join(self.plugin_dir, plugin_id)" not in src.split("def _file_read")[1][:400]
+    assert src.count("_safe_id = os.path.basename(str(plugin_id or ""))") == 4,         "uninstall + 三处 file 操作都应内联 basename 净化"
+    assert src.count("base = self._plugin_base(_safe_id)") == 3
+    # 旧的「直接用未净化 id 拼 base」写法必须消失
+    assert "base = self._plugin_base(plugin_id)" not in src
+    # uninstall 的路径必须由净化后的变量拼出
+    assert "dir_path = os.path.join(self.plugin_dir, _safe_id)" in src
+    assert "dir_path = os.path.join(self.plugin_dir, plugin_id)" not in src
