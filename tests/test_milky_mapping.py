@@ -1,12 +1,21 @@
-"""Milky 能力矩阵回归：Sender 的每个端点都必须"要么有映射、要么明确不支持"。
+"""Milky 能力矩阵回归：端点必须"要么有映射、要么明确不支持"，绕过点只许减少。
 
-刻意用 AST 解析 sender.py 而不是 import —— 这样不依赖 aiohttp，本地也能跑。
+刻意用 AST 解析 sender.py 而不是 import —— 不依赖 aiohttp，本地也能跑。
 """
 import ast
 import io
 import re
 
 SENDER = "src/services/sender.py"
+
+# 仍然绕过统一入口 _post 的端点（Milky 下会打到 OneBot 地址，属已知缺口）。
+# 约定：这个集合**只允许缩小**；新增端点必须走 _post，否则本测试失败。
+KNOWN_BYPASS = {
+    "send_group_msg", "send_private_msg",
+    "delete_msg",
+    "get_msg", "get_group_msg_history",
+    "get_group_member_info", "get_group_member_list",
+}
 
 
 def _sender_module():
@@ -25,22 +34,25 @@ def _milky_unsupported() -> set:
     for node in ast.walk(_sender_module()):
         if isinstance(node, ast.Assign) and any(
                 getattr(t, "id", "") == "_MILKY_UNSUPPORTED" for t in node.targets):
-            call = node.value
-            elts = call.args[0].elts if call.args else []
+            elts = node.value.args[0].elts if node.value.args else []
             return {e.value for e in elts}
     raise AssertionError("sender.py 里找不到 _MILKY_UNSUPPORTED")
 
 
 def _literal_endpoints() -> set:
     src = io.open(SENDER, encoding="utf-8").read()
-    return set(re.findall(r'''["']/([a-z_]+)["']''', src))
+    return set(re.findall(r'["\']/([a-z_]+)["\']', src))
+
+
+def _bypass_endpoints() -> set:
+    src = io.open(SENDER, encoding="utf-8").read()
+    return set(re.findall(r'HTTP_API_BASE\}/([a-z_]+)"', src))
 
 
 def test_every_endpoint_is_mapped_or_explicitly_unsupported():
-    """新增端点却忘了登记 → 这里报警（Milky 下会静默透传成 404）。"""
-    eps = _literal_endpoints()
-    covered = set(_milky_actions()) | _milky_unsupported()
-    missing = sorted(eps - covered)
+    """新增端点却忘了登记 -> 这里报警（Milky 下会静默透传成 404）。"""
+    covered = set(_milky_actions()) | _milky_unsupported() | _bypass_endpoints()
+    missing = sorted(_literal_endpoints() - covered)
     assert missing == [], missing
 
 
@@ -50,13 +62,20 @@ def test_unsupported_and_mapped_do_not_overlap():
 
 
 def test_unsupported_endpoints_are_the_known_gaps():
-    """这 7 个是逐一核对官方 Milky API（system/message/friend/group/file 五组）后
-    确认没有对应能力的 —— 将来 Milky 补了，删掉对应项并加映射即可。"""
+    """逐一核对官方 Milky API（system/message/friend/group/file 五组）后确认无对应能力的端点。
+    将来 Milky 补了，删掉对应项并加映射即可。"""
     assert _milky_unsupported() == {
         "get_group_honor_info", "get_online_clients", "delete_essence_msg",
         "send_group_forward_msg", "send_private_forward_msg",
+        "set_friend_add_request", "set_group_add_request",
         "set_group_config", "set_self_profile",
     }
+
+
+def test_direct_post_sites_only_shrink():
+    """绕过统一入口的端点集合只许减少（新增必须走 _post）。"""
+    grew = sorted(_bypass_endpoints() - KNOWN_BYPASS)
+    assert grew == [], "新增了绕过统一入口的端点：%s" % grew
 
 
 def test_core_mappings_are_milky_native_names():
@@ -65,14 +84,17 @@ def test_core_mappings_are_milky_native_names():
     assert m["send_group_msg"] == "send_group_message"
     assert m["send_private_msg"] == "send_private_message"
     assert m["set_group_card"] == "set_group_member_card"
+    assert m["set_group_ban"] == "set_group_member_mute"
+    assert m["set_group_kick"] == "kick_group_member"
+    assert m["set_group_admin"] == "set_group_member_admin"
     assert m["send_poke"] == "send_group_nudge"
     assert m["set_react"] == "send_group_message_reaction"
 
 
 def test_multi_reply_shares_the_same_send_path():
-    """Multi-Reply 复用 sender 的单条发送 → Milky 下自动共用 send_group_message。"""
+    """Multi-Reply 复用 sender 的单条发送 -> Milky 下自动共用 send_group_message。"""
     src = io.open("src/core/reply_dispatch.py", encoding="utf-8").read()
-    assert "send_group_message" in src, "多条发送必须复用 sender 的单条方法（协议无关）"
+    assert "send_group_message" in src
     assert _milky_actions()["send_group_msg"] == "send_group_message"
 
 

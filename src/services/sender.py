@@ -41,6 +41,9 @@ class Sender:
         "set_essence_msg": "set_group_essence_message",
         "set_friend_profile_like": "send_profile_like",
         "set_group_card": "set_group_member_card",
+        "set_group_ban": "set_group_member_mute",
+        "set_group_kick": "kick_group_member",
+        "set_group_admin": "set_group_member_admin",
         "set_group_name": "set_group_name",
         "set_group_portrait": "set_group_avatar",
         "set_group_reaction": "send_group_message_reaction",
@@ -56,6 +59,8 @@ class Sender:
         "get_online_clients",
         "send_group_forward_msg",
         "send_private_forward_msg",
+        "set_friend_add_request",
+        "set_group_add_request",
         "set_group_config",
         "set_self_profile",
     })
@@ -369,57 +374,40 @@ class Sender:
     async def set_group_ban(self, group_id: int, user_id: int, duration_seconds: int) -> bool:
         """群禁言（OneBot11 /set_group_ban；duration=0 解除）。"""
         try:
-            async with self.session.post(
-                    f"{self.config.HTTP_API_BASE}/set_group_ban",
-                    json={"group_id": int(group_id), "user_id": int(user_id),
-                          "duration": max(0, int(duration_seconds))},
-                    timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                return resp.status == 200
+            res = await self._post("set_group_ban", {"group_id": int(group_id), "user_id": int(user_id), "duration": max(0, int(duration_seconds))}, timeout=10.0)
+            return bool(res.get("ok"))
         except Exception:
             return False
 
     async def set_group_kick(self, group_id: int, user_id: int, reject_add: bool = False) -> bool:
         """移出群成员（OneBot11 /set_group_kick）。"""
         try:
-            async with self.session.post(
-                    f"{self.config.HTTP_API_BASE}/set_group_kick",
-                    json={"group_id": int(group_id), "user_id": int(user_id), "reject_add_request": bool(reject_add)},
-                    timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                return resp.status == 200
+            res = await self._post("set_group_kick", {"group_id": int(group_id), "user_id": int(user_id), "reject_add_request": bool(reject_add)}, timeout=10.0)
+            return bool(res.get("ok"))
         except Exception:
             return False
 
     async def set_group_admin(self, group_id: int, user_id: int, enable: bool) -> bool:
         """设为/取消管理员（OneBot11 /set_group_admin）。"""
         try:
-            async with self.session.post(
-                    f"{self.config.HTTP_API_BASE}/set_group_admin",
-                    json={"group_id": int(group_id), "user_id": int(user_id), "enable": bool(enable)},
-                    timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                return resp.status == 200
+            res = await self._post("set_group_admin", {"group_id": int(group_id), "user_id": int(user_id), "enable": bool(enable)}, timeout=10.0)
+            return bool(res.get("ok"))
         except Exception:
             return False
 
     async def set_friend_add_request(self, flag: str, approve: bool, remark: str = "") -> bool:
         """处理好友请求（OneBot11 /set_friend_add_request）。"""
         try:
-            async with self.session.post(
-                    f"{self.config.HTTP_API_BASE}/set_friend_add_request",
-                    json={"flag": str(flag), "approve": bool(approve), "remark": str(remark)[:30]},
-                    timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                return resp.status == 200
+            res = await self._post("set_friend_add_request", {"flag": str(flag), "approve": bool(approve), "remark": str(remark)[:30]}, timeout=10.0)
+            return bool(res.get("ok"))
         except Exception:
             return False
 
     async def set_group_add_request(self, flag: str, approve: bool, reason: str = "") -> bool:
         """处理加群请求（OneBot11 /set_group_add_request）。"""
         try:
-            async with self.session.post(
-                    f"{self.config.HTTP_API_BASE}/set_group_add_request",
-                    json={"flag": str(flag), "approve": bool(approve),
-                          "reason": str(reason)[:30]},
-                    timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                return resp.status == 200
+            res = await self._post("set_group_add_request", {"flag": str(flag), "approve": bool(approve), "reason": str(reason)[:30]}, timeout=10.0)
+            return bool(res.get("ok"))
         except Exception:
             return False
 
