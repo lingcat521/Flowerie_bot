@@ -14,9 +14,51 @@ _M_SEND_FAIL = registry.counter("message_send_failure_total", "消息发送失�
 
 class Sender:
     _MILKY_ACTIONS = {
+        "_del_group_notice": "delete_group_announcement",
+        "create_group_file_folder": "create_group_folder",
+        "delete_group_file": "delete_group_file",
+        "delete_group_folder": "delete_group_folder",
+        "friend_poke": "send_friend_nudge",
+        "get_essence_msg_list": "get_group_essence_messages",
+        "get_friend_list": "get_friend_list",
+        "get_friend_msg_history": "get_history_messages",
+        "get_group_config": "get_group_info",
+        "get_group_file_url": "get_group_file_download_url",
+        "get_group_files_by_folder": "get_group_files",
+        "get_group_info": "get_group_info",
+        "get_group_list": "get_group_list",
+        "get_group_notice": "get_group_announcements",
+        "get_group_res": "get_resource_temp_url",
+        "get_group_root_files": "get_group_files",
+        "get_login_info": "get_login_info",
+        "get_status": "get_impl_info",
+        "move_group_file": "move_group_file",
+        "rename_group_file_folder": "rename_group_folder",
         "send_group_msg": "send_group_message",
+        "send_group_notice": "send_group_announcement",
+        "send_poke": "send_group_nudge",
         "send_private_msg": "send_private_message",
+        "set_essence_msg": "set_group_essence_message",
+        "set_friend_profile_like": "send_profile_like",
+        "set_group_card": "set_group_member_card",
+        "set_group_name": "set_group_name",
+        "set_group_portrait": "set_group_avatar",
+        "set_group_reaction": "send_group_message_reaction",
+        "set_group_special_title": "set_group_member_special_title",
+        "set_group_whole_ban": "set_group_whole_mute",
+        "set_react": "send_group_message_reaction",
     }
+
+    # 已确认 Milky 无对应能力的端点：调用时给出明确错误，而不是让协议端回 404
+    _MILKY_UNSUPPORTED = frozenset({
+        "delete_essence_msg",
+        "get_group_honor_info",
+        "get_online_clients",
+        "send_group_forward_msg",
+        "send_private_forward_msg",
+        "set_group_config",
+        "set_self_profile",
+    })
 
     def __init__(self, config: Settings, ws_sender=None):
         self.config = config
@@ -66,7 +108,12 @@ class Sender:
         QQ_PROTOCOL=milky 时走 Milky /api/<action>（Bearer 鉴权；action 名映射）。
         """
         if self._milky:
-            action = self._MILKY_ACTIONS.get(endpoint.lstrip("/"), endpoint.lstrip("/"))
+            ep = endpoint.lstrip("/")
+            if ep in self._MILKY_UNSUPPORTED:
+                logger.warning("milky_unsupported endpoint=%s", ep,
+                               extra={"event": "milky_unsupported"})
+                return {"ok": False, "error": "Milky 协议不支持该能力：%s" % ep}
+            action = self._MILKY_ACTIONS.get(ep, ep)
             url = f"{str(getattr(self.config, 'MILKY_API_BASE', '')).rstrip('/')}/api/{action}"
             # Milky 消息必须是段数组（OutgoingSegment）；字符串自动转 text 段
             _m = payload.get("message")

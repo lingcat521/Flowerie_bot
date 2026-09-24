@@ -91,6 +91,38 @@ Authorization: Bearer <access_token>
 | `src/core/milky_client.py` | WS 客户端连 `/event`（access_token 参数；断线重连 5→60s 退避；事件并发）|
 | `main.py` | `QQ_PROTOCOL=milky` → MilkyClient（替代 NapCat 反向/正向）|
 
+## API 能力表（Milky vs OneBot）
+
+> 数据来源：官方 Milky API 文档（`milky.ntqqrev.org/api/` 的 system / message / friend / group / file 五组）
+> 与仓库内 `src/services/sender.py` 的 `_MILKY_ACTIONS` 映射表逐一核对。
+> **新增端点若忘记登记，CI 会失败**（`tests/test_milky_mapping.py`）。
+
+| 能力 | Flowerie | OneBot | Milky | 说明 |
+| :--- | :---: | :---: | :---: | :--- |
+| 发送/回复消息 | ✓ | ✓ | ✓ | `send_group_message` / `send_private_message` |
+| **多条回复（Multi-Reply）** | ✓ | ✓ | ✓ | 走同一条 sender 调用路径，自动共用 |
+| 撤回消息 | ✓ | ✓ | ⚠️ | Milky 分 `recall_group_message` / `recall_private_message` 两个动作 |
+| 群信息 / 群列表 | ✓ | ✓ | ✓ | `get_group_info` / `get_group_list` |
+| 群成员信息 / 列表 | ✓ | ✓ | ✓ | `get_group_member_info` / `get_group_member_list` |
+| 群名片 / 管理员 / 禁言 / 改名 / 头衔 | ✓ | ✓ | ✓ | `set_group_member_card` 等 |
+| 全体禁言 | ✓ | ✓ | ✓ | `set_group_whole_mute` |
+| 群公告 收发删 | ✓ | ✓ | ✓ | `send_group_announcement` / `get_group_announcements` / `delete_group_announcement` |
+| 精华消息 设/查 | ✓ | ✓ | ✓ | `set_group_essence_message` / `get_group_essence_messages` |
+| 表情回应 / 戳一戳 | ✓ | ✓ | ✓ | `send_group_message_reaction` / `send_group_nudge`（好友戳 `send_friend_nudge`） |
+| 群文件 列/删/移/改名/建目录 | ✓ | ✓ | ✓ | `get_group_files` / `delete_group_file` / `move_group_file` / `rename_group_folder` / `create_group_folder` |
+| 群文件下载地址 | ✓ | ✓ | ✓ | `get_group_file_download_url` |
+| 好友列表 / 点赞 | ✓ | ✓ | ✓ | `get_friend_list` / `send_profile_like` |
+| 历史消息 | ✓ | ✓ | ✓ | `get_history_messages` |
+| 登录信息 / 实现信息 | ✓ | ✓ | ✓ | `get_login_info` / `get_impl_info` |
+| 群荣誉 | ✓ | ✓ | ✗ | Milky 无对应接口（调用返回明确错误） |
+| 在线客户端 | ✓ | ✓ | ✗ | 同上 |
+| 删除精华 | ✓ | ✓ | ✗ | Milky 只有开关式 `set_group_essence_message` |
+| 转发消息（发送） | ✓ | ✓ | ✗ | Milky 只提供读取 `get_forwarded_messages` |
+| 群配置写入 | ✓ | ✓ | ✗ | Milky 未提供群配置写接口 |
+| 修改自身资料 | ✓ | ✓ | ✗ | Milky 拆成 `set_nickname` / `set_bio` / `set_avatar`，语义不唯一 |
+
+**不支持的调用会怎样**：`Sender` 在 Milky 模式下遇到这些端点会**直接返回明确错误**
+（`Milky 协议不支持该能力：xxx`），不会把请求丢给协议端换回一个 404 —— 便于上游如实降级。
 ## 已知边界（真机联调时请反馈）
 - **发送图片/语音段**：Milky 发送段 data（resource_id 需先上传）——Flowerie 当前 text 发送完整可用；多媒体发送待联调
 - notice 的 event_type 完整命名（目前按 notice_receive 匹配）
