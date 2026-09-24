@@ -146,6 +146,8 @@ MAX_CONSECUTIVE_REPLIES  = 3   # 但连续发到 3 条就会触发冷却
 - `fixed`：固定间隔，适合想要稳定节奏的场合；
 - `none`：不等，适合"一句说完立刻补一句"的场景（仍受连续回复限制约束）。
 
+**本地预演（不需要 QQ）**：`python3 scripts/multi_reply_demo.py` 会用真实模块跑一遍
+「多条 → 逐条发送 → 历史记录」并显示每次间隔；加 `--disabled` / `--max-messages N` 可现场对比配置效果。
 **Web UI**：这些项都在「配置 → AI」分类里，改完保存即热更新（无需重启）。
 
 ## Web UI
