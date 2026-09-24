@@ -123,6 +123,9 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
 - **知识防污染**：群聊梗知识按群隔离、过清洗闸门；MCP 工具元数据按不可信外部输入处理（防 tool description 注入）。
 - **Secret 脱敏**：API Key 只在 UI 显示掩码，留空提交不覆盖；日志不记录密钥明文。
 - **双层熔断 / 预算**：AI 熔断 + 群级熔断、三层 AI 预算，防风暴与滥用。
+- **回复条数不可被 AI 绕过**：多条回复（含 AI 自主拆分的 Native Reply Tool）只产出 `ReplyPlan`，
+  条数上限 `MULTI_REPLY_MAX_MESSAGES`、间隔、连续回复计数、冷却、失败策略、协议能力检查全部由 Core 强制；
+  工具调用不经过任何发送接口，模型返回 10 条而上限为 3 时只发 3 条。
 - **SSRF 通用防线**：MCP / 图片 / 插件 URL 均走地址校验与本地-内网白名单。
 
 ## Bot SDK 安全边界（v1.3.0）

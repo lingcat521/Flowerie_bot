@@ -40,7 +40,7 @@ WEB_UI_PASSWORD=               # 可留空（= UNINITIALIZED，注册页是唯�
 | **群昵称** | 群特色昵称（× 人设隔离）：按群配置专属称呼，群绑定人设后唤名联动，留空恢复默认 |
 | **外观** | 7 套内置主题 + 背景颜色/图片 + 面板透明度 + 卡片效果 + 恢复默认/删除图片 |
 | **日志** | 最近 200 条运行日志 |
-| **用户状态** | 当前管理员与凭据来源、**修改登录账号**、注销账号（仅清账号密码）、服务器状态（平台/内存/CPU负载）、MCP 工具状态、API 厂商连接状态 |
+| **用户状态** | 当前管理员与凭据来源、**修改登录账号**、注销账号（仅清账号密码）、服务器状态（平台/内存/CPU负载）、MCP 工具状态、API 厂商连接状态（含**向量/重排模型（花语记忆）**两条链路） |
 
 全部通过 **HTML `<form>` + GET/POST + 服务端模板渲染**实现，**不使用任何 JavaScript**。
 
@@ -78,7 +78,7 @@ WEB_UI_PASSWORD=               # 可留空（= UNINITIALIZED，注册页是唯�
 
 ## 配置页
 
-- **分类导航**：顶部一排分类（全部 / AI / 基础 / 连接 / 行为与回复 / 稳定性与熔断 / 记忆库 / 表情包 / MCP 工具 / Web UI / 日志 / 预算与限额 / 主动聊天 / 复读与防刷 / 戳戳 / 文件解析 / 安全与资源限制 / 白名单与隐私 / 消息存档 / 数据路径），点某个分类只看那一类，避免全部变量堆一屏。
+- **分类导航**：顶部一排分类（全部 / AI / 基础 / 连接 / 行为与回复 / 稳定性与熔断 / 记忆库 / **花语记忆（默认关闭）** / **上下文** / 表情包 / MCP 工具 / Web UI / 日志 / 预算与限额 / 主动聊天 / 复读与防刷 / 戳戳 / 文件解析 / 安全与资源限制 / 白名单与隐私 / 消息存档 / 数据路径），点某个分类只看那一类，避免全部变量堆一屏。
 - **控件按类型自动匹配**：
   - `bool` → checkbox（未勾选服务端自动 `false`）
   - `int/float` → number（含 `min/max/step`）
@@ -197,11 +197,11 @@ MCP 服务器以**卡片列表**展示，无需手写 JSON：
 | :--- | :--- |
 | 配置持久化 | 项目根 `.env`（原子写入）+ `data/settings.db`（`app_config` / `webui_prefs` / `personas` / `group_persona` / `persona_global` 表） |
 | 背景图片 | `data/webui/background/` |
-| 服务端实现 | `src/services/web_ui.py`（薄门面：认证/面板壳/生命周期）+ `src/services/webui_panels/`（功能域 mixin：account/auth/config/appearance/mcp/persona/knowledge/prompt/plugin） |
+| 服务端实现 | `src/services/web_ui.py`（薄门面：认证/面板壳/生命周期）+ `src/services/webui_panels/`（功能域 mixin：account/auth/config/appearance/mcp/persona/knowledge/nickname/prompt/plugin） |
 | 页面模板 | `src/services/webui_render/templates/*.html`（真实 HTML 页面壳：panel / login / register / register_closed） |
 | 面板样式 | `src/services/webui_render/static/panel.css`（真实 CSS 文件，含 `{{THEME_VARS}}` 占位，由 Python 注入各主题变量） |
 | 静态资源与缓存 | `src/services/webui_static.py`（`/panel/static/{name}` 路由 + HTML `no-store` 中间件） |
-| 渲染层 | `src/services/web_ui_assets.py`（聚合导出）+ `src/services/webui_render/`（theme/pages/config_panel/appearance/persona/knowledge/account/plugins，7 主题）+ `assets.py`（资源读取，兼容 PyInstaller `_MEIPASS`） |
+| 渲染层 | `src/services/web_ui_assets.py`（聚合导出）+ `src/services/webui_render/`（theme/pages/config_panel/appearance/persona/knowledge/account/plugins/nicknames/plugin_dsl/plugin_webui/category_constants/markdown_mini/util）+ `assets.py`（资源读取，兼容 PyInstaller `_MEIPASS`） |
 | 插件运行时 | `src/plugins/`（manager/runtime/manifest/permissions/installer/http_action/runner）+ `src/services/webui_panels/plugin_panel.py` |
 | 服务器状态 | `src/services/system_status.py`（用户状态页，零依赖读 /proc） |
 | 配置业务层 | `src/services/config_service.py`（配置 SCHEMA + `.env`/settings.db 双写） |
@@ -224,7 +224,7 @@ MCP 服务器以**卡片列表**展示，无需手写 JSON：
 - **服务器状态**：平台 / 系统 / 架构 / 主机名 / Python 版本 / **内存占用**（`/proc/meminfo`）/ **CPU 负载**（`/proc/loadavg`）
   ——零依赖采集，读取失败显示 `N/A`
 - **MCP 工具状态**：各 MCP server 已同步工具数 + 熔断状态（未启用时提示去配置页开启）
-- **API 厂商连接状态**：DeepSeek（聊天主厂商）/ 视觉识图 / 引战检测——地址、模型、
+- **API 厂商连接状态**：DeepSeek（聊天主厂商）/ 视觉识图 / 引战检测 / **向量模型（花语记忆）** / **重排模型（花语记忆）**——地址、模型、
   Key 是否配置、是否回退 DeepSeek（配置层面展示）
 
 数据来源：`src/services/system_status.py`（服务器状态）、`McpToolManager`（MCP）、`ConfigService`（API 配置）。
@@ -245,5 +245,6 @@ MCP 服务器以**卡片列表**展示，无需手写 JSON：
 ## 配置页折叠（无 JavaScript）
 
 - 每分类 `<details>/<summary>` 原生折叠 + `*_ENABLED` 开关徽标（ON/OFF）
-- 花语记忆：默认关闭；总开关 OFF 时子开关与模型配置不渲染（服务端门控渲染）
+- 花语记忆：默认关闭；**总开关 OFF 时该分组只留总开关本身 + 一行提示**（子开关、模型/API 地址、密钥、参数共 14 个键一律不渲染），
+  开启并保存后整组展开 —— 全部由服务端门控渲染，关掉时页面上看不出任何可配项
 - `category_constants.py` 单源维护分类常量（渲染层无 pydantic 依赖）

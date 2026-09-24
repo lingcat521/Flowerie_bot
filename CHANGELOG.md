@@ -19,7 +19,8 @@
 - 顺手修掉旧式 JSON 多条在准入层的崩溃：`reply.strip()` / `extract_sticker()` / `is_duplicate_reply()`
   此前把 `list` 当 `str` 用（AttributeError / TypeError）→ 新增 `reply_plan.first_text()` 统一取首条，
   查重、表情包标记、兜底与日志都改用它
-- 测试：`tests/test_native_reply_tool.py`（18 条，覆盖任务书 Phase 10 的 12 类断言）
+- 测试：`tests/test_native_reply_tool.py`（18 条，覆盖任务书 Phase 10 的 12 类断言）；CI 测试数 1121 → **1140**
+- 文档：`web-ui.md` 补花语记忆新门控与分类导航/模块清单、`development.md` 结构/CI/计数同步
 
 **版本速览**：2.2.22222 · 2.2.2222 · 2.2.222 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
 

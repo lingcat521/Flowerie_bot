@@ -1,7 +1,8 @@
 # Flowerie 文档
 
-> 对应 **v2.2.22222**：停更期间的维护性更新 —— Code Scanning 全量安全整改、原生多条回复（Multi-Reply）、
-> Milky 能力补齐（协议 1.3 / 65 动作全量对照）、花语记忆门控修复；更早版本见 [archive/](archive/README.md)。
+> 对应 **v2.2.22222**：停更期间的维护性更新 —— Code Scanning 全量安全整改、原生多条回复（Multi-Reply +
+> **AI 自主拆分的 Native Reply Tool**）、Milky 能力补齐（协议 1.3 / 65 动作全量对照）、花语记忆门控修复；
+> 更早版本见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走
 
@@ -24,7 +25,7 @@
 | [plugin-webui.md](plugin-webui.md) | **Plugin WebUI**（DSL 组件全集 / hook / 权限 / 文件 / 安全边界） | 插件开发者 |
 | [sdk.md](sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ + **附录 A 能力与兼容矩阵**（端点映射 / 网关兼容 / v2.1 缺口台账） | 插件开发者 |
 | [api.md](api.md) | **API 权威速查总表**（方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |
-| [configuration.md](configuration.md) | 全部配置项 / `.env` / 优先级 / 功能开关表 / 存储后端与迁移工具 | 运维 |
+| [configuration.md](configuration.md) | 全部配置项 / `.env` / 优先级 / 功能开关表 / **多条回复与 Native Reply Tool** / 存储后端与迁移工具 | 运维 |
 | [web-ui.md](web-ui.md) | Web UI 八个页签 / 如何开启 / 零 JavaScript / 注册与登录 / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
 | [security.md](security.md) | **安全规则权威**：SSRF / 注入 / 权限 / 资源上限 / 指标 / 已知边界 | 运维 + 开发者 |
 | [memory.md](memory.md) | 记忆体系：Context / Memory / 群知识 / 花语记忆（BlossomMemory） | 运维 + 开发者 |
