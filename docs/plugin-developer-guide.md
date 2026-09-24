@@ -1561,6 +1561,20 @@ await bot.send_many(("private", 10001), ["你好"])          # 私聊
 3. **仍受连续回复限制**：每发一条都记一次，达到 `MAX_CONSECUTIVE_REPLIES` 后进入冷却；
 4. **失败策略**：某条发送失败即停止后续（已发出的不回滚），返回体里给出 `error` 与已成功的 `message_ids`。
 
+### 32.6 协议矩阵（OneBot / Milky）
+
+多条回复是**核心能力**，不是某个协议的特性 —— 同一份代码在两种协议下都可用：
+
+| 场景 | OneBot | Milky |
+| :--- | :---: | :---: |
+| `event.reply_many([...])` / `bot.send_many(...)` | ✓ | ✓ |
+| `send_many` 动作（任意语言插件） | ✓ | ✓ |
+| AI 结构化多条 | ✓ | ✓ |
+| 间隔与 `MAX_CONSECUTIVE_REPLIES` 限制 | ✓ | ✓ |
+
+原因：多条发送复用 `Sender` 的单条方法，而 `Sender` 已经统一处理了协议差异
+（Milky 模式自动映射到 `send_group_message` 并转段数组）。详见 [milky-protocol.md](milky-protocol.md)。
+
 ### 32.5 本地验证（不需要 QQ）
 
 仓库自带一个预演脚本，用**真实模块**（ReplyPlan / send_plan / 逐条记录）加一个会打印的假发送器，

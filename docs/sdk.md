@@ -479,6 +479,23 @@ bot.like(user_id)
 bot.friends()                    # 好友列表（list[dict]）
 ```
 
+### Milky 协议下的 SDK 行为
+
+SDK 与插件 API **完全协议无关** —— 同一份 `event.reply()` / `bot.send()` / `event.reply_many()`
+代码在 OneBot 与 Milky 下都能跑，差异全部由 `Sender` 在内部处理（动作名映射、Bearer、段数组转换）。
+
+| 能力 | Milky 下 | 说明 |
+| :--- | :--- | :--- |
+| 发送 / 回复 / 多条回复 | ✓ | 走 `send_group_message` / `send_private_message` |
+| 群成员、群信息、群列表 | ✓ | 动作名与 OneBot 同名 |
+| 群名片 / 管理员 / 禁言 / 踢人 | ✓ | `set_group_member_card` / `set_group_member_admin` / `set_group_member_mute` / `kick_group_member` |
+| 表情回应 / 戳一戳 | ✓ | `send_group_message_reaction` / `send_group_nudge` |
+| 群公告 / 精华 / 群文件 | ✓ | 见 [milky-protocol.md](milky-protocol.md#api-能力表milky-vs-onebot) |
+| 撤回消息 | ⚠️ | `delete_msg` 仍绕过统一入口（Milky 分群/私聊两个动作，当前签名缺场景） |
+| 群荣誉 / 在线客户端 / 转发消息（发送） / 批准加群好友请求 / 群配置写入 / 修改自身资料 | ✗ | 明确不支持：调用返回 `Milky 协议不支持该能力：xxx`，插件应据此降级 |
+
+> 具体端点与原因见 [milky-protocol.md](milky-protocol.md#统一入口与已知缺口实现约束)。
+
 ## 14. 权限与安全
 
 

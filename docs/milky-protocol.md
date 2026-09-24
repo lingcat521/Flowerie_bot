@@ -123,6 +123,39 @@ Authorization: Bearer <access_token>
 
 **不支持的调用会怎样**：`Sender` 在 Milky 模式下遇到这些端点会**直接返回明确错误**
 （`Milky 协议不支持该能力：xxx`），不会把请求丢给协议端换回一个 404 —— 便于上游如实降级。
+## 统一入口与已知缺口（实现约束）
+
+**所有出站调用必须经过 `Sender._post`** —— 它统一处理三件事：
+
+1. **动作名映射**：`_MILKY_ACTIONS`（Milky 模式把 OneBot 端点名换成 Milky 官方动作名）
+2. **鉴权与协议差异**：Milky 模式补 `Authorization: Bearer <MILKY_ACCESS_TOKEN>`，
+   并把字符串消息自动转成 Milky 要求的段数组 `[{"type":"text","data":{"text":...}}]`
+3. **能力缺失的明确处理**：`_MILKY_UNSUPPORTED` 里的端点**不发请求**，直接返回
+   「Milky 协议不支持该能力：xxx」，便于上游如实降级
+
+### 明确不支持的能力（9 项）
+
+| 端点 | 原因 |
+| :--- | :--- |
+| `get_group_honor_info` | Milky 未提供群荣誉接口 |
+| `get_online_clients` | Milky 未提供在线客户端列表 |
+| `delete_essence_msg` | Milky 只有开关式 `set_group_essence_message` |
+| `send_group_forward_msg` / `send_private_forward_msg` | Milky 只提供读取 `get_forwarded_messages` |
+| `set_friend_add_request` / `set_group_add_request` | Milky 只提供 `get_friend_requests` / `get_group_notifications` **读取**，无批准动作 |
+| `set_group_config` | Milky 未提供群配置写接口 |
+| `set_self_profile` | Milky 拆成 `set_nickname` / `set_bio` / `set_avatar`，语义不唯一 |
+
+### 仍绕过统一入口的端点（8 处，已知缺口）
+
+这些方法目前仍直接 `session.post`，**Milky 模式下会打到 OneBot 地址**；
+`tests/test_milky_mapping.py::test_direct_post_sites_only_shrink` 把它锁成"只许减少"：
+
+| 端点 | 为什么还没转 |
+| :--- | :--- |
+| `send_group_msg` / `send_private_msg`（带图发送、其余直连处） | 需逐处核对调用方对返回值的用法 |
+| `delete_msg` | Milky 分 `recall_group_message` / `recall_private_message`，当前签名只有 message_id（缺场景） |
+| `get_msg` / `get_group_msg_history` / `get_group_member_info` / `get_group_member_list` | 返回体是 OneBot 结构（如 `raw_message`），需按 Milky 响应逐字段对齐后再转 |
+
 ## 已知边界（真机联调时请反馈）
 - **发送图片/语音段**：Milky 发送段 data（resource_id 需先上传）——Flowerie 当前 text 发送完整可用；多媒体发送待联调
 - notice 的 event_type 完整命名（目前按 notice_receive 匹配）
