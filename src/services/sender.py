@@ -256,26 +256,20 @@ class Sender:
             segments.extend(message[:40])
         else:
             segments.append({"type": "text", "data": {"text": str(message)}})
-        url = f"{self.config.HTTP_API_BASE}/send_group_msg" if target == "group" \
-            else f"{self.config.HTTP_API_BASE}/send_private_msg"
+        # 统一入口：Milky 模式自动映射动作名 + Bearer；WS/HTTP 也在这里分流（任务书 §13）
+        endpoint = "send_group_msg" if target == "group" else "send_private_msg"
         payload = {"group_id": target_id, "message": segments} if target == "group" \
             else {"user_id": target_id, "message": segments}
         for attempt in range(max(1, retries + 1)):
             try:
-                async with self.session.post(url, json=payload,
-                                             timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status != 200:
-                        logger.error("message_send_failed target=%s http=%s", target, resp.status,
-                                     extra={"event": "message_send_failed"})
-                    else:
-                        data = await resp.json()
-                        if data.get("retcode") == 0:
-                            mid = data.get("data", {}).get("message_id")
-                            logger.info("message_send_finished target=%s id=%s", target, mid,
-                                        extra={"event": "message_send_finished"})
-                            return {"ok": True, "message_id": mid}
-                        logger.error("message_send_failed target=%s retcode=%s", target, data.get("retcode"),
-                                     extra={"event": "message_send_failed"})
+                res = await self._post(endpoint, payload, timeout=10.0)
+                if res.get("ok"):
+                    mid = (res.get("data") or {}).get("message_id")
+                    logger.info("message_send_finished target=%s id=%s", target, mid,
+                                extra={"event": "message_send_finished"})
+                    return {"ok": True, "message_id": mid}
+                logger.error("message_send_failed target=%s err=%s", target, res.get("error"),
+                             extra={"event": "message_send_failed"})
             except Exception as e:
                 logger.error("message_send_failed target=%s err=%s", target, e,
                              extra={"event": "message_send_failed"})

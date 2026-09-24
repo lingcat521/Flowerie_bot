@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+
+# ruff: noqa: E402, I001  —— 本脚本需要先注入仓库根目录到 sys.path 再导入项目模块，属有意为之
 """Multi-Reply 本地预演：不需要 QQ、不需要网络，验证「一次回复拆成多条」的全过程。
 
 它用的是**真实模块**：ReplyPlan / plan_from_config / send_plan / ReplyDispatchMixin，
