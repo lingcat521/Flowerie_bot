@@ -183,59 +183,46 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
 
 ## Code Scanning 告警审计（2026-09）
 
-> 对 GitHub Code Scanning 的全部 open 告警逐条审计：区分真实漏洞与误报，
-> 真漏洞最小修复 + 回归测试，误报给出证明与理由。**不以"清零"为目标** ✔。
+> 逐条审计全部 open 告警：真漏洞最小修复 + 回归测试，误报给证明与理由。**不以「清零」为目标**。
+> 完整报告（任务书 §18 格式）：[`archive/code-scanning-report.md`](archive/code-scanning-report.md)。
 
-审计起点：**56 条 open 告警**（7 类规则）→ 终点：**50 条**（3 类规则）。
-**6 条真漏洞全部修复并关闭**（`py/redos`、`py/clear-text-logging-sensitive-data`、
-`py/insecure-temporary-file` ×2、`actions/missing-workflow-permissions` ×2）；剩余 50 条 = 
-32 条「暂时无法证明」（已加固，**保持 open**，不标误报）+ 18 条误报（附证明测试，已通过 API 标记 `dismissed`）。
-标记误报后的 open 数：**32**。
+**结果**：56 条 open（7 类规则）→ 6 条真漏洞修复关闭 → 18 条已举证误报标记 `dismissed` → **open 32 条**
+（全为 `py/path-injection` 的「暂时无法证明」，已加固，**不标误报**）。
 
-| 规则 | 数量 | 判定 | 处理 |
+| 规则 | 数 | 判定 | 处理 |
 | :--- | ---: | :--- | :--- |
-| `py/path-injection` | 32 | **其中一部分是真漏洞，其余是「暂时无法证明」** | 真漏洞：`uninstall` 可越界删除、`_file_*` 的包含性检查拿 id 推导出的 base 去比 → 新增 `_PLUGIN_ID_RE` + `_plugin_base()`（**先校验 id，再对 `plugin_dir` 做 realpath + commonpath**），`uninstall` 与三处 file 操作全部改用它，并把净化**内联到 sink 同函数**；其余 sink 的安全性由该函数保证，CodeQL 局部数据流看不到 → 归入「暂时无法证明」（见下方残余风险）；回归测试 5 条 |
-| `py/url-redirection` | 17 | **误报** | 逐条核对：目标全部以硬编码 `/panel` 开头（f-string 与字符串拼接两种写法都查），插入片段经 `quote()` / `isdigit()` / 上游已 quote 的成品串 / `CATEGORY_ORDER` 白名单约束；插件页 `{pid}/{page}` 来自路由段（不含 `/`）→ 不构成开放重定向。新增 2 条不变量测试 |
+| `py/path-injection` | 32 | 部分是**真漏洞**，其余**暂时无法证明** | `uninstall` 可用 `../` 越界 `rmtree`；`_file_*` 的 `commonpath([base,target]) != base` 拿「id 推导出的 base」去比，等于没查 → 新增 `_PLUGIN_ID_RE` + `_plugin_base()`（先校验 id，再对 `plugin_dir` realpath + commonpath），并**把净化内联到 sink 同函数**；其余 sink 由该函数保证，CodeQL 局部数据流看不到 → 见残余风险 |
+| `py/url-redirection` | 17 | **误报**（已 dismissed） | 目标全部硬编码 `/panel` 开头（f-string 与拼接两种写法都核过）；插入片段受 `quote()` / `isdigit()` / 已 quote 成品串 / `CATEGORY_ORDER` 白名单约束；插件页 `{pid}/{page}` 来自路由段（不含 `/`）→ 凑不出 `scheme://host` |
+| `py/full-ssrf` | 1 | **误报**（已 dismissed） | `installer.py` 下载三层防线且都在 sink 之前：`validate_mcp_server_url`（字面量）+ `_check_dns`（解析结果，抗 rebinding）+ `follow_redirects=False` |
+| `py/redos` | 1 | **真漏洞**（实测坐实，修了两次） | `_CQ` 的 `(?:,[^\[\]]*)*` 两层 star 划分不唯一 → 指数回溯：10/14/18 个逗号 = 0.2/3.7/60.4 ms（×16），40 个直接卡死进程。首版 `(?:,[^\[\],][^\[\]]*)*` 只堵「纯逗号」、**形状未变**（靠 CPython `REPEAT_ONE` 才不炸），下轮分析复现；终版为单一字符集重复 `r"\[CQ:([^\[\]]+)\]"`（全模式仅一个量词）+ `_cq_parts` 切分 |
+| `py/clear-text-logging-sensitive-data` | 1 | **真漏洞**（修了两次） | 验收脚本把 `DEEPSEEK_API_KEY` 打进 CI 日志。首版 `_masked_key()` 只回显长度 + 前 3 位，但 CodeQL 不认自定义脱敏函数（返回值仍是密钥派生串），下轮复现；终版**从源头切断**：日志实参只由比较得到的布尔结论挑常量文案，并删掉该函数 |
 | `py/insecure-temporary-file` | 2 | **真漏洞** | `tempfile.mktemp`（竞态 + 已弃用）→ `mkstemp` + `os.close` |
-| `actions/missing-workflow-permissions` | 2 | **真漏洞** | `ci.yml` / `acceptance.yml` 增加 `permissions: contents: read`（最小权限） |
-| `py/full-ssrf` | 1 | **误报** | `installer.py` 的下载已有三层防线且都在 sink 之前：`validate_mcp_server_url`（字面量）+ `_check_dns`（解析结果，抗 rebinding）+ `follow_redirects=False`；新增证明性测试（顺序不变量 + 13 类载荷全拒 + 正常 https 放行） |
-| `py/redos` | 1 | **真漏洞**（实测坐实；**修了两次**） | 原 `_CQ` 的 `(?:,[^\[\]]*)*` 内外两层 star 划分不唯一 → 指数回溯：实测 10/14/18 个逗号 = 0.2/3.7/60.4 ms，40 个直接卡死进程。首轮改成 `(?:,[^\[\],][^\[\]]*)*` 只堵住「纯逗号」路径，**形状未变**（靠 CPython `REPEAT_ONE` 才不炸），下一轮分析复现；最终改为单一字符集重复 `r"\[CQ:([^\[\]]+)\]"`（全模式仅一个量词）+ 代码里切分动作名/参数，等价性用「期望结果表」锁住 |
-| `py/clear-text-logging-sensitive-data` | 1 | **真漏洞**（**修了两次**） | 验收脚本曾把 `DEEPSEEK_API_KEY` 打进 CI 日志。首轮加 `_masked_key()` 只回显长度 + 前 3 位 —— 安全上已克制，但 CodeQL 不认自定义脱敏函数（返回值仍是密钥派生串），下一轮分析复现；最终**从源头切断**：日志实参只用比较得到的布尔结论挑选常量文案，密钥值不进日志参数，并删掉该函数 |
+| `actions/missing-workflow-permissions` | 2 | **真漏洞** | `ci.yml` / `acceptance.yml` 加 `permissions: contents: read` |
 
-### 已知残余风险（如实声明，不当作误报）
+### 两条经验（第二轮修复的教训）
 
-- **DNS 校验与建连之间的 TOCTOU 窗口**：`installer` 先解析并校验 IP、再由 httpx 建连（会二次解析），
-  理论上存在 DNS rebinding 的时间差。当前依赖"解析一次即校验"降低概率，未做连接后校验。
-- **CodeQL 不识别跨函数的自定义校验**：`py/path-injection` 的 32 条中，多数 sink 的安全性由
-  `_plugin_base()`（另一个方法）或上游 manifest 的 id 校验保证 —— 局部数据流看不到，故仍会报。
-  这类属于「**暂时无法证明**」而非误报（任务书 §10 要求区分）：代码已加固，如要让 CodeQL 认可，
-  需把校验内联到 sink 处或使用 CodeQL 认识的 sanitizer 形态。
+1. **「实测线性」≠「形状安全」**：首版 ReDoS 修法只堵住一条攻击串（实测 N 到 100 仍 < 0.01 ms），
+   但「量词套量词」的**形状**还在，只靠 CPython `REPEAT_ONE` 才不爆 —— 静态分析不管引擎优化，**它报得没错**。
+   判「误报」必须区分**引擎优化带来的安全**与**形状可证的安全**，前者不能当证据。
+2. **CodeQL 不认自定义脱敏函数**：返回值只要是「由密钥派生」的字符串，数据流上仍算敏感数据到日志 sink。
+   改法不是争辩「算不算泄露」，而是**从源头切断**，并用不变量测试钉住。
+   一致性约束：敏感值只能以「布尔/枚举结论」进日志，不得出现前缀、后四位、哈希前段等片段。
 
-### 第二轮：两条告警在下次分析里复现后的真修（经验教训）
+### 残余风险（如实声明，不当作误报）
 
-首轮修复后重跑 CodeQL，`py/redos` #84 与 `py/clear-text-logging-sensitive-data` #9 **在新分析里又出现了**。
-两条各自暴露了一个思路问题：
+- **DNS 校验与建连之间的 TOCTOU 窗口**：`installer` 先解析校验 IP、再由 httpx 建连（二次解析），
+  理论上可被 DNS rebinding 抢时间差；当前只做「解析一次即校验」，未做连接后校验。
+- **CodeQL 不识别跨函数自定义校验**：32 条 `py/path-injection` 的 sink 安全性由 `_plugin_base()`（另一方法）
+  或上游 manifest 的 id 校验保证 —— 局部数据流看不到。这类是「**暂时无法证明**」而非误报（任务书 §10 要求区分）；
+  要让 CodeQL 认可，需内联到 sink 处或改用它认识的 sanitizer 形态。
 
-1. **「实测线性」≠「形状安全」**。第一版修法 `(?:,[^\[\],][^\[\]]*)*` 只堵住了「纯逗号」这一条路径
-   （实测 N 到 100 仍 < 0.01 ms），但**量词套量词的形状还在**，只是靠 CPython 的 `REPEAT_ONE` 优化才不爆。
-   静态分析不管引擎优化，所以它照旧报 —— **它报得没错**。最终改成单一字符集重复
-   `r"\[CQ:([^\[\]]+)\]"`（整个模式只有一个量词 → 划分点唯一），动作名/参数改在 `_cq_parts` 里切分，
-   并用对历史正则的差分用例锁住等价性。结论口径：判「误报」要区分**引擎优化带来的安全**
-   与**形状可证的安全**，前者不能拿来当「误报」的证据。
-2. **CodeQL 不认自定义脱敏函数**。验收脚本曾用 `_masked_key(v)` 回显「长度 + 前 3 位」，
-   从安全角度已很克制，但它返回的仍是**从密钥派生的字符串**，数据流上仍是敏感数据到日志 sink。
-   改法不是去争辩「算不算泄露」，而是**从源头切断**：日志实参只允许由比较得到的布尔结论挑选常量文案，
-   密钥值本身根本不进日志参数；并用 `tests/test_no_secret_in_logs.py` 把这个不变量钉住。
-3. **一致性约束**：以后新增日志时，敏感值只能以「布尔/枚举结论」形式出现（如「已配置与否」），
-   不得出现前缀、后四位、哈希前段等任何片段。
-### 回归测试（本地可跑，零依赖）
+### 回归测试（零依赖，本地可跑，共 6 文件 26 条）
 
 | 文件 | 覆盖 |
 | :--- | :--- |
+| `tests/test_plugin_path_injection.py` | 从源码 AST 取**真实** `_PLUGIN_ID_RE` 测语义；越界 id 全拒、合法放行；`uninstall` 校验先于拼路径 |
+| `tests/test_no_open_redirect.py` | 重定向目标必须以 `/panel` 开头；不存在「整串来自变量」的重定向 |
 | `tests/test_installer_ssrf_proof.py` | SSRF 三层防线的顺序不变量 + 13 类载荷全拒 + 正常 https 放行 |
-| `tests/test_plugin_path_injection.py` | 从源码 AST 取**真实** `_PLUGIN_ID_RE` 测语义；越界 id 全拒；合法 id 放行；`uninstall` 校验先于拼路径；`_plugin_base` 双保险 |
-| `tests/test_code_scanning_redos.py` | 正则**形状不变量**（全模式只允许一个量词、不得有分组量词）；4 类病态输入（含 4000 逗号、20000 字符动作名）< 1s；对**历史正则**的差分等价（9 组合法输入）；刻意容忍的畸形输入行为固定；测试里不得再出现 `mktemp` |
-| `tests/test_no_secret_in_logs.py` | `rec()`/`print()` 实参里不得出现敏感来源派生表达式（纯比较除外）；敏感来源不得进入字符串格式化；脱敏函数必须不存在 |
-| `tests/test_no_open_redirect.py` | 重定向目标必须以 `/panel` 开头；不存在"整串来自变量"的重定向 |
+| `tests/test_code_scanning_redos.py` | 正则**形状不变量**（全模式仅一个量词、无分组量词）；4 类病态输入（4000 逗号、20000 字符动作名）< 1s；**期望结果表**锁住解析等价；仓库级闸门：新出现「量词套量词」即失败 |
+| `tests/test_no_secret_in_logs.py` | `rec()`/`print()` 实参不得含敏感来源派生表达式（纯比较除外）；敏感来源不得进字符串格式化；脱敏函数必须不存在 |
 | `tests/test_webui_assets.py`（追加） | 静态资源 sink 层文件名白名单（拒绝 `../`、分隔符、非 `.css`） |
-

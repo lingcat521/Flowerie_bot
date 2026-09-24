@@ -35,10 +35,11 @@ def test_blossom_default_off_hides_all():
                                      for k in ("BLOSSOM_MEMORY_EMBEDDING_ENABLED",
                                                "BLOSSOM_MEMORY_EMBEDDING_MODEL")],
                                   category_order=_ORDER, category_labels=_LABELS)
-    # 总开关显示；子开关（功能门控）不渲染；但模型/API 配置始终渲染（先见才能配）
-    assert "BLOSSOM_MEMORY_ENABLED" in html
+    # 总开关 OFF（默认值）：整组只留总开关本身 + 一行提示；子开关与模型/参数一律不渲染
+    assert 'name="BLOSSOM_MEMORY_ENABLED"' in html
     assert "BLOSSOM_MEMORY_EMBEDDING_ENABLED" not in html
-    assert "BLOSSOM_MEMORY_EMBEDDING_MODEL" in html
+    assert "BLOSSOM_MEMORY_EMBEDDING_MODEL" not in html
+    assert 'class="hint"' in html, "总开关 OFF 时应提示开启后可见全部配置"
     assert "<details" in html and "<summary" in html  # 原生折叠
     assert "script" not in html.lower()                # 零 JS
 
@@ -54,6 +55,24 @@ def test_blossom_on_shows_sub_switches_but_hides_off_sub_config():
     assert "BLOSSOM_MEMORY_EMBEDDING_MODEL" in html        # 模型配置始终显示（不再隐藏）
     assert "BLOSSOM_MEMORY_RERANKER_MODEL" in html
     assert "BLOSSOM_MEMORY_VECTOR_DIMENSION" in html       # 参数键：总开关 ON 时显示
+
+
+def test_master_switch_toggles_whole_group_visibility():
+    """总开关 OFF → 只留总开关；ON → 模型、密钥、参数全部出现（一一对照）。"""
+    from src.services.webui_render.config_panel import render_config_sections
+    keys = ("BLOSSOM_MEMORY_EMBEDDING_ENABLED", "BLOSSOM_MEMORY_EMBEDDING_MODEL",
+            "BLOSSOM_MEMORY_EMBEDDING_API_KEY", "BLOSSOM_MEMORY_VECTOR_DIMENSION")
+    def render(total):
+        cfgs = [_cfg("BLOSSOM_MEMORY_ENABLED", total)]
+        cfgs += [_cfg(k, "false" if k.endswith("_ENABLED") else "x",
+                      "bool" if k.endswith("_ENABLED") else "str") for k in keys]
+        return render_config_sections([c | {"category": "BlossomMemory"} for c in cfgs],
+                                      category_order=_ORDER, category_labels=_LABELS)
+    off, on = render("false"), render("true")
+    for k in keys:
+        assert f'name="{k}"' not in off, f"总开关 OFF 时不应渲染 {k}"
+        assert f'name="{k}"' in on, f"总开关 ON 时应渲染 {k}"
+    assert 'name="BLOSSOM_MEMORY_ENABLED"' in off and 'name="BLOSSOM_MEMORY_ENABLED"' in on
 
 
 def test_gate_helpers():
@@ -112,9 +131,11 @@ def test_model_status_badges():
 
 
 def test_model_status_badge_disabled():
+    """总开关 ON、但向量链路子开关 OFF：模型行显示「未启用」徽标。"""
     from src.services.webui_render.config_panel import render_config_sections
     cfgs = [
-        _cfg("BLOSSOM_MEMORY_ENABLED", "false"),
+        _cfg("BLOSSOM_MEMORY_ENABLED", "true"),
+        _cfg("BLOSSOM_MEMORY_EMBEDDING_ENABLED", "false"),
         _cfg("BLOSSOM_MEMORY_EMBEDDING_MODEL", "", "str"),
     ]
     html = render_config_sections([c | {"category": "BlossomMemory"} for c in cfgs],

@@ -58,18 +58,22 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
         action = f"/panel/save?cat={_esc(active_cat)}" if active_cat in by_cat else "/panel/save"
         mcp_raw = None
         rows_html = []
+        blossom_on = _blossom_on(by_cat[cat])
         for c in by_cat[cat]:
             if c["key"] == "MCP_SERVERS":
                 mcp_raw = c.get("current", "")  # MCP_SERVERS 单独渲染为表单编辑器
                 continue
-            # 高级记忆层级门控（零 JS）：
-            # 总开关 OFF → 子开关与全部配置不渲染；子开关 OFF → 对应模型配置不渲染
-            if c["key"] in _BLOSSOM_SUB_SWITCH_KEYS and not _blossom_on(by_cat[cat]):
+            # 高级记忆层级门控（零 JS）：总开关 OFF → 除总开关本身外一律不渲染
+            # （子开关、模型/API、密钥、参数一并不显示）；总开关 ON → 全部渲染；
+            # 子开关 OFF → 该子开关的专属配置不渲染（_BLOSSOM_SUB_CONFIG_KEYS）。
+            if _is_blossom_key(c["key"]) and not blossom_on and c["key"] != _BLOSSOM_MASTER_KEY:
                 continue
             if c["key"] in _BLOSSOM_SUB_CONFIG_KEYS and not _blossom_sub_switch_on(by_cat[cat], c["key"]):
                 continue
             extra = _blossom_model_status_badge(by_cat[cat], c)
             rows_html.append(_render_config_row(c, extra_badges=extra))
+        if cat == "BlossomMemory" and not blossom_on:
+            rows_html.append('<div class="hint">总开关为 OFF：开启并保存后，这里会显示模型、密钥与参数配置。</div>')
 
         body = (
             f'<form method="post" action="{action}">{"".join(rows_html)}'
@@ -79,7 +83,7 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
         )
         # 折叠（<details>/<summary> 原生，零 JS）+ 开关状态徽标。
         # 全部默认展开（open）——配置开箱即见；用户可手动收起单个分组（details 原生）。
-        # 花语记忆总开关 OFF 时子开关/模型配置由上方门控不渲染（qwq 不变）。
+        # 花语记忆总开关 OFF 时，除总开关本身外全部由上方门控不渲染（含模型/密钥/参数）。
         summary_status = _cat_status_badge(by_cat[cat])
         section = (
             f'<details class="cfg-group" open>'
@@ -89,6 +93,16 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
         )
         sections.append(section)
     return nav + "\n" + "\n".join(sections)
+
+
+# 总开关键 + 花语记忆键前缀（总开关 OFF 时整组只留总开关）
+_BLOSSOM_MASTER_KEY = "BLOSSOM_MEMORY_ENABLED"
+_BLOSSOM_PREFIX = "BLOSSOM_MEMORY_"
+
+
+def _is_blossom_key(key) -> bool:
+    """是否属于花语记忆分类的键（前缀判定；与分类常量解耦，便于单测）。"""
+    return str(key or "").startswith(_BLOSSOM_PREFIX)
 
 
 # 子开关（总开关 ON 时渲染）
