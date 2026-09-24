@@ -189,7 +189,8 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
 审计起点：**56 条 open 告警**（7 类规则）→ 终点：**50 条**（3 类规则）。
 **6 条真漏洞全部修复并关闭**（`py/redos`、`py/clear-text-logging-sensitive-data`、
 `py/insecure-temporary-file` ×2、`actions/missing-workflow-permissions` ×2）；剩余 50 条 = 
-32 条「暂时无法证明」（已加固）+ 18 条误报（附证明测试）。
+32 条「暂时无法证明」（已加固，**保持 open**，不标误报）+ 18 条误报（附证明测试，已通过 API 标记 `dismissed`）。
+标记误报后的 open 数：**32**。
 
 | 规则 | 数量 | 判定 | 处理 |
 | :--- | ---: | :--- | :--- |

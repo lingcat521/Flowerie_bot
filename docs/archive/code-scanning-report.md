@@ -13,7 +13,8 @@
 | 剩余 50 条的构成 | `py/path-injection` 32（**暂时无法证明**，已加固）+ `py/url-redirection` 17 + `py/full-ssrf` 1（**误报**，附证明测试） |
 | 已消除 | `py/insecure-temporary-file` ×2、`actions/missing-workflow-permissions` ×2 |
 | 第二轮真修 | `py/redos`、`py/clear-text-logging-sensitive-data`（首轮修法不彻底，复跑后复现；已按「形状可证」重修，**均已在最新分析中关闭**） |
-| 判定为误报 | `py/url-redirection` ×17、`py/full-ssrf` ×1 |
+| 判定为误报 | `py/url-redirection` ×17、`py/full-ssrf` ×1 —— **已通过 Code Scanning API 逐条标记 `dismissed`（false positive）**，评论写明理由与证明测试文件；可随时撤销 |
+| 标记误报后的 open | **32 条**（全部为 `py/path-injection` 的「暂时无法证明」；如实保留为 open，不做误报标记） |
 | 真漏洞已修 | `py/path-injection`（uninstall 越界删除、`_file_*` 包含性检查失效）、`py/redos`、`py/insecure-temporary-file` ×2、`actions/missing-workflow-permissions` ×2、`py/clear-text-logging` ×1 |
 | 新增回归测试 | **6 个文件、26 条**（全部零依赖，本地可跑；另把 1 条「测试里不得留危险正则」的仓库级闸门并入其中） |
 
