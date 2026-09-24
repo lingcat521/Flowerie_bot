@@ -48,6 +48,11 @@ _EVENT_PERMISSION = {"message": "read_message", "group_message": "read_message",
 _TEMPLATE_FIELDS = ("group_id", "user_id", "text", "message_name", "message")
 
 
+# 插件 id 的唯一合法形态（与 plugins/manifest.py 的 _ID_RE 同源）：
+# 所有「用 id 拼路径」的入口都必须先过这里 —— 否则 id 里的 ../ 会越出 plugin_dir。
+_PLUGIN_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+
+
 class PluginManager:
     """受控插件运行时管理器。"""
 
@@ -364,7 +369,28 @@ class PluginManager:
                     extra={"event": "plugin_installed"})
         return True, f"插件「{manifest.name}」已安装（默认禁用，请手动启用并批准权限）"
 
+    def _plugin_base(self, plugin_id: str):
+        """插件目录的安全基路径：id 合法 + 结果必须落在 plugin_dir 内，否则返回 None。
+
+        为什么不能只比 commonpath(base, target)：base 本身是由 id 拼出来的，
+        id 里带 ../ 时 base 已经在 plugin_dir 之外了 —— 必须先校验 id、再对 plugin_dir 做包含性检查。
+        """
+        if not _PLUGIN_ID_RE.fullmatch(str(plugin_id or "")):
+            logger.warning("plugin_path_rejected id=%r", plugin_id,
+                           extra={"event": "plugin_path_rejected"})
+            return None
+        root = os.path.realpath(str(self.plugin_dir))
+        base = os.path.realpath(os.path.join(root, str(plugin_id)))
+        if os.path.commonpath([root, base]) != root:
+            return None
+        return base
+
     def uninstall(self, plugin_id: str) -> Tuple[bool, str]:
+        if not _PLUGIN_ID_RE.fullmatch(str(plugin_id or "")):
+            # 中央校验：id 会被拼进文件路径，必须先挡住 ../ 之类越界写法（Code Scanning #path-injection）
+            logger.warning("plugin_uninstall_rejected id=%r", plugin_id,
+                           extra={"event": "plugin_uninstall_rejected"})
+            return False, "插件 id 非法"
         self._matchers.pop(plugin_id, None)  # SDK matcher 残留清理
         row = self.repository.get_plugin(plugin_id)
         if row is None:
@@ -1985,7 +2011,9 @@ class PluginManager:
             return {"ok": False, "error": f"下载失败: {type(e).__name__}"}
         if len(data) > 10 * 1024 * 1024:
             return {"ok": False, "error": "下载超过 10MB 上限"}
-        base = os.path.realpath(os.path.join(self.plugin_dir, plugin_id))
+        base = self._plugin_base(plugin_id)
+        if base is None:
+            return {"ok": False, "error": "插件 id 非法或路径越界"}
         target = os.path.realpath(os.path.join(base, rel))
         if os.path.commonpath([base, target]) != base:
             return {"ok": False, "error": "save_to 路径越界"}
@@ -2039,7 +2067,9 @@ class PluginManager:
 
     def _file_read(self, plugin_id: str, rel: str) -> dict:
         """filesystem_read：仅允许读取插件自身目录内的文件（真实路径校验）。"""
-        base = os.path.realpath(os.path.join(self.plugin_dir, plugin_id))
+        base = self._plugin_base(plugin_id)
+        if base is None:
+            return {"ok": False, "error": "插件 id 非法或路径越界"}
         target = os.path.realpath(os.path.join(base, rel))
         if os.path.commonpath([base, target]) != base or not os.path.isfile(target):
             return {"ok": False, "error": "路径越界（仅允许插件目录内文件）"}
@@ -2055,7 +2085,9 @@ class PluginManager:
         """filesystem_write：仅允许写入插件自身目录（真实路径校验 + 大小上限）。"""
         if not rel or ".." in rel.split("/") or rel.startswith("/") or "\\" in rel:
             return {"ok": False, "error": "路径越界（仅允许插件目录内相对路径）"}
-        base = os.path.realpath(os.path.join(self.plugin_dir, plugin_id))
+        base = self._plugin_base(plugin_id)
+        if base is None:
+            return {"ok": False, "error": "插件 id 非法或路径越界"}
         target = os.path.realpath(os.path.join(base, rel))
         if os.path.commonpath([base, target]) != base:
             return {"ok": False, "error": "路径越界"}
