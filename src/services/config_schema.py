@@ -11,6 +11,16 @@ from typing import Dict, Tuple
 SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     # ---------- AI / Provider ----------
     "AI_ENABLED": ("AI", "bool", False, True, "AI 回复总开关（关=不请求 Provider，普通功能不受影响）"),
+    "MULTI_REPLY_ENABLED": ("AI", "bool", False, True,
+                             "AI 多条回复：一次回复拆成多条独立消息逐条发送（默认关；关=行为与之前完全一致，单条回复不受影响）"),
+    "MULTI_REPLY_MAX_MESSAGES": ("AI", "int", False, True,
+                                  "多条回复最大条数（AI 无权绕过；实际发送还受 MAX_CONSECUTIVE_REPLIES 限制）"),
+    "MULTI_REPLY_INTERVAL_MODE": ("AI", "str", False, True,
+                                    "多条间隔模式：none=不留间隔 / fixed=固定 / random=随机"),
+    "MULTI_REPLY_MIN_INTERVAL": ("AI", "float", False, True,
+                                   "最小间隔秒数（fixed 模式下即固定值）"),
+    "MULTI_REPLY_MAX_INTERVAL": ("AI", "float", False, True,
+                                   "最大间隔秒数（仅 random 模式生效）"),
     "MEMORY_ENABLED": ("Memory", "bool", False, True, "长期记忆总开关（关=不读/写；短期 Context 不受影响）"),
     "BLOSSOM_MEMORY_EMBEDDING_ENABLED": ("BlossomMemory", "bool", False, True, "向量模型（Embedding）"),
     "BLOSSOM_MEMORY_RERANKER_ENABLED": ("BlossomMemory", "bool", False, True, "重排序模型（Reranker）"),

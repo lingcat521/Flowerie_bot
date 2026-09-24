@@ -82,6 +82,12 @@ class BotEvent:
             raise RuntimeError("BotEvent 未注入 bot（reply 不可用）")
         return await self._bot.reply(self, message, **kwargs)
 
+    async def reply_many(self, messages, **kwargs):
+        """把一次回复拆成多条独立消息（间隔/条数由 Core 配置控制）。"""
+        if self._bot is None:
+            raise RuntimeError("Event 未绑定 bot")
+        return await self._bot.reply_many(self, messages, **kwargs)
+
     async def recall(self) -> None:
         if self._bot is None:
             raise RuntimeError("BotEvent 未注入 bot（recall 不可用）")

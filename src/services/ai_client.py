@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import httpx
 
@@ -323,7 +323,36 @@ class AIClient:
             bot_nickname=bot_nickname, default_nickname=default_nickname,
             group_style_rules=group_style_rules)
 
-    def _parse_reply_content(self, content: str) -> Tuple[Optional[str], Optional[str]]:
+    @staticmethod
+    def extract_multi_messages(text: str) -> Optional[List[str]]:
+        """从模型输出提取「多条消息」结构；不合法一律 None（调用方降级单条）。
+
+        只认完整 JSON 对象（形如 {"messages": [...]}，允许外层带 json 代码围栏），
+        不做换行/标点猜测 —— 任务书 §6 明确要求。
+        """
+        raw = (text or "").strip()
+        if not raw:
+            return None
+        if raw.startswith('```'):
+            first_nl = raw.find(chr(10))
+            last_fence = raw.rfind('```')
+            if first_nl > 0 and last_fence > first_nl:
+                raw = raw[first_nl + 1:last_fence].strip()
+        if not raw.startswith("{"):
+            return None
+        try:
+            data = json.loads(raw)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return None
+        if not isinstance(data, dict):
+            return None
+        msgs = data.get("messages")
+        if not isinstance(msgs, list):
+            return None
+        out = [str(m).strip() for m in msgs if str(m).strip()]
+        return out or None
+
+    def _parse_reply_content(self, content: str) -> Tuple[Optional[Any], Optional[str]]:
         """解析模型回复：剥离记忆指令，返回 (reply_text, memory_update)。"""
         content = (content or "").strip()
         if not content:
@@ -349,6 +378,13 @@ class AIClient:
                 continue
             clean_lines.append(line)
         reply_content = "\n".join(clean_lines).strip()
+        if getattr(self.config, "MULTI_REPLY_ENABLED", False):
+            multi = self.extract_multi_messages(reply_content)
+            if multi:
+                limit = int(getattr(self.config, "MAX_REPLY_LENGTH", 40) or 40)
+                capped = [m if len(m) <= limit else m[:limit] + "..." for m in multi]
+                logger.debug("multi_reply_detected count=%d", len(capped))
+                return capped, memory_update
         if len(reply_content) > self.config.MAX_REPLY_LENGTH:
             reply_content = reply_content[:self.config.MAX_REPLY_LENGTH] + "..."
         logger.debug("api_reply len=%d", len(reply_content))

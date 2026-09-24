@@ -14,6 +14,8 @@ from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
 from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
+from src.core.reply_plan import plan_from_config
+from src.core.reply_sender import MultiReplyError, send_plan
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
@@ -444,7 +446,7 @@ class MessageRouter:
                         logger.info("Sticker sent: %s", sticker_path, extra={"event": "sticker_selected"})
                     return
 
-            success = await self.sender.send_group_message(group_id, reply)
+            success = await self._send_reply(reply, group_id=group_id)
             if success:
                 self.policy_engine.record_bot_reply(group_id)
                 self.policy_engine.add_context(group_id, 0, reply, is_bot=True)
@@ -563,10 +565,40 @@ class MessageRouter:
         if len(reply) > self.config.MAX_REPLY_LENGTH:
             reply = reply[:self.config.MAX_REPLY_LENGTH] + "..."
         if group_id:
-            await self.sender.send_group_message(group_id, reply)
+            await self._send_reply(reply, group_id=group_id)
         else:
-            await self.sender.send_private_message(user_id, reply)
+            await self._send_reply(reply, user_id=user_id)
         logger.info(f"Poke reply to {user_id} in {group_id}: {reply}")
+
+    async def _send_reply(self, reply, *, group_id=None, user_id=None) -> bool:
+        """统一回复发送：单条字符串与多条列表都走这里（任务书 §7/§9/§10）。
+
+        - 条数受 MULTI_REPLY_MAX_MESSAGES 约束，AI 无权绕过；
+        - 间隔由 Core 的 ReplyPlan 策略决定；
+        - 每条都计一次连续回复，于是 MAX_CONSECUTIVE_REPLIES 照常生效。
+        """
+        plan = plan_from_config(reply, self.config)
+        if not plan:
+            return False
+
+        async def send_one(msg, _idx):
+            if group_id:
+                return await self.sender.send_group_message(group_id, msg)
+            return await self.sender.send_private_message(user_id, msg)
+
+        def after_sent(_idx, _res):
+            target = group_id if group_id else user_id
+            try:
+                self.policy_engine.record_bot_reply(target)
+            except Exception:
+                logger.debug("record_bot_reply failed for %s", target)
+
+        try:
+            results = await send_plan(plan, send_one, on_sent=after_sent)
+        except MultiReplyError as exc:
+            logger.warning("multi_reply_partial sent=%d failed_at=%d", len(exc.sent), exc.failed_index)
+            return False
+        return all(bool(r) for r in results) if results else False
 
     # ---------- 主动聊天循环（✅ 修复：区分留空和未配置） ----------
     async def _active_chat_loop(self):
@@ -638,7 +670,7 @@ class MessageRouter:
             if self.policy_engine.is_duplicate_reply(group_id, reply):
                 await asyncio.sleep(1)
                 continue
-            success = await self.sender.send_group_message(group_id, reply)
+            success = await self._send_reply(reply, group_id=group_id)
             if success:
                 self.policy_engine.record_active_chat()
                 self.policy_engine.record_bot_reply(group_id)

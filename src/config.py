@@ -109,6 +109,12 @@ class Settings(BaseSettings):
     BOT_COOLDOWN: int = 2
     MAX_REPLY_LENGTH: int = 40
     MAX_CONSECUTIVE_REPLIES: int = 3
+    # 多条回复（Multi-Reply）：一次回复拆成 1~N 条独立消息，按间隔策略逐条发送
+    MULTI_REPLY_ENABLED: bool = False
+    MULTI_REPLY_MAX_MESSAGES: int = 3
+    MULTI_REPLY_INTERVAL_MODE: str = "random"   # none / fixed / random
+    MULTI_REPLY_MIN_INTERVAL: float = 1.5
+    MULTI_REPLY_MAX_INTERVAL: float = 4.0
     CONTEXT_SIZE: int = 300
     LOG_LEVEL: str = "INFO"
     # 日志格式：text=开发环境人类可读；json=生产环境 JSON lines（含 trace_id/event 字段）

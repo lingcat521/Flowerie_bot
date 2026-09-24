@@ -5,6 +5,8 @@
 """
 from typing import Any, Dict, List, Optional
 
+from src.core.reply_plan import ReplyPlan
+from src.core.reply_sender import send_plan
 from src.sdk.event import BotEvent
 from src.sdk.message import BotMessage
 from src.sdk.permissions import PermissionChecker
@@ -36,6 +38,57 @@ class Bot:
             reply_id = kwargs.pop("reply_id", event_or_target.message_id)
             return await self._adapter.send(kind, int(target_id), message, reply_id=reply_id)
         return await self.send(event_or_target, message, **kwargs)
+
+    # ---------- 多条回复（Multi-Reply）----------
+    def _build_plan(self, messages, interval_mode=None, min_interval=None, max_interval=None):
+        """把「要发的若干条」变成 Core 的 ReplyPlan（条数受配置上限约束）。"""
+        max_messages = int(getattr(self._config, "MULTI_REPLY_MAX_MESSAGES", 3) or 3)
+        if interval_mode is None:
+            interval_mode = str(getattr(self._config, "MULTI_REPLY_INTERVAL_MODE", "random") or "random")
+        if min_interval is None:
+            min_interval = float(getattr(self._config, "MULTI_REPLY_MIN_INTERVAL", 1.5) or 0.0)
+        if max_interval is None:
+            max_interval = float(getattr(self._config, "MULTI_REPLY_MAX_INTERVAL", 4.0) or 0.0)
+        plan = ReplyPlan.of(messages, interval_mode=interval_mode,
+                            min_interval=min_interval, max_interval=max_interval)
+        return plan.normalize_mode().clamped(max_messages)
+
+    async def send_many(self, target, messages, *, reply_id=None, interval_mode=None,
+                        min_interval=None, max_interval=None):
+        """一次发送多条独立消息（按 Core 的间隔策略逐条发）。
+
+        与「插件自己写 for 循环」的区别：条数受 MULTI_REPLY_MAX_MESSAGES 约束、
+        间隔由 Core 统一控制、每条都走同一条发送与记录路径、失败策略统一。
+        返回每条消息的 message_id 列表。
+        """
+        if isinstance(target, int) or str(target).isdigit():
+            target = ("group", int(target))
+        kind, target_id = target
+        plan = self._build_plan(messages, interval_mode, min_interval, max_interval)
+
+        async def send_one(msg, idx):
+            return await self._adapter.send(kind, int(target_id), msg,
+                                            reply_id=reply_id if idx == 0 else None)
+
+        return await send_plan(plan, send_one)
+
+    async def reply_many(self, event_or_target, messages, **kwargs):
+        """回复并拆成多条（传入 BotEvent 自动推导目标；单条时等价于 reply）。"""
+        if isinstance(event_or_target, BotEvent):
+            kind = "group" if event_or_target.is_group else "private"
+            target_id = event_or_target.group_id or event_or_target.user_id
+            reply_id = kwargs.pop("reply_id", event_or_target.message_id)
+            interval_mode = kwargs.pop("interval_mode", None)
+            min_interval = kwargs.pop("min_interval", None)
+            max_interval = kwargs.pop("max_interval", None)
+            plan = self._build_plan(messages, interval_mode, min_interval, max_interval)
+
+            async def send_one(msg, idx):
+                return await self._adapter.send(kind, int(target_id), msg,
+                                                reply_id=reply_id if idx == 0 else None)
+
+            return await send_plan(plan, send_one)
+        return await self.send_many(event_or_target, messages, **kwargs)
 
     async def recall(self, message_id: int) -> None:
         await self._adapter.recall(int(message_id))
