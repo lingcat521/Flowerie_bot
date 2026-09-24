@@ -49,6 +49,7 @@ class Cfg:
 
     SEND_VIA_WS = False
     MILKY_ACCESS_TOKEN = "test-token"
+    MAX_REPLY_LENGTH = 200        # Sender 硬读的属性（send_group_message 会截断超长文本）
 
     def __init__(self, protocol, base):
         self.QQ_PROTOCOL = protocol
