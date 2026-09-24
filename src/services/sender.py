@@ -206,24 +206,17 @@ class Sender:
             message = message[:self.config.MAX_REPLY_LENGTH] + "..."
         payload = {"group_id": group_id, "message": message}
         logger.info("message_send_started group=%s", group_id, extra={"event": "message_send_started"})
-        if self._use_ws:
-            return bool((await self._post("send_group_msg", payload)).get("ok"))
-        url = f"{self.config.HTTP_API_BASE}/send_group_msg"
+        # 统一入口（任务书 §13）：WS / HTTP / Milky 由 _post 内部分流；
+        # Milky 模式自动映射到 send_group_message 并带 Bearer
         for attempt in range(max(1, retries + 1)):
             try:
-                async with self.session.post(url, json=payload, timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                    if resp.status != 200:
-                        logger.error("message_send_failed group=%s http=%s", group_id, resp.status,
-                                     extra={"event": "message_send_failed"})
-                    else:
-                        data = await resp.json()
-                        if data.get("retcode") == 0:
-                            logger.info("message_send_finished group=%s", group_id,
-                                        extra={"event": "message_send_finished"})
-                            return True
-                        else:
-                            logger.error("message_send_failed group=%s retcode=%s", group_id, data.get("retcode"),
-                                         extra={"event": "message_send_failed"})
+                res = await self._post("send_group_msg", payload, timeout=10.0)
+                if res.get("ok"):
+                    logger.info("message_send_finished group=%s", group_id,
+                                extra={"event": "message_send_finished"})
+                    return True
+                logger.error("message_send_failed group=%s err=%s", group_id, res.get("error"),
+                             extra={"event": "message_send_failed"})
             except Exception as e:
                 logger.error("message_send_failed group=%s err=%s", group_id, e,
                              extra={"event": "message_send_failed"})
@@ -588,6 +581,12 @@ class Sender:
         if not message:
             return False
         payload = {"user_id": user_id, "message": message}
+        # 统一入口（任务书 §13）：Milky 模式映射为 send_private_message 并带 Bearer
+        res = await self._post("send_private_msg", payload, timeout=10.0)
+        if not res.get("ok"):
+            _M_SEND_FAIL.inc({"target": "private"})
+            return False
+        return True
         # 统一入口（任务书 §13）：Milky 模式映射为 send_private_message 并带 Bearer
         res = await self._post("send_private_msg", payload, timeout=10.0)
         if not res.get("ok"):
