@@ -149,4 +149,6 @@ def on_message(event, api=None):
 
 ---
 
-> 做得不错？下一步：到 [quick 完整参考](plugin-developer-guide.md) 看生命周期 / 多轮对话 / 定时任务 / 打包发布。
+> 做得不错？下一步：到 [完整参考](plugin-developer-guide.md) 看生命周期 / 多轮对话 / 定时任务 / 打包发布；
+> 想让插件**一次发多条消息**（而不是自己写 `for` 循环）见指南 [§32 多条回复](plugin-developer-guide.md#32-多条回复multi-reply) 与
+> [SDK §4.5](sdk.md#45-多条回复reply_many--send_many)。

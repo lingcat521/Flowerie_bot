@@ -70,9 +70,20 @@ MCP_ALLOWED_TOOLS=            # 各 server 未单独指定 allowed_tools 时回�
 - **独立熔断**：每个 MCP server 独立熔断（一个插件故障不拖垮其他插件，也不打开 AI Provider 熔断）
 - **指标**：`mcp_calls_total` / `mcp_call_failures_total` / `mcp_call_latency_seconds` / `mcp_tool_rejections_total`（低基数 label）
 
+## 与 Native Reply Tool 的关系（同一套工具循环）
+
+AI 的 tool calling 循环不只跑 MCP：开启 `MULTI_REPLY_ENABLED` 后还会挂一个**内部工具 `reply`**
+（AI 自主决定把回复拆成几条，见 [configuration.md](configuration.md#ai-自主拆分native-reply-tool同一开关)）。
+两者共用同一份额度语义：
+
+- `MCP_MAX_TOOL_CALLS` 是**一次逻辑请求内所有工具调用**的硬上限（含内部 `reply`），按实际执行次数计；
+- 未配置 MCP（`MCP_ENABLED=false`）时，工具链只为 `reply` 工具占用至少 1 次额度 → 多条回复照常可用；
+- provider 不支持 tool calling 时，仅当本次**只带了内部工具**才同请求内降级为纯文本，**MCP 语义不受影响**；
+- 内部工具只捕获文本、不产生任何网络请求，也不进入 MCP 的熔断与指标统计。
+
 ## 指标
 
-工具调用在 Metrics 中单独统计，与 AI 请求分离。
+工具调用在 Metrics 中单独统计，与 AI 请求分离（内部 `reply` 工具不计入 MCP 指标）。
 
 ## 现状说明（演进记录）
 

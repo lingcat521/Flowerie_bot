@@ -27,6 +27,9 @@
 - 37 个语义动作走标准端点（`send_group_msg` 等）——全实现一致
 - 实现特有点（如 Lagrange `get_group_res`）标注在表内；不支持返回明确错误
 - 连接后自动探测能力（`capabilities`）——未探测到走 NS 降级（现有语义已设计）
+- **多条回复（Multi-Reply）与 Native Reply Tool**：协议无关 —— 两者只产出 `ReplyPlan`，
+  经同一个 `Sender` 逐条发送；OneBot（NapCat / Lagrange / LLOneBot 等）与 Milky 走**同一条链路**，
+  不需要协议侧做任何改动（Milky 侧映射见 [milky-protocol.md](milky-protocol.md)）
 
 ## 验证方法
 ```bash

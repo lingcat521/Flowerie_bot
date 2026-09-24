@@ -25,6 +25,17 @@ Embedding(HTTP, OpenAI-compatible)
 - 治理：MAX_ENTRIES / TTL_DAYS / DAILY_EXTRACT_LIMIT / 自动清理；索引 (group_id, kind, target_id)
 - 配置缺失 fail-fast（同 MCP 策略）；指标低基数（result 标签）
 
+### Web UI 配置（「花语记忆（默认关闭）」分组）
+
+- **总开关 OFF 时该分组只渲染总开关本身 + 一行提示**：子开关、模型/API 地址、密钥、参数共 14 个键
+  一律不渲染（服务端门控，页面上看不到用不上的项）；开启并保存后整组展开
+- 模型行自带链路状态徽标：`未启用`（对应子开关关）/ `⚠️ 缺模型或地址` / `已配置`
+- 键位速查：总开关 `BLOSSOM_MEMORY_ENABLED`；子开关 `_EMBEDDING_ENABLED` / `_RERANKER_ENABLED` /
+  `_EXTRACT_ENABLED` / `_RETRIEVAL_ENABLED`；模型 `_EMBEDDING_MODEL|_API_URL|_API_KEY`、
+  `_RERANKER_MODEL|_API_URL|_API_KEY`；参数 `_VECTOR_DIMENSION` / `_RETRIEVAL_TOP_K` /
+  `_RERANK_TOP_K` / `_SIMILARITY_THRESHOLD` / `_MAX_ENTRIES` / `_TTL_DAYS` / `_DAILY_EXTRACT_LIMIT`
+- 「用户状态」页另有两张链路卡：**向量模型（花语记忆）** 与 **重排模型（花语记忆）**（地址 / 模型 / 密钥是否配置）
+
 
 ---
 

@@ -1,7 +1,8 @@
 # 其他平台构建产物使用说明（Linux / macOS / Termux）
 
 > Windows exe 见 [install-release-windows.md](install-release-windows.md)。
-> 官方 Release 资产（v2.2.2+）包含各平台：`builtin`（单文件）/ `portable.zip`（目录版，解压即用）。
+> 官方 Release 资产（**v2.2.2 起每个版本都齐套**，最新为 `v2.2.22222`）包含各平台：
+> `builtin`（单文件）/ `portable.zip`（目录版，解压即用）；Termux 走源码包。
 
 ---
 
@@ -56,7 +57,7 @@ chmod +x Flowerie_bot-macos-arm64-builtin
 ### 首次启动
 同上：同目录生成 `.env` 模板 → 填 `DEEPSEEK_API_KEY` / `BOT_QQ` → 重启。
 
-> ⚠️ **Intel Mac（x64）**：v2.2.2 仅提供 arm64 构建——请用源码运行（克隆仓库 → `pip install -r requirements.txt` → `python main.py`）。
+> ⚠️ **Intel Mac（x64）**：官方资产**只提供 arm64 构建**（历代如此）——请用源码运行（克隆仓库 → `pip install -r requirements.txt` → `python main.py`）。
 > 若遇到“已损坏/无法打开”提示：`xattr -d com.apple.quarantine <文件>` 后重试。
 
 ---

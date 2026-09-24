@@ -1,6 +1,6 @@
 # Windows 可执行文件使用说明（.exe）
 
-> Flowerie 官方 Release 资产（`v2.2.2`+）：`Flowerie_bot-windows-x64-builtin.exe`（Intel/AMD）
+> Flowerie 官方 Release 资产（`v2.2.2` 起齐套，最新 `v2.2.22222`）：`Flowerie_bot-windows-x64-builtin.exe`（Intel/AMD）
 > 或 `Flowerie_bot-windows-arm64-builtin.exe`（Arm 设备 / 越狱 Android 模拟）。
 
 ## 1. 下载与解压
