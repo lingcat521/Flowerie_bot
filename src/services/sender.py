@@ -157,7 +157,7 @@ class Sender:
                 return {"ok": False, "error": f"{type(e).__name__}: {e}"}
         try:
             async with self.session.post(
-                    f"{self.config.HTTP_API_BASE}{endpoint}",
+                    "%s/%s" % (str(self.config.HTTP_API_BASE).rstrip("/"), endpoint.lstrip("/")),
                     json=payload,
                     timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
                 if resp.status != 200:
