@@ -41,6 +41,24 @@ def default_persona_text() -> str:
             return PersonaManager.compose_system_prompt(preset)
     return ""
 
+def _multi_reply_hint(config) -> str:
+    """多条回复的编辑提示（仅开启时注入，任务书 §6：AI 只决定几条/说什么）。
+
+    条数上限与间隔都由 Core 配置决定，这里只告诉模型「可以怎么表达」。
+    """
+    if not getattr(config, "MULTI_REPLY_ENABLED", False):
+        return ""
+    limit = int(getattr(config, "MULTI_REPLY_MAX_MESSAGES", 3) or 3)
+    per = int(getattr(config, "MAX_REPLY_LENGTH", 40) or 40)
+    return (
+        "【多条回复】" + chr(10) +
+        "想连着说几句时，只输出一个 JSON 对象：" + chr(10) +
+        chr(123) + chr(34) + "messages" + chr(34) + ": [" + chr(34) + "第一句" + chr(34) + ", " + chr(34) + "第二句" + chr(34) + "]" + chr(125) + chr(10) +
+        "规则：最多 %d 条、每条不超过 %d 字；JSON 前后不要任何解释、不要代码围栏；" % (limit, per) +
+        "不需要连说时照常输出纯文本（单条）。" + chr(10)
+    )
+
+
 def build_system_prompt(config, memory_manager, user_message: str, context: str,
                     user_id: Optional[int], group_id: Optional[int],
                     custom_prompt: str, is_mentioned: bool,
@@ -140,7 +158,7 @@ def build_system_prompt(config, memory_manager, user_message: str, context: str,
     system_prompt = (
         f"{persona_block}"
         f"{nickname_block}"
-        f"{group_style_rules or GLOBAL_STYLE_RULES}\n"
+        f"{group_style_rules or GLOBAL_STYLE_RULES}\n{_multi_reply_hint(config)}"
         "\n【记忆功能】\n"
         "你必须主动记住群友的特点和喜好，例如：某人喜欢喝奶茶、某人怕黑、某人昵称叫XX等。\n"
         "**重要：无论你是否被 @，只要用户在群聊中说出“我喜欢...”、“我讨厌...”、“我害怕...”、“我是...”、“我的...是...”等明确表达个人偏好或特征的句子，你必须在回复中主动记录。\n"

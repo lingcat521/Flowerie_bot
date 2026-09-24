@@ -74,6 +74,12 @@ class BotEvent:
             raise RuntimeError("Event 未绑定 bot")
         return await self._bot.reply(self, message, **kwargs)
 
+    async def reply_many(self, messages) -> list:
+        """把一次回复拆成多条独立消息（间隔/条数由 Core 配置控制）。"""
+        if self._bot is None:
+            raise RuntimeError("Event 未绑定 bot")
+        return await self._bot.reply_many(self, messages)
+
     async def recall(self) -> None:
         if self._bot is None:
             raise RuntimeError("Event 未绑定 bot")

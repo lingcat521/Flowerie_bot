@@ -895,6 +895,34 @@ class FlowerieBot:
                                                  "message": to_onebot(message)})
         return int(self._r(res).get("message_id") or 0)
 
+    async def send_many(self, target, messages) -> list:
+        """一次发多条独立消息（条数/间隔由 Core 统一控制，插件无需自己循环）。"""
+        if self._api is None:
+            raise BotAPIError("bot 未 attach")
+        if isinstance(target, int) or str(target).isdigit():
+            target = ("group", int(target))
+        payload = {"messages": [to_onebot(m) for m in (messages or [])]}
+        if target[0] == "group":
+            payload["group_id"] = int(target[1])
+        else:
+            payload["user_id"] = int(target[1])
+        res = self._r(self._api.send_many(payload))
+        return list(res.get("message_ids") or [])
+
+    async def reply_many(self, event, messages) -> list:
+        """回复并拆成多条（首条引用原消息，后续独立发送）。"""
+        if self._api is None:
+            raise BotAPIError("bot 未 attach")
+        payload = {"messages": [to_onebot(m) for m in (messages or [])]}
+        if event.group_id:
+            payload["group_id"] = int(event.group_id)
+        else:
+            payload["user_id"] = int(event.user_id)
+        if event.message_id:
+            payload["reply_id"] = int(event.message_id)
+        res = self._r(self._api.send_many(payload))
+        return list(res.get("message_ids") or [])
+
     async def recall(self, message_id: int) -> None:
         self._r(self._api.delete_message({"message_id": int(message_id)}))
 

@@ -1493,6 +1493,54 @@ class PluginManager:
                 return {"ok": False, "error": f"friend_detail: {type(e).__name__}: {e}"}
         return {"ok": False, "error": f"{action}: 未知语义"}
 
+    async def _action_send_many(self, payload: Dict[str, Any]) -> dict:
+        """send_many 的实现：Core 侧统一编排多条发送。"""
+        from src.core.reply_plan import ReplyPlan
+        from src.core.reply_sender import MultiReplyError, send_plan
+
+        messages = payload.get("messages")
+        if isinstance(messages, str) or not isinstance(messages, (list, tuple)):
+            return {"ok": False, "error": "send_many 需要 messages 数组"}
+        group_id = payload.get("group_id")
+        user_id = payload.get("user_id")
+        reply_id = payload.get("reply_id")
+        target, target_id = ("private", user_id) if (not group_id and user_id) else ("group", group_id)
+        if not target_id:
+            return {"ok": False, "error": "send_many 需要 group_id 或 user_id"}
+        if self.sender is None:
+            return {"ok": False, "error": "sender 未注入（不可用）"}
+
+        cfg = getattr(self, "config", None)
+        limit = int(getattr(cfg, "MULTI_REPLY_MAX_MESSAGES", 3) or 3)
+        mode = str(getattr(cfg, "MULTI_REPLY_INTERVAL_MODE", "random") or "random")
+        lo = float(getattr(cfg, "MULTI_REPLY_MIN_INTERVAL", 1.5) or 0.0)
+        hi = float(getattr(cfg, "MULTI_REPLY_MAX_INTERVAL", 4.0) or 0.0)
+        plan = ReplyPlan.of(list(messages), interval_mode=mode, min_interval=lo,
+                            max_interval=hi).normalize_mode().clamped(limit)
+        if not plan:
+            return {"ok": False, "error": "messages 为空"}
+
+        sent_ids: List[int] = []
+
+        async def send_one(msg, idx):
+            return await self.sender.send_msg_raw(target, int(target_id), msg,
+                                                  reply_id=reply_id if idx == 0 else None)
+
+        def after_sent(_idx, res):
+            if isinstance(res, dict) and res.get("ok") and res.get("message_id"):
+                sent_ids.append(int(res["message_id"]))
+
+        try:
+            await send_plan(plan, send_one, on_sent=after_sent)
+        except MultiReplyError as exc:
+            logger.warning("plugin_send_many_partial sent=%d failed_at=%d",
+                           len(exc.sent), exc.failed_index)
+            return {"ok": False, "error": str(exc), "message_ids": sent_ids}
+        self._sent_message_ids.extend(sent_ids)
+        self._sent_message_ids = self._sent_message_ids[-200:]
+        return {"ok": True, "target": target, "target_id": int(target_id),
+                "count": len(sent_ids), "message_ids": sent_ids}
+
     async def _run_action(self, plugin_id: str, action_type: str, payload: Dict[str, Any]) -> dict:
         """action 具体实现（按类型；全部结果回传插件，不执行任何未实现动作）。"""
         if action_type in _SENDER_ACTIONS:
@@ -1545,6 +1593,10 @@ class PluginManager:
             return {"ok": bool(result.get("ok")), "target": target, "target_id": int(target_id),
                     "message_id": result.get("message_id"),
                     "raw_text": result.get("raw_text", str(message)[:2000] if isinstance(message, str) else "")}
+        if action_type == "send_many":
+            # 多条回复（Multi-Reply）：由 Core 统一裁剪条数、控间隔、逐条发送与记录；
+            # 插件只提供「发哪几条」，不需要自己 for 循环（任务书 §4/§5/§13）。
+            return await self._action_send_many(payload)
         if action_type == "delete_message":
             # 撤回：只允许撤回本 bot 发送过（且由本实例记录）的消息
             message_id = payload.get("message_id")

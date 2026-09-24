@@ -54,6 +54,7 @@ ALL_PERMISSIONS = frozenset({
 ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "send_message": "send_message",
     "send_reply": "send_message",
+    "send_many": "send_message",
     "delete_message": "delete_message",
     "get_message": "read_message_history",
     "get_group_history": "read_message_history",

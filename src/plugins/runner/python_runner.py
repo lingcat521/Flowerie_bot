@@ -489,6 +489,10 @@ class PluginApi:
     def send_reply(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._send_action("send_reply", payload)
 
+    def send_many(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """多条发送：条数/间隔由主进程 Core 统一控制。"""
+        return self._send_action("send_many", payload)
+
     def delete_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._send_action("delete_message", payload)
 
