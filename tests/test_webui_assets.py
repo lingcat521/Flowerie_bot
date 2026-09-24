@@ -166,3 +166,13 @@ def test_css_url_changes_with_asset_generation():
     html = render_login_page()
     assert "?v=" + PANEL_ASSET_VER in html
 
+
+
+def test_panel_asset_body_rejects_traversal_names():
+    """纵深防御：sink 自身必须拒绝一切非「纯文件名」的输入（Code Scanning path-injection）。
+
+    路由 handler 已经拦了 / \\ .. ，但保证不能只存在于调用方 —— 这里把 sink 层的不变量固定下来。
+    """
+    assert panel_asset_body("panel.css") is not None
+    for bad in ("../secret.css", "a/b.css", "..", "", None, "x.txt", "panel.css/../x"):
+        assert panel_asset_body(bad) is None, bad

@@ -244,6 +244,9 @@ def panel_asset_body(name: str) -> Optional[str]:
     必须回注入主题变量后的 PANEL_CSS，否则 .theme-default{--input-bg:...} 整段失效，
     输入框会变成「透明无边框」（线上真实踩过这个坑）。
     """
+    # 纵深防御：不依赖调用方校验 —— 只接受"纯文件名"，任何分隔符/上跳/空名一律拒绝
+    if not name or "/" in name or chr(92) in name or ".." in name or not name.endswith(".css"):
+        return None
     if name == "panel.css":
         return PANEL_CSS
     path = asset_path(name)

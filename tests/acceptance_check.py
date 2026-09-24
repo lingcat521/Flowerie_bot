@@ -26,6 +26,14 @@ sys.path.insert(0, ROOT)
 RESULT = []  # (ok, 标题, 说明)
 
 
+def _masked_key(value):
+    """只回显长度与前缀提示，绝不打印密钥明文（Code Scanning py/clear-text-logging-sensitive-data）。"""
+    if not value:
+        return "未配置"
+    v = str(value)
+    return "已配置(长度=%d, 前缀=%s…)" % (len(v), v[:3] if len(v) >= 3 else "")
+
+
 def rec(ok, title, note=""):
     RESULT.append((ok, title, note))
     print(("[PASS] " if ok else "[FAIL] ") + title + ((" — " + note) if note else ""))
@@ -236,7 +244,7 @@ async def main():
     await http(port, ("POST", "/panel/save", urllib.parse.urlencode({"DEEPSEEK_API_KEY": ""}).encode(),
                       {"Content-Type": "application/x-www-form-urlencoded"}, auth))
     ev = EnvFileStore(os.path.join(ROOT, ".env")).read_values()
-    rec(ev.get("DEEPSEEK_API_KEY") == "sk-acceptance-key-123456", "Secret 留空不覆盖", f".env={ev.get('DEEPSEEK_API_KEY', 'MISSING')}")
+    rec(ev.get("DEEPSEEK_API_KEY") == "sk-acceptance-key-123456", "Secret 留空不覆盖", _masked_key(ev.get("DEEPSEEK_API_KEY")))
     # 修改后保存
     await http(port, ("POST", "/panel/save", urllib.parse.urlencode({"DEEPSEEK_API_KEY": "sk-new-secret-abcdef"}).encode(),
                       {"Content-Type": "application/x-www-form-urlencoded"}, auth))
