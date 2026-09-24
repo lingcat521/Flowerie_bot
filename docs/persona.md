@@ -47,6 +47,12 @@ Built-in Default（内置默认，PERSONA_DEFAULT，默认 flowerie）
 - **优先级：安全策略 > 人格 > 人格内置规则 > 本条**。即它只作为**风格补充**追加在所有生效人格的发言规则之后；
 - **不能覆盖安全策略**：运行时策略 / Prompt 注入清洗 / 记忆校验 / 预算限制等不会被任何提示文本绕过。
 
+## 人格与「群特色昵称」的联动
+
+- 群特色昵称按 **群 + 当前人设** 解析（人设精确命中 → 群级 → `BOT_NICKNAME` 默认），
+  因此同一句称呼在绑定不同人设的群里唤的是对应名字；配置与 Web UI 见
+  [configuration.md](configuration.md) 与 [web-ui.md](web-ui.md)。
+
 ## 人格与 Memory / Context 的边界
 
 - 人格**每次请求时动态解析**（`PersonaManager.resolve_persona(group_id)`），
