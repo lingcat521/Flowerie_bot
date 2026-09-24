@@ -1,7 +1,7 @@
 # Flowerie 文档
 
-> 对应 **v2.2.2222**：v2.2.2 封版后的兼容性维护 —— 任意语言插件（**13 种语言** CI 实测）、
-> 启动横幅、`.env` 模板与 Web UI 配置页同源、默认模型统一 `deepseek-flash`。更早版本见 [archive/](archive/README.md)。
+> 对应 **v2.2.22222**：停更期间的维护性更新 —— Code Scanning 全量安全整改、原生多条回复（Multi-Reply）、
+> Milky 能力补齐（协议 1.3 / 65 动作全量对照）、花语记忆门控修复；更早版本见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走
 
