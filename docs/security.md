@@ -186,17 +186,20 @@ Memory / MCP / Plugin / Knowledge  （用户记忆 / 工具结果 / 插件输出
 > 对 GitHub Code Scanning 的全部 open 告警逐条审计：区分真实漏洞与误报，
 > 真漏洞最小修复 + 回归测试，误报给出证明与理由。**不以"清零"为目标** ✔。
 
-审计起点：**56 条 open 告警**（7 类规则）。
+审计起点：**56 条 open 告警**（7 类规则）→ 终点：**50 条**（3 类规则）。
+**6 条真漏洞全部修复并关闭**（`py/redos`、`py/clear-text-logging-sensitive-data`、
+`py/insecure-temporary-file` ×2、`actions/missing-workflow-permissions` ×2）；剩余 50 条 = 
+32 条「暂时无法证明」（已加固）+ 18 条误报（附证明测试）。
 
 | 规则 | 数量 | 判定 | 处理 |
 | :--- | ---: | :--- | :--- |
-| `py/path-injection` | 32 | **真漏洞**（`uninstall` 可越界删除、`_file_*` 的包含性检查拿 id 推导出的 base 去比） | 新增 `_PLUGIN_ID_RE` + `_plugin_base()`（**先校验 id，再对 `plugin_dir` 做 realpath + commonpath**），`uninstall` 与三处 file 操作全部改用它；回归测试 5 条 |
+| `py/path-injection` | 32 | **其中一部分是真漏洞，其余是「暂时无法证明」** | 真漏洞：`uninstall` 可越界删除、`_file_*` 的包含性检查拿 id 推导出的 base 去比 → 新增 `_PLUGIN_ID_RE` + `_plugin_base()`（**先校验 id，再对 `plugin_dir` 做 realpath + commonpath**），`uninstall` 与三处 file 操作全部改用它，并把净化**内联到 sink 同函数**；其余 sink 的安全性由该函数保证，CodeQL 局部数据流看不到 → 归入「暂时无法证明」（见下方残余风险）；回归测试 5 条 |
 | `py/url-redirection` | 17 | **误报** | 逐条核对：目标全部以硬编码 `/panel` 开头（f-string 与字符串拼接两种写法都查），插入片段经 `quote()` / `isdigit()` / 上游已 quote 的成品串 / `CATEGORY_ORDER` 白名单约束；插件页 `{pid}/{page}` 来自路由段（不含 `/`）→ 不构成开放重定向。新增 2 条不变量测试 |
 | `py/insecure-temporary-file` | 2 | **真漏洞** | `tempfile.mktemp`（竞态 + 已弃用）→ `mkstemp` + `os.close` |
 | `actions/missing-workflow-permissions` | 2 | **真漏洞** | `ci.yml` / `acceptance.yml` 增加 `permissions: contents: read`（最小权限） |
 | `py/full-ssrf` | 1 | **误报** | `installer.py` 的下载已有三层防线且都在 sink 之前：`validate_mcp_server_url`（字面量）+ `_check_dns`（解析结果，抗 rebinding）+ `follow_redirects=False`；新增证明性测试（顺序不变量 + 13 类载荷全拒 + 正常 https 放行） |
-| `py/redos` | 1 | **真漏洞**（实测坐实） | `_CQ` 正则 `(?:,[^\[\]]*)*` 内外两层 star 划分不唯一 → 指数回溯：实测 10/14/18 个逗号 = 0.2/3.7/60.4 ms，40 个直接卡死进程；修复为每个参数以非逗号起头（线性，2000 个逗号 0.008 ms），语义 5 组样例保持一致 |
-| `py/clear-text-logging-sensitive-data` | 1 | **真漏洞** | 验收脚本把 `DEEPSEEK_API_KEY` 明文打进 CI 日志 → 新增 `_masked_key()` 只回显长度与前缀 |
+| `py/redos` | 1 | **真漏洞**（实测坐实；**修了两次**） | 原 `_CQ` 的 `(?:,[^\[\]]*)*` 内外两层 star 划分不唯一 → 指数回溯：实测 10/14/18 个逗号 = 0.2/3.7/60.4 ms，40 个直接卡死进程。首轮改成 `(?:,[^\[\],][^\[\]]*)*` 只堵住「纯逗号」路径，**形状未变**（靠 CPython `REPEAT_ONE` 才不炸），下一轮分析复现；最终改为单一字符集重复 `r"\[CQ:([^\[\]]+)\]"`（全模式仅一个量词）+ 代码里切分动作名/参数，等价性用「期望结果表」锁住 |
+| `py/clear-text-logging-sensitive-data` | 1 | **真漏洞**（**修了两次**） | 验收脚本曾把 `DEEPSEEK_API_KEY` 打进 CI 日志。首轮加 `_masked_key()` 只回显长度 + 前 3 位 —— 安全上已克制，但 CodeQL 不认自定义脱敏函数（返回值仍是密钥派生串），下一轮分析复现；最终**从源头切断**：日志实参只用比较得到的布尔结论挑选常量文案，密钥值不进日志参数，并删掉该函数 |
 
 ### 已知残余风险（如实声明，不当作误报）
 
