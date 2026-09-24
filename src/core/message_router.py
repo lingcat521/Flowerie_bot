@@ -1,7 +1,7 @@
 import asyncio
 import random
 import time
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 if TYPE_CHECKING:  # pragma: no cover - 仅类型注解
     from src.plugins.manager import PluginManager
@@ -10,12 +10,12 @@ from src.adapters import InternalEvent, OneBotEventParser  # 消息边界（Phas
 from src.config import Settings
 from src.core import name_mention as _name_mention
 from src.core.ai_gateway import AiGateway
+from src.core.ai_guard_mixin import AiGuardMixin
 from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
 from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
-from src.core.reply_plan import plan_from_config
-from src.core.reply_sender import MultiReplyError, send_plan
+from src.core.reply_dispatch import ReplyDispatchMixin
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
@@ -40,7 +40,7 @@ _M_RECEIVED = registry.counter("received_messages_total", "收到的群消息总
 _M_PROCESSED = registry.counter("processed_messages_total", "通过去重、进入处理流程的消息总数")
 _M_REJECTED = registry.counter("rejected_messages_total", "被拒绝的消息总数（按原因）", ["reason"])
 
-class MessageRouter:
+class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
     """事件分发与消息处理（流程编排）。
 
     上帝类拆分后只负责：
@@ -456,23 +456,6 @@ class MessageRouter:
                 logger.error("Reply send failed")
 
     # ---------- 统一 AI 准入层（委托 AiGateway；防上帝类） ----------
-    async def guarded_chat(self, group_id: int, user_id: int, **kwargs) -> Tuple[Optional[str], Optional[str], bool]:
-        """统一 AI 对话入口（委托 AiGateway：熔断/预算/人格/知识/重试）。
-
-        AI_ENABLED=false：不执行 AI 回复（普通功能/记忆/知识不受影响）。
-        """
-        if not getattr(self.config, "AI_ENABLED", True):
-            return None, None, False
-        return await self.ai_gateway.guarded_chat(group_id, user_id, **kwargs)
-
-    async def _ai_allowed(self, group_id: int, user_id: int, user_interval: bool = True) -> bool:
-        """预算闸门（委托 AiGateway）。"""
-        return await self.ai_gateway._ai_allowed(group_id, user_id, user_interval=user_interval)
-
-    async def guarded_is_toxic(self, group_id: int, user_id: int, text: str) -> bool:
-        """引战检测准入（委托 AiGateway）。"""
-        return await self.ai_gateway.guarded_is_toxic(group_id, user_id, text)
-
     def _get_group_breaker(self, group_id: int) -> CircuitBreaker:
         """群级熔断器（委托 AiGateway；兼容旧调用）。"""
         return self.ai_gateway._get_group_breaker(group_id)
@@ -569,36 +552,6 @@ class MessageRouter:
         else:
             await self._send_reply(reply, user_id=user_id)
         logger.info(f"Poke reply to {user_id} in {group_id}: {reply}")
-
-    async def _send_reply(self, reply, *, group_id=None, user_id=None) -> bool:
-        """统一回复发送：单条字符串与多条列表都走这里（任务书 §7/§9/§10）。
-
-        - 条数受 MULTI_REPLY_MAX_MESSAGES 约束，AI 无权绕过；
-        - 间隔由 Core 的 ReplyPlan 策略决定；
-        - 每条都计一次连续回复，于是 MAX_CONSECUTIVE_REPLIES 照常生效。
-        """
-        plan = plan_from_config(reply, self.config)
-        if not plan:
-            return False
-
-        async def send_one(msg, _idx):
-            if group_id:
-                return await self.sender.send_group_message(group_id, msg)
-            return await self.sender.send_private_message(user_id, msg)
-
-        def after_sent(_idx, _res):
-            target = group_id if group_id else user_id
-            try:
-                self.policy_engine.record_bot_reply(target)
-            except Exception:
-                logger.debug("record_bot_reply failed for %s", target)
-
-        try:
-            results = await send_plan(plan, send_one, on_sent=after_sent)
-        except MultiReplyError as exc:
-            logger.warning("multi_reply_partial sent=%d failed_at=%d", len(exc.sent), exc.failed_index)
-            return False
-        return all(bool(r) for r in results) if results else False
 
     # ---------- 主动聊天循环（✅ 修复：区分留空和未配置） ----------
     async def _active_chat_loop(self):
