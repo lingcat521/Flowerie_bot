@@ -1,4 +1,28 @@
-## [未发布]
+# Changelog
+
+本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
+
+> **维护状态：停更一年（2026-09-04 起）** —— 仓库不归档；停更期间的兼容性维护以 2.2.2xx 递增发布。
+> 早期版本的日期为补记（以版本号顺序为准）。
+
+**版本速览**：2.2.22222 · 2.2.2222 · 2.2.222 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
+
+---
+
+## [2.2.22222] - 2026-09-25
+
+> 维护性更新（停更期间）：**无破坏性变更** —— 安全整改 + 原生多条回复 + Milky 能力补齐 + Web UI 修复 + 文档；
+> 新能力均默认关闭，关闭时行为与之前完全一致。
+
+### 安全 —— Code Scanning 全量审计（6 类真漏洞修复并关闭）
+
+- 逐条审计 7 类规则共 56 条 open 告警：修复 6 类真漏洞，18 条已举证误报经 API 标记 `dismissed`，其余 32 条如实保留为 open 并标注「暂时无法证明」——**不以清零为目标**
+- 越界删除：`PluginManager.uninstall` 可直接用 WebUI 传入的 `../` id 拼路径 `rmtree`；`_file_*` 的包含性检查拿「id 推导出的 base」去比，等于没查 → 新增 `_PLUGIN_ID_RE` + `_plugin_base()`（先校验 id，再对 `plugin_dir` 做 realpath + commonpath），并把净化内联到 sink 同函数
+- ReDoS：CQ 码正则的两层 star（嵌套量词）划分不唯一 → 指数回溯（实测 40 个逗号卡死进程）；终版改为单一字符集重复（全模式仅一个量词）+ `_cq_parts` 切分（形状可证线性，不靠引擎优化）
+- 日志泄露：验收脚本不再回显密钥片段（日志实参只允许由比较得到的布尔结论挑常量文案）
+- 测试里 `tempfile.mktemp` → `mkstemp`；两个 workflow 补 `permissions: contents: read`
+- 新增 6 个回归测试文件 / 26 条：SSRF 三层防线顺序、越界 id 全拒、正则形状不变量与仓库级「量词套量词」闸门、站内重定向前缀不变量、日志不得含敏感派生表达式、静态资源文件名白名单
+- 报告：`docs/archive/code-scanning-report.md`；逐条判定与残余风险：`docs/security.md`
 
 ### 新增 —— 原生多条回复（Multi-Reply）
 
@@ -21,17 +45,29 @@
 
 - 新增 `tests/test_multi_reply_core.py`（14）、`tests/test_multi_reply_sdk.py`（4）、`tests/test_multi_reply_ai.py`（5）
 
-# Changelog
+### 变更 —— Milky 协议能力补齐
 
-本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。
+- 出站调用统一入口 `Sender._post`：Milky 模式统一做动作名映射（36 个端点）、Bearer 鉴权、字符串消息自动转 OutgoingSegment 数组；主发送路径不再绕过统一入口（端到端测试抓到的真 bug）
+- 能力缺失显式化：`_MILKY_UNSUPPORTED`（9 项）不发请求、直接返回明确错误，便于上游如实降级
+- 新增 `tests/test_milky_mapping.py`、`tests/test_milky_end_to_end.py`（假协议端全链路，含 Multi-Reply）
+- 文档：`docs/milky-protocol.md` 同步官方 API（协议 1.3，5 组 65 动作），并列出尚未接线的 32 个动作
 
-> 📦 **维护状态：停更一年（2026-09-04 起）** —— 仓库不归档；停更期间的兼容性维护以 2.2.2xx 递增发布。
-> 早期版本的日期为补记（以版本号顺序为准）。
+### 修复 —— Web UI
 
-**版本速览**：2.2.2222 · 2.2.222 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
+- **花语记忆总开关 OFF 时整组不再渲染**：此前模型/密钥/参数 14 个键照旧显示（与渲染层注释「总开关 OFF → 全部配置不渲染」不符）；现在 OFF 只留总开关 + 一行提示，ON 后全部展开
+- 主题液态玻璃导致的 1px 排版塌陷（选择器断行）
+
+### 文档
+
+- 精简 Code Scanning 审计报告（96 → 47 行）与安全文档小节，事实一条不丢
+- `docs/api.md` 由 `scripts/gen_api_md.py` 重生成（161 方法）
+- 版本号 / 测试数 / 目录结构等过时表述同步（测试数 1045 → **1121**）
+
+### 测试
+
+- CI：Python 3.9 / 3.12 + PostgreSQL；`ruff check` + `pytest` + 验收脚本；当前 **1121 个测试**
 
 ---
-
 ## [2.2.2222] - 2026-09-17
 
 ### 新增

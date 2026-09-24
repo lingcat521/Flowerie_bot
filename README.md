@@ -22,7 +22,7 @@
 ---
 ## 这是什么
 
-**花璃** 是一个基于 **DeepSeek API** 的 **QQ 群聊机器人**：像真实群友一样聊天、识图、看转发、记记忆、被戳会回应，还能自定义人格、发表情包、用 MCP 工具上网查信息，并且可以通过 Web UI 管理配置（当前版本 **v2.2.2222**）。
+**花璃** 是一个基于 **DeepSeek API** 的 **QQ 群聊机器人**：像真实群友一样聊天、识图、看转发、记记忆、被戳会回应，还能自定义人格、发表情包、用 MCP 工具上网查信息，并且可以通过 Web UI 管理配置（当前版本 **v2.2.22222**）。
 
 ## 功能
 
@@ -191,7 +191,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/memor
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 1045 个测试（CI：Python 3.9/3.12 + PostgreSQL）
+pytest              # 1121 个测试（CI：Python 3.9/3.12 + PostgreSQL）
 acceptance          # 37 项黑盒验收（tests/acceptance_check.py）
 ruff check .        # 代码检查
 ```

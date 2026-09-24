@@ -17,7 +17,7 @@ pytest              # 全部测试
 pytest tests/xxx    # 单文件
 ```
 
-当前 1045 个测试（随版本增长）：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、Persona 系统、群聊 Meme Knowledge、任意语言插件（13 种语言黑盒端到端）等，详见 `tests/`。
+当前 1121 个测试（随版本增长）：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、Persona 系统、群聊 Meme Knowledge、任意语言插件（13 种语言黑盒端到端）等，详见 `tests/`。
 
 ## 代码检查
 
@@ -56,7 +56,7 @@ src/
 │   └── system_status.py     # 服务器状态采集（用户状态页用，零依赖 /proc）
 ├── repositories/   # SQLite 存储层（记忆/设置/表情包索引/梗知识）
 └── utils/          # 日志/trace/指标/熔断/过期容器/任务管理
-tests/              # 1045 个测试（含 CI 资产/响应式回归）
+tests/              # 1121 个测试（含 CI 资产/响应式回归）
 docs/               # 文档
 ```
 
