@@ -222,7 +222,7 @@ class AiGateway:
                 })
             reply, memory_update = await self.ai_client.chat_once(**attempt_kwargs)
             # Native Reply Tool 捕获优先：以 List[str] 回到既有回复链路
-            #（与旧式 JSON 多条完全同型 → plan_from_config 的门控/clamped 照常生效）
+            # （与旧式 JSON 多条完全同型 → plan_from_config 的门控/clamped 照常生效）
             if reply_capture is not None and reply_capture.captured:
                 reply = list(reply_capture.messages)
             # Phase 9：provider 拒绝 tools（不可重试的 4xx）→ 同一次 attempt 内立即退回纯文本。
