@@ -1,3 +1,26 @@
+## [未发布]
+
+### 新增 —— 原生多条回复（Multi-Reply）
+
+- **一次回复拆成 1~N 条独立消息逐条发送**，默认关闭（关闭时行为与之前完全一致）
+- 新增核心对象 `ReplyPlan`（`src/core/reply_plan.py`）与协议无关的发送编排
+  `send_plan`（`src/core/reply_sender.py`）：只接收"怎么发一条"的回调，所有协议共用同一套；
+  间隔用可注入的 sleep（可测），失败策略 stop/continue，`MultiReplyError` 携带已发送条数
+- SDK：`Bot.send_many` / `Bot.reply_many` / `Event.reply_many`（`src/sdk/` 与 `plugin_sdk/` 双份同步）；
+  插件动作 `send_many`（权限同 `send_message`），插件侧不必自己写 for 循环
+- AI：模型可输出 `{"messages": [...]}` 结构化多条（允许 json 围栏）；**未开启开关或解析失败一律降级单条**，
+  不做换行/标点猜测；提示词仅在开启时注入，并写明条数与每条字数上限
+- 配置：`MULTI_REPLY_ENABLED` / `MAX_MESSAGES` / `INTERVAL_MODE` / `MIN_INTERVAL` / `MAX_INTERVAL`
+  （进 `config_schema.SCHEMA` → Web UI「配置 → AI」自动出现，热更新）
+- 限制不被绕过：条数受 `MULTI_REPLY_MAX_MESSAGES` 约束，且**每条都计一次连续回复**，
+  因此 `MAX_CONSECUTIVE_REPLIES` 与冷却照常生效
+- 顺手拆分防上帝类：`reply_dispatch.py`（回复分发 mixin）与 `ai_guard_mixin.py`（AI 准入守卫）
+  从 `message_router.py` 拆出（682 → 635 行，上限 650）
+
+### 测试
+
+- 新增 `tests/test_multi_reply_core.py`（14）、`tests/test_multi_reply_sdk.py`（4）、`tests/test_multi_reply_ai.py`（5）
+
 # Changelog
 
 本文件记录 Flowerie_bot 的版本变更。版本号遵循 [Semantic Versioning](https://semver.org/)。

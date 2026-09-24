@@ -206,6 +206,28 @@ async def menu(event):
 
 ---
 
+## 4.5 多条回复（reply_many / send_many）
+
+> 一次发多条独立消息。与自己写循环的区别：**条数受配置上限约束、间隔由 Core 控制、
+> 每条都走同一条发送与记录路径、失败策略统一**。
+
+```python
+await event.reply_many(["你好呀", "今天怎么样"])      # 回复并拆成多条（首条引用原消息）
+await bot.send_many(123456, ["第一句", "第二句"])     # 指定群号
+await bot.send_many(("private", 10001), ["在吗"])     # 私聊
+```
+
+| 方法 | 参数 | 返回 |
+| :--- | :--- | :--- |
+| `Bot.send_many(target, messages, *, reply_id=None)` | target 同 `send`（群号 / 元组） | `List[int]`（message_id） |
+| `Bot.reply_many(event_or_target, messages, *, ...)` | 传 `BotEvent` 自动推导目标 | `List[int]` |
+| `Event.reply_many(messages)` | 等价于 `bot.reply_many(self, messages)` | `List[int]` |
+
+**间隔与上限**：由配置 `MULTI_REPLY_*` 决定（见 [configuration.md](configuration.md#多条回复multi-reply)）；
+每条都计一次连续回复，因此 `MAX_CONSECUTIVE_REPLIES` 依然生效。
+
+**单条仍然照旧**：`event.reply("你好")` 不受影响 —— 内部会自动包装成单条计划。
+
 ## 5. Matcher / Rule
 
 | 装饰器 | 匹配 |

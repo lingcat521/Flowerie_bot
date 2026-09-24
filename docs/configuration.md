@@ -117,6 +117,37 @@ Web UI 修改的配置存于 `data/settings.db`，重启后优先使用。
 > 校验：概率 `0~1` 且为有限数、`PROACTIVE_MESSAGE_MIN ≤ MAX`、`ACTIVE_CHAT_INTERVAL_MIN ≤ MAX`、
 > 冷却在 `0~86400` 之间；Web UI「配置」页「主动聊天」分组展示并热更新。
 
+## 多条回复（Multi-Reply）
+
+> 一次 AI 回复可以拆成 **1~N 条独立消息**，按间隔策略逐条发出（QQ 上看起来就是"连发几句"）。
+> 默认**关闭**：关闭时行为与之前完全一致，单条回复不受任何影响。
+
+| 配置项 | 类型 | 默认 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `MULTI_REPLY_ENABLED` | bool | `false` | 总开关。关：AI 只回一条（与旧版一致） |
+| `MULTI_REPLY_MAX_MESSAGES` | int | `3` | 一次最多发几条。**AI 无权绕过**：多出来的直接丢弃 |
+| `MULTI_REPLY_INTERVAL_MODE` | str | `random` | 间隔模式：`none`（不留间隔）/ `fixed`（固定）/ `random`（随机） |
+| `MULTI_REPLY_MIN_INTERVAL` | float | `1.5` | 最小间隔秒数；`fixed` 模式下即固定值 |
+| `MULTI_REPLY_MAX_INTERVAL` | float | `4.0` | 最大间隔秒数（仅 `random` 生效） |
+
+**与既有"连续回复限制"的关系（重要）**：多条回复**不会**绕过防刷屏机制 ——
+每发一条都会记一次连续回复，达到 `MAX_CONSECUTIVE_REPLIES`（默认 3）后照常进入
+`BOT_CONSECUTIVE_REPLY_COOLDOWN` 冷却。也就是说：
+
+```text
+MULTI_REPLY_MAX_MESSAGES = 5   # 一次最多想发 5 条
+MAX_CONSECUTIVE_REPLIES  = 3   # 但连续发到 3 条就会触发冷却
+→ 实际最多连发 3 条，然后进入冷却
+```
+
+**间隔怎么选**：
+
+- `random`（默认）：1.5~4 秒之间随机，最像真人打字；
+- `fixed`：固定间隔，适合想要稳定节奏的场合；
+- `none`：不等，适合"一句说完立刻补一句"的场景（仍受连续回复限制约束）。
+
+**Web UI**：这些项都在「配置 → AI」分类里，改完保存即热更新（无需重启）。
+
 ## Web UI
 
 | 变量 | 说明 | 默认 |

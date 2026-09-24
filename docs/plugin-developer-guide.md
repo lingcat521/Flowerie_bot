@@ -1515,3 +1515,55 @@ CI 中每种语言先构建再启动；镜像缺该语言工具链时用例自�
    各语言惯用法：C `fflush(stdout)`、C++ `std::endl`、PHP `fflush(STDOUT)`、Ruby `$stdout.sync = true`、
    Perl `$| = 1`、Lua `io.stdout:setvbuf("line")`、R `flush(stdout())`、C# `Console.Out.Flush()`；
    Go / Rust / Java / Kotlin / Node 的 `Println`/`println!`/`println` 是按行刷新，无需额外处理。
+
+## 32. 多条回复（Multi-Reply）
+
+> 让插件一次发出多条独立消息，而**不是**自己写 `for` 循环 —— 条数上限、间隔、
+> 发送记录、失败处理都由 Core 统一负责（这样限流与审计才不会被绕过）。
+
+### 32.1 一行用法（SDK 模式）
+
+```python
+@command("greet")
+async def greet(event):
+    await event.reply_many(["你好呀", "今天怎么样", "最近还好吗"])
+```
+
+```python
+# 主动发送（非回复）也支持
+await bot.send_many(123456, ["第一句", "第二句"])          # 群号
+await bot.send_many(("private", 10001), ["你好"])          # 私聊
+```
+
+返回值：每条消息的 `message_id` 列表（失败或部分失败见 §32.3）。
+
+### 32.2 经典动作模式（任意语言插件）
+
+插件进程用 `send_many` 动作（权限与 `send_message` 相同）：
+
+```json
+{
+  "type": "send_many",
+  "payload": {
+    "group_id": 123456,
+    "messages": ["你好呀", "今天怎么样"],
+    "reply_id": 987654
+  }
+}
+```
+
+返回：`{"ok": true, "count": 2, "message_ids": [111, 112]}`。
+
+### 32.3 规则（插件必须知道的四件事）
+
+1. **条数上限由配置决定**：超出 `MULTI_REPLY_MAX_MESSAGES` 的部分会被**默默丢弃**（AI 与插件都绕不过）；
+2. **间隔由 Core 控制**：插件无法指定间隔，统一跟随 `MULTI_REPLY_*` 配置；
+3. **仍受连续回复限制**：每发一条都记一次，达到 `MAX_CONSECUTIVE_REPLIES` 后进入冷却；
+4. **失败策略**：某条发送失败即停止后续（已发出的不回滚），返回体里给出 `error` 与已成功的 `message_ids`。
+
+### 32.4 什么时候不要用它
+
+- 只有一句话 → 直接用 `event.reply("...")`（单条路径更快也更省事）；
+- 需要"一句话里多个表情/图片" → 那是**一条**消息的段数组（`BotMessage`），不是多条；
+- 需要精确控制每条时间间隔 → 目前不支持（避免插件绕过限流），请用 `MULTI_REPLY_*` 配置。
+
