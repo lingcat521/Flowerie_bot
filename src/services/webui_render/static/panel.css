@@ -25,8 +25,12 @@ font-size:13.5px;border:1px solid transparent;transition:all .18s ease}
 .group{background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:14px;
 box-shadow:var(--shadow);padding:16px 18px 18px;margin-bottom:18px}
 /* 卡片效果：body.pglass=液态玻璃（磨砂），否则=纯透明（淡入淡出，直接透出背景） */
-.pglass .group,.pglass
 .breadcrumb{display:flex;gap:6px;align-items:center;margin:0 0 10px;color:var(--text-muted);font-size:12px}
+/* 液态玻璃：只给卡片加磨砂，绝不能让 .group 变成 flex ——
+   曾经因选择器断行，.pglass .group 被并进 .breadcrumb 的规则拿到 display:flex，
+   开启卡片效果后 fieldset 变行布局、里面输入框被挤成 1px 竖线 */
+.pglass .group,.pglass .mcp-card,.pglass .plugin-card,.pglass .topbar{
+  -webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2)}
 .crumb-here{color:var(--text)}
 .plugin-page{margin-top:12px}
 .plugin-grid{display:grid;grid-template-columns:repeat(var(--cols,2),1fr);gap:12px}
