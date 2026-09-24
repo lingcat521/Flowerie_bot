@@ -91,6 +91,22 @@ class ReplyPlan:
         return iter(self.messages)
 
 
+def first_text(reply) -> str:
+    """回复的首条文本（str / list / tuple / None 都安全）。
+
+    多条回复在查重、表情包标记、兜底与日志处都只看首条；这些地方此前直接
+    .strip() / 正则搜索，遇到 list 会 AttributeError / TypeError
+    （Native Reply Tool 与旧式 JSON 多条都走这条路径）。
+    """
+    if isinstance(reply, (list, tuple)):
+        for m in reply:
+            text = str(m or "").strip()
+            if text:
+                return text
+        return ""
+    return str(reply or "").strip()
+
+
 def plan_from_config(reply, config, *, from_ai: bool = False) -> ReplyPlan:
     """按配置把回复包装成计划（统一入口，避免各处自己读配置）。"""
     max_messages = int(getattr(config, "MULTI_REPLY_MAX_MESSAGES", 3) or 3)

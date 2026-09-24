@@ -146,6 +146,21 @@ MAX_CONSECUTIVE_REPLIES  = 3   # 但连续发到 3 条就会触发冷却
 - `fixed`：固定间隔，适合想要稳定节奏的场合；
 - `none`：不等，适合"一句说完立刻补一句"的场景（仍受连续回复限制约束）。
 
+### AI 自主拆分：Native Reply Tool（同一开关）
+
+开启 `MULTI_REPLY_ENABLED` 后，Flowerie 会额外给模型一个内部工具 `reply`：
+
+- **它只决定内容与边界**：模型用 `reply({"messages": [...]})` 自主决定"这次发一条还是多条、每条到哪结束"；
+  不想拆就只传一条；提示词明确要求"不要为了用工具而强行拆分"
+- **它不决定任何限制**：条数仍受 `MULTI_REPLY_MAX_MESSAGES` 裁剪（模型给 10 条、上限 3 → 只发 3 条），
+  间隔仍按 `MULTI_REPLY_INTERVAL_MODE`，每条仍各计一次连续回复（`MAX_CONSECUTIVE_REPLIES` 与冷却照常生效）
+- **与旧路径并存**：模型改用普通文本或旧的 JSON 多条输出时，行为与之前完全一致
+- **provider 不支持 tool calling 时自动降级**：带工具的请求被拒（4xx）后**在同一次请求内**立即退回纯文本，
+  不会因为打开这个开关就收不到回复（MCP 工具的既有语义不受影响）
+- **协议无关**：工具调用只产生 `ReplyPlan`，OneBot 与 Milky 走同一条发送链路，没有第二条发送实现
+
+> 没有独立开关：该工具与 `MULTI_REPLY_ENABLED` 同生共死 —— 关闭时它根本不会注入给模型。
+
 **本地预演（不需要 QQ）**：`python3 scripts/multi_reply_demo.py` 会用真实模块跑一遍
 「多条 → 逐条发送 → 历史记录」并显示每次间隔；加 `--disabled` / `--max-messages N` 可现场对比配置效果。
 **Web UI**：这些项都在「配置 → AI」分类里，改完保存即热更新（无需重启）。

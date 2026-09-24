@@ -16,6 +16,7 @@ from src.core.command_handler import CommandHandler
 from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
 from src.core.reply_dispatch import ReplyDispatchMixin
+from src.core.reply_plan import first_text
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
@@ -417,20 +418,24 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
                     logger.info("memory_updated user=%s group=%s len=%d", target_uid, group_id, len(mem_content or ""), extra={"event": "memory_updated"})
 
         # 兜底：guarded_chat 已内部重试过（每次重试过预算），仍空则给个兜底回复
-        if is_mentioned and (not reply or not reply.strip()):
+        if is_mentioned and not first_text(reply):
             reply = "喵？"
 
         if reply:
-            if self.policy_engine.is_duplicate_reply(group_id, reply):
+            # 多条回复：查重 / 表情包 / 日志一律看首条（list 与 str 都安全，见 first_text）
+            if self.policy_engine.is_duplicate_reply(group_id, first_text(reply)):
                 logger.debug("Duplicate reply, skip")
                 return
 
-            # 表情包：解析模型回复中的 [STICKER:filename] 标记并发送
+            # 表情包：解析模型回复中的 [STICKER:filename] 标记并发送（多条时标记随首条）
             sticker_path = None
             if self.sticker_manager and self.sticker_manager.is_enabled():
-                sticker_path = self.sticker_manager.extract_sticker(reply)
+                sticker_path = self.sticker_manager.extract_sticker(first_text(reply))
                 if sticker_path:
-                    reply = self.sticker_manager.strip_sticker_marker(reply)
+                    if isinstance(reply, (list, tuple)):
+                        reply = [self.sticker_manager.strip_sticker_marker(m) for m in reply]
+                    else:
+                        reply = self.sticker_manager.strip_sticker_marker(reply)
             if sticker_path:
                 if not self.sticker_manager.can_send(group_id):
                     logger.debug("Sticker cooldown, skip image (text only)")
@@ -438,7 +443,7 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
                 else:
                     self.sticker_manager.mark_sent(group_id)
                     # 多条回复与表情包同时命中：表情包配第一条，避免把 list 当消息发
-                    reply_text = reply[0] if isinstance(reply, (list, tuple)) and reply else (reply or "")
+                    reply_text = first_text(reply)
                     success = await self.sender.send_group_message_with_image(
                         group_id, reply_text or None, sticker_path)
                     if success:
@@ -450,7 +455,8 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
 
             success = await self._send_reply(reply, group_id=group_id)
             if success:
-                logger.info("reply_sent group=%s len=%d", group_id, len(reply or ""), extra={"event": "reply_sent"})
+                logger.info("reply_sent group=%s len=%d", group_id, len(first_text(reply)),
+                            extra={"event": "reply_sent"})
             else:
                 logger.error("Reply send failed")
 

@@ -226,6 +226,11 @@ await bot.send_many(("private", 10001), ["在吗"])     # 私聊
 **间隔与上限**：由配置 `MULTI_REPLY_*` 决定（见 [configuration.md](configuration.md#多条回复multi-reply)）；
 每条都计一次连续回复，因此 `MAX_CONSECUTIVE_REPLIES` 依然生效。
 
+> **与 AI 侧 Native Reply Tool 的区别**：`reply_many()` / `send_many()` 是**插件主动指定**消息列表；
+> AI 侧的 `reply` 工具由**模型自主决定**条数与边界（受同一套 `MULTI_REPLY_*` 限制，见
+> [configuration.md](configuration.md#ai-自主拆分native-reply-tool同一开关)）。两者最终走同一条发送链路，
+> 谁都不能绕过上限、间隔与冷却。
+
 **单条仍然照旧**：`event.reply("你好")` 不受影响 —— 内部会自动包装成单条计划。
 
 ## 5. Matcher / Rule

@@ -13,6 +13,8 @@ import random
 import time
 from typing import Optional, Tuple
 
+from src.core.reply_plan import first_text
+from src.services.reply_tool import REPLY_TOOL_SCHEMA, ReplyToolCapture, make_tool_caller
 from src.utils.circuit_breaker import CircuitBreaker
 from src.utils.expiring_map import ExpiringMap
 from src.utils.logging_setup import get_logger
@@ -28,6 +30,9 @@ _M_AI_OK = registry.counter("ai_success_total", "AI 请求成功数")
 _M_AI_FAIL = registry.counter("ai_failure_total", "AI 请求失败数")
 _M_AI_LATENCY = registry.histogram("ai_latency_seconds", "AI 请求耗时（秒）")
 _M_CIRCUIT_REJECT = registry.counter("ai_circuit_rejections_total", "熔断拒绝的 AI 请求数（按层级）", ["level"])
+
+# 工具相关 kwargs：Phase 9 降级时整体剥离（退回纯文本请求）
+_TOOL_KWARGS = ("tools", "tool_caller", "max_tool_calls", "tool_quota")
 
 
 class AiGateway:
@@ -152,6 +157,10 @@ class AiGateway:
         # 跨 attempt 复用；retry 不会重新获得新额度（tool_quota.used 持续累加）。
         mcp_max_calls = max(0, int(getattr(self.config, "MCP_MAX_TOOL_CALLS", 5)))
         tool_quota: Optional[dict] = None
+        # Native Reply Tool（Phase 2/12）：与 MULTI_REPLY_ENABLED 同一开关，不新增配置项；
+        # 这里只捕获模型给的 messages[]，绝不发送消息（发送仍走 ReplyPlan → ReplySender）。
+        reply_capture = ReplyToolCapture() if getattr(self.config, "MULTI_REPLY_ENABLED", False) else None
+        reply_tools_off = False  # provider 拒绝 tools 时降级为纯文本（Phase 9）
         for attempt in range(attempts):
             # 用户聊天限速只在首次尝试检查（重试是同一逻辑调用的延续，
             # 若每次都查，会被自己刚更新的 user_ai_last_call 拦掉）
@@ -162,20 +171,6 @@ class AiGateway:
             _M_AI_ATTEMPTS.inc()  # 实际 HTTP attempt 计数
             if self.prompt_manager is not None and group_id:
                 kwargs = {**kwargs, "custom_prompt": self.prompt_manager.get_effective_prompt(group_id)}
-            # MCP 工具：仅当启用、存在 allowlist 工具且额度 > 0 时注入
-            # （模型自主判断是否需要工具；MCP_MAX_TOOL_CALLS=0 视为禁用工具）
-            if self.tool_manager is not None and self.tool_manager.is_enabled() and mcp_max_calls > 0:
-                tool_payload = self.tool_manager.build_tools_payload()
-                if tool_payload:
-                    if tool_quota is None:
-                        tool_quota = {"max": mcp_max_calls, "used": 0}
-                    kwargs = {
-                        **kwargs,
-                        "tools": tool_payload,
-                        "tool_caller": self.tool_manager.call_tool,
-                        "max_tool_calls": mcp_max_calls,
-                        "tool_quota": tool_quota,
-                    }
             # 花语记忆检索（群隔离；ON 且可用时注入语义记忆，失败降级为空串）
             _gid = kwargs.get("group_id")
             if _gid is None:
@@ -203,8 +198,48 @@ class AiGateway:
                 _rule = _sr.get(kwargs["group_id"])
                 if _rule:
                     kwargs["group_style_rules"] = _rule
-            reply, memory_update = await self.ai_client.chat_once(**kwargs)
-            if reply and reply.strip() or (memory_update and reply is None):
+            # 工具 payload：MCP（启用、有 allowlist 工具且额度 > 0）+ 内部 reply 工具
+            # （与 MULTI_REPLY_ENABLED 同一开关；Phase 12 不新增配置项）
+            mcp_tools: list = []
+            mcp_caller = None
+            if self.tool_manager is not None and self.tool_manager.is_enabled() and mcp_max_calls > 0:
+                mcp_tools = self.tool_manager.build_tools_payload()
+                mcp_caller = self.tool_manager.call_tool
+            tool_payload = list(mcp_tools)
+            if reply_capture is not None and not reply_tools_off:
+                tool_payload.append(REPLY_TOOL_SCHEMA)
+            # 每次 attempt 单独组装：降级后不带 tools，也不污染 kwargs
+            attempt_kwargs = dict(kwargs)
+            if tool_payload:
+                if tool_quota is None:
+                    tool_quota = {"max": max(1, mcp_max_calls), "used": 0}
+                attempt_kwargs.update({
+                    "tools": tool_payload,
+                    "tool_caller": (make_tool_caller(reply_capture, mcp_caller)
+                                    if reply_capture is not None else mcp_caller),
+                    "max_tool_calls": int(tool_quota["max"]),
+                    "tool_quota": tool_quota,
+                })
+            reply, memory_update = await self.ai_client.chat_once(**attempt_kwargs)
+            # Native Reply Tool 捕获优先：以 List[str] 回到既有回复链路
+            #（与旧式 JSON 多条完全同型 → plan_from_config 的门控/clamped 照常生效）
+            if reply_capture is not None and reply_capture.captured:
+                reply = list(reply_capture.messages)
+            # Phase 9：provider 拒绝 tools（不可重试的 4xx）→ 同一次 attempt 内立即退回纯文本。
+            # 仅在「本次只带了内部 reply 工具（无 MCP 工具）」时触发，MCP 语义完全不变；
+            # 工具路径本身就是一次预算内的多轮 HTTP 请求（见 AIClient.chat_with_messages），
+            # 且此处不消耗新的重试额度，所以不会绕过预算闸门。
+            if (reply_capture is not None and not reply_tools_off and not mcp_tools
+                    and not first_text(reply) and not getattr(self.ai_client, "_retryable", True)):
+                reply_tools_off = True
+                logger.warning(
+                    "reply_tool_downgrade group=%s user=%s attempt=%d",
+                    group_id, user_id, attempt + 1,
+                    extra={"event": "reply_tool_downgrade", "attempt": attempt + 1},
+                )
+                reply, memory_update = await self.ai_client.chat_once(
+                    **{k: v for k, v in attempt_kwargs.items() if k not in _TOOL_KWARGS})
+            if first_text(reply) or (memory_update and reply is None):
                 # 纯记忆回合（reply 空但有记忆产出）视为成功，不再浪费预算重试
                 latency = time.monotonic() - started
                 _M_AI_OK.inc()

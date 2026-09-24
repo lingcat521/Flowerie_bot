@@ -5,6 +5,22 @@
 > **维护状态：停更一年（2026-09-04 起）** —— 仓库不归档；停更期间的兼容性维护以 2.2.2xx 递增发布。
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [未发布]
+
+### 新增 —— Native Reply Tool（AI 自主决定拆不拆、拆几条）
+
+- 开启 `MULTI_REPLY_ENABLED` 后，模型额外获得内部工具 `reply({"messages": [...]})`：
+  由 AI 自主决定消息边界，**不新增配置开关**（与 Multi-Reply 同一开关，Phase 12）
+- 工具调用**不直接发送**：只捕获 `messages[]`，再以 `List[str]` 回到既有链路
+  （`plan_from_config` 开关门控 + `clamped` 上限 → `ReplySender` → OneBot/Milky），
+  因此条数上限、间隔、连续回复计数、冷却、失败策略、协议能力检查全部照旧生效
+- provider 不支持 tool calling（带工具请求 4xx）时**同一次请求内**降级为纯文本，不影响正常回复；
+  仅当本次只带内部工具时触发，MCP 工具语义不变
+- 顺手修掉旧式 JSON 多条在准入层的崩溃：`reply.strip()` / `extract_sticker()` / `is_duplicate_reply()`
+  此前把 `list` 当 `str` 用（AttributeError / TypeError）→ 新增 `reply_plan.first_text()` 统一取首条，
+  查重、表情包标记、兜底与日志都改用它
+- 测试：`tests/test_native_reply_tool.py`（18 条，覆盖任务书 Phase 10 的 12 类断言）
+
 **版本速览**：2.2.22222 · 2.2.2222 · 2.2.222 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
 
 ---
