@@ -23,7 +23,8 @@ def test_validate_postgres_requires_url():
 
 def test_migrate_missing_table_skips():
     from src.services.storage_migrate import _migrate_with_rollback
-    db = tempfile.mktemp(suffix=".db")
+    fd, db = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
     conn = sqlite3.connect(db)
     conn.execute("CREATE TABLE memory (note_id INTEGER PRIMARY KEY, user_id INTEGER, group_id INTEGER, text TEXT)")
     conn.execute("INSERT INTO memory (note_id, user_id, group_id, text) VALUES (1, 7, 1, 'hello')")

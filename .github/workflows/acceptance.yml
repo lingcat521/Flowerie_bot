@@ -1,6 +1,9 @@
 name: Acceptance
 
 # 只跟随 main 分支推送触发（避免标签推送导致同一 SHA 重复运行）
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]

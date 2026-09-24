@@ -13,7 +13,7 @@ from src.sdk.message import BotMessage
 from src.sdk.onebot.dto import EventDTO
 
 # [CQ:at,qq=123] / [CQ:at,qq=123,name=x]（qq 可能为 all）
-_CQ = re.compile(r"\[CQ:([a-zA-Z0-9_]+)((?:,[^\[\]]*)*)\]")
+_CQ = re.compile(r"\[CQ:([a-zA-Z0-9_]+)((?:,[^\[\],][^\[\]]*)*)\]")
 
 
 def extract_text(message: Any) -> str:

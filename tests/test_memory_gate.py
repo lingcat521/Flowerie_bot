@@ -1,5 +1,6 @@
 """MEMORY_ENABLED gate 回归：关闭时不读/写长期记忆（参数曾丢失——CI 黑盒抓出）。"""
 import asyncio
+import os
 import tempfile
 
 from src.services.memory_manager import MemoryManager
@@ -43,7 +44,8 @@ class StubRepo:
 
 
 def make_mgr(enabled):
-    db = tempfile.mktemp(suffix=".db")
+    fd, db = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
     repo = StubRepo()
     return MemoryManager(db, 0, None, 30, repository=repo, memory_enabled=enabled), repo
 
