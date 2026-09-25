@@ -18,27 +18,50 @@
 
 | 测试 | TypeScript | Go | Rust | Java | Python |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Build | 见 §3 | | | | |
-| Load | | | | | |
-| Ready | | | | | |
-| Ping | | | | | |
-| Info | | | | | |
-| Echo | | | | | |
-| Event | | | | | |
-| Call | | | | | |
-| Error | | | | | |
-| Permission | | | | | |
-| Shutdown | | | | | |
+| Build | **PASS** | **PASS** | **PASS** | **PASS** | **PASS**（无需构建）|
+| Load | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Ready | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Ping | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Info | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Echo | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Event | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Call | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Error | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Permission | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
+| Shutdown | **PASS** | **PASS** | **PASS** | **PASS** | **PASS** |
 
 三条核心链路：**TS → Go**、**TS → Java**、**TS → TS**（见 §4）。
 
 ## 3. 本机（Termux 沙箱）结果
 
-（待填：本地 11 行表中 Python 全 PASS，其余 BLOCKED BY ENVIRONMENT + 缺什么）
+`pytest -q tests/sdk/` → **9 passed / 37 skipped**：Python 一列 11 行全 PASS，
+其余四种语言**全部 SKIP 并写明原因**（不是 PASS）：
 
-## 4. 跨语言链路结果
+| 语言 | 本机状态 | 原因（缺什么）|
+| :--- | :--- | :--- |
+| TypeScript | SKIP | **BLOCKED BY ENVIRONMENT**：引擎按环境变量白名单启动插件进程，Termux 前缀里的 node 需要 `libtermux-exec` 的 `LD_PRELOAD` 才能 exec（白名单是安全不变式，不为测试放宽）|
+| Go | SKIP | **BLOCKED BY ENVIRONMENT**：本机无 go 工具链（Termux 的 go 在非标准前缀下不可用；官方 tarball 是 ET_EXEC，Android 拒绝执行）|
+| Rust | SKIP | **BLOCKED BY ENVIRONMENT**：本机无 rustc（官方 channel 没有 aarch64-linux-android 宿主编译器，且无 cc/ld）|
+| Java | SKIP | **BLOCKED BY ENVIRONMENT**：本机无 JDK（Termux 包按 `/data/data/com.termux` 前缀编译，无法在本沙箱运行）|
 
-（待填：§五 七条链路）
+另外本沙箱 `/storage`（FUSE）不支持执行位、禁止硬链接（容器方案 udocker 因此无法解包镜像）——
+这些都不影响验收口径：编译型语言的证据一律以 CI 为准。
+
+## 4. 跨语言链路结果（CI 真跑）
+
+| 链路 | 结果 | 说明 |
+| :--- | :--- | :--- |
+| **TS → Go** | **PASS** | 最低验收路径：TS 插件 `plugin.call("minimal_go","ping")` 经 Core 到达真 Go 插件 |
+| **TS → Java** | **PASS** | 最低验收路径（`echo` 原样返回 `{"hello":"world"}`）|
+| **TS → TS** | **PASS** | 最低验收路径：两个真 TS 插件进程（第二实例 `minimal_ts_2`）|
+| Python → Go | PASS（扩展）| 任务书"如果对应语言 Runtime 已完成也增加" |
+| Python → TypeScript | PASS（扩展）| 同上 |
+| Go → Rust | PASS（扩展）| 同上 |
+| Rust → Java | PASS（扩展）| 同上 |
+
+- 每条链路都验了：`ping` 的结果、`echo` 的原样返回、以及 **AUTO / LOCAL / CORE 三种路由策略结果一致**（§七）。
+- §六 的完整例子（TS 依次调用 Go ping → Java echo → TS2 ping）由
+  `test_typescript_chain_go_and_java` 验过。
 
 ## 5. §十八 17 问
 
@@ -100,9 +123,28 @@
     - **本机沙箱**：`/storage`（FUSE）不能 exec 文件、本机缺 go/rustc/JDK、禁硬链接（容器方案不可用），
       因此编译型语言的真编译只能由 CI 采信。
 
-## 6. CI
+## 6. CI（真数字，最终提交 `54dfe97`）
 
-（待填：本轮 CI 记录 + 红→绿）
+| workflow / 步骤 | 结果 | 关键数字 |
+| :--- | :--- | :--- |
+| `CI` · Ruff check | **success** | All checks passed!（3.9 与 3.12 两个 job）|
+| `CI` · SDK 语言矩阵（`pytest -q -s tests/sdk/`）| **success** | **46 passed，0 skipped** —— 五种语言真 build、真启动、真调用、真关闭；§十七 表与 §五 表就打印在这一步 |
+| `CI` · 全量 pytest | **success** | **2136 passed / 22 skipped** |
+| `Acceptance` | **success** | **37/37 通过**（pytest 2178 passed / 26 skipped + ruff clean）|
+| `Push on main` | **success** | CodeQL（actions / javascript-typescript / python）全过 |
+
+### 6.1 红 → 绿（如实记录，五轮）
+
+| commit | 结果 | 根因 | 修复 |
+| :--- | :--- | :--- | :--- |
+| `f373b5b` | 红 | ① Ruff 3 条（F401 ×2、B007）；② harness 把插件拷到仓库外导致 SDK 相对路径失效；③ 缺诊断手段 | 修 Ruff；构建时铺出与仓库一致的布局；新增独立启动探针（带回 stderr）|
+| `35f552f` | 红（35 passed / 11 failed）| ① 10 条链路用例把 `ping` 的 label 写死成 `minimal-xx`（契约是"被调方自己的 plugin_id 换下划线"）；② Java 把引擎事件注册到了 `plugin.on`（那是插件间事件订阅）| 断言改为由被调方 id 推导；Java 改用 `onEvent` |
+| `36ebac3` | 红（10 failed，全是 Java）| ① Java 的 `onEvent` lambda 调用了返回 void 的方法，javac 报 "bad return type in lambda expression"；② harness 把**失败的构建结果也缓存**了，导致后续用例把"编译失败"演成"initialize 超时" | lambda 返回 null；构建失败不进缓存（直接断言失败）|
+| `9a4be87` | 红 | Ruff B011：`assert False` | 改成 `raise AssertionError` |
+| `54dfe97` | **绿** | —— | —— |
+
+> 这五轮里，只有"Java 事件注册通道"是真的 SDK 用法错误，其余都是测试/harness 自身的问题 ——
+> 而它们**只有 CI 能抓**（本机四种语言全 SKIP）。这正是"skip 不等于 pass"的价值。
 
 ## 7. §十六 禁止事项自查
 
