@@ -49,6 +49,9 @@ class MessageAssembler:
             full_text += f"\n[用户发送了一张图片，内容如下：]\n{cleaned_descs}\n[图片内容结束]"
             logger.debug(f"Image descriptions: {image_descriptions}")
 
+        # 表情（QQ 表情 / 商城表情）：Adapter 已归一化，这里只做语义化（证据见 docs/message-model.md §3）
+        full_text += self._assemble_faces(event)
+
         # 回复与@：边界语义字段（parser 与旧 _scan_reply_and_at 同规则）
         is_reply_to_bot = event.is_reply_to_bot
         has_reply_to_other = event.has_reply_to_other
@@ -129,6 +132,43 @@ class MessageAssembler:
         return block
 
     # ---------- JSON 卡片 ----------
+    def _assemble_faces(self, event) -> str:
+        """把表情归一化字段变成 AI 能理解的一句话。
+
+        证据：
+        - [CODE] NapCat napcat-onebot/types/message.ts：face{id,resultId?,chainCount?}、
+          mface{emoji_package_id,emoji_id,key,summary}；
+        - [CODE] Milky 作者实现 Entity/Segment/FaceSegment.cs（face{face_id,is_large}）、
+          LLBot market_face{summary,url} —— 三家字段不同但语义同属「QQ 表情」。
+        - [INFERENCE] 统一表达成文本提示；Core 只读 Adapter 归一化结果，不读协议字段。
+
+        上限 3 条：与图片/转发一致，防单条消息刷屏。
+        """
+        faces = getattr(event, "faces", None) or []
+        if not faces:
+            return ""
+        parts = []
+        for f in faces[:3]:
+            if not isinstance(f, dict):
+                continue
+            if f.get("kind") == "market_face":
+                desc = str(f.get("summary") or f.get("emoji_id") or "商城表情")
+                parts.append("[商城表情 " + desc + "]")
+            else:
+                fid = str(f.get("face_id") or "?")
+                extra = []
+                if f.get("chain_count"):
+                    extra.append("连击 x%s" % f["chain_count"])
+                if f.get("is_large"):
+                    extra.append("大表情")
+                suffix = ("，" + "，".join(extra)) if extra else ""
+                parts.append("[QQ 表情 id=" + fid + suffix + "]")
+        if not parts:
+            return ""
+        # 表情摘要来自 QQ/客户端，按不可信数据处理
+        note, _hit = sanitize_untrusted_text(" ".join(parts))
+        return chr(10) + "[用户发送了表情：" + note + "]"
+
     def _multimsg_as_forward(self, message_array: List[Dict]):
         """把 app=com.tencent.multimsg 的 json 卡片转成等价的 forward 段；无则 None。
 
