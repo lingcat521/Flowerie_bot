@@ -26,6 +26,9 @@ class _FileParser:
         return (self.forward_text, [], self.forward_ok)
 
     def extract_json_card_content(self, message_array):
+        # 与真实实现一致的契约：没有 json 段就没有卡片内容（否则 stub 比真实实现更宽松）
+        if not any(isinstance(x, dict) and x.get("type") == "json" for x in (message_array or [])):
+            return ("", False)
         self.card_calls += 1
         return (self.card_text, True)
 
