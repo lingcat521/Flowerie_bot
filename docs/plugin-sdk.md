@@ -15,6 +15,15 @@
 | **Java** | [../sdk/java/](../sdk/java/src/main/java/dev/flowerie/sdk/FloweriePlugin.java) | 无（JDK；自带极简 JSON）| `runtime=exec` → `javac` + `java` | [../examples/java-plugin/](../examples/java-plugin/README.md) |
 | 其它任意语言 | 直接实现协议即可 | —— | `runtime=exec` | 13 种语言最小实现见 [plugin-developer-guide.md §31](plugin-developer-guide.md) |
 
+每种语言的完整参考（安装/最小示例/API 一览/与 Python 的能力对照/自查命令/已知限制）：
+
+| 单语言文档 | 覆盖 |
+| :--- | :--- |
+| [plugin-sdk-typescript.md](plugin-sdk-typescript.md) | TypeScript / Node.js（含零依赖 tsc 编译与 shims/node.d.ts） |
+| [plugin-sdk-go.md](plugin-sdk-go.md) | Go（零第三方依赖，读/处理分离的运行时模型） |
+| [plugin-sdk-rust.md](plugin-sdk-rust.md) | Rust（零 crate 依赖，自带极简 JSON） |
+| [plugin-sdk-java.md](plugin-sdk-java.md) | Java（零第三方依赖，只用 JDK） |
+
 **为什么其它语言不需要自己写 HTTP 服务器**：HTTP/静态资源/页面渲染都由 Flowerie 的 WebUI Runtime 负责，
 插件只在 stdio 上说协议（任务书第 3 份 §十 的要求）。
 

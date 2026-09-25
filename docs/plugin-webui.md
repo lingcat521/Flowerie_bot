@@ -9,6 +9,10 @@
 >
 > 二者可共存（逐页选择）；新插件请直接用 HTML。
 > 完整可复制示例：[../examples/plugins/html_webui_demo/](../examples/plugins/html_webui_demo/README.md)。
+>
+> **插件用自己的语言实现页面**（Python / TypeScript / Go / Rust / Java 同一套能力）见
+> [plugin-webui-protocol.md](plugin-webui-protocol.md)：`webui.page` / `webui.action` / `webui.asset`
+> 三个协议方法 + 6 项 `webui.*` 权限 + 受控 context。
 
 ## 0. 一句话原理
 

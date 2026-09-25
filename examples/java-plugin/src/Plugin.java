@@ -55,7 +55,8 @@ public final class Plugin {
                 Json.obj("vars", Json.obj("nickname", readNickname(plugin))));
 
         plugin.webUI()
-                .page(webuiArgs -> Json.obj("html", settingsForm(plugin.context().pluginId()),
+                .page(webuiArgs -> Json.obj(
+                        "html", settingsForm(ctxPluginId(webuiArgs, plugin.context().pluginId())),
                         "vars", Json.obj("nickname", readNickname(plugin))))
                 .action(webuiArgs -> {
                     Object action = webuiArgs.get("action");
@@ -70,7 +71,8 @@ public final class Plugin {
                             nickname = String.valueOf(raw);
                         }
                     }
-                    return Json.obj("html", settingsForm(plugin.context().pluginId()),
+                    return Json.obj(
+                            "html", settingsForm(ctxPluginId(webuiArgs, plugin.context().pluginId())),
                             "vars", Json.obj("nickname", nickname),
                             "message", "已保存",
                             "config_set", Json.obj("nickname", nickname),
@@ -87,6 +89,21 @@ public final class Plugin {
         plugin.onShutdown(ctx -> ctx.log("java 示例插件退出"));
 
         plugin.run();
+    }
+
+    /** 取引擎给的受控 context 里的 plugin.id（插件不自己声明身份），拿不到再退回本地 ctx。 */
+    private static String ctxPluginId(Map<String, Object> args, String fallback) {
+        Object context = args.get("context");
+        if (context instanceof Map) {
+            Object pluginInfo = ((Map<?, ?>) context).get("plugin");
+            if (pluginInfo instanceof Map) {
+                Object id = ((Map<?, ?>) pluginInfo).get("id");
+                if (id instanceof String && !((String) id).isEmpty()) {
+                    return (String) id;
+                }
+            }
+        }
+        return fallback;
     }
 
     /** 读本插件 storage 里的昵称（与 ctx.storageGet 同一份文件）。 */

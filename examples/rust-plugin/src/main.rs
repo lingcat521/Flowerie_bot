@@ -63,9 +63,9 @@ fn main() {
 
     plugin
         .webui()
-        .page(|ctx: &Context, _args: &Json| {
+        .page(|ctx: &Context, args: &Json| {
             Json::obj(vec![
-                ("html", Json::str(&settings_form(&ctx.plugin_id))),
+                ("html", Json::str(&settings_form(&ctx_plugin_id(args, &ctx.plugin_id)))),
                 ("vars", Json::obj(vec![("nickname", Json::str(&read_nickname(ctx)))])),
             ])
         })
@@ -84,7 +84,7 @@ fn main() {
                 .unwrap_or("")
                 .to_string();
             Json::obj(vec![
-                ("html", Json::str(&settings_form(&ctx.plugin_id))),
+                ("html", Json::str(&settings_form(&ctx_plugin_id(args, &ctx.plugin_id)))),
                 ("vars", Json::obj(vec![("nickname", Json::str(&nickname))])),
                 ("message", Json::str("已保存")),
                 ("config_set", Json::obj(vec![("nickname", Json::str(&nickname))])),
@@ -112,6 +112,16 @@ fn main() {
         eprintln!("[flowerie] 运行失败: {}", err);
         std::process::exit(1);
     }
+}
+
+/// 取引擎给的受控 context 里的 plugin.id（插件不自己声明身份），拿不到再退回本地 ctx。
+fn ctx_plugin_id(args: &Json, fallback: &str) -> String {
+    args.get("context")
+        .and_then(|context| context.get("plugin"))
+        .and_then(|plugin| plugin.get("id"))
+        .and_then(|id| id.as_str())
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| fallback.to_string())
 }
 
 /// 读本插件 storage 里的昵称（与 `Context::storage_get` 同一份文件）。
