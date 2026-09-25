@@ -202,6 +202,11 @@ class MessageAssembler:
 
     async def _assemble_card(self, message_array: List[Dict]) -> str:
         # multimsg 卡片 = 合并转发（证据见 _multimsg_as_forward）：优先按转发拉内层
+        # 优先级（多卡片同条消息时，P4 决策 + 测试锁定 test_multimsg_card.py）：
+        #   1) 第一个 app=com.tencent.multimsg 的卡片 -> 拉内层转发（内层即消息本体）
+        #   2) 拉取失败 -> 退回卡片文本路径
+        #   3) 其余普通卡片 -> 文本合并由 file_parser.extract_json_card_content 内部完成
+        #   4) multimsg 成功时，同条消息里的其它卡片**不**再渲染（实践中一条消息只有一个卡片）
         fwd = self._multimsg_as_forward(message_array)
         if fwd is not None:
             block = await self._assemble_forward(fwd)

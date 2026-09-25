@@ -115,3 +115,40 @@ async def test_non_json_segments_ignored():
     out = await _assembler(fp)._assemble_card([{"type": "text", "data": {"text": "hi"}}])
     assert fp.forward_calls == []
     assert out == ""
+
+
+# ---------- 多卡片同条消息：优先级明确化（P4 项 3 的决策）----------
+# 背景：一条消息里出现多个 json 段在实践中很少（各客户端源码未见构造多处卡片的代码），
+# 但行为必须**写清并锁定**，避免以后有人以为"所有卡片都会被渲染"。
+
+@pytest.mark.asyncio
+async def test_multimsg_wins_over_other_cards_in_same_message():
+    fp = _FileParser(forward_text="转发内容")
+    out = await _assembler(fp)._assemble_card([
+        _multimsg_segment(resid="r-first"),
+        _multimsg_segment(resid="r-second", app="com.tencent.miniapp_01"),
+    ])
+    assert len(fp.forward_calls) == 1
+    assert fp.forward_calls[0][0]["data"]["id"] == "r-first"   # 只取第一个 multimsg
+    assert fp.card_calls == 0                                   # 其余卡片不再走文本路径
+    assert "转发内容" in out
+
+
+@pytest.mark.asyncio
+async def test_two_multimsg_cards_only_first_resid_used():
+    fp = _FileParser(forward_text="内层")
+    await _assembler(fp)._assemble_card([_multimsg_segment(resid="r1"), _multimsg_segment(resid="r2")])
+    assert [c[0]["data"]["id"] for c in fp.forward_calls] == ["r1"]
+
+
+@pytest.mark.asyncio
+async def test_multiple_normal_cards_use_parser_merged_text():
+    # 普通卡片（非 multimsg）：文本合并发生在 file_parser.extract_json_card_content 内部
+    # （它对所有 json 段收集字符串到一个 set），组装层只调用一次、原样使用其返回。
+    fp = _FileParser(card_text="卡片A 卡片B")
+    out = await _assembler(fp)._assemble_card([
+        {"type": "json", "data": {"data": '{"app":"a","title":"卡片A"}'}},
+        {"type": "json", "data": {"data": '{"app":"b","title":"卡片B"}'}},
+    ])
+    assert fp.card_calls == 1 and fp.forward_calls == []
+    assert "卡片A 卡片B" in out

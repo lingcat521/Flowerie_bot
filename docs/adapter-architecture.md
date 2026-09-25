@@ -92,8 +92,8 @@ Plugin SDK → Core / Event / Session → Adapter → OneBot 11 / Milky / 具体
 
 | 项 | 状态 | 理由 / 阻塞 |
 | :--- | :--- | :--- |
-| 发送侧"独占消息"规则（FILE/VIDEO/ARK/PTT）| **已核实：无需实现** | 该拆分是 NapCat 合并转发路径内部行为（`SendMsg.ts` L411-431，全文仅 L417 一处比较），普通发送不受影响 —— 见 §9 C1 |
-| 多段卡片合并策略 | **未定** | 一条消息含多个 `json` 段时，`_assemble_card` 目前只处理第一个；是否合并需真实样本佐证 |
+| 发送侧"独占消息"规则（FILE/VIDEO/ARK/PTT）| **已核实：无需实现**（C1）| 该拆分是 NapCat 合并转发路径内部行为（`SendMsg.ts` L411-431，全文仅 L417 一处比较），普通发送不受影响 —— 见 §9 C1 |
+| 多段卡片合并策略 | **已决策并锁定**（2026-08-09）| 优先级：① 第一个 `app=com.tencent.multimsg` 卡片走拉内层转发；② 拉取失败退回卡片文本；③ 普通卡片的文本合并由 `file_parser.extract_json_card_content` 内部完成（它对所有 `json` 段收集字符串）；④ multimsg 成功时同条消息的其它卡片不再渲染。测试：`tests/test_multimsg_card.py`（9 用例，含 3 个多卡片用例）|
 | 能力声明（capability）系统 | **未实现** | 任务书 §十四提到；当前规模下 parser 直接判定即可，过早抽象无收益 |
 | Android 端客户端（OpenShamrock 等）| **SOURCE_UNAVAILABLE** | 仓库需鉴权克隆失败，差异保持 `[UNKNOWN]`，不编造 |
 
