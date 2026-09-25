@@ -9,7 +9,7 @@ import re
 SENDER = "src/services/sender.py"
 # OneBot→Milky 映射表与"不支持清单"已下沉到 Adapter 层（Gate B/O）；端点扫描两个文件，
 # 避免搬迁后覆盖范围缩水（任务书 §22：不能用搬迁代替检查）。
-CHANNELS = "src/adapters/action_channels.py"
+CHANNELS = "src/transport/action_channels.py"
 
 # 仍然绕过统一入口 _post 的端点（Milky 下会打到 OneBot 地址，属已知缺口）。
 # 约定：这个集合**只允许缩小**；新增端点必须走 _post，否则本测试失败。

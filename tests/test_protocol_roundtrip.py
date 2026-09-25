@@ -24,7 +24,7 @@ from src.adapters.onebot_parser import OneBotEventParser
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 BOT_QQ = 10001
 SENDER = "src/services/sender.py"
-CHANNELS = "src/adapters/action_channels.py"   # Gate B/O：协议细节已下沉到 Adapter 通道
+CHANNELS = "src/transport/action_channels.py"   # Gate B/O：协议细节已下沉到 Adapter 通道
 
 # 归一化核心字段（跨客户端比较用；不含客户端专属附加信息）
 CORE_FIELDS = ("kind", "scope", "group_id", "actor_id", "message_id", "text", "mentions",

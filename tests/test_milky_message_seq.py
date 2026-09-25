@@ -17,7 +17,7 @@ from src.adapters.milky_parser import MilkyEventParser
 SENDER = "src/services/sender.py"
 
 
-CHANNELS = "src/adapters/action_channels.py"
+CHANNELS = "src/transport/action_channels.py"
 
 
 def _sender_src() -> str:
