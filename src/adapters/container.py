@@ -16,6 +16,7 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from src.adapters.capabilities import get_descriptor
 from src.adapters.proto import EventParser, MessageSender
 
 
@@ -28,6 +29,8 @@ class Adapters:
     bot_qq: Optional[int] = None
     # 预留：未来 adapter 实现（QQ 官方/Telegram 等）在此注册
     transport: str = "onebot"
+    # 能力描述符（Gate G/H）：由本组合根按协议装配，业务层按能力查询而非猜协议
+    descriptor: Optional[Any] = None
 
 
 def _missing_sender_methods(sender: Any) -> list:
@@ -59,4 +62,7 @@ def make_adapters(bot_qq: Optional[int], sender: Any, protocol: str = "onebot") 
     else:
         parser = OneBotEventParser(bot_qq=bot_qq)
         transport = "onebot"
-    return Adapters(parser=parser, sender=sender, bot_qq=bot_qq, transport=transport)
+    # 能力描述符随解析器一起装配（Gate G/H）：上层用 capabilities.supports(...) 判断，不去猜协议
+    descriptor = get_descriptor("milky" if transport == "milky" else "onebot11")
+    return Adapters(parser=parser, sender=sender, bot_qq=bot_qq, transport=transport,
+                    descriptor=descriptor)

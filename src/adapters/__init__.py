@@ -8,6 +8,15 @@
 
 **依赖方向**：本包不 import 任何具体客户端实现，也不被 Core 反向 import。
 """
+from src.adapters.capabilities import (
+    AdapterDescriptor,
+    Capability,
+    CapabilitySet,
+    CapState,
+    capability_coverage,
+    descriptors,
+    get_descriptor,
+)
 from src.adapters.compat import build_group_message, convert_legacy
 from src.adapters.container import Adapters, make_adapters
 from src.adapters.milky_parser import MilkyEventParser
@@ -15,6 +24,8 @@ from src.adapters.onebot_parser import OneBotEventParser
 from src.adapters.proto import EventParser, InternalEvent, MessageSender
 
 __all__ = ["InternalEvent", "EventParser", "MessageSender",
+           "Capability", "CapState", "CapabilitySet", "AdapterDescriptor",
+           "descriptors", "get_descriptor", "capability_coverage",
            "OneBotEventParser", "MilkyEventParser",
            "Adapters", "make_adapters",
            "build_group_message", "convert_legacy"]

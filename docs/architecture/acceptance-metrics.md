@@ -29,8 +29,8 @@
 | D | Adapter Contract Tests | 未建立 | 12 项 × 2 Adapter | ⬜ TODO |
 | E | 新增协议成本（PEC）| 未测 | Core/Services/SDK/插件 = 0 | ⬜ TODO |
 | F | 虚拟协议最小接入实验 | 未做 | 7 项实验 | ⬜ TODO |
-| G | Capability 覆盖率 | 未建立 | ≥95% | ⬜ TODO |
-| H | Capability 状态可量化 | 未建立 | 100% 有状态 | ⬜ TODO |
+| G | Capability 覆盖率 | **100%**（onebot11 / milky / onebot12 各 18/18 显式声明）| ≥95% | ✅ PASS |
+| H | Capability 状态可量化 | **100%**（五态 supported/partial/emulated/unsupported/unknown；unknown≠unsupported 有测试钉住）| 100% 有状态 | ✅ PASS |
 | I | Normalized Message 覆盖率 | 未统计 | ≥80% | ⬜ TODO |
 | J | Unknown Segment 容错 | **10/10**（OneBot + Milky 各 10）| 10/10 | ✅ PASS |
 | K | Unknown Event 容错 | **10/10**（OneBot + Milky 各 10）| 10/10 | ✅ PASS |
