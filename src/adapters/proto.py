@@ -41,6 +41,12 @@ class InternalEvent:
     is_reply_to_bot: bool = False
     has_reply_to_other: bool = False
     has_at_others: bool = False
+    # ---- 归一化段载体（证据见 docs/message-model.md §3；Core 只读这些语义字段）----
+    faces: List[Dict[str, Any]] = field(default_factory=list)     # QQ 表情 / 商城表情（kind 区分）
+    pokes: List[Dict[str, Any]] = field(default_factory=list)     # 消息段形态的戳一戳（含 shake）
+    files: List[Dict[str, Any]] = field(default_factory=list)     # 文件段（file_id/name/size/url/path）
+    json_cards: List[Dict[str, Any]] = field(default_factory=list)  # JSON/Ark 卡片：app + 是否合并转发
+    forwards: List[Dict[str, Any]] = field(default_factory=list)  # 合并转发段（id / 是否内联）
     # 高级段摘要（合并转发/卡片等）：(kind, data)；data 为平台释义 dict（解析期使用）
     segments_summary: List[Tuple[str, dict]] = field(default_factory=list)
     # 原始消息段（浅拷贝的段数组，供 GroupMessage.message_array 兼容组装；

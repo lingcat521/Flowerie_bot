@@ -70,3 +70,26 @@ LagrangeDev/Lagrange.Milky 这个**独立仓库**确实不存在（ls-remote exi
 - 更正前：AUTH_REQUIRED / 仓库不存在 → 会让人误以为 Milky 实现层没有源码；
 - 更正后：**SOURCE_OBTAINED（内嵌）**，证据已记入 protocol-reverse-engineering.md §6；
 - 教训：找不到同名独立仓库 ≠ 没有实现源码；应在同名组织的主仓库里搜关键词（本次 git ls-files | grep -i milky 命中 128 个文件）。
+
+## 第二批（生态清单触发的补充获取）
+
+| 项目 | 仓库 | HEAD | 体积 | 文件数 | 状态 |
+| :--- | :--- | :--- | ---: | ---: | :--- |
+| go-cqhttp | Mrs4s/go-cqhttp | a5923f1 | 1.5M | 121 | **SOURCE_OBTAINED** |
+| Kovi | ThriceCola/Kovi | 9decea5 | 1.1M | 114 | **SOURCE_OBTAINED** |
+| Koishi | koishijs/koishi | 5525cfd | 1.4M | 186 | **SOURCE_OBTAINED** |
+| milky-python-sdk | notnotype/milky-python-sdk | 805b194 | 1.5M | 182 | **SOURCE_OBTAINED** |
+| ROneBot | RTAkland/ROneBot | b39550f | 2.7M | 368 | **SOURCE_OBTAINED** |
+| OpenShamrock | whitechi73/OpenShamrock | — | — | — | **SOURCE_UNAVAILABLE（原仓库不可得）** |
+
+OpenShamrock 失败详情：
+
+```
+git clone https://github.com/whitechi73/OpenShamrock.git
+→ fatal: could not read Username for https://github.com: No such device or address
+```
+
+仓库搜索（OpenShamrock in:name）只剩第三方分支/适配（★0-4），未找到官方仓库。
+**影响**：安卓端 OneBot11 的字段差异在本任务中属于 [UNKNOWN]，不做任何声称。
+
+源码区累计：15 个仓库 / 369M。

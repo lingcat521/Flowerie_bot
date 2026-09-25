@@ -7,6 +7,8 @@
   与 assembler._describe_images 的差异 = 仅 file 路径图不描述——不影响当前行为）
 - 不含任何网络调用；不 import 冻结业务层
 """
+import json
+import re
 import time
 from typing import Any, Dict, List, Optional
 
@@ -21,6 +23,59 @@ def _normalize_array(raw: Any) -> List[Dict[str, Any]]:
         return [seg for seg in raw if isinstance(seg, dict)]
     return []
 
+
+def _json_app(payload) -> str:
+    """从 JSON/Ark 卡片负载里提取 app（NapCat 与 LLBot 都靠它区分卡片种类）。
+
+    证据：NapCat SendMsg.ts L289-297 与 LLBot milky/transform/message/incoming.ts L210-235
+    都判定 app === com.tencent.multimsg 才是合并转发；docs/message-model.md §3 / §4.5。
+    """
+    if isinstance(payload, dict):
+        app = payload.get("app")
+        return str(app) if app else ""
+    if isinstance(payload, str):
+        m = re.search(r'"app"\s*:\s*"([^"]*)"', payload)
+        return m.group(1) if m else ""
+    return ""
+
+
+def _parse_json_payload(data: Dict[str, Any]):
+    """json 段负载：dict / JSON 字符串 / 其它（原样保留，绝不丢内容）。"""
+    payload = data.get("data")
+    if payload is None:
+        payload = data.get("content")
+    if payload is None:
+        payload = data.get("text")
+    if isinstance(payload, str):
+        try:
+            return json.loads(payload)
+        except (ValueError, TypeError):
+            return payload
+    return payload if payload is not None else ""
+
+
+def _normalize_market_face(data: Dict[str, Any]) -> Dict[str, Any]:
+    """商城表情：NapCat/LLBot 字段名不同但语义一致（见 docs/message-model.md §3）。"""
+    return {
+        "kind": "market_face",
+        "emoji_id": str(data.get("emoji_id") or ""),
+        "package_id": str(data.get("emoji_package_id") or ""),
+        "key": str(data.get("key") or ""),
+        "summary": str(data.get("summary") or ""),
+        "url": str(data.get("url") or ""),
+    }
+
+
+def _normalize_file_segment(data: Dict[str, Any]) -> Dict[str, Any]:
+    """文件段：各家字段集不同（LLBot 有 file_id/path；NapCat FileBase 没有 file_id），逐字段兜底。"""
+    name = data.get("file") or data.get("name") or data.get("file_name") or ""
+    return {
+        "file_id": str(data.get("file_id") or data.get("id") or ""),
+        "name": str(name),
+        "size": data.get("file_size") or data.get("size"),
+        "url": str(data.get("url") or ""),
+        "path": str(data.get("path") or ""),
+    }
 
 class OneBotEventParser:
     """OneBot raw dict → InternalEvent（转换唯一入口；raw_data 隔离保留）。"""
@@ -84,6 +139,11 @@ class OneBotEventParser:
         reply_id: Optional[int] = None
         is_reply_to_bot = has_reply_to_other = has_at_others = False
         summary: List[tuple] = []
+        faces: List[Dict[str, Any]] = []
+        pokes: List[Dict[str, Any]] = []
+        files: List[Dict[str, Any]] = []
+        json_cards: List[Dict[str, Any]] = []
+        forwards: List[Dict[str, Any]] = []
         for seg in arr:
             seg_type = str(seg.get("type") or "")
             data = seg.get("data") if isinstance(seg.get("data"), dict) else {}
@@ -118,9 +178,32 @@ class OneBotEventParser:
                 elif replied_qq:
                     has_reply_to_other = True
             elif seg_type == "forward":
+                forwards.append({"id": str(data.get("id") or ""),
+                                 "inline": bool(data.get("messages"))})
                 summary.append(("forward", dict(data)))
             elif seg_type == "json":
+                payload = _parse_json_payload(data)
+                app = _json_app(payload)
+                json_cards.append({
+                    "app": app,
+                    "is_forward_card": app == "com.tencent.multimsg",
+                    "payload": payload if isinstance(payload, (dict, str)) else str(payload),
+                })
                 summary.append(("json", dict(data)))
+            elif seg_type == "face":
+                faces.append({"kind": "face", "face_id": str(data.get("id") or ""),
+                              "result_id": str(data.get("resultId") or ""),
+                              "chain_count": data.get("chainCount")})
+            elif seg_type == "mface":
+                faces.append(_normalize_market_face(data))
+            elif seg_type == "poke":
+                pokes.append({"poke_type": str(data.get("type") or ""),
+                              "poke_id": str(data.get("id") or ""), "target": None})
+            elif seg_type == "shake":
+                # LLBot 的 OneBot 实现把 face(faceType=Poke) 报成 shake{}，**不带目标**
+                pokes.append({"poke_type": "shake", "poke_id": "", "target": None})
+            elif seg_type == "file":
+                files.append(_normalize_file_segment(data))
             elif seg_type:
                 summary.append((seg_type, dict(data)))
         event.message_segments = [dict(seg) for seg in arr]  # 段浅拷贝（兼容组装）
@@ -132,6 +215,11 @@ class OneBotEventParser:
         event.is_reply_to_bot = is_reply_to_bot
         event.has_reply_to_other = has_reply_to_other
         event.has_at_others = has_at_others
+        event.faces = faces
+        event.pokes = pokes
+        event.files = files
+        event.json_cards = json_cards
+        event.forwards = forwards
         event.segments_summary = summary
 
     def _fill_notice(self, event: InternalEvent, raw: Dict[str, Any]) -> None:

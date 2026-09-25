@@ -168,6 +168,61 @@ element.elementType !== ElementType.FILE && element.elementType !== ElementType.
 2. `mention`/`mention_all` 属于 Text 元素属性 → 归一化层不能只按「段类型」判断 @；
 3. `image.sub_type=sticker` 是**图片形式的表情包** → 与 `face`/`market_face` 是三种不同的东西；
 4. `temp` 场景需要归一化层新增一类会话（当前 Flowerie 只有 group/private）。
+## 6. 生态覆盖清单（Ecosystem Coverage）
+
+> 由用户提供的 OneBot11 / Milky 生态清单整理而成。**分层判定价值**：
+>
+> - **协议端（实现端）**：决定**线上 JSON 形态** → 归一化层必须逐个核对 `[CODE]`；
+> - **SDK / 框架**：绝大多数只是**消费**同一套形态，不新增 wire 信息；只有少数「统一客户端 SDK」
+>   （如 imhelper）或兼容层（如 adapter-onebot）会暴露**字段兼容策略**，按需抽查；
+> - **工具 / 中间件**：与协议形态无关，本任务不涉及。
+>
+> 状态用 `source-acquisition.md` 的词表；**未取得源码的一律标 `NOT_INVESTIGATED`，不假装看过**。
+
+### 6.1 协议端（OneBot 11）
+
+| 项目 | 语言 | 状态 | 说明 |
+| :--- | :--- | :--- | :--- |
+| NapCatQQ | TS | **SOURCE_OBTAINED**（已逆向） | 见 protocol-reverse-engineering.md §3 |
+| LLOneBot / LLBot | TS | **SOURCE_OBTAINED**（已逆向） | 同时实现 OneBot 11 与 Milky，见 §4 |
+| Lagrange.OneBot | C# | **SOURCE_OBTAINED**（同 Lagrange.Core 仓库） | 与 Lagrange.Core 同源 |
+| Lagrange.Milky | C# | **SOURCE_OBTAINED**（内嵌 Lagrange.Core/V2） | 见 §6 |
+| OpenShamrock | Kotlin/Java | **SOURCE_UNAVAILABLE** | 原仓库（whitechi73/OpenShamrock）不可得：clone 报 could not read Username，仓库搜索只剩第三方分支/适配；**未逆向，不声称支持** |
+| go-cqhttp | Go | **SOURCE_OBTAINED** a5923f1（121 文件） | 已归档，但**是事实基线**（很多实现模仿它的字段） |
+| onebots | ? | `NOT_INVESTIGATED` | 多协议服务端（OneBot v11/v12 + Satori + Milky），仓库地址未确认 |
+| Yogurt | ? | `NOT_INVESTIGATED` | Milky 协议端，仓库地址未确认 |
+| onebot-kotlin | Kotlin | `NOT_INVESTIGATED` | |
+| oicq | JS | `ARCHIVED` | 已归档，优先级低 |
+| OneBot-YaYa / coolq-http-api / PicqBotX | — | `ARCHIVED` | 历史实现，仅在需要解释遗留字段时参考 |
+| Gensokyo / KookOneBot | — | `NOT_INVESTIGATED` | 非 QQ 平台（开黑啦/Discord），与本任务无关 |
+
+### 6.2 SDK / 框架
+
+| 项目 | 语言 | 状态 | 价值判定 |
+| :--- | :--- | :--- | :--- |
+| NoneBot2 + adapter-onebot | Python | **SOURCE_OBTAINED** | **高**：规范级参照（`poke{type,id}` 有工厂方法），兼容策略在 `v11/compat.py` |
+| Koishi | TS | **SOURCE_OBTAINED** 5525cfd（186 文件） | 中：OneBot 适配器的字段处理 |
+| Kovi | Rust | **SOURCE_OBTAINED** 9decea5（114 文件） | 中高：同时支持 Milky/OneBot 的框架，可交叉验证 |
+| ROneBot | Kotlin | **SOURCE_OBTAINED** b39550f（368 文件） | 中：OneBot11/12 + Milky 多平台库 |
+| milky-python-sdk | Python | **SOURCE_OBTAINED** 805b194（182 文件） | 中：Milky 客户端 SDK 的字段视角 |
+| imhelper | TS | `NOT_INVESTIGATED` | **高**（若取到）：统一客户端 SDK，覆盖 OneBot v11/v12 + Satori + Milky —— 与 Flowerie 同类问题 |
+| AstrBot / LangBot / Graia / ZeroBot / NsxBot / Shiro / makabaka / OlivOS / 炸毛 / Simbot / Adachi-BOT / PepperBot / melobot / AlemonJS / MuRainBot2 / NcatBot / napcat-sdk / OneBotConnecter / eridanus-dep / qcrbot-sdk / yiri-onebot / AliceBot / Overflow / kira_framework / walle-core / oxidebot / onebotv11_rs / runbot / onebot-client-next / shirosaki-onebot / @zhinjs/adapter-onebot-11 / Zhin.js / Karin / nagisa / satori-python-adapter-milky / @imhelper/milky-v1 / @onebots/protocol-milky-v1 / @zhin.js/adapter-milky / karin-plugin-adapter-milky / Saltify core / Vivian / nagisa-milky / Milky.Net.Model / milky-types / @saltify/milky-protocol / milkygen | 多语言 | `NOT_INVESTIGATED` | 低-中：**消费同一套 wire 形态**，除非发现某实现有独特字段，否则不逐个逆向；`@saltify/milky-protocol`（= `SaltifyDev/milky` 的 IR）**已取得** |
+
+### 6.3 工具 / 中间件
+
+| 项目 | 状态 | 说明 |
+| :--- | :--- | :--- |
+| matcha（模拟聊天交互） | `NOT_INVESTIGATED` | 开发辅助工具，不改变协议形态 |
+| nonebot-plugin-all4one（NoneBot 2 → OneBot 12） | `NOT_INVESTIGATED` | 协议转换插件；**若 Flowerie 未来支持 v12，可作为参考** |
+
+### 6.4 由此清单得出的行动项
+
+1. **必须逐个核对 wire 形态的**：协议端（OpenShamrock / go-cqhttp 本轮补齐；onebots / Yogurt 待确认仓库）；
+2. **值得抽查兼容策略的**：Koishi / Kovi / ROneBot / imhelper（统一 SDK）；
+3. **不逐个逆向的**：其余 SDK/框架 —— 它们的差异通常在**消费侧**（字段缺失容忍度），
+   而归一化层的健壮性应该通过**宽容解析 + unknown 保留**来覆盖，而不是给每个 SDK 写分支；
+4. **协议版本维度**：onebots 与 ROneBot 提到 OneBot **v12** —— Flowerie 目前只支持 v11，
+   这条记为 `[UNKNOWN]`（不在本任务范围内，但清单里保留）。
 ## 5. 待办（下一轮）
 
 1. SnowLuma：定位它的 OneBot/Milky 实现与事件模型；
