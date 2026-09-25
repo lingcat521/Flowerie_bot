@@ -79,7 +79,7 @@ src/
 │   └── system_status.py     # 服务器状态采集（用户状态页用，零依赖 /proc）
 ├── repositories/   # SQLite 存储层（记忆/设置/表情包索引/梗知识）
 └── utils/          # 日志/trace/指标/熔断/过期容器/任务管理
-tests/              # 1142 个测试（含 CI 资产/响应式回归/安全回归）
+tests/              # 2288 个测试（含多语言 SDK 实测 tests/sdk、Plugin WebUI tests/webui、浏览器 E2E tests/e2e）
 docs/               # 文档
 ```
 

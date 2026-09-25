@@ -14,8 +14,8 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-1142%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
-[![Acceptance Tests](https://img.shields.io/badge/acceptance-37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
+[![Tests](https://img.shields.io/badge/tests-2288%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
 
@@ -37,7 +37,10 @@
 | 🎭 自定义 Prompt | 全局 + 群聊两级人格补充（`/prompt` 命令，管理员可改） |
 | 🎲 主动发言概率配置化 | `PROACTIVE_MESSAGE_*` 上下文随机回复概率 + `ACTIVE_CHAT_*` 主动聊天循环，全部可配置 |
 | 🗣️ 发言规则 | 管理员补充规则（人格页，默认 4 行）+ 按群专属覆盖，注入所有人格最高优先级 |
-| 🧩 插件系统（Plugin System v1） | 受控插件运行时：Python / Node / **任意语言（exec，13 种语言 CI 实测：C/C++·Go·Rust·Java·C#·Kotlin·PHP·Lua·Ruby·Perl·R·TypeScript）** / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
+| 🧩 插件系统（Plugin Protocol v1） | 受控插件运行时：Python / Node / **任意语言（exec，13 种语言 CI 实测：C/C++·Go·Rust·Java·C#·Kotlin·PHP·Lua·Ruby·Perl·R·TypeScript）** / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
+| 🧰 多语言 SDK | **Python / TypeScript / Go / Rust / Java 五套官方 SDK**（零第三方依赖，能力对齐 14 项）；最小插件实测 46 条真跑：[SDK 实测报告](docs/plugin-sdk-minimal-report.md) |
+| 🔗 插件间通信 | `plugin.call()` / `plugin.emit()` / `plugin.on()` 统一抽象：跨语言经 Core Router，权限/超时/取消/环保护/trace 全链路：[插件间通信](docs/plugin-communication.md) |
+| 🖥️ Plugin WebUI | 插件自带管理页面（HTML+CSS，**零 JavaScript**）：`webui.page/action/asset` + 六项 `webui.*` 权限 + 净化/隔离：[WebUI 协议](docs/plugin-webui-protocol.md) |
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
 | 🖼️ 表情包 | 目录扫描 + Vision 索引缓存，模型按语境选择发送 |
 | 🔧 MCP 工具 | 外部工具调用（如搜索），插件式多 server + 工具白名单 + 独立熔断 |
@@ -191,7 +194,10 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/memor
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 1142 个测试（CI：Python 3.9/3.12 + PostgreSQL）
+pytest              # 2288 个测试（CI：Python 3.9/3.12 + PostgreSQL）
+pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（46 条：五语言真 build / 真调用 / 真关闭）
+pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
+pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）
 acceptance          # 37 项黑盒验收（tests/acceptance_check.py）
 ruff check .        # 代码检查
 ```

@@ -144,6 +144,9 @@
 | `cache_get(payload)` | 缓存读（等价 KV 读取） | `storage` |
 | `cache_set(payload)` | 缓存写（等价 KV 写入） | `storage` |
 | `call(payload)` | 通用语义化动作调用（v1.5；封装唯一，动作名白名单由主进程校验）。 | `—` |
+| `config_get(payload)` | 操作员配置 + 插件覆盖层（操作员的值优先）。 | `—` |
+| `config_set(payload)` |  | `—` |
+| `context_info(payload)` | 拉取引擎侧上下文（插件名/版本/已批准权限）。 | `—` |
 | `db_index(payload)` | 索引（字段索引加速查询） | `storage` |
 | `db_migration(payload)` | 迁移（插件数据域 schema 版本） | `storage` |
 | `db_query(payload)` | 数据查询（插件数据域 JSON 过滤） | `storage` |
@@ -175,6 +178,7 @@
 | `metrics(payload)` | 指标快照（全量注册表） | `plugin_admin` |
 | `mock_api(payload)` | Mock（SDK 本地测试工具；API 层→not supported） | `plugin_admin` |
 | `now(payload)` |  | `—` |
+| `permission_check(payload)` | 查询管理员是否批准了某权限（只读；无法提权）。 | `—` |
 | `quote_chain(payload)` | 引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义） | `read_message_history` |
 | `random_choice(payload)` |  | `—` |
 | `random_int(payload)` |  | `—` |
@@ -187,6 +191,10 @@
 | `split_message(payload)` | 消息拆段（payload.text；按段/长度拆分，纯本地语义） | `read_message` |
 | `sse(payload)` | SSE 通道（v1 明确不支持→not supported） | `plugin_admin` |
 | `static_file(payload)` | 静态文件（插件 WebUI 空间；列/取链接） | `plugin_admin` |
+| `storage_delete(payload)` |  | `—` |
+| `storage_get(payload)` | 读取本插件存储（与 TypeScript/Go/Rust/Java 的 ctx.storageGet 同名同义）。 | `—` |
+| `storage_list(payload)` |  | `—` |
+| `storage_set(payload)` |  | `—` |
 | `task_cancel(payload)` | 任务取消（v1 主进程无句柄→not supported；SDK TaskManager 提供） | `plugin_admin` |
 | `task_pause(payload)` | 任务暂停（同上） | `plugin_admin` |
 | `task_resume(payload)` | 任务恢复（同上） | `plugin_admin` |

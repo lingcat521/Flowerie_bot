@@ -1,14 +1,15 @@
 # Flowerie 文档
 
-> 对应 **v2.2.6**：维护性更新 —— Code Scanning 全量安全整改、原生多条回复（Multi-Reply +
-> **AI 自主拆分的 Native Reply Tool**）、Milky 能力补齐（协议 1.3 / 65 动作全量对照）、花语记忆门控修复；
+> 对应 **v2.2.6**：Code Scanning 全量安全整改、原生多条回复（Multi-Reply + AI 自主拆分的 Native Reply Tool）、
+> Milky 能力补齐（协议 1.3 / 65 动作全量对照）、**多语言 SDK（五语言，46 条最小插件实测）**、
+> **插件间通信（plugin.call/emit/on + Core Router）**、**Plugin WebUI 第二阶段（真服务器 + 真浏览器 E2E）**；
 > 更早版本见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走
 
 | 你的目标 | 按顺序读 |
 | --- | --- |
-| 🧩 **写插件** | [quick-start](quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugin-webui.md) / [sdk](sdk.md) / [api](api.md)；**不用 Python/Node？** 直接看 [plugin-developer-guide](plugin-developer-guide.md) §31（13 种语言最小实现）（13 种语言最小实现，照抄即可） |
+| 🧩 **写插件** | [quick-start](quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugin-webui.md) / [sdk](sdk.md) / [api](api.md)；**不用 Python/Node？** 直接看 [plugin-developer-guide](plugin-developer-guide.md) §31（13 种语言最小实现，照抄即可） |
 | 🔧 **部署运维** | 安装（[Windows](install-release-windows.md) · [Linux/macOS/Termux 资产](install-release-guide.md) · [**Termux 权威步骤**](install-termux.md)）→ [configuration](configuration.md) → [web-ui](web-ui.md) → [security](security.md) |
 | 🛠 **改代码** | [development](development.md)（目录结构 / 测试 / CI）→ [sdk](sdk.md)（三层架构）→ [archive/](archive/README.md)（历史审计） |
 
@@ -32,6 +33,8 @@
 | [plugin-communication.md](plugin-communication.md) | **插件间通信协议**：五类消息 / 请求·响应·错误模型 / 12 个错误码 / 语言无关类型与 DTO / 十四节权限 / LOCAL·CORE·AUTO 路由 / 五语言 API 对照 | 插件开发者 |
 | [plugin-sdk-minimal-test.md](plugin-sdk-minimal-test.md) | **多语言 SDK 最小化插件实测契约**：五种语言的 ping/get_info/echo、/sdk 命令表、动作形状、错误探针、Build/Load 分离 | 插件开发者 + 评审 |
 | [plugin-sdk-minimal-report.md](plugin-sdk-minimal-report.md) | **最小化插件实测报告**：§十七 验收表（11 行 × 5 语言）+ 七条跨语言链路 + §十八 17 问 + 五轮红→绿 | 评审 |
+| [plugin-webui-test.md](plugin-webui-test.md) | **Plugin WebUI 第二阶段测试说明**：现状审计（DSL vs HTML / 路由 / 零 JS 策略）、测试目录、安全边界、环境与阻塞口径 | 插件开发者 + 评审 |
+| [plugin-webui-report.md](plugin-webui-report.md) | **Plugin WebUI 第二阶段最终报告**：环境表 / 五语言矩阵 / 三条 E2E / 安全逐项 / 回归 / QQ-P2P=BLOCKED 单列 / Gate A–R 判定 | 评审 |
 | [plugin-webui-e2e-report.md](plugin-webui-e2e-report.md) | **Plugin WebUI 真浏览器 E2E 报告**（任务书 §8/§26/§28/§31）：真 Chromium（Playwright）+ 真 WebUI 服务器 + 真插件进程；本机 BLOCKED 逐项理由 + §28 三条链路状态 + CI 片段 | 评审 |
 | [plugin-communication-report.md](plugin-communication-report.md) | **插件间通信最终验收报告**：§二十八 逐项结论 + 三条核心路径 + 禁止事项自查 + 诚实边界 | 评审 |
 | [plugin-sdk.md](plugin-sdk.md) | **多语言 SDK 指南**：五语言 API 对照 / 能力对齐 / 新语言接入清单；单语言参考见 [typescript](plugin-sdk-typescript.md) · [go](plugin-sdk-go.md) · [rust](plugin-sdk-rust.md) · [java](plugin-sdk-java.md) | 插件开发者（非 Python）|
