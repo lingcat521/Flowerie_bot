@@ -1,0 +1,43 @@
+{
+  "_provenance": {
+    "client": "llbot",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "incoming.ts L57-80：reply → ~{id: ctx.store.createMsgShortId(replyMsg)}~（LLBot 自建短 id 映射；原消息找不到时**整段丢弃**并记 warning）；L131-150：file → ~{file: fileName, url: file://…, file_id: fileUuid, path, file_size}~",
+    "version": "LLBot 9f374f6（LLOneBot/LuckyLilliaBot）",
+    "note": "字段/取值逐字取自源码；值为示例（未实机抓包）"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000301,
+  "self_id": 10001,
+  "message_id": 88002,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "reply",
+      "data": {
+        "id": "1042"
+      }
+    },
+    {
+      "type": "file",
+      "data": {
+        "file": "资料.zip",
+        "url": "file:///tmp/资料.zip",
+        "file_id": "uuid-9",
+        "path": "/tmp/资料.zip",
+        "file_size": "20480"
+      }
+    }
+  ],
+  "raw_message": "[CQ:reply,id=1042][CQ:file,file=资料.zip]",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "card": ""
+  }
+}

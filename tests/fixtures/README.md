@@ -23,6 +23,9 @@
 | `napcat/group_message_dice_rps_mface.json` | NapCat | dice/rps 用 **result** 字段 + face 扩展 + mface | `faces`（face + market_face）；dice/rps 原样保留 |
 | `napcat/group_message_new_segments.json` | NapCat | markdown / miniapp / contact / location（go-cqhttp 没有的段）| markdown 内容并入 `text`；其余原样保留 |
 | `napcat/message_sent_self.json` | NapCat | 自发送消息 `post_type=message_sent` | kind 保留 + **内容照常解析**（本轮修复）|
+| `llbot/message_shake_dice_face.json` | LLBot | shake（**空 data**）+ dice/rps（`result`）+ face（`sub_type`）| `pokes`（shake）+ 段原样保留 |
+| `llbot/message_reply_short_id_and_file.json` | LLBot | reply 用**自建短 id** + file 段带 `file_id/file_size/url` | `files` + 段原样保留（reply id 不翻译）|
+| `llbot/message_flashfile_and_keyboard.json` | LLBot | 独有段 `flash_file` / `keyboard` | 原样保留在段数组 |
 | `milky/group_message_segments.json` | Milky | 八种段混合（text/mention/face/market_face/light_app/forward/file/markdown）| 六个归一化字段全命中 |
 | `milky/group_nudge_event.json` | Milky | 戳一戳**事件**（`group_nudge`）| `kind=notice` + `notice_kind=poke` |
 | `go-cqhttp/group_message_media_array.json` | go-cqhttp | 群消息：record/video/image(含闪照)/face/dice/rps | `records` / `videos` / `images` / `image_files`（url、subType、type 原样保留）|

@@ -1,0 +1,53 @@
+{
+  "_provenance": {
+    "client": "llbot",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "incoming.ts L232-296：markdown 以 [闪传]( 开头且 busId==='FlashTransfer' → ~flash_file{title, file_set_id, scene_type}~，否则 ~markdown{content}~；inlineKeyboardElement → ~keyboard{rows:[{buttons:[{id, render_data{...}}]}]}~",
+    "version": "LLBot 9f374f6（LLOneBot/LuckyLilliaBot）",
+    "note": "这两个段 go-cqhttp / NapCat 的实现里都没有"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000302,
+  "self_id": 10001,
+  "message_id": 88003,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "flash_file",
+      "data": {
+        "title": "闪传文件",
+        "file_set_id": "fs-1",
+        "scene_type": 1
+      }
+    },
+    {
+      "type": "keyboard",
+      "data": {
+        "rows": [
+          {
+            "buttons": [
+              {
+                "id": "btn-1",
+                "render_data": {
+                  "label": "点我",
+                  "visited_label": "已点"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "raw_message": "[CQ:flash_file,file_set_id=fs-1]",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "card": ""
+  }
+}

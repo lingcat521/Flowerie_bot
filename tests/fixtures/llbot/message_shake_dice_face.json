@@ -1,0 +1,50 @@
+{
+  "_provenance": {
+    "client": "llbot",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "src/onebot11/transform/message/incoming.ts L182-222：faceType===Poke && faceIndex===1 → ~shake{data:{}}~（空对象、无目标）；FaceIndex.Dice/RPS → ~{result: resultId}~；其它 face → ~{id, sub_type: faceType}~",
+    "version": "LLBot 9f374f6（LLOneBot/LuckyLilliaBot）",
+    "note": "与 NapCat 的 dice{result} 同字段名；与 go-cqhttp 的 dice{value} 不同"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000300,
+  "self_id": 10001,
+  "message_id": 88001,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "shake",
+      "data": {}
+    },
+    {
+      "type": "dice",
+      "data": {
+        "result": "3"
+      }
+    },
+    {
+      "type": "rps",
+      "data": {
+        "result": "2"
+      }
+    },
+    {
+      "type": "face",
+      "data": {
+        "id": "14",
+        "sub_type": "1"
+      }
+    }
+  ],
+  "raw_message": "[CQ:shake][CQ:dice,result=3]",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "card": ""
+  }
+}
