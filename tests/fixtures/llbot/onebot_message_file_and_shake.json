@@ -1,0 +1,38 @@
+{
+  "_provenance": {
+    "client": "llbot",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "LLBot src/onebot11/transform/message/incoming.ts（file 段带 file_id/path；face(faceType=Poke) 被报成 shake{}，不带目标）",
+    "note": "LLBot 的 OneBot 实现与 NapCat 在 file/face 两处形态不同 —— 这正是 Adapter 要吸收的差异"
+  },
+  "time": 1756000004,
+  "self_id": 10001,
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "message_id": 2001,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "file",
+      "data": {
+        "file_id": "fid-9",
+        "file": "资料.zip",
+        "file_size": 1024,
+        "path": "/data/llbot/files/资料.zip"
+      }
+    },
+    {
+      "type": "shake",
+      "data": {}
+    }
+  ],
+  "raw_message": "",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友"
+  }
+}

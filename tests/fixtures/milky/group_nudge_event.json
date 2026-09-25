@@ -1,0 +1,20 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "LagrangeV2 Lagrange.Milky/Entity/Event/GroupNudgeEvent.cs（全文：event_type=group_nudge，data 六字段）+ Lagrange.Core 同目录副本 README（group_nudge 已实现 / friend_nudge 未实现）",
+    "note": "Milky 的戳一戳是事件而非消息段；receiver_id 才是被戳者"
+  },
+  "time": 1756000006,
+  "self_id": 10001,
+  "event_type": "group_nudge",
+  "data": {
+    "group_id": 123456,
+    "sender_id": 456789,
+    "receiver_id": 10001,
+    "display_action": "拍了拍",
+    "display_suffix": "的肩",
+    "display_action_img_url": ""
+  }
+}

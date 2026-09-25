@@ -1,0 +1,35 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "NapCat packages/napcat-onebot/action/msg/SendMsg.ts L289-297（arkElement.bytesData 内 json.app === com.tencent.multimsg 才是合并转发，resid 在 meta.detail.resid）+ LLBot src/milky/transform/message/incoming.ts L210-235（同一判定）",
+    "note": "app 分流是跨客户端共识；字段按源码构造"
+  },
+  "time": 1756000001,
+  "self_id": 10001,
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "message_id": 1234567891,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "json",
+      "data": {
+        "data": "{\"app\":\"com.tencent.multimsg\",\"meta\":{\"detail\":{\"resid\":\"ResId_ABC123\",\"uniseq\":\"uni-1\",\"news\":[{\"text\":\"群聊的聊天记录\"}]}},\"prompt\":\"[聊天记录]\",\"ver\":\"0.0.0.1\"}",
+        "config": {
+          "forward": true
+        }
+      }
+    }
+  ],
+  "raw_message": "[CQ:json,data=...]",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "role": "member"
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[CODE]+[DOC]",
+    "captured": false,
+    "evidence": "LLBot src/milky/transform/event.ts L80/L99/L118（message_scene/peer_id/sender_id/message_seq）+ LagrangeV2 Lagrange.Milky/Entity/Segment/ISegment.cs L6-18（13 种 incoming）+ Milky 规范 protocol/src/ir/common.ts（字段定义）",
+    "note": "覆盖 face/market_face/light_app/forward/file/markdown 六种此前未归一化的段"
+  },
+  "time": 1756000005,
+  "self_id": 10001,
+  "event_type": "message_receive",
+  "data": {
+    "message_scene": "group",
+    "peer_id": 123456,
+    "sender_id": 456789,
+    "message_seq": 998878,
+    "segments": [
+      {
+        "type": "text",
+        "data": {
+          "text": "混合段测试 "
+        }
+      },
+      {
+        "type": "mention",
+        "data": {
+          "user_id": 10001,
+          "name": "花璃"
+        }
+      },
+      {
+        "type": "face",
+        "data": {
+          "face_id": "14"
+        }
+      },
+      {
+        "type": "market_face",
+        "data": {
+          "url": "http://example/mface.png"
+        }
+      },
+      {
+        "type": "light_app",
+        "data": {
+          "app_name": "某小程序",
+          "json_payload": "{\"app\":\"com.tencent.multimsg\",\"meta\":{\"detail\":{\"resid\":\"ResId_M1\"}}}"
+        }
+      },
+      {
+        "type": "forward",
+        "data": {
+          "forward_id": "fwd-1",
+          "title": "聊天记录",
+          "preview": [
+            "甲: 你好",
+            "乙: 在吗"
+          ],
+          "summary": "查看 2 条转发消息"
+        }
+      },
+      {
+        "type": "file",
+        "data": {
+          "file_id": "mfid-1",
+          "file_name": "报表.xlsx",
+          "file_size": 2048
+        }
+      },
+      {
+        "type": "markdown",
+        "data": {
+          "content": "**公告**"
+        }
+      }
+    ]
+  }
+}

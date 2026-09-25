@@ -386,3 +386,23 @@ PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/test_multimsg_card.py tests
   `face` / `market_face` 只在副本 A 有 —— 对 Flowerie 而言都必须能解析（同生态里两种客户端并存）。
 - **教训**：同一个项目在不同仓库里的副本可能**目录布局与字段宽度都不同**；
   引用源码必须写清"**哪个仓库的哪份副本**"，说"实现没有某段"时要指明**是哪一份实现**。
+
+### C3（2026-08-09）：Milky 没有 `notice_receive` —— 除消息外的事件此前全部落空
+
+- **原实现**（`src/adapters/milky_parser.py` 旧 `_EVENT_KIND`）：只映射
+  `message_receive / notice_receive / lifecycle`，其余 `kind = event_type`。
+- **实测**（Milky 规范 `protocol/src/ir/common.ts` 的 Event 联合，**[DOC]**）：
+  顶层事件类型共 **21 种** —— bot_offline / message_receive / message_recall / peer_pin_change /
+  friend_request / group_join_request / group_invited_join_request / group_invitation / friend_nudge /
+  friend_file_upload / group_admin_change / group_essence_message_change / group_member_increase /
+  group_member_decrease / group_disband / group_name_change / group_message_reaction / group_mute /
+  group_whole_mute / group_nudge / group_file_upload；
+  其中 **`notice_receive` 出现 0 次**（`grep -c` 实测）。
+- **后果**：Milky 模式下 `group_nudge`（戳一戳）、`group_file_upload`（群文件）等事件
+  的 `kind` 直接等于 event_type，**进不了路由的 notice 分支** —— 这两个功能在 Milky 模式下实际失效。
+- **修复**：按事件类型归一化成领域 kind（**21 种全覆盖**），并把
+  `group_nudge/friend_nudge → notice_kind=poke`（actor = `sender_id`，target = `receiver_id` / `user_id`）、
+  `group_file_upload → notice_kind=group_upload`（`notice_file{id,name,size}`）接入既有业务分支；
+  `notice_receive` 仅保留为旧样例兼容。测试见 `tests/test_milky_event_kinds.py`（9 用例，含 21 种全覆盖断言）。
+- **教训**：把"某客户端一定会发某个通用类型"当成前提是危险的 —— **规范里没有的类型必须先去数一遍**；
+  这类"看起来在工作、实际整类事件被丢弃"的缺陷不会报错，只会静默少功能。

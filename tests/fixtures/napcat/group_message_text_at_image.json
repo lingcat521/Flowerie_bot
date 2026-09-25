@@ -1,0 +1,51 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]+[DOC]",
+    "captured": false,
+    "evidence": "NapCat packages/napcat-onebot/action/msg/GetMsg.ts L16-29（消息对象字段：time/message_type/message_id/real_id/message_seq/sender/message/raw_message/font/group_id/user_id）+ napcat-onebot/types/message.ts（段 schema）+ OneBot 11 事件信封 [DOC]",
+    "note": "字段按源码构造，非实机抓包；数值为示例值"
+  },
+  "time": 1756000000,
+  "self_id": 10001,
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "message_id": 1234567890,
+  "real_id": 1234567890,
+  "message_seq": 998877,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "at",
+      "data": {
+        "qq": "10001",
+        "name": "花璃"
+      }
+    },
+    {
+      "type": "text",
+      "data": {
+        "text": " 看这个图 "
+      }
+    },
+    {
+      "type": "image",
+      "data": {
+        "file": "abc.jpg",
+        "url": "http://127.0.0.1:3000/download?file=abc.jpg",
+        "file_size": 20480
+      }
+    }
+  ],
+  "raw_message": "[CQ:at,qq=10001] 看这个图 [CQ:image,file=abc.jpg]",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "card": "群名片",
+    "role": "member",
+    "level": "1"
+  }
+}

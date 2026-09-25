@@ -1,0 +1,17 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]+[MVP]",
+    "captured": false,
+    "evidence": "NapCat packages/napcat-onebot/event/notice/OB11PokeEvent.ts（notice_type=notify / sub_type=poke）+ 本地 MVP bot.py L1213-1256（字段回退链 target_id → target → to_user_id → user_id）",
+    "note": "回退链说明不同客户端用不同键名，Adapter 层负责统一"
+  },
+  "time": 1756000003,
+  "self_id": 10001,
+  "post_type": "notice",
+  "notice_type": "notify",
+  "sub_type": "poke",
+  "group_id": 123456,
+  "user_id": 456789,
+  "target_id": 10001
+}

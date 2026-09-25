@@ -1,0 +1,21 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]+[MVP]",
+    "captured": false,
+    "evidence": "NapCat packages/napcat-onebot/event/notice/OB11GroupUploadNoticeEvent.ts L12（notice_type = group_upload）+ 本地 MVP /storage/emulated/0/bot.py L815-829（data.file 字段：name/id/size/busid）",
+    "note": "文件内容需再调 /get_file 取 base64 信封（MVP L931-969）"
+  },
+  "time": 1756000002,
+  "self_id": 10001,
+  "post_type": "notice",
+  "notice_type": "group_upload",
+  "group_id": 123456,
+  "user_id": 456789,
+  "file": {
+    "id": "file-uuid-1",
+    "name": "报告.pdf",
+    "size": 34567,
+    "busid": 102
+  }
+}

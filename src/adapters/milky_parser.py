@@ -34,12 +34,37 @@ from src.adapters.onebot_parser import (
 )
 from src.adapters.proto import InternalEvent
 
-# event_type → 语义 kind（未列出的原样保留，由上游按 unknown 忽略）
-_EVENT_KIND = {
-    "message_receive": "message",
-    "notice_receive": "notice",
-    "lifecycle": "lifecycle",
+# Milky 顶层事件类型 → 归一化 kind。
+# ⚠️ 规范（common.ts 的 Event 联合，实测 **21 种**）里**没有 notice_receive** —— 通知类事件各有
+# 独立 event_type（message_recall / group_nudge / group_file_upload …）。旧实现把它当通用通知类型，
+# 结果除 message_receive 外的事件全部落到 kind=<event_type>，连 notice 分支都进不去。
+_NOTICE_EVENTS = frozenset({
+    "message_recall", "peer_pin_change", "friend_file_upload", "group_admin_change",
+    "group_essence_message_change", "group_member_increase", "group_member_decrease",
+    "group_disband", "group_name_change", "group_message_reaction", "group_mute",
+    "group_whole_mute", "group_invitation", "group_nudge", "friend_nudge", "group_file_upload",
+})
+# 请求类：OneBot 是 post_type=request + request_type=friend/group（规范 Field 见 common.ts L35-40/L44-）
+_REQUEST_EVENTS = {
+    "friend_request": "friend",
+    "group_join_request": "group",
+    "group_invited_join_request": "group",
 }
+_NUDGE_EVENTS = ("group_nudge", "friend_nudge")
+
+
+def _event_kind(event_type: str) -> str:
+    """event_type → 归一化 kind（未识别的一律原样返回，由上游按 unknown 忽略）。"""
+    if event_type == "message_receive":
+        return "message"
+    if event_type in _REQUEST_EVENTS:
+        return "request"
+    if event_type in ("bot_offline", "lifecycle"):
+        return "lifecycle"
+    if event_type == "notice_receive" or event_type in _NOTICE_EVENTS:
+        # notice_receive 仅为兼容旧样例（规范里不存在）
+        return "notice"
+    return event_type or "unknown"
 
 _SCENE_SCOPE = {
     "friend": "private",
@@ -57,7 +82,7 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
 
     event_type = str(raw.get("event_type") or "unknown")
     data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
-    ev.kind = _EVENT_KIND.get(event_type, event_type if event_type else "unknown")
+    ev.kind = _event_kind(event_type)
     scene = str(data.get("message_scene") or "")
     ev.scope = _SCENE_SCOPE.get(scene, "")
     peer_id = data.get("peer_id")
@@ -77,15 +102,48 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
                          or data.get("message_seq"))
         # Milky 段容器字段：segments（SDK 标准）；兼容 message（旧样例）
         _scan_segments(ev, data.get("segments", data.get("message")), bot_qq)
-    elif ev.kind == "notice":
+    elif ev.kind == "request":
+        # 请求类：只做 kind 归一化（字段级映射尚未核对，见 docs/message-model.md §5）
+        ev.request_kind = _REQUEST_EVENTS.get(event_type, "")
         ev.actor_id = int(sender_id) if sender_id else None
-        ev.notice_kind = data.get("notice_type") or event_type.replace("notice_", "")
-        if peer_id is not None:
-            ev.target_id = int(peer_id)
-        if data.get("operator_id"):
-            ev.operator_id = int(data.get("operator_id"))
-        if data.get("file"):
-            ev.notice_file = dict(data["file"])
+    elif ev.kind == "notice":
+        if event_type in _NUDGE_EVENTS:
+            # —— 戳一戳：Milky 是**独立事件**（不是消息段）→ 归一化成 OneBot notify/poke 语义 ——
+            # 证据：[DOC] 规范 common.ts L127-134 group_nudge{group_id,sender_id,receiver_id,
+            #       display_action,display_suffix,display_action_img_url}、L60-67 friend_nudge；
+            #       [CODE] LagrangeV2 Entity/Event/GroupNudgeEvent.cs 六字段逐字对应；
+            #       OneBot 侧等价物 = notice/notify/poke（路由 _handle_poke 读 actor/target/group）。
+            is_group = event_type == "group_nudge"
+            ev.scope = "group" if is_group else "private"
+            ev.notice_kind = "poke"
+            ev.actor_id = int(sender_id) if sender_id else None
+            _recv = data.get("receiver_id") if is_group else data.get("user_id")
+            ev.target_id = int(_recv) if _recv is not None and str(_recv) != "" else None
+            if is_group:
+                _g = data.get("group_id")
+                ev.group_id = int(_g) if _g is not None and str(_g) != "" else ev.group_id
+        elif event_type == "group_file_upload":
+            # 群文件上传 → 与 OneBot notice/group_upload 同语义（路由 _handle_group_upload）
+            # 证据：[DOC] 规范 common.ts L135-141 group_file_upload{group_id,user_id,file_id,file_name,file_size}；
+            #       [CODE] NapCat OB11GroupUploadNoticeEvent.ts L4-9（file{id,name,size,busid}）
+            ev.notice_kind = "group_upload"
+            ev.actor_id = int(sender_id) if sender_id else None
+            _g = data.get("group_id") or peer_id
+            if _g is not None and str(_g) != "":
+                ev.group_id = int(_g)
+            ev.scope = "group"
+            ev.notice_file = {"id": str(data.get("file_id") or ""),
+                              "name": str(data.get("file_name") or ""),
+                              "size": data.get("file_size")}
+        else:
+            ev.actor_id = int(sender_id) if sender_id else None
+            ev.notice_kind = data.get("notice_type") or event_type
+            if peer_id is not None:
+                ev.target_id = int(peer_id)
+            if data.get("operator_id"):
+                ev.operator_id = int(data.get("operator_id"))
+            if data.get("file"):
+                ev.notice_file = dict(data["file"])
     # lifecycle / unknown 仅保留基础字段（上游按 kind 处理）
 
     # 稳定标识（与 OneBot 解析器同规）
