@@ -140,6 +140,8 @@
 | **6450f44** | 协议耦合度量 | ❌ **Ruff 2 条 F401** | 新测试里 `io`/`pytest` 未使用 → **7bf3623 修复** |
 | 7bf3623 | 上述修复 | ✅ 三项全绿 | **2007 passed / 23 skipped**（23 = 22 条实机 + 1 条 round-trip 覆盖说明）|
 | **b0d4daa** | 本报告 + message_sent 纳入真往返 | ✅ 三项全绿 | **2008 passed / 22 skipped**（22 条**全部**是实机用例 —— 那 1 条 round-trip 覆盖缺口已换成真断言）|
+| **4d5d2b6** | 出站序列化接入发送热路径 | ❌ **1 failed** | `test_all_settings_fields_covered`：新开关没登记进 ConfigService.SCHEMA → **32a52ed 修复** |
+| **32a52ed** | 上述修复 | ✅ 三项全绿 | **2025 passed / 22 skipped**（新开关可见于 Web UI 配置页与环境模板）|
 
 **回归**：最新一次（b0d4daa）整仓 **2008 passed / 22 skipped，0 失败**；22 条 skip 全部是实机用例
 （缺协议端，逐条打印缺失条件）。本轮把一处 round-trip skip 换成了真断言：`message_sent`
