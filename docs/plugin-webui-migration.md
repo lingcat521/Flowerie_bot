@@ -130,6 +130,26 @@ tests/test_plugin_manifest.py          19
 | 新模块 | `src/plugins/webui_loader.py` / `webui_security.py` / `webui_static.py` + `src/services/webui_panels/plugin_webui_static.py` | 任务书 §12/§17：不要让逻辑全堆进 `PluginPanelMixin`，也不要让 Core 知道 HTML 放哪 |
 | 模板 | 复用主 WebUI 的 `{{占位符}}` 机制（`webui_render/assets.render_template` 同款），**不引入 Jinja2/eval** | 任务书 §7：受控变量替换、禁止任意代码执行 |
 
+## 8.5 Phase 1 完成记录（真实数字，2026-09-25）
+
+| 项 | 结果 |
+| :--- | :--- |
+| 新模块 | `src/plugins/webui_loader.py`（路径安全）、`webui_security.py`（HTML/模板/CSS 净化）、
+  `src/services/webui_panels/plugin_webui_static.py`（静态资源 mixin）|
+| manifest | `web_ui.pages[].file` + `web_ui.static`（**只做加法**，旧声明零改动）|
+| 路由 | `GET /panel/plugins/webui/{pid}/static/{path}`（注册在 `{page}` 之前）；页面路由不变 |
+| 旧 DSL | 保留为 deprecated 兼容层；`tests/plugins/webui_example` 与 5 个旧测试文件**原样全绿** |
+| 示例 | `examples/plugins/html_webui_demo/`（manifest + main.py + 2 页 HTML + css + README）|
+| 测试 | `tests/test_plugin_webui_html.py` **68 用例**（任务书 §18 矩阵超额覆盖）|
+| 回归 | 插件/WebUI 子集 203 passed；架构 Gate 74 passed；全量 1271 passed / 19 failed（本地缺依赖基线）/ 37 skipped，**零新增失败** |
+| 文档 | `plugin-webui.md` 新增 §3.5（HTML 页面）+ §7/§8 更新；`web-ui.md` / `plugin-developer-guide.md` 加指引 |
+
+实施中抓到的两个真 bug（都有回归用例）：
+
+1. **净化器把整页正文吞掉**：`<meta>` / `<link>` 这类 void 标签被当成「区域抑制」标签，
+   抑制计数永不归零 → 之后所有文本被丢。修法：区分「区域抑制」与「只丢标签」两套集合；
+2. **表单可提交到外部站点**：`<form action="https://evil">` 原本被放行 → 现在 `action/formaction`
+   只允许站内相对路径。
 ## 9. 后续阶段与任务书门槛的对应
 
 | 阶段 | 产出 | 对应门槛 |

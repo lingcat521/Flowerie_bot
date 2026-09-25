@@ -154,6 +154,10 @@ MCP 服务器以**卡片列表**展示，无需手写 JSON：
 **任意语言**（`runtime=exec`：`entry` 直接作为进程执行，Go/Rust/C/C++/C#/PHP/Ruby/Java 等均可）与 JSON 声明式
 （`runtime=json`，`declarations` 规则，无代码执行）；API 详见 [plugin-developer-guide.md](plugin-developer-guide.md)。
 
+插件可以**自带管理页面**（在「插件」页内打开，与主面板同一套零 JS 架构）：
+真实 HTML 页面（推荐，`webui/pages/*.html` + `webui/static/*.css`）或旧 DSL 兼容层；
+两者都需要管理员批准 `web_ui` 权限，页面输出过白名单净化 + CSP，详见 [plugin-webui.md](plugin-webui.md)。
+
 - **插件保护措施（Plugin Protection）**：三档单选——`Normal`（推荐，完整限制）/ `Relaxed`（放宽非必要限制）/
   `Unsafe`（仅可信插件，作者概不负责）。只影响运行时资源限制；**任何级别都不豁免** manifest 校验、管理员权限、
   进程隔离、日志、崩溃保护、资源限制与权限强制（PermissionManager）。

@@ -485,6 +485,11 @@ plugin.zip
 
 三种方式安装后插件一律处于 **disabled**，由管理员启用并批准权限。
 
+> 插件还能**自带 WebUI 页面**（管理员在「插件」页里打开）：推荐用真实 HTML
+> （`webui/pages/*.html` + `webui/static/*.css`，manifest 写 `web_ui.pages[].file`），
+> 旧 DSL（`webui_page` 返回组件树）仍可用但已 deprecated。完整参考：[plugin-webui.md](plugin-webui.md)；
+> 可复制示例：[../examples/plugins/html_webui_demo/](../examples/plugins/html_webui_demo/README.md)。
+
 ### 保护级别（插件保护措施开关）
 
 Web UI「插件」页提供 Normal / Relaxed / Unsafe 三档（`PLUGIN_PROTECTION`）：

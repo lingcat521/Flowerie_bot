@@ -12,6 +12,7 @@
 | [ADR-004 虚拟协议实验](test-protocol-experiment.md) | 发明 TestProtocolAdapter 测量新增协议成本：**PEC = 0**；8 项最小接入实验 | E、F | 已实施 |
 | [ADR-005 传输契约](transport-contract.md) | 8 项 TransportContract（connect/disconnect/send/receive/request/authentication/error/reconnect）；WS 8/8、HTTP 6 + 2 N/A；契约不绑网络库（懒加载 + I/O 注入） | Q | 已实施 |
 | [ADR-006 多实例](multi-instance.md) | 多实例而非单例：`InstanceRegistry` 是普通对象；每实例自己的解析器/通道/配置；**Cross-talk = 0 是测出来的**；源码禁止 `current_protocol`/`current_ws`/`global_adapter` | S | 已实施 |
+| [ADR-008 插件 WebUI：DSL → 真实 HTML](plugin-webui-html.md) | 两种页面形态并存（HTML 推荐 / DSL deprecated 兼容层）；URL 只带 page id；白名单净化 + 先净化后替换 + CSP + 零 JS；静态资源独立通道 | 任务书 1 §1–§24 | 已实施 |
 | [ADR-007 资源抽象](resource-model.md) | `ResourceRef`（三种来源归一）+ `ResourceFetcher`（协议差异只在 Adapter）+ `decode_bytes`（纯解码）；**Core 不再依赖 `file_id`/`resource_id`**；顺手修掉"Milky 文件走 OneBot 端点"的串协议缺陷 | R | 已实施 |
 
 ## 配套文档

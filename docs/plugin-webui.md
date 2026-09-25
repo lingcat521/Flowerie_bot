@@ -1,10 +1,27 @@
 # Plugin WebUI（插件自有管理控制台）
 
-> 插件可以拥有自己的**管理页面**（多页面/tab/表格/表单/任务/日志/文件）——
-> **零 JavaScript 绝对红线**：插件描述 UI（结构化 DSL），主进程渲染。
-> 快速示例见 [quick-start.md](quick-start.md) 插件部分；组件/协议本文档为唯一权威。
+> 插件可以拥有自己的**管理页面**（多页面/表单/任务/日志/文件）。**零 JavaScript** 是硬红线。
+>
+> **两种页面形态**（同一套权限与安全边界）：
+> 1. **真实 HTML 页面（推荐）**：`webui/pages/*.html` + `webui/static/*.css`，manifest 用 `file` 声明；
+>    数据由受控模板变量 `{{ var }}` 注入（自动 escape），交互走 GET/POST —— 见 §3.5；
+> 2. **旧 DSL（兼容层，已 deprecated）**：插件 `webui_page` hook 返回结构化 dict，主进程渲染 —— 见 §4。
+>
+> 二者可共存（逐页选择）；新插件请直接用 HTML。
+> 完整可复制示例：[../examples/plugins/html_webui_demo/](../examples/plugins/html_webui_demo/README.md)。
 
 ## 0. 一句话原理
+
+**HTML 页面（推荐）**：
+
+```
+插件目录                       主进程                          浏览器
+ webui/pages/x.html    →  manifest 声明 file → 路径校验 →   ← GET 页面
+ webui/static/x.css       webui_loader 读取 → 白名单净化 →      ← CSS/图片（同源）
+ webui_page() 可选数据    模板 {{ var }} 取值并 escape  →       → POST action
+```
+
+**旧 DSL（兼容层）**：
 
 ```
 插件(独立进程)                   主进程                   浏览器
@@ -13,11 +30,12 @@
  返回 DSL dict                HTML
 ```
 
-插件**绝不输出 HTML/JS**——只返回 JSON DSL；渲染器先安全转义再结构化（详见下文「安全」）。
+两条路径的共同点：插件**永远拿不到**主 WebUI 的 token/DOM/其他插件数据；
+插件输出（HTML 或 DSL）都经**白名单净化**后才进浏览器，且由 CSP 兜底（`default-src 'none'`）。
 
 ## 1. 启用（三步）
 
-1. manifest 声明 `permissions: ["web_ui"]` + `web_ui.pages`（见 §2）
+1. manifest 声明 `permissions: ["web_ui"]` + `web_ui.pages`（HTML 页面再加 `file`，见 §2）
 2. Web UI「插件」页 → 批准 **web_ui** 权限 → 启用
 3. 插件 tab 出现 **Plugin WebUI** 入口 → 点击进入
 
@@ -25,25 +43,37 @@
 
 ## 2. manifest 声明
 
+**HTML 页面（推荐）**：
+
 ```json
 {
   "id": "music_plugin",
   "permissions": ["web_ui", "web_ui.files"],
   "web_ui": {
+    "static": "static",
     "entry": "webui_page",
     "pages": [
-      {"id": "overview", "title": "总览"},
-      {"id": "settings", "title": "设置", "description": "基础设置"}
+      {"id": "overview", "title": "总览", "file": "pages/index.html"},
+      {"id": "settings", "title": "设置", "file": "pages/settings.html", "description": "基础设置"}
     ]
   }
 }
 ```
 
-- `pages`：≤8 页；id 小写字母开头/数字/下划线/短横线（≤32）；title 1~64 字符
-- `entry`：插件模块内的**页面函数名**（默认 `webui_page`；仅合法函数名）
-- **严格 schema**：未知字段拒绝（manifest 整体同策略）
+**旧 DSL 页面（兼容层）**：页面条目**不写** `file` 即为 DSL 页，行为与迁移前完全一致。
 
-## 3. 页面函数（hook）
+| 字段 | 规则 |
+| :--- | :--- |
+| `pages` | ≤8 页；id 小写字母开头/数字/下划线/短横线（≤32）；title 1~64 字符 |
+| `pages[].file` | 选填。相对 **插件 webui 根**的路径，必须以 `.html` 结尾；禁止绝对路径、`..`、反斜杠、隐藏段 |
+| `static` | 选填，默认 `static`；只能是插件内的相对目录 |
+| `entry` | 数据钩子函数名（默认 `webui_page`；HTML 页面可省略——纯静态页面合法） |
+| 严格 schema | 未知字段拒绝（manifest 整体同策略）——`file`/`static` 是本次唯一的加法 |
+
+## 3. 数据钩子（可选）
+
+钩子签名两种模式**完全一致**（兼容层不破坏既有插件）：
+
 
 ```python
 def webui_page(page: str, action: str, params: dict, values: dict) -> dict | None:
@@ -67,7 +97,80 @@ def webui_page(page: str, action: str, params: dict, values: dict) -> dict | Non
 - 表单提交 = `action="submit"` + `values`（字段名→值）；按钮 = `action` 传按钮值
 - 文件上传后：`params/files`（逗号分隔文件名）+ `msg` 提示
 
-## 4. DSL 组件（唯一集合）
+## 3.5 真实 HTML 页面（新，推荐）
+
+目录结构（页面与静态资源都必须落在**自己插件**的目录内）：
+
+```text
+my_plugin/
+├── manifest.json
+├── main.py                 # 可选：数据钩子（没有也能渲染纯静态页面）
+└── webui/
+    ├── pages/
+    │   ├── index.html
+    │   └── settings.html
+    └── static/
+        └── style.css
+```
+
+### 模板变量（受控）
+
+- 语法：`{{ name }}`；内置键只有这些：`plugin_id` / `plugin_name` / `page_id` /
+  `page_title` / `page_description` / `message`，加上数据钩子返回的 `vars`
+- 值**一律 HTML escape**；未知键替换为空并记入渲染报告（页面不会因为缺变量而崩）
+- **没有**循环/条件/表达式/函数调用（禁止 `eval`/`exec`/任意对象访问）
+
+```html
+<h1>{{ plugin_name }}</h1>
+<form method="post" action="/panel/plugins/webui/<pid>/settings">
+  <input type="text" name="greeting" value="{{ greeting }}">
+  <button type="submit" name="plugin_action" value="save">保存</button>
+</form>
+```
+
+### 数据钩子（可选）
+
+HTML 页面下钩子返回 **vars / message**（而不是 DSL 组件树）：
+
+```python
+return {"vars": {"greeting": "你好"}, "message": "已保存"}
+```
+
+- 没有钩子 → 页面照常渲染（**纯静态页面是合法用法**）
+- 钩子报错/超时 → 页面仍然渲染，顶部显示「插件数据钩子异常：…」（不静默吞掉）
+- 返回带 `type` 的 DSL 组件树 → 被拒绝并提示改用 `vars`（避免隐性回退到旧架构）
+
+### POST / action
+
+| 提交方式 | 行为 |
+| :--- | :--- |
+| `<button name="plugin_action" value="save">` | action=`save`，其余表单字段进 `values` |
+| 不带 `plugin_action` 的 POST | action=`submit` |
+| GET | action=`get`，query 进 `params` |
+
+action 只经「插件运行时 → 插件的 `webui_page`」，**不会进 Core**。
+
+### 静态资源
+
+`/panel/plugins/webui/<pid>/static/<path>` → 只读该插件自己的 `webui/static`（`web_ui.static` 可改名）。
+允许 `.css` / 图片 / 文本类；**不允许 `.js`**（零 JS 政策）。`.css` 会被净化
+（`@import`、外链 `url()`、`expression(` 一律剔除）。
+
+CSS 作用域约定：选择器写在 `.flowerie-plugin-webui` 之下（插件内容都在这个容器里）。
+
+### 安全边界（HTML 路径）
+
+| 面 | 处理 |
+| :--- | :--- |
+| 路径 | URL 只有 page id；文件名来自 manifest；绝对路径 / `..` / 反斜杠 / 隐藏段 / symlink 逃逸一律拒绝 |
+| HTML | 白名单净化：`<script>` `<style>` `on*` `javascript:` `vbscript:` `data:` `<iframe>` `<object>` `<embed>` `<meta>` `<base>` 丢弃 |
+| 表单 | `<form action>` 只允许**站内**路径（防止把带登录态的表单 POST 到外部站点）|
+| 样式表 | `<link rel=stylesheet>` 只允许**本插件** static 前缀；外链丢弃 |
+| 模板 | 值 escape；未知键记报告；不支持表达式 |
+| 响应头 | CSP `default-src 'none'` + `nosniff` + `no-referrer`（浏览器侧兜底）|
+| 权限 | 与 DSL 页面一致：`web_ui` 才能看页面；`web_ui.files` 才能上传/下载 |
+
+## 4. 旧 DSL 组件（兼容层，已 deprecated）
 
 ### 展示
 | type | 字段 |
@@ -129,13 +232,27 @@ def webui_page(page: str, action: str, params: dict, values: dict) -> dict | Non
 
 ## 7. 安全边界（硬性）
 
-- 插件**不能**：输出任意 HTML/`<script>`/事件属性/`javascript:`/`data:`/`vbscript:`/SVG/iframe/mXSS 类负载（渲染器吸收并转义）
+两条路径的硬性边界（**迁移没有放松任何一条**）：
+
+- **DSL 路径**：插件不能输出任意 HTML/`<script>`/事件属性/`javascript:`/`data:`/`vbscript:`/SVG/iframe/mXSS 类负载（渲染器吸收并转义）
+- **HTML 路径**：插件可以提供 HTML，但必须过**白名单净化**（同上清单全部丢弃并记报告）+ CSP 兜底；
+  模板变量一律 escape；样式表只允许本插件 static；表单只能提交回站内
 - 插件**不能**：读取其他插件数据/主进程敏感数据/浏览器 Cookie/修改主面板与全局主题
 - 文件**只能**：插件自己的 `webui/` 目录；扩展名+魔数+名称+大小全部白名单校验
 - 所有页面访问都要求管理员登录（`_check_token`）+ 插件启用 + 权限批准
 
 ## 8. 测试锚点
 
-- 渲染器安全全套：`tests/test_plugin_dsl.py`（19 用例：script/on*/javascript/data/vbscript/SVG/iframe/mXSS/属性注入/动态 value/style/深度）
+**HTML 路径（新）**：
+
+- `tests/test_plugin_webui_html.py`（**68 用例**）：manifest 非法路径/穿越/绝对路径/未知字段/页面上限；
+  模板变量与 escaping；缺失页面；静态 CSS/图片/穿越/跨插件/敏感文件/`.js`；GET/POST/表单/错误/重渲染；
+  15 类 XSS payload + 属性注入 + 模板注入 + CSS 注入；端到端「插件 HTML 里的 `<script>` 不出现在响应里」；
+  以及**随仓库发布的示例插件真的能渲染**（`examples/plugins/html_webui_demo/`）
+
+**DSL 兼容层（旧，必须继续全绿）**：
+
+- 渲染器安全全套：`tests/test_plugin_dsl.py`（10 用例：script/on*/javascript/data/vbscript/SVG/iframe/mXSS/属性注入/动态 value/style/深度）
 - 集成：`tests/test_plugin_webui_integration.py`（真插件 hook→DSL→渲染/多页/动作/恶意 DSL）
-- 文件：`tests/test_plugin_webui_files.py`（11 用例：穿越/坏名/扩展名/魔数/大小）
+- 文件：`tests/test_plugin_webui_files.py`（上传/下载的穿越/坏名/扩展名/魔数/大小）
+- 访问 gate：`tests/test_plugin_webui_gate.py`（未启用/未批准/未声明/未知页/异常降级）
