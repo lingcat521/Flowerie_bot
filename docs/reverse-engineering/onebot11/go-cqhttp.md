@@ -84,6 +84,56 @@
 - `get_msg`（`L1676-1706`）：`message_id`(int) / `message_id_v2`(string，DB 内部 id，`GetID() string`) /
   `real_id` = `message_seq` = 客户端 seq / `group`(bool) / `sender{user_id,nickname}` / `time`。
 
+## Observed Behavior · 发送侧（Flowerie → Client，任务书 §十四 的第二个方向）
+
+来源：`coolq/cqcode.go L404-1010`（`ConvertStringMessage` / `ConvertObjectMessage` /
+`ConvertElements` / `ConvertElement` / `convertV11` / `reply` / `voice` / `at` /
+`makeImageOrVideoElem`）与 `coolq/api.go L738`（`CQSendGroupMessage`）。
+
+### 1. 入参形态与兜底
+
+- `message` 既可以是 **CQ 字符串**也可以是**段数组**（`ConvertObjectMessage` L411-417）；
+- 段数组里的未知类型 → `ConvertElement` 落到 `default: unsupported message type` →
+  `ConvertElements` L434-466 在 `IgnoreInvalidCQCode=false`（默认）时**把该段发成字面 CQ 文本**并记 warning；
+- `reply` 被**提到消息最前**，且一条消息**只接受一个** reply（第二个只记 warning 丢弃）。
+
+### 2. 各段的发送侧字段（case 表 L608-880）
+
+| 段 | 读取的字段 | 备注（含扩展）|
+| :--- | :--- | :--- |
+| `text` | `text` | `SplitURL` 打开时 URL 会被拆成多个 text 段 |
+| `at` | `qq`（缺失回退 `target`）、`name` | `qq=="all"` → AtAll |
+| `image` | `file`、`type` ∈ {`flash`, `show`}、`id`、`subType`、`c`、`cache` | `file` 支持 http / file:// / base64:// / base16384:// / hex / 裸路径 |
+| `record` | `file`（+`cache`）| 自动转 SILK/AMR；**发送侧没有 url** |
+| `video` | `file`、`cover`、`cache` | 无 ftyp 头会自动转码 |
+| `file` | `path`、`name`、`size`、`busid` | 与上报侧同构 → **可往返** |
+| `reply` | `id`（数字）或 `text`+`user_id/qq`（+`time/seq`）| `id` 走客户端自己的 DB（global id），需先收过那条消息 |
+| `face` | `id`；`type=="sticker"` → 动画表情 | |
+| `poke` | `qq` | go-cqhttp 自有段（规范没有）|
+| `dice` / `rps` | `value` | 越界（dice>6 / rps>2）→ 报错 |
+| `xml` / `json` | `data`、`resid` | `resid` 会被 `ParseInt` |
+| `share` / `music` | `url/title/content/image` / `type+id`（`qq/163/custom`）| `custom` 会自造 XML |
+| `cardimage` | `source/icon/brief/minwidth/maxwidth/minheight/maxheight` + image | **发送专用扩展段**（上报侧没有）|
+| `forward` | `id` | 只能按 id 下载已存在的转发；空 id/过期 → 报错（**不能自造节点**）|
+
+### 3. 由此得到的跨客户端差异（已写进 client_profile.go-cqhttp.quirks）
+
+- `record` / `video`：**上报有 `url`、发送只读 `file`** —— 同一个段在两个方向字段不同，
+  归一化层不能假设"收到的形状能原样发回去"；
+- `reply.id`：go-cqhttp 是**客户端 DB global id**，而 `message_seq`（上报字段）是客户端 seq ——
+  拿上报的 `message_seq` 去当 `reply.id` 会引用错消息；
+- `file` 段：go-cqhttp 用 `path`，NapCat 用 `file_id` 命名空间 → **不能跨客户端复用**；
+- `poke` 段：go-cqhttp `qq` / NapCat `{type,id}` / LLBot `shake` —— 三家三种写法；
+- 未知段的兜底由**客户端**决定（go-cqhttp 变字面 CQ 文本），我们只标记不复刻。
+
+## Normalized Behavior · 出站（本轮新增）
+
+`src/adapters/onebot_serializer.py` + `src/adapters/client_profile.py` 把上面这张表变成可执行规则：
+档案里**有证据**的字段才保留，其余字段移除并记 note（`dropped_field`）；
+档案未验证的段原样传递并记 note（`unknown_segment_passthrough` / `segment_unsupported_by_profile`）。
+测试：`tests/test_onebot_serializer.py`（6 条单元 + 8 条 fixture 往返）。
+**尚未接入发送热路径**（需要 profile 配置开关 + CI 验证，下一轮）—— `Sender.send_msg_raw()` 行为不变。
+
 ## Normalized Behavior（Flowerie 现状 [MVP]）
 
 用本目录 fixture 真跑 `OneBotEventParser` 的结果（2026-09-25）：

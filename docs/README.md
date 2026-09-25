@@ -23,6 +23,8 @@
 | **[plugin-developer-guide.md](plugin-developer-guide.md)** | **第二层·完整参考**（Manifest 规则 / Python·Node·JSON / **任意语言 exec §4.5** 与 **§31 十三种语言实测清单** / 生命周期 / Event·Action·Permission API / 超时·资源·安全 / 打包 / WebUI 安装） | 插件开发者 |
 | **[plugin-developer-guide.md](plugin-developer-guide.md) §31** | **任意语言插件**：exec 协议三分钟说明 + **13 种语言完整最小实现**（C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R）+ 构建入口速查 + 排查清单 | 非 Python/Node 的插件作者 |
 | [plugin-webui.md](plugin-webui.md) | **Plugin WebUI**（DSL 组件全集 / hook / 权限 / 文件 / 安全边界） | 插件开发者 |
+| [client-profiles.md](client-profiles.md) | **客户端档案**：一个协议基线 + 多个客户端实现的已验证差异（四态 + quirks）、出站序列化怎么用、新客户端接入清单 | 协议/适配层开发者 |
+| [client-compatibility.md](client-compatibility.md) | **Client Compatibility Matrix**：逐能力 × 逐客户端（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN + 证据）| 协议/适配层开发者 |
 | [plugin-webui-protocol.md](plugin-webui-protocol.md) | **统一 Plugin WebUI 协议**：`webui.page/action/asset` 三个协议方法 + 六项 `webui.*` 权限 + 受控 context + 20 类安全用例落点（五种语言同一套） | 插件开发者 |
 | [plugin-protocol.md](plugin-protocol.md) | **Plugin Protocol v1 规范**：JSON-Lines 线格式 / 必需 4 + 可选 11 方法 / 错误模型 / 版本与能力协商 / 选型理由 | 插件开发者 |
 | [plugin-sdk.md](plugin-sdk.md) | **多语言 SDK 指南**：五语言 API 对照 / 能力对齐 / 新语言接入清单；单语言参考见 [typescript](plugin-sdk-typescript.md) · [go](plugin-sdk-go.md) · [rust](plugin-sdk-rust.md) · [java](plugin-sdk-java.md) | 插件开发者（非 Python）|
