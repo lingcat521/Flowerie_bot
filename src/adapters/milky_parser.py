@@ -250,8 +250,7 @@ def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> N
                 ev.reply_id = int(data.get("message_seq") or data.get("id"))
             except (TypeError, ValueError):
                 ev.reply_id = None
-            # Milky reply 还内联被引用消息（common.ts L332 segments[]）——当前只进 summary，
-            # 未消费（见 docs/message-model.md §6 已知缺口）
+            _fill_reply(ev, data)          # G4：内联被引段进入 Reply 模型
             if data.get("segments"):
                 ev.segments_summary.append((seg_type, dict(data)))
         elif seg_type == "light_app":
@@ -316,6 +315,41 @@ def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> N
         elif seg_type:
             ev.segments_summary.append((seg_type, dict(data)))
     ev.text = "".join(text_parts).strip()
+
+
+def _inline_text(segments: List[dict], limit: int = 200) -> str:
+    """内联被引段的纯文本摘要（只取 text 段，不递归展开、不二次解析）。"""
+    parts = []
+    for seg in segments or []:
+        if str(seg.get("type") or "") != "text":
+            continue
+        d = seg.get("data") if isinstance(seg.get("data"), dict) else {}
+        parts.append(str(d.get("text") or ""))
+    return "".join(parts).strip()[:limit]
+
+
+def _fill_reply(ev: InternalEvent, data: Dict[str, Any]) -> None:
+    """引用段（G4）：message reference + **内联被引段**。
+
+    证据：[DOC] Milky 规范 `common.ts` L327-333
+    `reply{message_seq, sender_id, sender_name?, time, segments[]}` —— 被引消息的**完整段数组内联**；
+    对比 OneBot 只给 `id`（`event/message.md` / NapCat `types/message.ts` 的 `reply{id,qq?}`）。
+    任务书 §6.2：**必须同时保留 message_seq**（引用目标的稳定标识），不能因为拿到内联内容就丢掉它。
+    """
+    ev.reply_ref["id"] = ev.reply_id
+    for key, cast in (("sender_id", int), ("time", int)):
+        val = data.get(key)
+        if val is not None and str(val) != "":
+            try:
+                ev.reply_ref[key] = cast(val)
+            except (TypeError, ValueError):
+                pass
+    if data.get("sender_name"):
+        ev.reply_ref["sender_name"] = str(data["sender_name"])
+    segs = data.get("segments")
+    if isinstance(segs, list) and segs:
+        ev.reply_segments = [dict(s) for s in segs if isinstance(s, dict)]
+        ev.reply_text = _inline_text(ev.reply_segments)
 
 
 def _parse_light_app_payload(raw: Any):

@@ -54,7 +54,7 @@ python main.py
 | @某人 | `mention` | `user_id`（+name）| `mentions`（与 OneBot `at/qq` 不同）|
 | @全体 | `mention_all` | — | `mentions`（"all"）|
 | 图片 | `image` | `temp_url` + `resource_id`（+width/height/summary/sub_type）| `images` / `image_files`（识图用 temp_url）|
-| 回复 | `reply` | `message_seq`（+ 内联 `segments`）| `reply_id`（内联内容尚未消费，见 message-model.md §5）|
+| 回复 | `reply` | `message_seq`（+ 内联 `segments`）| `reply_id` + `reply_ref`/`reply_segments`/`reply_text`（G4 已消费内联内容）|
 | 表情 | `face` | `face_id`（规范另有 `is_large`）| `faces` |
 | 商城表情 | `market_face` | **实现只有** `url`；规范另有 emoji_id/summary 等 | `faces` |
 | 小程序 | `light_app` | `app_name` + `json_payload` | `json_cards`（payload 内 `app` 为 `com.tencent.multimsg` 时按合并转发拉内层）|

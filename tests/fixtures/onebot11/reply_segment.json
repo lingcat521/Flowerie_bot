@@ -1,0 +1,38 @@
+{
+  "_provenance": {
+    "client": "onebot11",
+    "status": "[DOC]+[CODE]",
+    "captured": false,
+    "evidence": "OneBot 11 规范 event/message.md（reply 段只有 id）+ NapCat napcat-onebot/types/message.ts OB11MessageReplySchema{id,qq?}",
+    "note": "OneBot 引用**没有内联内容**：reply_segments/reply_text 必须保持空，不得伪造"
+  },
+  "time": 1756000401,
+  "self_id": 10001,
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "message_id": 991002,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "reply",
+      "data": {
+        "id": 991000,
+        "qq": 10001
+      }
+    },
+    {
+      "type": "text",
+      "data": {
+        "text": "这是回复"
+      }
+    }
+  ],
+  "raw_message": "",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友"
+  }
+}

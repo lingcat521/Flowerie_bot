@@ -154,6 +154,10 @@ def test_roundtrip_reparse_is_stable(path):
     assert _core(ev1) == _core(ev2), "%s：重解析后归一化结果不一致" % path
     assert ev1.notice_kind == ev2.notice_kind
     assert ev1.notice_file == ev2.notice_file
+    if ev1.kind == "message":
+        # G4：内联引用（Milky 有 / OneBot 为空）也必须 round-trip 稳定
+        assert ev1.reply_ref == ev2.reply_ref and ev1.reply_text == ev2.reply_text
+        assert ev1.reply_segments == ev2.reply_segments
     if ev1.kind == "request":
         for field in ("request_kind", "request_scene", "request_id", "request_uid",
                       "request_filtered", "comment", "actor_id", "target_id", "group_id"):

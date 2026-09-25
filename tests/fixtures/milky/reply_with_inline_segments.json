@@ -1,0 +1,54 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[DOC]+[CODE]",
+    "captured": false,
+    "evidence": "Milky 规范 protocol/src/ir/common.ts L327-333（reply{message_seq,sender_id,sender_name?,time,segments[]} 内联被引消息的完整段数组）+ LLBot src/milky/transform/message/incoming.ts",
+    "note": "内联引用：被引消息的段数组直接内联，无需再调 API（与 OneBot 只给 id 不同）"
+  },
+  "time": 1756000400,
+  "self_id": 10001,
+  "event_type": "message_receive",
+  "data": {
+    "message_scene": "group",
+    "peer_id": 123456,
+    "sender_id": 456789,
+    "message_seq": 991001,
+    "segments": [
+      {
+        "type": "reply",
+        "data": {
+          "message_seq": 991000,
+          "sender_id": 111222,
+          "sender_name": "甲",
+          "time": 1756000390,
+          "segments": [
+            {
+              "type": "text",
+              "data": {
+                "text": "原始消息内容"
+              }
+            },
+            {
+              "type": "image",
+              "data": {
+                "resource_id": "res-img-9",
+                "temp_url": "https://example/i.jpg",
+                "width": 100,
+                "height": 200,
+                "summary": "[图片]",
+                "sub_type": "normal"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "type": "text",
+        "data": {
+          "text": " 这是回复"
+        }
+      }
+    ]
+  }
+}

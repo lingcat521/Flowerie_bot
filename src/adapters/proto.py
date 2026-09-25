@@ -54,6 +54,10 @@ class InternalEvent:
     files: List[Dict[str, Any]] = field(default_factory=list)     # 文件段（file_id/name/size/url/path）
     json_cards: List[Dict[str, Any]] = field(default_factory=list)  # JSON/Ark 卡片：app + 是否合并转发
     forwards: List[Dict[str, Any]] = field(default_factory=list)  # 合并转发段（id / 是否内联）
+    # 引用消息（G4）：Milky 把被引消息的段数组**内联**给出，OneBot 只给 id
+    reply_ref: Dict[str, Any] = field(default_factory=dict)       # 引用元信息：id/sender_id/sender_name/time
+    reply_segments: List[dict] = field(default_factory=list)      # 内联被引段（原样，供上层按需再解析）
+    reply_text: str = ""                                          # 内联被引段的纯文本摘要（Milky 有；OneBot 空）
     records: List[Dict[str, Any]] = field(default_factory=list)   # 语音段（G3）
     videos: List[Dict[str, Any]] = field(default_factory=list)    # 视频段（G3）
     xmls: List[Dict[str, Any]] = field(default_factory=list)      # XML 段（G3：保真保存，不解析）

@@ -52,6 +52,7 @@ class MessageAssembler:
         # 表情（QQ 表情 / 商城表情）：Adapter 已归一化，这里只做语义化（证据见 docs/message-model.md §3）
         full_text += self._assemble_faces(event)
         full_text += self._assemble_media(event)
+        full_text += self._assemble_quote(event)
 
         # 回复与@：边界语义字段（parser 与旧 _scan_reply_and_at 同规则）
         is_reply_to_bot = event.is_reply_to_bot
@@ -133,6 +134,19 @@ class MessageAssembler:
         return block
 
     # ---------- JSON 卡片 ----------
+    def _assemble_quote(self, event) -> str:
+        """引用消息的**内联内容**（G4）。
+
+        证据：[DOC] Milky 规范 `common.ts` L327-333（`reply.segments` 内联被引段）；
+        OneBot 的 reply 段只有 `id`（`event/message.md` / NapCat `types/message.ts`）——
+        因此 OneBot 侧本函数返回空串：**不编造引用内容，也不假装拿到了**。
+        """
+        text = getattr(event, "reply_text", "") or ""
+        if not text:
+            return ""
+        note, _hit = sanitize_untrusted_text(text[:200])
+        return chr(10) + "[引用的消息：" + note + "]"
+
     def _assemble_media(self, event) -> str:
         """把语音/视频/XML 归一化字段变成 AI 能理解的一句话（G3）。
 

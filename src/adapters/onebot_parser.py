@@ -237,6 +237,7 @@ class OneBotEventParser:
         images: List[str] = []
         image_files: List[str] = []
         reply_id: Optional[int] = None
+        reply_ref: Dict[str, Any] = {}
         is_reply_to_bot = has_reply_to_other = has_at_others = False
         summary: List[tuple] = []
         faces: List[Dict[str, Any]] = []
@@ -280,6 +281,14 @@ class OneBotEventParser:
                     is_reply_to_bot = True
                 elif replied_qq:
                     has_reply_to_other = True
+                # G4：OneBot 的 reply 段**只有 id（+qq）**，没有内联段 —— 如实记录，
+                # reply_segments/reply_text 保持空，不做任何填充（不是所有协议都给内联）
+                reply_ref = {"id": reply_id}
+                if replied_qq:
+                    try:
+                        reply_ref["sender_id"] = int(replied_qq)
+                    except ValueError:
+                        pass
             elif seg_type == "forward":
                 forwards.append({"id": str(data.get("id") or ""),
                                  "inline": bool(data.get("messages"))})
@@ -334,6 +343,7 @@ class OneBotEventParser:
         event.images = images
         event.image_files = image_files
         event.reply_id = reply_id
+        event.reply_ref = reply_ref
         event.is_reply_to_bot = is_reply_to_bot
         event.has_reply_to_other = has_reply_to_other
         event.has_at_others = has_at_others
