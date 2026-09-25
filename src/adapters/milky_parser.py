@@ -70,7 +70,11 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
             ev.actor_id = ev.actor_id or (int(peer_id) if peer_id else None)
         elif scene == "group":
             ev.group_id = int(peer_id) if peer_id else None
-        ev.message_id = data.get("message_id") or data.get("msg_id")
+        # 消息号：Milky 规范/实现**只有 message_seq**（无 message_id）
+        # 证据：LLBot src/milky/transform/event.ts L80/L99/L118 均写 message_seq；
+        #      Lagrange.Milky Models/Messages/IncomingMessageBase.cs L13 message_seq
+        ev.message_id = (data.get("message_id") or data.get("msg_id")
+                         or data.get("message_seq"))
         # Milky 段容器字段：segments（SDK 标准）；兼容 message（旧样例）
         _scan_segments(ev, data.get("segments", data.get("message")), bot_qq)
     elif ev.kind == "notice":

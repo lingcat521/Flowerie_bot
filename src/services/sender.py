@@ -255,7 +255,13 @@ class Sender:
             try:
                 res = await self._post(endpoint, payload, timeout=10.0)
                 if res.get("ok"):
-                    mid = (res.get("data") or {}).get("message_id")
+                    _data = res.get("data")
+                    _data = _data if isinstance(_data, dict) else {}
+                    # Milky 发送结果只有 message_seq（SendGroupMessageHandler.cs L41 的 Result
+                    # 字段是 MessageSeq），OneBot 只有 message_id —— 两者都取，缺一不可
+                    mid = _data.get("message_id")
+                    if mid is None:
+                        mid = _data.get("message_seq")
                     logger.info("message_send_finished target=%s id=%s", target, mid,
                                 extra={"event": "message_send_finished"})
                     return {"ok": True, "message_id": mid}
@@ -268,8 +274,24 @@ class Sender:
                 await asyncio.sleep(2)
         return {"ok": False, "message_id": None}
 
-    async def delete_msg(self, message_id: int) -> bool:
-        """撤回消息（OneBot11 /delete_msg）。"""
+    async def delete_msg(self, message_id: int, scope: str = "group") -> bool:
+        """撤回消息。
+
+        - OneBot11：`/delete_msg {message_id}`；
+        - Milky（QQ_PROTOCOL=milky）：`recall_group_message` / `recall_private_message`，
+          入参字段是 **`message_seq`**（没有 message_id）。证据（均为 [CODE]）：
+          `Lagrange.Milky/Api/Handlers/Message/RecallGroupMessageHandler.cs` L36 与
+          `RecallPrivateMessageHandler.cs` L36 的 Request 只有 `MessageSeq`；
+          `SendGroupMessageHandler.cs` L41 的 Result 也只有 `message_seq`。
+          群/私聊是两个不同 action，故用 `scope` 选择（默认 group）。
+        """
+        if self._milky:
+            action = "recall_private_message" if scope == "private" else "recall_group_message"
+            res = await self._post(action, {"message_seq": int(message_id)}, timeout=10.0)
+            if not res.get("ok"):
+                logger.error("message_delete_failed id=%s err=%s", message_id, res.get("error"),
+                             extra={"event": "message_delete_failed"})
+            return bool(res.get("ok"))
         try:
             async with self.session.post(
                     f"{self.config.HTTP_API_BASE}/delete_msg",

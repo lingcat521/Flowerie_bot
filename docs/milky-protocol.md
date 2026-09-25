@@ -47,24 +47,35 @@ python main.py
 }
 ```
 
-### 消息段（已按官方 SDK 对齐）
-| 语义 | 段 `type` | `data` 字段 | 说明 |
+### 消息段（已按官方 SDK 与两份作者实现对齐）
+| 语义 | 段 `type` | `data` 字段 | 归一化去向（Adapter）|
 | --- | --- | --- | --- |
-| 文本 | `text` | `text` | |
-| @某人 | `mention` | `user_id` | 与 OneBot `at/qq` 不同 |
-| @全体 | `mention_all` | — | |
-| 图片 | `image` | `temp_url` + `resource_id`（+width/height/summary/sub_type）| 识图用 temp_url |
-| 回复 | `reply` | `message_seq` | 引用消息序列号 |
-| 表情 | `face` | `face_id` | |
-| 语音 | `record` | `resource_id` + `temp_url` + `duration` | |
-| 视频 | `video` | `resource_id` + `temp_url` | |
-| 转发 | `forward` | — | |
+| 文本 | `text` | `text` | `text` |
+| @某人 | `mention` | `user_id`（+name）| `mentions`（与 OneBot `at/qq` 不同）|
+| @全体 | `mention_all` | — | `mentions`（"all"）|
+| 图片 | `image` | `temp_url` + `resource_id`（+width/height/summary/sub_type）| `images` / `image_files`（识图用 temp_url）|
+| 回复 | `reply` | `message_seq`（+ 内联 `segments`）| `reply_id`（内联内容尚未消费，见 message-model.md §5）|
+| 表情 | `face` | `face_id`（规范另有 `is_large`）| `faces` |
+| 商城表情 | `market_face` | **实现只有** `url`；规范另有 emoji_id/summary 等 | `faces` |
+| 小程序 | `light_app` | `app_name` + `json_payload` | `json_cards`（payload 内 `app` 为 `com.tencent.multimsg` 时按合并转发拉内层）|
+| 合并转发 | `forward` | `forward_id` + title/preview/summary | `forwards` |
+| 文件 | `file` | `file_id` + `file_name` + `file_size`（+`file_hash`?）| `files` |
+| 语音 | `record` | `resource_id` + `temp_url` + `duration` | 仅 `segments_summary`（暂无对应字段）|
+| 视频 | `video` | `resource_id` + `temp_url`（+宽高/时长）| 仅 `segments_summary`（暂无对应字段）|
+| XML | `xml` | `service_id` + `xml_payload` | 仅 `segments_summary`（与 OneBot `xml` 一致）|
+| Markdown | `markdown` | `content` | `text`（规范 since 1.3；两份实现都未定义该段）|
 
 ⚠️ **与 OneBot 的差异**：
 - 段容器字段是 **`segments`**（OneBot 是 `message`）
 - @ 用 **`mention`/`user_id`**（OneBot `at`/`qq`）
 - 图片用 **`temp_url`**（临时 URL；OneBot `file/url`）
 - 回复用 **`message_seq`**（OneBot `id`）
+- 消息号是 **`message_seq`**（OneBot `message_id`）—— 事件、**发送响应**、撤回入参三处都用它
+
+> **段清单以两份内嵌实现 + 规范三方互证**（均为 `[CODE]`/`[DOC]`，详见 protocol-reverse-engineering.md §6.1 / §9 C2）：
+> `LagrangeV2/Lagrange.Milky/Entity/Segment/`（15 文件 / 13 种 incoming）与
+> `Lagrange.Core/Lagrange.Milky/Models/Segments/`（11 文件 / 10 种 incoming）布局不同，
+> 且**实现字段比规范窄**（如 `market_face` 只有 `url`）—— 解析一律逐字段兜底。
 
 ## API 调用（发送）
 ```
@@ -146,7 +157,7 @@ Authorization: Bearer <access_token>
 | `set_group_config` | Milky 未提供群配置写接口 |
 | `set_self_profile` | Milky 拆成 `set_nickname` / `set_bio` / `set_avatar`，语义不唯一 |
 
-### 仍绕过统一入口的端点（6 处，已知缺口）
+### 仍绕过统一入口的端点（5 处，已知缺口）
 
 这些方法目前仍直接 `session.post`，**Milky 模式下会打到 OneBot 地址**；
 `tests/test_milky_mapping.py::test_direct_post_sites_only_shrink` 把它锁成"只许减少"：
@@ -154,8 +165,11 @@ Authorization: Bearer <access_token>
 | 端点 | 为什么还没转 |
 | :--- | :--- |
 | `send_group_msg` / `send_private_msg`（带图发送、其余直连处） | 需逐处核对调用方对返回值的用法 |
-| `delete_msg` | Milky 分 `recall_group_message` / `recall_private_message`，当前签名只有 message_id（缺场景） |
 | `get_msg` / `get_group_msg_history` / `get_group_member_info` / `get_group_member_list` | 返回体是 OneBot 结构（如 `raw_message`），需按 Milky 响应逐字段对齐后再转 |
+
+> **已收口（原第 6 处）**：`delete_msg` 已改走统一入口 —— Milky 模式下发
+> `recall_group_message` / `recall_private_message` 且载荷字段为 `message_seq`；
+> OneBot 模式保持原 `/delete_msg` 行为不变（证据见 sender.delete_msg docstring）。
 
 ### 官方 API 全量对照（同步 2026-09-25）
 
@@ -265,6 +279,8 @@ Authorization: Bearer <access_token>
 
 ## 已知边界（真机联调时请反馈）
 - **发送图片/语音段**：Milky 发送段 data（resource_id 需先上传）——Flowerie 当前 text 发送完整可用；多媒体发送待联调
+- **消息号（已修）**：Milky 只有 `message_seq`（事件 / 发送响应 / 撤回入参都是它）——现已映射到 `message_id`，撤回按群/私聊分流；OneBot 行为不变
+- **段字段宽度**：规范与两份实现不完全一致（`market_face` 实现只有 `url`、`face` 无 `is_large`）——按可选字段解析，缺失时不报错只降级描述
 - notice 的 event_type 完整命名（目前按 notice_receive 匹配）
 - 响应 retcode 语义（200 + retcode 0/None = 成功）
 
