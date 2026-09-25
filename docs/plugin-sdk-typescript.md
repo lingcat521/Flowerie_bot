@@ -59,7 +59,7 @@ await plugin.run();
 | 能力 | 本 SDK | Python（runner） |
 | :--- | :--- | :--- |
 | 必需方法 | initialize / event / health / shutdown | 同 |
-| 可选能力（11 项） | context.get · config.get · config.set · permission.check · storage.get/set/delete/list · webui.page/action/asset | **完全相同**（`test_handshake_declares_protocol_and_capabilities` 是相等断言，不是子集） |
+| 可选能力（14 项） | context.get · config.get · config.set · permission.check · storage.get/set/delete/list · webui.page/action/asset · **plugin.call/event/cancel** | **完全相同**（`test_handshake_declares_protocol_and_capabilities` 是相等断言，不是子集） |
 | 反向通道 | 插件 → 引擎的 engine op / action | 同 |
 | 控制面 hook | 具名处理器（插件 WebUI 数据钩子） | `def status(...)` |
 | WebUI Protocol | 页面/动作/资源三通道 | 同 |
@@ -81,3 +81,18 @@ python3 -m pytest tests/test_plugin_webui_multilang.py -q -rs -k <lang>
 - 引擎按**连接**识别插件身份：插件**不能**（也不需要）自己声明 plugin_id；
 - 只有声明过的可选方法才会被引擎调用（`supports()` 门控），所以声明与实现必须一致；
 - stdout 只能放协议 JSON（一行一个）；日志一律 stderr，否则会被当成非法行跳过。
+
+## 插件间通信（Plugin-to-Plugin，任务书第 4 份《通信》）
+
+`plugin.call(target, method, params, opts)` / `plugin.emit(name, payload)` /
+`plugin.on(name, handler)` / `plugin.expose(method, handler)` / `plugin.cancel(request_id, reason)`：
+
+- 目标可以是 `plugin_a`（任意健康实例）或 `plugin_a#instance1`（指定实例）；
+- **跨语言必须经 Core Router**（本 SDK 没有第二条出站通道）；`route` 策略 `auto|core|local` 默认 `auto`；
+- 失败一律是结构化错误（`{code,message,data}`，12 个错误码之一），不会退化成一句字符串；
+- `trace_id` / `hop_count` 由 SDK 自动传播；等待自己发起的调用响应期间，引擎投递进来的
+  `plugin.call` / `plugin.event` / `plugin.cancel` 仍会被处理（插件可重入）；
+- 权限 `plugin.call.<target>[.<method>]` / `plugin.emit` 由引擎强制，SDK 无法绕过；
+- 不自动重试（§八）。
+
+完整协议见 [plugin-communication.md](plugin-communication.md)。

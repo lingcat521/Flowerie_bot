@@ -21,6 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #: 语言 → 示例目录 / 需要的工具链 / 目标插件里应出现的 runtime 标记
 LANGS = {
     "python": {"example": "examples/python-plugin", "needs": [], "runtime": "python"},
+    "rust": {"example": "examples/rust-plugin", "needs": ["rustc"], "runtime": "rust"},
     "typescript": {"example": "examples/typescript-plugin", "needs": ["node"],
                    "runtime": "typescript"},
     "go": {"example": "examples/go-plugin", "needs": ["go"], "runtime": "go"},
@@ -186,6 +187,20 @@ async def test_typescript_to_java(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_python_to_rust(tmp_path):
+    """扩展路径（§二十四：框架必须可扩展，不限于三条核心路径）：Python -> Core -> Rust。"""
+    result = await _cross_language_path(tmp_path, "python", "rust")
+    assert result["runtime"] == "rust"
+
+
+@pytest.mark.asyncio
+async def test_go_to_python(tmp_path):
+    """扩展路径：Go -> Core -> Python（反向也走同一条 Core Router，协议对称）。"""
+    result = await _cross_language_path(tmp_path, "go", "python")
+    assert result["runtime"] == "python"
+
+
+@pytest.mark.asyncio
 async def test_typescript_to_typescript(tmp_path):
     """验收路径 3：TS -> TS。当前引擎一个插件一个进程，实际走 Core Router（§十一 允许），
     语义与跨语言完全一致 —— 这条用例同时是"同语言不得有特殊语义"的证据。"""
@@ -212,7 +227,8 @@ async def test_route_policy_core_is_the_unified_path(tmp_path):
 def test_acceptance_paths_are_declared(tmp_path, capsys):
     """把三条验收路径与各自的工具链可用性打印出来（skip 不等于 pass，报告要能看到谁真跑了）。"""
     table = []
-    for caller, callee in (("python", "go"), ("typescript", "java"), ("typescript", "typescript")):
+    for caller, callee in (("python", "go"), ("typescript", "java"), ("typescript", "typescript"),
+                           ("python", "rust"), ("go", "python")):
         reason = _missing(caller) or _missing(callee)
         table.append("%s->%s=%s" % (caller, callee, "SKIP(%s)" % reason if reason else "RUNNABLE"))
     print("验收路径可用性：" + " | ".join(table))

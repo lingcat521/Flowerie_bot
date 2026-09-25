@@ -7,6 +7,32 @@
 
 ## [未发布]
 
+### 新增 —— Plugin-to-Plugin 通信（任务书《通信》：协议 + Core Router + 五语言 SDK）
+
+- **协议模型**（`src/plugins/comm.py`）：五类消息 CALL/RESPONSE/EVENT/ERROR/CANCEL 严格区分；
+  请求/响应/错误模型；12 个结构化错误码（§二十一 十个 + §十七 `PLUGIN_UNAVAILABLE` +
+  §二十二 `PLUGIN_CALL_LOOP`）；语言无关数据类型（含 `{"$bytes":...}` 二进制引用）与
+  Normalized DTO（Message/User/Group/File/Image/Event/Context）；`trace_id`/`call_id`/`hop_count` 环保护。
+- **Core Router + Communication Bus**（`src/plugins/router.py`）：身份（plugin_id/runtime/version/
+  protocol_version/instance_id）、实例寻址（`plugin_a` / `plugin_a#instance1` / 任意健康实例）、
+  生命周期结构化错误、权限门、超时（**不杀进程**）、CANCEL、事件广播、真实统计。
+- **权限**：与既有 Permission 系统同一套 —— `plugin.call.<target>` /
+  `plugin.call.<target>.<method>` / `plugin.call.*` / `plugin.emit`；
+  manifest 校验接受动态键；LOCAL 通路同样先过权限（§十五）。
+- **五语言 SDK**：`plugin.call/emit/on/expose/cancel`（命名按各语言习惯，语义完全一致），
+  入站三方法分派、结构化错误映射、trace/hop 自动传播、嵌套等待不丢消息；能力声明 11 → 14。
+- **引擎接线**：反向 op `plugin.call/plugin.emit/plugin.cancel`（身份按连接决定，插件自报
+  source 一律被覆盖）；`PluginRuntime.comm_request` 让插件间投递可并发（插件因此可重入，
+  A→B→A 的回环才能被环保护真实观察到）；initialize 上下文补上 plugin_id/instance_id。
+- **测试**：`tests/test_plugin_comm_model.py`（86，模型层）、`tests/test_plugin_comm_bus.py`
+  （17，真子进程真 Core：权限拒绝不投递 / 超时 + CANCEL / A↔B 环保护 / 实例寻址 / WebUI Action 驱动
+  插件间调用）、`tests/test_plugin_comm_paths.py`（Python→Go、TS→Java、TS→TS 三条验收路径）、
+  `tests/test_plugin_sdk_contract.py` 新增五条跨语言 comm 向量用例。
+- **文档**：新增 `docs/plugin-communication.md` 与 `docs/plugin-communication-report.md`；
+  `plugin-protocol.md` / `plugin-sdk-capabilities.md` / 四份 SDK 文档同步（可选能力 11 → 14）。
+- 兼容性：协议只做加法（新增可选能力组 `plugin`，未声明的能力引擎不会调用）；
+  旧的 `plugin_call` / `plugin_event` action 路径与 `plugin_admin` 粗粒度授权行为不变。
+
 ### 新增 —— Native Reply Tool（AI 自主决定拆不拆、拆几条）
 
 - 开启 `MULTI_REPLY_ENABLED` 后，模型额外获得内部工具 `reply({"messages": [...]})`：

@@ -28,7 +28,9 @@
 | [client-profiles.md](client-profiles.md) | **客户端档案**：一个协议基线 + 多个客户端实现的已验证差异（四态 + quirks）、出站序列化怎么用、新客户端接入清单 | 协议/适配层开发者 |
 | [client-compatibility.md](client-compatibility.md) | **Client Compatibility Matrix**：逐能力 × 逐客户端（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN + 证据）| 协议/适配层开发者 |
 | [plugin-webui-protocol.md](plugin-webui-protocol.md) | **统一 Plugin WebUI 协议**：`webui.page/action/asset` 三个协议方法 + 六项 `webui.*` 权限 + 受控 context + 20 类安全用例落点（五种语言同一套） | 插件开发者 |
-| [plugin-protocol.md](plugin-protocol.md) | **Plugin Protocol v1 规范**：JSON-Lines 线格式 / 必需 4 + 可选 11 方法 / 错误模型 / 版本与能力协商 / 选型理由 | 插件开发者 |
+| [plugin-protocol.md](plugin-protocol.md) | **Plugin Protocol v1 规范**：JSON-Lines 线格式 / 必需 4 + 可选 14 方法（含插件间通信 3 项）/ 错误模型 / 版本与能力协商 / 选型理由 | 插件开发者 |
+| [plugin-communication.md](plugin-communication.md) | **插件间通信协议**：五类消息 / 请求·响应·错误模型 / 12 个错误码 / 语言无关类型与 DTO / 十四节权限 / LOCAL·CORE·AUTO 路由 / 五语言 API 对照 | 插件开发者 |
+| [plugin-communication-report.md](plugin-communication-report.md) | **插件间通信最终验收报告**：§二十八 逐项结论 + 三条核心路径 + 禁止事项自查 + 诚实边界 | 评审 |
 | [plugin-sdk.md](plugin-sdk.md) | **多语言 SDK 指南**：五语言 API 对照 / 能力对齐 / 新语言接入清单；单语言参考见 [typescript](plugin-sdk-typescript.md) · [go](plugin-sdk-go.md) · [rust](plugin-sdk-rust.md) · [java](plugin-sdk-java.md) | 插件开发者（非 Python）|
 | [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) | **Capability Matrix**：逐能力四态（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN）+ CI 证据 | 插件开发者 + 评审 |
 | [plugin-final-report.md](plugin-final-report.md) | **三份任务书最终报告**：逐条必答清单 + 真实数字 + 复核命令 | 评审 |
