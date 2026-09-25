@@ -87,6 +87,19 @@ Authorization: Bearer <access_token>
 - 消息必须是 **OutgoingSegment 数组**（字符串自动转 text 段）
 - action 名与 OneBot 的映射：`send_group_msg→send_group_message`、`send_private_msg→send_private_message`
 
+## 消息场景（message_scene）
+
+| 场景 | 归一化 | 说明 |
+| :--- | :--- | :--- |
+| `friend` | `scope=private`, `scene=friend` | 好友私聊 |
+| `group` | `scope=group`, `scene=group` | 群消息（`group_id = peer_id`）|
+| `temp` | `scope=private`, `scene=temp`, `context_group_id = group.group_id` | **临时会话**（QQ 群内发起）：规范 L284-291 的 `group` 是**可选实体**，来源群只做上下文，不冒充群会话 |
+| `stranger` | `scope=private`, `scene=stranger` | 陌生人（LLBot 侧实现）|
+| ~~`group_temp`~~ | 归一成 `temp` | 规范枚举只有 `friend/group/temp`（L266-291），`group_temp` 是旧样例名 |
+
+> ⚠️ **Core 边界**：`message_router._handle_message` 首行是 `if event.scope != "group": return` ——
+> 私聊/临时会话**不进入群业务**（插件事件投递在此之前，仍可收到）。
+
 ## 事件类型（当前映射）
 
 > ⚠️ **更正（2026-08-09）**：规范（`common.ts` 的 Event 联合，实测 **21 种**）里**没有 `notice_receive`** ——

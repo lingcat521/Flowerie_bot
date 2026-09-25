@@ -90,7 +90,10 @@ NormalizedSegment（kind 为语义类型，attrs 为已归一字段）
 - `[UNKNOWN]` Milky 其余通知类事件（撤回 / 管理变动 / 禁言 / 精华 / 群名 …）同样只做了 kind 归一化，业务侧未消费（`notice_kind` 保留具体 event_type）；
 - `[UNKNOWN]` Lagrange.Core 原生（非 Milky）元素模型（本轮只深入了它内嵌的 Milky 实现）；
 - `[UNKNOWN]` 各家对 `reply` 的定位能力（Milky 内联被引段；OneBot 只给 id → 需要额外 API 拉取）；
-- `[UNKNOWN]` `temp`（临时会话）在 NapCat / SnowLuma 侧的表现（仅 Milky/LLBot 有证据）；
+- ~~`[UNKNOWN]` `temp`（临时会话）~~ **已解决（G1）**：`InternalEvent.scene` + `context_group_id` 已建模；
+  Milky `temp`（规范 L284-291）与 OneBot `private/sub_type=group`（规范 L16）归一为同一形态，
+  Core 只处理群会话（`_handle_message` 首行 scope 判断）这一边界已写入 `tests/test_temp_scene.py`；
+  NapCat / SnowLuma 侧是否发送 temp 事件仍属 `[UNKNOWN]`（无实机、无源码证据）；
 - `[UNKNOWN]` 表情类段在**发送**方向各家是否接受（本轮只核对了 NapCat 与 Milky 的接收侧与部分发送侧）。
 - **已知缺口（不是 `[UNKNOWN]`，而是"证据已得、尚未消费"）**：
   - Milky `reply.segments`（**内联被引用消息内容**，规范 `common.ts` L332 `since 1.2`）——

@@ -70,8 +70,14 @@ _SCENE_SCOPE = {
     "friend": "private",
     "stranger": "private",
     "group": "group",
-    "group_temp": "group",
+    # [DOC] 规范 common.ts L284-291 临时会话：peer_id=对端 QQ，group 为**可选** GroupEntity
+    "temp": "private",
+    # 旧样例别名：规范的 message_scene 枚举只有 friend / group / temp（L266-291），
+    # 没有 group_temp —— 保留兼容但归一到规范值（见 _SCENE_ALIAS）
+    "group_temp": "private",
 }
+# 规范里不存在的场景名 → 归一成规范值，避免下游见到两个名字
+_SCENE_ALIAS = {"group_temp": "temp"}
 
 
 def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> InternalEvent:
@@ -83,7 +89,9 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
     event_type = str(raw.get("event_type") or "unknown")
     data = raw.get("data") if isinstance(raw.get("data"), dict) else {}
     ev.kind = _event_kind(event_type)
-    scene = str(data.get("message_scene") or "")
+    _raw_scene = str(data.get("message_scene") or "")
+    scene = _SCENE_ALIAS.get(_raw_scene, _raw_scene)
+    ev.scene = scene
     ev.scope = _SCENE_SCOPE.get(scene, "")
     peer_id = data.get("peer_id")
     sender_id = data.get("sender_id")
@@ -95,6 +103,15 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
             ev.actor_id = ev.actor_id or (int(peer_id) if peer_id else None)
         elif scene == "group":
             ev.group_id = int(peer_id) if peer_id else None
+        elif scene == "temp":
+            # 临时会话（QQ 群内发起）：私聊范围 + 来源群只做**上下文**，不冒充群会话
+            # 证据：[DOC] 规范 L284-291（peer_id=对端，group=可选 GroupEntity L158-168 的 group_id）
+            ev.group_id = None
+            ev.actor_id = ev.actor_id or (int(peer_id) if peer_id else None)
+            _grp = data.get("group") if isinstance(data.get("group"), dict) else {}
+            _gid = _grp.get("group_id")
+            if _gid is not None and str(_gid) != "":
+                ev.context_group_id = int(_gid)
         # 消息号：Milky 规范/实现**只有 message_seq**（无 message_id）
         # 证据：LLBot src/milky/transform/event.ts L80/L99/L118 均写 message_seq；
         #      Lagrange.Milky Models/Messages/IncomingMessageBase.cs L13 message_seq

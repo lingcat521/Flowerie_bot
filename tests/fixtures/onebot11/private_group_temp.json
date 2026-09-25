@@ -1,0 +1,30 @@
+{
+  "_provenance": {
+    "client": "onebot11",
+    "status": "[DOC]",
+    "captured": false,
+    "evidence": "OneBot 11 规范 event/message.md L10-22（私聊：message_type=private、sub_type ∈ friend/group/other，group=群临时会话；规范无 group_id 字段）",
+    "note": "群临时会话样本；group_id 故意不写，因为规范里没有这个字段"
+  },
+  "time": 1756000101,
+  "self_id": 10001,
+  "post_type": "message",
+  "message_type": "private",
+  "sub_type": "group",
+  "message_id": 880001,
+  "user_id": 456789,
+  "raw_message": "私聊你一下",
+  "message": [
+    {
+      "type": "text",
+      "data": {
+        "text": "私聊你一下"
+      }
+    }
+  ],
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友"
+  }
+}

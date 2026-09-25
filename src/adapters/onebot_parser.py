@@ -77,6 +77,29 @@ def _normalize_file_segment(data: Dict[str, Any]) -> Dict[str, Any]:
         "path": str(data.get("path") or ""),
     }
 
+def _scene_of(kind: str, scope: str, raw: Dict[str, Any]) -> str:
+    """会话类型归一化：group | friend | temp | stranger（跨协议同一套名字）。
+
+    证据：
+    - [DOC] OneBot 11 `event/message.md` L16：私聊 `sub_type` ∈ friend/group/other，
+      其中 **group 表示群临时会话**；L52：群消息 sub_type ∈ normal/anonymous/notice。
+    - [DOC] Milky 规范 `common.ts` L266-291：message_scene ∈ friend/group/temp。
+    """
+    if kind != "message":
+        return scope or ""
+    sub = str(raw.get("sub_type") or "")
+    if scope == "group":
+        return "group"
+    if scope == "private":
+        if sub == "group":
+            return "temp"        # 群临时会话（QQ 群内发起）
+        if sub == "friend":
+            return "friend"
+        if sub == "other":
+            return "stranger"
+    return scope or ""
+
+
 class OneBotEventParser:
     """OneBot raw dict → InternalEvent（转换唯一入口；raw_data 隔离保留）。"""
 
@@ -101,13 +124,19 @@ class OneBotEventParser:
         if timestamp is None:
             timestamp = int(time.time())
 
+        scene = _scene_of(kind, scope, raw)
         event = InternalEvent(
             event_id=self._event_id(kind, scope, group_id, actor_id, message_id, timestamp),
-            kind=kind, scope=scope,
+            kind=kind, scope=scope, scene=scene,
             group_id=group_id, actor_id=actor_id,
             message_id=message_id, timestamp=timestamp,
             raw_data=raw,
         )
+        if scene == "temp" and group_id is not None:
+            # 群临时会话：**规范未定义**私聊事件里的 group_id（event/message.md L10-22 无该字段），
+            # 某些实现会额外带上 —— 有就记录为上下文群，没有就留空，绝不推断
+            event.context_group_id = group_id
+            event.group_id = None
         event.operator_id = raw.get("operator_id") or actor_id
         event.target_id = raw.get("target_id")
         if kind == "notice" and str(raw.get("notice_type") or "") == "group_upload":

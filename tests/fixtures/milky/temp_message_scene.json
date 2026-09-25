@@ -1,0 +1,32 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[DOC]+[CODE]",
+    "captured": false,
+    "evidence": "Milky 规范 protocol/src/ir/common.ts L266-291（IncomingMessage 以 message_scene 判别 friend/group/temp；temp 变体 peer_id/message_seq/sender_id/time/segments + 可选 group 实体）+ L158-168 GroupEntity.group_id；LLBot src/milky/transform/event.ts L78-80",
+    "note": "临时会话样本：群信息以实体给出，不是 group_id 标量"
+  },
+  "time": 1756000100,
+  "self_id": 10001,
+  "event_type": "message_receive",
+  "data": {
+    "message_scene": "temp",
+    "peer_id": 456789,
+    "message_seq": 770001,
+    "sender_id": 456789,
+    "segments": [
+      {
+        "type": "text",
+        "data": {
+          "text": "私聊你一下"
+        }
+      }
+    ],
+    "group": {
+      "group_id": 123456,
+      "group_name": "测试群",
+      "member_count": 30,
+      "max_member_count": 200
+    }
+  }
+}

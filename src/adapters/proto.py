@@ -20,6 +20,8 @@ class InternalEvent:
     event_id: str = ""                 # 稳定标识：kind:scope:group:actor:message_id:time
     kind: str = "unknown"              # message | notice | request | lifecycle
     scope: str = ""                    # group | private | ""（会话范围）
+    scene: str = ""                    # 会话类型（归一化）：group | friend | temp | stranger
+    context_group_id: Optional[int] = None  # 非群会话的上下文群（如 QQ 临时会话的来源群）
     group_id: Optional[int] = None
     actor_id: Optional[int] = None     # 触发者 QQ
     message_id: Optional[int] = None
