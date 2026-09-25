@@ -11,28 +11,41 @@
 
 | Capability（协议方法） | Python | TypeScript | Go | Rust | Java |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Lifecycle（`initialize` / `shutdown`）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Event（`event`）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Health（`health`）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Action（`method:"action"` 反向）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Context（`context.get`）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Config（`config.get/set`）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Permission（`permission.check`）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Storage（`storage.get/set/delete/list`）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Logging（stderr 约定）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
-| Shutdown（干净退出）| SUPPORTED | SUPPORTED | 见 §2 | 见 §2 | 见 §2 |
+| Lifecycle（`initialize` / `shutdown`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Event（`event`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Health（`health`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Action（`method:"action"` 反向）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Context（`context.get`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Config（`config.get/set`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Permission（`permission.check`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Storage（`storage.get/set/delete/list`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Logging（stderr 约定）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| Shutdown（干净退出）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
 | WebUI（页面/动作/资源）| 见 [plugin-webui.md](plugin-webui.md)（DSL + HTML）| 见 §3 | 见 §3 | 见 §3 | 见 §3 |
 
-## 2. Go / Rust / Java 的当前状态（**如实**）
+## 2. Go / Rust / Java 的证据（**CI 实测，不是推断**）
 
-| 语言 | 状态 | 依据 |
+CI run [36129069164](https://github.com/lingcat521/Flowerie_bot/actions/runs/36129069164)
+（workflow `CI`，job `test (3.12)`，commit `cf283fe`，结论 **success**），整仓
+**1755 passed / 22 skipped**（22 条全是实机集成用例：没有协议端环境，按任务书要求 skip 并打印原因）。
+
+| 语言 | 状态 | 依据（可复核）|
 | :--- | :--- | :--- |
-| Go | **代码已就位，等待 CI 证据** | 本机**没有 go 工具链**（`shutil.which("go")` 为空）→ 契约测试 skip 并打印原因；CI 装了 go，会在那里真编译 + 真跑。**在 CI 出结论之前，本表不写 SUPPORTED。** |
-| Rust | **代码已就位，等待 CI 证据** | 同上（本机无 `rustc`）|
-| Java | **代码已就位，等待 CI 证据** | 同上（本机无 `javac` / `java`）|
+| Go | **SUPPORTED** | CI 真装 go → `tests/test_plugin_sdk_contract.py` 里 10 条用例**真编译、真起进程、真走管道**（本机无 go 工具链 → skip 并打印原因）|
+| Rust | **SUPPORTED** | 同上（rustc 直接编译 SDK 与示例，零 crate 依赖）|
+| Java | **SUPPORTED** | 同上（javac 编译 SDK + 示例到临时 classes，java 运行）|
 
-> 这一节故意不预填结论：任务书禁止"未验证却标 SUPPORTED"。
-> CI 跑绿后，这里会改成逐能力 `SUPPORTED`（或如实写 `PARTIAL` 并给出缺哪一项）。
+CI 绿跑里没有任何 `SKIP(本机缺工具链 …)` —— 五种语言全部 RUNNABLE 并全绿。
+
+### 2.1 CI 一次抓出的三个真问题（都已修，记录在此，避免"全绿"变成无根之谈）
+
+| # | 现象 | 根因 | 修复 |
+| :--- | :--- | :--- | :--- |
+| 1 | Go：`permission.check` 一发起就 `fatal error: all goroutines are asleep - deadlock!` | 读循环与请求处理挤在同一个 goroutine，反向 engine op 等不到应答 | 读/处理分离：读循环独立 goroutine，应答立即投递、请求排队顺序处理 |
+| 2 | Rust：`hook status` 返回 `{"counter": null}` | `register_hook` 的闭包签名只有 args，拿不到上下文，示例只能写死 null | `HookFn = Fn(&Context, &[Json]) -> Json`，示例真读 storage |
+| 3 | TypeScript：CI 的 tsc 报 `TS2307` ×3 + `TS2580` ×6 | CI 环境没有 `@types/node`，而 SDK 刻意零 npm 依赖 | 新增 `sdk/typescript/shims/node.d.ts`（最小宿主声明）+ run.sh 自动探测；静态用例守住覆盖 |
+
+本机装不了 go/rustc/javac，所以这三个问题**只有 CI 能抓** —— 这正是"skip 不等于 pass"的意义。
 
 ## 3. WebUI 能力（第 3 份任务书的范围）
 
@@ -47,8 +60,13 @@ Phase 3 会让五种语言用**同一套** `webui.*` 能力声明与 Action 语�
 ## 4. 怎么复核这张表
 
 ```bash
-python3 -m pytest tests/test_plugin_protocol.py -q        # 协议本身（含真子进程）
-python3 -m pytest tests/test_plugin_sdk_contract.py -q -rs # 五语言向量（skip 会打印原因）
+python3 -m pytest tests/test_plugin_protocol.py -q          # 协议本身（含真子进程）
+python3 -m pytest tests/test_plugin_sdk_contract.py -q -rs  # 五语言向量（skip 会打印原因）
+# 本机：23 passed / 30 skipped（无 go/rustc/javac）；CI：同文件 50 条全绿
+
+# TypeScript 的 tsc 分支（无 @types/node 时靠 SDK 自带 shim 编译）：
+PATH="$HOME/tscheck/bin:$PATH" FLOWERIE_FORCE_TSC=1 \
+  python3 -m pytest tests/test_plugin_sdk_contract.py -k typescript -q   # 10 passed
 ```
 
-> 表格里任何 `SUPPORTED` 都必须能指到上面两条命令里的一条绿色输出；指不到就改成 `PARTIAL`/`UNKNOWN`。
+> 表格里任何 `SUPPORTED` 都必须能指到上面某条绿色输出或 §2 的 CI run；指不到就改成 `PARTIAL`/`UNKNOWN`。
