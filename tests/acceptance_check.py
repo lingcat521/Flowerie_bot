@@ -440,6 +440,15 @@ async def main():
     rec(len(js_hits) == 0, "零 JavaScript 检查", f"命中 {len(js_hits)} 条" + ("：\n" + "\n".join(js_hits[:5]) if js_hits else ""))
 
     # ---------- I. pytest + ruff ----------
+    # 诊断：pytest 子进程里 pydantic 到底解析到哪儿（本轮 tests/webui 的 ImportError 就是靠这行定位）
+    diag = subprocess.run(
+        [sys.executable, "-c",
+         "import sys, pydantic, pydantic_settings;"
+         "print('pydantic', getattr(pydantic, '__version__', '?'), pydantic.__file__);"
+         "print('pydantic_settings', pydantic_settings.__file__);"
+         "print('sys.path[:3]', sys.path[:3])"],
+        capture_output=True, text=True)
+    print("[diag] " + ((diag.stdout or diag.stderr).strip().replace(chr(10), " | "))[:600])
     pt = subprocess.run([sys.executable, "-m", "pytest", "-q"], capture_output=True, text=True)
     # 失败时多留一点输出：只留 160 字符会把真正的 traceback 截掉（本轮就吃过这个亏）
     tail = (pt.stdout or pt.stderr).strip()
