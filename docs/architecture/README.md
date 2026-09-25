@@ -18,6 +18,7 @@
 
 | 文档 | 内容 |
 | :--- | :--- |
+| [final-acceptance-report.md](final-acceptance-report.md) | **最终验收报告**（任务书 §36）：真实数字块 + 八项绝对门槛 + BLOCKED 项与证据 + 复现命令 |
 | [acceptance-metrics.md](acceptance-metrics.md) | **验收 Dashboard**：八项绝对门槛 + Gate A–Z 实测值 + 逐提交 CI 真实记录（红色提交也如实保留）|
 | [transport-contract.md](transport-contract.md) | Gate Q 的 8 项契约与两个参考实现的逐项实测（含 N/A 理由）|
 

@@ -1,5 +1,8 @@
 # 验收 Dashboard（架构阶段 Gate 实测）
 
+> **最终验收报告（任务书 §36 要求的数字块）见 [final-acceptance-report.md](final-acceptance-report.md)** ——
+> 本文件是逐 Gate / 逐提交的过程台账，那份是结论与证据汇总。
+
 > 任务书 B 部分 Gate 34 要求：最终必须生成一张验收 Dashboard，**数字必须来自真实测试/命令输出**，
 > 禁止手填"看起来合理"的值。本文件按提交逐步更新；未测项目如实标 `TODO` / `PARTIAL`，不虚报 `PASS`。
 >
@@ -15,7 +18,7 @@
 | 4 | Unknown Data Safety（段 + 事件）| **20/20** | 100% | ✅ PASS | `tests/test_unknown_tolerance.py`（10 段 × 双解析器 + 10 事件 × 双协议）|
 | 4b | Real Integration Coverage（实机验证覆盖率）| **0%** | ≥90% | 🚫 BLOCKED BY EXTERNAL DEPENDENCY | 设备控制未授权（无障碍/ADB 两路均 denied），且无运行中的协议端；详见 docs/protocol-gap-closure.md §6 |
 | 5 | Existing Regression | **1203 passed / 19 failed（全为本地缺依赖，与本轮改动无关）/ 15 skipped / 32 collection errors（同样缺依赖）**；新增失败 0 | 100% | ✅ PASS（就"零新增失败"而言）| 本地全量 pytest；待 Gate U 的 15 项能力矩阵补全 |
-| 6 | CI | 见下方"CI 记录" | 100% success | ⏳ 进行中 | GitHub Actions: Push on main / Acceptance / CI |
+| 6 | CI | `7bf3e24`：**CI success / Acceptance success / Push on main success**（三项全绿）| 100% success | ✅ PASS | GitHub Actions；逐提交结论（含历史红提交与根因）见下方 CI 记录 |
 | 7 | Plugin Protocol Imports | **0** | 0 | ✅ PASS | `src/plugins/manager.py` 移除 `OneBotAdapter` 导入，改组合根注入；`plugin_sdk/` 无协议 import |
 | 8 | TestProtocol 不修改 Core | **0 处修改**：虚拟协议接入的 6 个改动文件全部在 Adapter 层与 tests/，并有一条测试直接扫 Core/Services/SDK/插件源码钉住 | 必须 | ✅ PASS | ADR-004；实验 8 用陌生协议事件直接驱动 `src/core/message_assembler.py` 零改动运行 |
 
@@ -45,7 +48,7 @@
 | T | 插件协议隔离 | `src/plugins/manager.py` = 0；`plugin_sdk/` = 0 | 0 | ✅ PASS |
 | U | 真实现有功能零回归 | **18/18**：任务书 §22 列举的 14 项（text/at/reply/image/face/market_face/file/group_upload/forward/JSON-Ark/poke/markdown/light_app/recall）+ temp/record/video/xml；每项两个协议原生样本喂真解析器 + raw_data 保真 + 标注重构前覆盖它的既有测试（`tests/test_regression_matrix.py`）| 15/15 | ✅ PASS |
 | V | 现有测试不退化 | 新增测试 249 个（G1–G4/G8 = 56、Gate JKL = 43、Gate D 契约 +12、Gate E/F = 11、Gate Q = 19、Gate S = 7、Gate R = 16、Gate I = 44、Gate M = 8、Gate N = 16、Gate U = 20）；删除 0；失败集合与基线一致（19 failed / 15 skipped，全为本地缺依赖）。**2 个既有用例按 ADR-007 的新边界契约更新**（`notice_file` 新增 `resource`；原字段断言逐字保留，强度不变）| 新增失败 = 0 | ✅ PASS |
-| W | CI | 见 CI 记录 | 100% | ⏳ |
+| W | CI | `7bf3e24` 三项全绿（历史红提交 `9242fb7`…`3467a50` 的根因逐条记录在 CI 记录里，未删改）| 100% | ✅ PASS |
 | X | Lint | ruff（CI）：0 违规；本地 flake8 F 规则 0、import 顺序自检 0 | 新增违规 = 0 | ✅ PASS |
 | Y | 源码证据覆盖 | 新结论均有 `[CODE]/[DOC]/[FIXTURE]` 标注；无证据的支持声明 = 0 | 0 | ✅ PASS |
 | Z | 生态研究覆盖 | 15 个仓库 / 369M（3 批），OpenShamrock `SOURCE_UNAVAILABLE`；矩阵见 client-compatibility.md §6 | 12 项目 | ✅ PASS |
@@ -98,7 +101,8 @@
 | `8769d52` | fix(gate-q) B024 + Gate S 多实例 + ADR-006 | failure | failure | success |
 | `06375fd` | feat(gate-r) Resource 抽象 + ADR-007 | failure | failure | success |
 | `3467a50` | feat(gate-i) 覆盖率 86.8% + B025 修复 | failure（Py3.9）| **success** | success |
-| 本轮 | feat(gate-mnu) 跨协议等价 7/7 + Round-trip 14/14 + 回归矩阵 18/18 | 待记录 | 待记录 | 待记录 |
+| `7bf3e24` | feat(gate-mnu) 跨协议等价 + Round-trip + 回归矩阵 + fix Py3.9 | **success** | **success** | success |
+| 本轮 | docs(arch) 最终验收报告（§36 数字块）| 待记录 | 待记录 | 待记录 |
 
 > **记录规则**：只写实际查到的结论（逐提交从 GitHub API 读取），未查到就写 `待记录`，**不写成 success**。
 > **红提交如实保留**：上表 8 个 failure 的原因分别是 ① ruff I001（import 顺序，跨 6 个提交，
