@@ -56,6 +56,9 @@ def _parse(path: str):
     client = os.path.basename(os.path.dirname(path))
     if client == "milky":
         return MilkyEventParser(bot_qq=BOT_QQ).parse(raw), raw
+    if client == "onebot12":
+        from src.adapters.onebot12_parser import OneBot12EventParser
+        return OneBot12EventParser(bot_qq=BOT_QQ).parse(raw), raw
     return OneBotEventParser(bot_qq=BOT_QQ).parse(raw), raw
 
 
@@ -101,6 +104,18 @@ def _rebuild_milky_notice(ev) -> dict:
                      "display_action_img_url": ""}}
 
 
+def _rebuild_onebot12(ev) -> dict:
+    """G8：只用归一化字段重建 OneBot 12 消息事件负载（规范 event.md 字段）。"""
+    return {"id": ev.event_id or "rebuild", "time": float(ev.timestamp or 0),
+            "type": "message",
+            "detail_type": "group" if ev.scope == "group" else "private",
+            "sub_type": "group" if ev.scene == "temp" else "",
+            "self": {"platform": "qq", "user_id": str(BOT_QQ)},
+            "message_id": str(ev.message_id or ""),
+            "group_id": str(ev.group_id or ""), "user_id": str(ev.actor_id or ""),
+            "message": ev.message_segments}
+
+
 def _rebuild_onebot_request(ev) -> dict:
     """请求类：只用归一化字段重建 OneBot 请求负载。"""
     raw = {"post_type": "request", "request_type": ev.request_kind, "user_id": ev.actor_id,
@@ -141,7 +156,9 @@ def test_roundtrip_reparse_is_stable(path):
     client = os.path.basename(os.path.dirname(path))
     ev1, _raw = _parse(path)
     milky = client == "milky"
-    if ev1.kind == "message":
+    if client == "onebot12" and ev1.kind == "message":
+        rebuilt = _rebuild_onebot12(ev1)          # G8：v12 语料单独走 v12 重建
+    elif ev1.kind == "message":
         rebuilt = _rebuild_milky(ev1) if milky else _rebuild_onebot(ev1)
     elif ev1.kind == "notice":
         rebuilt = _rebuild_milky_notice(ev1) if milky else _rebuild_onebot_notice(ev1)
@@ -149,7 +166,12 @@ def test_roundtrip_reparse_is_stable(path):
         rebuilt = _rebuild_milky_request(ev1) if milky else _rebuild_onebot_request(ev1)
     else:
         pytest.skip("round-trip 只覆盖 message / notice / request：%s" % ev1.kind)
-    parser = (MilkyEventParser(bot_qq=BOT_QQ) if milky else OneBotEventParser(bot_qq=BOT_QQ))
+    if client == "onebot12":
+        from src.adapters.onebot12_parser import OneBot12EventParser
+        parser = OneBot12EventParser(bot_qq=BOT_QQ)
+    else:
+        parser = (MilkyEventParser(bot_qq=BOT_QQ) if milky
+                  else OneBotEventParser(bot_qq=BOT_QQ))
     ev2 = parser.parse(rebuilt)
     assert _core(ev1) == _core(ev2), "%s：重解析后归一化结果不一致" % path
     assert ev1.notice_kind == ev2.notice_kind

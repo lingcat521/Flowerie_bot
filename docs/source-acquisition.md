@@ -93,3 +93,14 @@ git clone https://github.com/whitechi73/OpenShamrock.git
 **影响**：安卓端 OneBot11 的字段差异在本任务中属于 [UNKNOWN]，不做任何声称。
 
 源码区累计：15 个仓库 / 369M。
+
+## 第三批（G8：OneBot 12 规范）
+
+| 项目 | 仓库 | HEAD | 状态 |
+| :--- | :--- | :--- | :--- |
+| OneBot 12 规范 | botuniverse/onebot（`specs/`）| `d533f0f` | **SOURCE_OBTAINED**（第 4 次尝试；前 3 个候选仓库 ls-remote 失败）|
+
+失败记录：`botuniverse/onebot-12`、`botuniverse/specification`、`botuniverse/onebot-v12` 三个候选均 `git ls-remote` 失败
+（不是网络问题 —— 同批次 `botuniverse/onebot` 克隆成功）。规范实际位置经检索确认为 `botuniverse/onebot`。
+
+源码区累计：**16 个仓库**。

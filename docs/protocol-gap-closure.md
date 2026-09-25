@@ -30,7 +30,7 @@
 | **G5** | Milky 多媒体发送（upload→resource_id→send）| no real validation | complete | source + real device | OPEN（依赖实机）|
 | **G6** | 实机 Integration Test（OneBot11 10 + Milky 12）| missing | complete | integration test | OPEN（依赖实机）|
 | **G7** | OpenShamrock | SOURCE_UNAVAILABLE | researched/validated | source/device | OPEN（重试 + 文档研究）|
-| **G8** | OneBot v12 | not implemented | researched + mapped | spec/source | OPEN |
+| **G8** | OneBot v12 | not implemented | researched + mapped | spec/source | **IMPLEMENTED / NOT_REAL_DEVICE_VALIDATED**（规范级研究 + 骨架 + 契约测试）|
 
 ## 3. DoD 逐项（任务书 §12 表）
 
@@ -43,7 +43,7 @@
 | G5 media send | | | | | | | | OPEN |
 | G6 real integration | | -- | -- | -- | -- | | | OPEN |
 | G7 OpenShamrock | | | | | | | | OPEN |
-| G8 OneBot12 | | | | | | | | OPEN |
+| G8 OneBot12 | ✓ | ✓ | ✓ | ✓ | ✓ | ?（无实现可联调）| ✓ | IMPLEMENTED |
 
 ## 4. G1 封口记录（Milky `message_scene=temp`）
 
@@ -80,9 +80,9 @@
 
 | 指标 | 定义 | 当前 | 目标 |
 | :--- | :--- | :--- | :--- |
-| Gap Closure Rate | CLOSED / 8 | **4/8 待定**（G1/G2 CLOSED；G3/G4 待 CI 转 CLOSED）| 8/8 或明确 BLOCKED |
+| Gap Closure Rate | CLOSED / 8 | **2/8 CLOSED**（G1/G2）+ 4 项 IMPLEMENTED 待 CI（G3/G4/G8）+ G5/G6/G7 待实机 | 8/8 或明确 BLOCKED |
 | Real Integration Coverage | 实机验证能力 / 要求验证能力 | 0%（无实机）| ≥90% 或 BLOCKED |
-| 新增测试（G1–G5）| 任务书 §17 | G1 = 11、G2 = 12、G3 = 10、G4 = 9（要求 G4 ≥4）| ≥19 累计（现已 42）|
+| 新增测试（G1–G5）| 任务书 §17 | G1 = 11、G2 = 12、G3 = 10、G4 = 9（要求 G4 ≥4）—— 已 42；G8 另加 14 | ≥19 累计 |
 
 ## 4b. G2 封口记录（Milky 请求类事件字段级映射）
 
@@ -162,5 +162,21 @@ OneBot=`flag`、Milky=`notification_seq`/`invitation_seq`）、`request_uid`（M
 - `tests/test_protocol_roundtrip.py` 增加引用字段比较（`reply_ref`/`reply_text`/`reply_segments`）。
 
 **DoD**：Source ✓ Model ✓ Fixture ✓ Unit ✓ Roundtrip ✓ Real（不适用）Docs ✓ CI（待提交后确认）
+
+## 4e. G8 研究记录（OneBot 12）
+
+**Source**：`[DOC]` 官方规范 `botuniverse/onebot` @ `d533f0f`（`specs/connect/` + `specs/interface/`）。
+三个候选仓库（`botuniverse/onebot-12` / `specification` / `onebot-v12`）`ls-remote` 均失败，已如实记录在
+`docs/onebot12-research.md` §1。
+
+**Model**：`src/adapters/onebot12_parser.py` 骨架 —— 事件信封（`id`/`time`/`type`/`detail_type`/`sub_type`/`self`）
+→ `InternalEvent`；字符串 ID 转换；`alt_message` 兜底；段映射 `text/mention/mention_all/image/voice/audio/
+video/file/reply`；`V12_ACTION_MAP` 13 条；`normalize_action_response()`。
+
+**Fixture / Test**：`tests/fixtures/onebot12/message_group.json` + `tests/test_onebot12_adapter.py`（14 用例）；
+v12 语料已接入 corpus 与 round-trip 通道（`_rebuild_onebot12`）。
+
+**状态**：`IMPLEMENTED` / **`NOT_REAL_DEVICE_VALIDATED`**（无 v12 实现可联调 —— 任务书 §10.2 允许骨架交付，
+但不得声称 supported）。研究报告：`docs/onebot12-research.md`（含 v11/v12 对比表与 5 项后续缺口）。
 
 > 本文件随每个 Gap 的推进更新；**没有真实测试输出支撑的数字一律不写**。

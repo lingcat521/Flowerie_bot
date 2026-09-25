@@ -24,11 +24,14 @@ def _load(path: str) -> dict:
 
 
 def _parse(path: str):
-    """按目录选解析器（目录名即客户端名）。"""
+    """按目录选解析器（目录名即客户端/协议名）。"""
     raw = _load(path)
     client = os.path.basename(os.path.dirname(path))
     if client == "milky":
         return MilkyEventParser(bot_qq=BOT_QQ).parse(raw)
+    if client == "onebot12":
+        from src.adapters.onebot12_parser import OneBot12EventParser
+        return OneBot12EventParser(bot_qq=BOT_QQ).parse(raw)
     return OneBotEventParser(bot_qq=BOT_QQ).parse(raw)
 
 
