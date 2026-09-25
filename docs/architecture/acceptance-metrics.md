@@ -13,6 +13,7 @@
 | 2 | **PEC**（新增协议需改 Core/Services/SDK/插件文件数）| 未测 | 0 | ⬜ TODO | 需 Gate E/F 的 TestProtocolAdapter 实验 |
 | 3 | Adapter Contract 合规率 | 未建立 | 100% | ⬜ TODO | Gate D：12 项 × OneBot11/Milky |
 | 4 | Unknown Data Safety（段 + 事件）| **20/20** | 100% | ✅ PASS | `tests/test_unknown_tolerance.py`（10 段 × 双解析器 + 10 事件 × 双协议）|
+| 4b | Real Integration Coverage（实机验证覆盖率）| **0%** | ≥90% | 🚫 BLOCKED BY EXTERNAL DEPENDENCY | 设备控制未授权（无障碍/ADB 两路均 denied），且无运行中的协议端；详见 docs/protocol-gap-closure.md §6 |
 | 5 | Existing Regression | **997 passed / 19 failed（全为本地缺依赖）/ 13 skipped**；新增失败 0 | 100% | ✅ PASS（就"零新增失败"而言）| 本地全量 pytest；待 Gate U 的 15 项能力矩阵补全 |
 | 6 | CI | 见下方"CI 记录" | 100% success | ⏳ 进行中 | GitHub Actions: Push on main / Acceptance / CI |
 | 7 | Plugin Protocol Imports | **0** | 0 | ✅ PASS | `src/plugins/manager.py` 移除 `OneBotAdapter` 导入，改组合根注入；`plugin_sdk/` 无协议 import |

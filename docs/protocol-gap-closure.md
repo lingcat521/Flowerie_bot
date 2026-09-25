@@ -27,9 +27,9 @@
 | **G2** | Milky 请求类事件字段级映射 | incomplete（只有 kind/request_kind）| complete | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（Docs 已更新，待 CI 绿 → CLOSED）|
 | **G3** | Milky `record` / `video` / `xml` | incomplete（仅 `segments_summary`）| complete/explicit | source + fixture + test | **CLOSED**（CI `0ad18aa` 三项全绿）|
 | **G4** | Milky `reply.segments` | incomplete（只消费 message_seq）| complete | source + fixture + test | **CLOSED**（CI `c2ee950` 三项全绿）|
-| **G5** | Milky 多媒体发送（upload→resource_id→send）| no real validation | complete | source + real device | OPEN（依赖实机）|
-| **G6** | 实机 Integration Test（OneBot11 10 + Milky 12）| missing | complete | integration test | OPEN（依赖实机）|
-| **G7** | OpenShamrock | SOURCE_UNAVAILABLE | researched/validated | source/device | OPEN（重试 + 文档研究）|
+| **G5** | Milky 多媒体发送（upload→resource_id→send）| no real validation | complete | source + real device | **BLOCKED**（外部依赖：无实机授权，见 §6）|
+| **G6** | 实机 Integration Test（OneBot11 10 + Milky 12）| missing | complete | integration test | **BLOCKED**（同上）|
+| **G7** | OpenShamrock | SOURCE_UNAVAILABLE | researched/validated | source/device | **SOURCE_UNAVAILABLE（已确认）**：上游账号与仓库均 404，见 §6 |
 | **G8** | OneBot v12 | not implemented | researched + mapped | spec/source | **CLOSED**（目标=研究+映射已达成；CI `c0065e2` 全绿；状态携 `NOT_REAL_DEVICE_VALIDATED`）|
 
 ## 3. DoD 逐项（任务书 §12 表）
@@ -180,3 +180,48 @@ v12 语料已接入 corpus 与 round-trip 通道（`_rebuild_onebot12`）。
 但不得声称 supported）。研究报告：`docs/onebot12-research.md`（含 v11/v12 对比表与 5 项后续缺口）。
 
 > 本文件随每个 Gap 的推进更新；**没有真实测试输出支撑的数字一律不写**。
+
+## 6. BLOCKED 记录（G5 / G6 / G7）—— 2026-09-25T08:09Z
+
+任务书 §8.3/§18 要求：无法实机验证时必须明确 BLOCKED，并给出阻塞原因、已验证的源码证据、已尝试步骤、缺失条件。
+
+### 6.1 阻塞原因（三条，独立成立）
+
+1. **设备控制通道未授权**：`android_privilege_status` 返回空结构；`android_device_info` 与
+   `android_adb_shell_exec` 均返回 `denied:true` 并给出两条开启路径（① 系统设置 → 无障碍 → 开启「DSH 设备控制」；
+   ② 开发者选项 → 无线调试完成 ADB 完全访问 + 配对）。未授权 → 无法观察/驱动设备上的任何客户端。
+2. **无运行中的协议端与测试账号**：本机没有 NapCat / Lagrange.Milky / LLBot / Yogurt 等协议端进程，
+   也没有可用于联调的测试群/账号凭据（任务书 §24 禁止把 token/隐私数据写进仓库）。
+3. **OpenShamrock 上游消失**（G7 专属）：2026-09-25T08:09Z 第二轮尝试 ——
+   `git ls-remote whitechi73/OpenShamrock` 触发鉴权失败；**带 token** 的 `GET /repos/whitechi73/OpenShamrock` = **HTTP 404**，
+   `/releases` = 404，`/users/whitechi73` = Not Found；仓库搜索只剩第三方分支（★0-4）。
+   → 结论：**账号与仓库均已不存在**（不是鉴权/网络问题），状态保持 `SOURCE_UNAVAILABLE`。
+
+### 6.2 已被源码证据覆盖的部分（不依赖实机即可确认）
+
+| 项 | 结论 | 证据 |
+| :--- | :--- | :--- |
+| Milky 多媒体链路 | 图片/语音发送需先上传取 `resource_id`，再以段数组发送 | `[DOC]` Milky 规范 api 定义 + `[CODE]` Lagrange.Milky 作者实现 |
+| OneBot 发送 | 图片/文件走 `/send_group_msg` 段数组；`file://` 本地路径 | `[CODE]` NapCat `types/message.ts` + 现有实现 |
+| 撤回语义 | OneBot `/delete_msg{message_id}`；Milky `recall_*{message_seq}` | `[CODE]` 两份 Handler 源码 |
+| 发送响应 | OneBot `message_id` / Milky `message_seq` 双字段兼容 | `[CODE]` `SendGroupMessageHandler.cs` L41 |
+
+### 6.3 已尝试步骤（可复现）
+
+```text
+1. android_privilege_status            -> 空结构（无授权信息）
+2. android_device_info                 -> denied:true（设备控制未授权）
+3. android_adb_shell_exec (pm list)    -> denied:true（同上）
+4. git ls-remote whitechi73/OpenShamrock (2026-09-25T08:09:39Z) -> could not read Username
+5. GET /repos/whitechi73/OpenShamrock  (带 token) -> HTTP 404
+6. GET /users/whitechi73               (带 token) -> 404 Not Found
+7. GitHub 仓库搜索 OpenShamrock in:name -> 仅第三方分支（total=5）
+```
+
+### 6.4 解锁条件（缺一不可）
+
+1. 设备控制授权：开启「DSH 设备控制」无障碍服务，或完成无线调试 ADB 配对；
+2. 设备上运行一个协议端（NapCat / Lagrange.Milky / LLBot / Yogurt 任一）并连上 Flowerie；
+3. 提供测试群号（与可选测试账号）—— 仅用于联调，不写入仓库。
+
+满足后即可执行 G5（6 项多媒体收发）与 G6（22 项实机 case）。**在此之前不会把这两项写成完成。**

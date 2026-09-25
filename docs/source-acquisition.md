@@ -104,3 +104,17 @@ git clone https://github.com/whitechi73/OpenShamrock.git
 （不是网络问题 —— 同批次 `botuniverse/onebot` 克隆成功）。规范实际位置经检索确认为 `botuniverse/onebot`。
 
 源码区累计：**16 个仓库**。
+
+## OpenShamrock 第二轮尝试（G7，2026-09-25T08:09Z）
+
+| 动作 | 结果 |
+| :--- | :--- |
+| `git ls-remote whitechi73/OpenShamrock` | `fatal: could not read Username` |
+| `git ls-remote OpenShamrock/OpenShamrock` | 同上 |
+| `GET /repos/whitechi73/OpenShamrock`（带 token）| **HTTP 404** |
+| `GET /repos/whitechi73/OpenShamrock/releases`（带 token）| HTTP 404 |
+| `GET /users/whitechi73`（带 token）| 404 Not Found |
+| `GET /search/repositories?q=OpenShamrock in:name` | 仅第三方分支（★0-4，共 5 个）|
+
+**结论**：不是鉴权问题 —— **上游账号与仓库均已不存在**。状态保持 `SOURCE_UNAVAILABLE`，
+Android 端 OneBot11 差异继续标 `[UNKNOWN]`，不做任何声称（任务书 §20/§22）。
