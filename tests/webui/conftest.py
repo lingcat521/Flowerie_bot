@@ -176,14 +176,6 @@ class WebUIStack:
     # ---------------------------------------------------------------- 启动
 
     async def _boot(self):
-        # 诊断（CI 上 tests/webui 全部 102 条在 setup 阶段 ImportError: AliasChoices）：
-        # 打印此刻 sys.modules 里的 pydantic 到底是什么、sys.path 前几项是谁塞的。
-        import sys as _sys
-        _mod = _sys.modules.get("pydantic")
-        print("[webui-diag] pydantic in sys.modules: file=%r spec=%r path=%r" % (
-            getattr(_mod, "__file__", None), getattr(_mod, "__spec__", None),
-            list(getattr(_mod, "__path__", []) or [])), file=_sys.__stderr__)
-        print("[webui-diag] sys.path[:6]=%r" % (_sys.path[:6],), file=_sys.__stderr__)
         from src.config import Settings
         from src.plugins.manager import PluginManager
         from src.repositories.settings_repository import SettingsRepository

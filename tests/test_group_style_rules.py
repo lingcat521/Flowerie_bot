@@ -37,9 +37,24 @@ def test_prompt_priority():
     ps = types.ModuleType("pydantic_settings")
     ps.BaseSettings = type("BaseSettings", (), {})
     ps.SettingsConfigDict = dict
+    # 这两个替身必须在用例结束时**还原**：整套 pytest 同进程跑时，它们会污染后面所有
+    # 真需要 pydantic 的用例（实测 CI Acceptance：tests/webui 全部 102 条 setup 阶段就
+    # ImportError: cannot import name 'AliasChoices' from 'pydantic'）。
+    _saved = {key: sys.modules.get(key) for key in ("pydantic", "pydantic_settings")}
     sys.modules["pydantic"] = pyd
     sys.modules["pydantic_settings"] = ps
     sys.path.insert(0, ".")
+    try:
+        _prompt_priority_body()
+    finally:
+        for _key, _value in _saved.items():
+            if _value is None:
+                sys.modules.pop(_key, None)
+            else:
+                sys.modules[_key] = _value
+
+
+def _prompt_priority_body():
     from src.services.prompt_builder import build_system_prompt
 
     class C:
