@@ -13,9 +13,9 @@ import pytest
 from src.adapters.capabilities import (
     CANONICAL_CAPABILITIES,
     AdapterDescriptor,
-    CapState,
     Capability,
     CapabilitySet,
+    CapState,
     capability_coverage,
     descriptors,
     get_descriptor,

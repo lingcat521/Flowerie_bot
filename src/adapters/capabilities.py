@@ -216,7 +216,7 @@ def get_descriptor(protocol_id: str) -> AdapterDescriptor:
     try:
         return descriptors()[protocol_id]
     except KeyError:
-        raise KeyError("未登记的协议: %s（已登记：%s）" % (protocol_id, sorted(descriptors())))
+        raise KeyError("未登记的协议: %s（已登记：%s）" % (protocol_id, sorted(descriptors()))) from None
 
 
 def capability_coverage(protocol_id: str) -> float:
