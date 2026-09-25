@@ -226,3 +226,25 @@ v12 语料已接入 corpus 与 round-trip 通道（`_rebuild_onebot12`）。
 3. 提供测试群号（与可选测试账号）—— 仅用于联调，不写入仓库。
 
 满足后即可执行 G5（6 项多媒体收发）与 G6（22 项实机 case）。**在此之前不会把这两项写成完成。**
+
+### 6.5 终态确认 —— 结案（2026-09-25）
+
+用户确认：**没有可用于真机测试的环境**（无设备控制授权、无协议端、无测试群），且明确表示不必强求。
+
+据此，G5 / G6 / 门槛 4b 按任务书 §20 允许的唯一例外分支**最终结案**：
+
+```text
+Real Integration Coverage = 0%
+状态 = BLOCKED BY EXTERNAL DEPENDENCY（附证据：§6.1–§6.4）
+含义 = 终态，不是"待办"；不因为"写了 harness"就当作实机验证完成
+```
+
+| 项 | 终态 | 说明 |
+| :--- | :--- | :--- |
+| G5 Milky 多媒体发送实机 | 🚫 BLOCKED（终态）| 已用源码证据覆盖可覆盖的部分（§6.2）；实机 6/6 未执行 |
+| G6 真实 Integration Test | 🚫 BLOCKED（终态，0/22 执行）| harness 就绪（`tests/integration/`，22 例默认 skip 并打印缺失条件），用例状态 `[UNVERIFIED]` |
+| 门槛 4b 实机验证覆盖率 | 🚫 BLOCKED（终态，0%）| 见上 |
+| G7 OpenShamrock | ✅ 已按允许分支结案 | `SOURCE_UNAVAILABLE` + 真实原因（账号与仓库 404）+ 文档研究 |
+
+**Gap Closure Rate 终值 = 6/8 = 75%**（G1/G2/G3/G4/G7/G8 CLOSED；G5/G6 BLOCKED，不写成 CLOSED）。
+**未完成项的数量与原因在此冻结**：任何人拿到真实设备后，直接跑 `pytest tests/integration -q -rs` 即可把这两项从 BLOCKED 推进到 CLOSED，并把证据 JSON 落到 `tests/integration/evidence/`。

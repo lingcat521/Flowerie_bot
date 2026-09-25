@@ -9,9 +9,16 @@
 | | |
 | :--- | :--- |
 | **B 部分（生态扩展 / 低耦合架构）** | ✅ **完成**：Gate A–Z 全部有结论（25 PASS + 1 项由本轮 CI 转绿），八项绝对门槛 **8/8 PASS** |
-| **A 部分（协议缺口封口 G1–G8）** | ✅ 6 项完成（G1–G4、G7、G8）｜🚫 **2 项 BLOCKED**（G5、G6 —— 需真实设备/协议端，证据见 §五） |
-| **实机验证覆盖率（门槛 4b）** | 🚫 **BLOCKED**（0%）：无设备控制授权、无运行中的协议端 → 与 G5/G6 同一根因 |
-| **是否 FAKE PASS** | 无。所有未完成项都标 BLOCKED 并附可复现证据；所有 PASS 数字都来自真实测试/CI 输出 |
+| **A 部分（协议缺口封口 G1–G8）** | 6/8 **CLOSED**（G1–G4、G7、G8）｜🚫 **2 项 BLOCKED（终态）**：G5、G6 —— 需真实设备/协议端，证据见 §五 |
+| **实机验证覆盖率（门槛 4b）** | 🚫 **BLOCKED BY EXTERNAL DEPENDENCY（终态，0%）**：用户已确认无真机环境（2026-09-25），按任务书 §20 允许的唯一例外分支结案 |
+| **是否 FAKE PASS** | 无。所有未完成项都标 BLOCKED 并附可复现证据；实机 22 例标 `[UNVERIFIED]`；所有 PASS 数字都来自真实测试/CI 输出 |
+
+> **最终判定（按任务书口径）**：
+> - **架构验收（B 部分 + §35 八项绝对门槛）**：✅ **PASS** —— Gate A–Z 26/26、八项门槛 8/8、CI 三项全绿（`b13053b`）。
+> - **缺口封口（A 部分）**：**Gap Closure Rate = 6/8 = 75%**，其余 2 项为 §20 允许的
+>   `BLOCKED BY EXTERNAL DEPENDENCY`（终态，非待办）。
+> - 按任务书 §25 的字面要求，**本任务不能宣布"完全完成"**（G5/G6 的实机 22/22 未执行）；
+>   本报告不回避这一点 —— 这正是"绝不 FAKE PASS"的落点。
 
 ## 二、§36 要求的数字块
 
@@ -71,7 +78,7 @@ CI: success（CI + Acceptance + Push on main 三项）
 
 | 项 | 状态 | 已尝试 | 缺失条件 |
 | :--- | :--- | :--- | :--- |
-| **G5** Milky 多媒体发送实机联调（6/6）| 🚫 BLOCKED | 设备控制授权查询（无障碍/ADB 两条路径）均返回未授权；`android_device_info` / `android_adb_shell_exec` 返回 `denied: true` | ① 系统设置开启「DSH 设备控制」无障碍，或无线调试 ADB 配对；② 一个运行中的协议端（NapCat/Lagrange/LLBot）；③ 测试群号 |
+| **G5** Milky 多媒体发送实机联调（6/6）| 🚫 BLOCKED（**终态**，用户 2026-09-25 确认无真机环境）| 设备控制授权查询（无障碍/ADB 两条路径）均返回未授权；`android_device_info` / `android_adb_shell_exec` 返回 `denied: true` | ① 系统设置开启「DSH 设备控制」无障碍，或无线调试 ADB 配对；② 一个运行中的协议端（NapCat/Lagrange/LLBot）；③ 测试群号（拿到后跑 `pytest tests/integration -q -rs`）|
 | **G6** 真实 Integration Test（OneBot11 10/10 + Milky 12/12 = 22/22）| 🚫 BLOCKED（**harness 就绪，执行 0/22**）| 同上；已按 §13 建好 `tests/integration/`（22 个用例 + 证据记录器 + manual 流程），默认 skip 并打印缺失条件 | 同上 |
 | **门槛 4b** 实机验证覆盖率 ≥90% | 🚫 BLOCKED（0%）| 同上 | 同上 |
 | **G7** OpenShamrock | ✅ 按任务书允许的分支结案 | 带 token 查询 `GET /repos/whitechi73/OpenShamrock` → **404**；`/users/whitechi73` → **404**（账号与仓库均已不存在，非鉴权问题）→ `SOURCE_UNAVAILABLE` + 真实原因 + 已完成文档研究（docs/source-acquisition.md）| —— |

@@ -16,7 +16,7 @@
 | 2 | **PEC**（新增协议需改 Core/Services/SDK/插件文件数）| **0** | 0 | ✅ PASS | Gate E 三口径：① 静态扫 `src/core`/`src/services`/`src/sdk`/`src/plugins`/`plugin_sdk` 零标记 ② testkit 自包含 ③ 变更口径 6 文件全在允许集 `src/adapters/`+`tests/`；见 ADR-004 |
 | 3 | Adapter Contract 合规率（ACC）| **100%**（48/48；onebot11、milky、onebot12、testproto 各 12 项）| 100% | ✅ PASS | 契约夹具 src/adapters/contract.py（新增协议只需登记一行即自动获得 12 项）|
 | 4 | Unknown Data Safety（段 + 事件）| **20/20** | 100% | ✅ PASS | `tests/test_unknown_tolerance.py`（10 段 × 双解析器 + 10 事件 × 双协议）|
-| 4b | Real Integration Coverage（实机验证覆盖率）| **0%**（harness 就绪：`tests/integration/` 22 个用例，默认 skip 并打印缺失条件）| ≥90% | 🚫 BLOCKED BY EXTERNAL DEPENDENCY | 设备控制未授权（无障碍/ADB 两路均 denied），且无运行中的协议端；详见 docs/protocol-gap-closure.md §6；用例状态标 `[UNVERIFIED]` |
+| 4b | Real Integration Coverage（实机验证覆盖率）| **0%（终态）**（harness 就绪：`tests/integration/` 22 个用例，默认 skip 并打印缺失条件）| ≥90% | 🚫 BLOCKED BY EXTERNAL DEPENDENCY（终态）| 设备控制未授权（无障碍/ADB 两路均 denied）+ 无协议端；**用户 2026-09-25 确认无真机环境** → 按 §20 允许分支结案；详见 docs/protocol-gap-closure.md §6.5；用例状态标 `[UNVERIFIED]` |
 | 5 | Existing Regression | **1203 passed / 19 failed（全为本地缺依赖，与本轮改动无关）/ 37 skipped（15 依赖缺省 + 22 实机用例默认 skip）/ 32 collection errors（同样缺依赖）**；新增失败 0 | 100% | ✅ PASS | 本地全量 pytest；Gate U 的 18 项能力矩阵已建（见 Gate U 行）|
 | 6 | CI | `7bf3e24`：**CI success / Acceptance success / Push on main success**（三项全绿）| 100% success | ✅ PASS | GitHub Actions；逐提交结论（含历史红提交与根因）见下方 CI 记录 |
 | 7 | Plugin Protocol Imports | **0** | 0 | ✅ PASS | `src/plugins/manager.py` 移除 `OneBotAdapter` 导入，改组合根注入；`plugin_sdk/` 无协议 import |
