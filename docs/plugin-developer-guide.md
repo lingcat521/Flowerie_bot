@@ -1,6 +1,6 @@
 # 插件开发者指南（Plugin Developer Guide·第二层·完整参考）
 
-> Flowerie Plugin API **v1**（版本 `2.2.22222`）· **新手请先看 [第一层 quick-start.md](quick-start.md)**（10 分钟上手）
+> Flowerie Plugin API **v1**（版本 `2.2.6`）· **新手请先看 [第一层 quick-start.md](quick-start.md)**（10 分钟上手）
 >
 > 本文档是**完整参考**：Manifest 规则 / Python·Node·JSON / 任意语言 exec（§4.5、§31）/ 生命周期 /
 > Event·Action·Permission API / 超时 / 资源限制 / 安全边界 / 打包 / Web UI 安装 / API Version。

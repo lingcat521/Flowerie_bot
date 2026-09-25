@@ -1,6 +1,5 @@
 # Milky 协议支持（Milky 特供版）
 
-> **维护状态：停更一年（2026-09-04 起）** —— 仓库不归档，停更期间的兼容性维护以 2.2.2xx 递增发布；
 > Milky 支持随维护版继续补齐（本文已同步至 Milky 协议 1.3）；OneBot 版 v2.2.2 资产仍保留在 [v2.2.2 Release](https://github.com/lingcat521/Flowerie_bot/releases/tag/v2.2.2)。
 
 ## 背景
@@ -307,4 +306,4 @@ Authorization: Bearer <access_token>
 - ~~notice 的 event_type 完整命名~~ **已修（2026-08-09）**：21 种事件类型已按 kind 归一化（见上表）；请求类事件字段级映射**已完成（G2）**：四类（含 `group_invitation`）字段与标识（`notification_seq`）均已归一化
 - 响应 retcode 语义（200 + retcode 0/None = 成功）
 
-> 使用问题可提 Issue（不保证修复——项目停更中）。
+> 使用问题可提 Issue。

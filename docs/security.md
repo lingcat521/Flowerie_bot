@@ -1,6 +1,6 @@
 # 安全模型（Security Model）
 
-> 最后更新 v2.2.22222（Code Scanning 全量审计；场景：识图 SSRF 校验/重定向每跳校验/UA；路径安全化；配置双格式）。
+> 最后更新 v2.2.6（Code Scanning 全量审计；场景：识图 SSRF 校验/重定向每跳校验/UA；路径安全化；配置双格式）。
 > 安全边界与防护设计（含 Review 已知边界）如下。
 > 插件开发侧的接口性安全规范见 [plugin-developer-guide.md](https://github.com/lingcat521/Flowerie_bot/blob/main/docs/plugin-developer-guide.md)，本节侧重架构性保证。
 

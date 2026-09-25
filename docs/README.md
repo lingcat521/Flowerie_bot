@@ -1,6 +1,6 @@
 # Flowerie 文档
 
-> 对应 **v2.2.22222**：停更期间的维护性更新 —— Code Scanning 全量安全整改、原生多条回复（Multi-Reply +
+> 对应 **v2.2.6**：维护性更新 —— Code Scanning 全量安全整改、原生多条回复（Multi-Reply +
 > **AI 自主拆分的 Native Reply Tool**）、Milky 能力补齐（协议 1.3 / 65 动作全量对照）、花语记忆门控修复；
 > 更早版本见 [archive/](archive/README.md)。
 

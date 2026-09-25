@@ -1,4 +1,4 @@
-# Flowerie Bot SDK 开发手册（Plugin API v1 · 版本 2.2.22222）
+# Flowerie Bot SDK 开发手册（Plugin API v1 · 版本 2.2.6）
 
 > 插件面向的统一开发接口。三层架构：插件（上层）→ 领域层（中层，零 OneBot 命名）→
 > OneBot 适配层（下层）。本手册为**详细版**：API 参考 + 多媒体/按钮示例 + 日志规范。

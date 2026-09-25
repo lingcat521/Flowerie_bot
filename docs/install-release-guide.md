@@ -1,7 +1,7 @@
 # 其他平台构建产物使用说明（Linux / macOS / Termux）
 
 > Windows exe 见 [install-release-windows.md](install-release-windows.md)。
-> 官方 Release 资产（**v2.2.2 起每个版本都齐套**，最新为 `v2.2.22222`）包含各平台：
+> 官方 Release 资产（**v2.2.2 起每个版本都齐套**，最新为 `v2.2.6`）包含各平台：
 > `builtin`（单文件）/ `portable.zip`（目录版，解压即用）；Termux 走源码包。
 
 ---
