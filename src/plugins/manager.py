@@ -660,6 +660,7 @@ class PluginManager:
         )
         rt.permissions = PermissionManager(approved, protection)
         rt.set_action_handler(self._handle_action)
+        rt.set_engine_op_handler(self._handle_engine_op)
         self._runtimes[plugin_id] = rt
         return rt
 
@@ -912,6 +913,49 @@ class PluginManager:
         if isinstance(value, list):
             return [cls._substitute(v, payload) for v in value]
         return value
+
+    # ================= Plugin Protocol v1：插件 → 引擎 的反向 op =================
+    async def _handle_engine_op(self, plugin_id: str, op: str, args: Dict[str, Any]) -> dict:
+        """处理插件发来的 engine op（config.get / permission.check / context.get）。
+
+        安全原则（与 action 一致）：**身份由连接决定**（插件从不传 plugin_id，杜绝身份伪造）；
+        permission 只读查询已批准权限；config 只读操作员配置；未知 op 一律拒绝（不静默忽略）。
+        """
+        from src.plugins.protocol import ENGINE_OPS
+
+        if op not in ENGINE_OPS:
+            return {"ok": False, "error": f"未知 op: {op!r}（允许：{list(ENGINE_OPS)}）"}
+        row = self.get_plugin(plugin_id)
+        if row is None or not row.get("enabled"):
+            return {"ok": False, "error": "插件未启用或不存在"}
+        approved = set(row.get("approved_permissions") or [])
+        try:
+            manifest = self._manifest_of(row)
+        except Exception:  # noqa: BLE001
+            manifest = None
+        if op == "context.get":
+            return {"ok": True, "result": {
+                "plugin_id": plugin_id,
+                "name": str(row.get("name") or plugin_id),
+                "version": str(row.get("version") or (manifest.version if manifest else "")),
+                "runtime": str(row.get("runtime") or (manifest.runtime if manifest else "")),
+                "protocol_version": "1",
+                "permissions": sorted(approved),
+                "declared_permissions": sorted(manifest.permissions) if manifest else [],
+            }}
+        if op == "permission.check":
+            want = str(args.get("permission") or "")
+            if not want:
+                return {"ok": False, "error": "permission.check 需要 permission 参数"}
+            from src.plugins.permissions import ALL_PERMISSIONS
+            if want not in ALL_PERMISSIONS:
+                return {"ok": True, "permission": want, "granted": False, "reason": "未知权限键"}
+            return {"ok": True, "permission": want, "granted": want in approved}
+        # config.get：操作员配置（manifest 的 config 段）——只读；插件改不了全局配置
+        cfg = (manifest.config if manifest else None) or {}
+        if isinstance(cfg, dict) and isinstance(cfg.get("values"), dict):
+            cfg = cfg["values"]
+        return {"ok": True, "values": cfg if isinstance(cfg, dict) else {}}
 
     # ================= Action 执行（唯一副作用出口） =================
     async def _handle_action(self, plugin_id: str, action: str, payload: Dict[str, Any]) -> dict:

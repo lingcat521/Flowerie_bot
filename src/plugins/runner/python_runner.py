@@ -41,6 +41,27 @@ import traceback
 from typing import Any, Dict, List, Optional
 
 
+# ---------------- Plugin Protocol v1 常量（与 src/plugins/protocol.py 保持一致） ----------------
+# runner 由 PluginRuntime 以 `python -I`（隔离模式）启动，sys.path 里没有仓库代码，
+# 因此这里内联一份最小副本；tests/test_plugin_protocol.py 会逐项比对两份常量，防止悄悄漂移。
+PROTOCOL_VERSION = "1"
+OPTIONAL_METHODS = (
+    "context.get", "config.get", "config.set", "permission.check",
+    "storage.get", "storage.set", "storage.delete", "storage.list",
+)
+CAPABILITY_GROUPS = {
+    "context": ("context.get",),
+    "config": ("config.get", "config.set"),
+    "permission": ("permission.check",),
+    "storage": ("storage.get", "storage.set", "storage.delete", "storage.list"),
+}
+STORAGE_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+MAX_STORAGE_KEYS = 200
+MAX_STORAGE_VALUE_BYTES = 64 * 1024
+MAX_CONFIG_KEYS = 64
+MAX_CONFIG_VALUE_BYTES = 8 * 1024
+
+
 class PluginApi:
     """同步插件 API：每个方法向 Flowerie 发 action 请求并等待响应（阻塞读取 stdin）。"""
 
@@ -783,6 +804,175 @@ class PluginRunner:
         except Exception as e:  # noqa: BLE001
             return {"__error__": f"{type(e).__name__}: {e}"}
 
+    # ---------- Plugin Protocol v1：可选方法（引擎不会调用未声明的） ----------
+    def _send_engine_op(self, op: str, args: Dict[str, Any]) -> Dict[str, Any]:
+        """反向通道：向引擎发 engine op 并等响应（与 action 同一套 id 命名空间）。"""
+        self._req_id += 1
+        my_id = self._ACTION_ID_BASE + self._req_id
+        self._emit({"id": my_id, "method": "engine",
+                    "params": {"op": op, "args": dict(args or {})}})
+        while True:
+            line = self._readline()
+            if line is None:
+                return {"ok": False, "error": "connection closed"}
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                continue
+            if msg.get("id") == my_id:
+                if msg.get("error"):
+                    return {"ok": False, "error": str(msg["error"])}
+                result = msg.get("result")
+                return result if isinstance(result, dict) else {"ok": False, "error": "empty result"}
+
+    # ---- storage：只落在本插件自己的 data 目录（进程级隔离，天然不跨插件） ----
+    def _storage_dir(self) -> str:
+        d = os.path.join(self.data_dir, "storage")
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    def _storage_path(self, key: str) -> str:
+        if not STORAGE_KEY_RE.match(str(key or "")):
+            raise ValueError("存储键非法（字母数字开头 ≤64，允许 . _ -）")
+        return os.path.join(self._storage_dir(), key + ".json")
+
+    def _storage_get(self, key):
+        try:
+            path = self._storage_path(key)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+        if not os.path.isfile(path):
+            return {"ok": True, "value": None}
+        try:
+            with open(path, encoding="utf-8") as fh:
+                return {"ok": True, "value": json.load(fh)}
+        except (OSError, ValueError) as exc:
+            return {"ok": False, "error": "读取失败: %s" % exc}
+
+    def _storage_set(self, key, value):
+        try:
+            path = self._storage_path(key)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+        size = len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
+        if size > MAX_STORAGE_VALUE_BYTES:
+            return {"ok": False, "error": "值超过 %d 字节上限" % MAX_STORAGE_VALUE_BYTES}
+        keys = [f for f in os.listdir(self._storage_dir()) if f.endswith(".json")]
+        if len(keys) >= MAX_STORAGE_KEYS and not os.path.isfile(path):
+            return {"ok": False, "error": "存储键数量超过 %d 上限" % MAX_STORAGE_KEYS}
+        tmp = path + ".tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(value, fh, ensure_ascii=False)
+            os.replace(tmp, path)
+            return {"ok": True, "size": size}
+        except OSError as exc:
+            return {"ok": False, "error": "写入失败: %s" % exc}
+
+    def _storage_delete(self, key):
+        try:
+            path = self._storage_path(key)
+        except ValueError as exc:
+            return {"ok": False, "error": str(exc)}
+        if not os.path.isfile(path):
+            return {"ok": True, "deleted": False}
+        try:
+            os.remove(path)
+            return {"ok": True, "deleted": True}
+        except OSError as exc:
+            return {"ok": False, "error": "删除失败: %s" % exc}
+
+    def _storage_list(self, prefix):
+        out = []
+        for name in sorted(os.listdir(self._storage_dir())):
+            if not name.endswith(".json"):
+                continue
+            key = name[:-5]
+            if prefix and not key.startswith(str(prefix)):
+                continue
+            out.append(key)
+        return {"ok": True, "keys": out[:MAX_STORAGE_KEYS]}
+
+    # ---- config：操作员配置（引擎只读）+ 插件自己的覆盖层（本地） ----
+    def _config_path(self) -> str:
+        return os.path.join(self.data_dir, "config.json")
+
+    def _config_overlay(self) -> Dict[str, Any]:
+        try:
+            with open(self._config_path(), encoding="utf-8") as fh:
+                data = json.load(fh)
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _handle_optional(self, req_id, method: str, params: Dict[str, Any]) -> None:
+        if method == "context.get":
+            res = self._send_engine_op("context.get", {})
+            self._emit({"id": req_id, "result": res})
+            return
+        if method == "permission.check":
+            res = self._send_engine_op("permission.check",
+                                       {"permission": str(params.get("permission") or "")})
+            self._emit({"id": req_id, "result": res})
+            return
+        if method == "config.get":
+            res = self._send_engine_op("config.get", {})
+            values = res.get("values") if isinstance(res, dict) and res.get("ok") else {}
+            if not isinstance(values, dict):
+                values = {}
+            merged = dict(self._config_overlay())
+            merged.update(values)          # 操作员配置优先（插件不能覆盖管理员的值）
+            keys = params.get("keys")
+            if isinstance(keys, list) and keys:
+                merged = {k: v for k, v in merged.items() if k in [str(x) for x in keys]}
+            self._emit({"id": req_id, "result": {"ok": True, "values": merged}})
+            return
+        if method == "config.set":
+            values = params.get("values")
+            if not isinstance(values, dict):
+                self._emit({"id": req_id, "result": {"ok": False,
+                            "error": "config.set 需要 values 对象"}})
+                return
+            overlay = self._config_overlay()
+            for k, v in values.items():
+                key = str(k)
+                if not STORAGE_KEY_RE.match(key):
+                    self._emit({"id": req_id, "result": {"ok": False,
+                                "error": "配置键非法: %s" % key}})
+                    return
+                if len(json.dumps(v, ensure_ascii=False).encode("utf-8")) > MAX_CONFIG_VALUE_BYTES:
+                    self._emit({"id": req_id, "result": {"ok": False,
+                                "error": "配置值超过 %d 字节上限: %s" % (MAX_CONFIG_VALUE_BYTES, key)}})
+                    return
+                overlay[key] = v
+            if len(overlay) > MAX_CONFIG_KEYS:
+                self._emit({"id": req_id, "result": {"ok": False,
+                            "error": "配置键数量超过 %d 上限" % MAX_CONFIG_KEYS}})
+                return
+            try:
+                with open(self._config_path(), "w", encoding="utf-8") as fh:
+                    json.dump(overlay, fh, ensure_ascii=False)
+            except OSError as exc:
+                self._emit({"id": req_id, "result": {"ok": False,
+                            "error": "写入失败: %s" % exc}})
+                return
+            self._emit({"id": req_id, "result": {"ok": True, "saved": sorted(values)}})
+            return
+        if method == "storage.get":
+            self._emit({"id": req_id, "result": self._storage_get(params.get("key"))})
+            return
+        if method == "storage.set":
+            self._emit({"id": req_id,
+                        "result": self._storage_set(params.get("key"), params.get("value"))})
+            return
+        if method == "storage.delete":
+            self._emit({"id": req_id, "result": self._storage_delete(params.get("key"))})
+            return
+        if method == "storage.list":
+            self._emit({"id": req_id, "result": self._storage_list(params.get("prefix"))})
+            return
+        self._error(req_id, "未知方法: %r" % method)
+
     # ---------- 请求处理 ----------
     def handle(self, msg: Dict[str, Any]) -> None:
         req_id = msg.get("id")
@@ -801,11 +991,21 @@ class PluginRunner:
                 if isinstance(hook_err, dict) and "__error__" in hook_err:
                     self._error(req_id, f"on_startup 异常: {hook_err['__error__']}")
                     return
-                self._emit({"id": req_id, "result": {"ok": True, "api_version": "1"}})
+                caps = []
+                declared = getattr(self.module, "PLUGIN_CAPABILITIES", None)
+                for group in (declared if isinstance(declared, (list, tuple)) else
+                              ("context", "config", "permission", "storage")):
+                    caps.extend(CAPABILITY_GROUPS.get(str(group), ()))
+                self._emit({"id": req_id, "result": {
+                    "ok": True, "api_version": "1", "protocol_version": PROTOCOL_VERSION,
+                    "capabilities": sorted(set(caps)),
+                }})
             elif method == "event":
                 event = params.get("event", "")
                 payload = params.get("payload", {})
                 self._emit({"id": req_id, "result": {"actions": self._dispatch_event(event, payload)}})
+            elif method in OPTIONAL_METHODS:
+                self._handle_optional(req_id, method, params)
             elif method == "hook":
                 hook_name = str(params.get("name") or "")
                 args = params.get("args") or []

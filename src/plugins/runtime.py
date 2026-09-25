@@ -25,6 +25,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from src.plugins.manifest import PluginManifest
 from src.plugins.permissions import PermissionManager
+from src.plugins.protocol import negotiate_initialize
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -67,7 +68,12 @@ class PluginRuntime:
         self._shutting_down = False
         self._output_bytes = 0
         self.status = "stopped"  # stopped | starting | running | crashed | unhealthy
+        # Plugin Protocol v1：initialize 协商出的协议版本与插件声明的能力
+        self.protocol_version: str = ""
+        self.capabilities: set = set()
         self._action_handler: Optional[Callable[[str, str, Dict[str, Any]], Any]] = None
+        #: Plugin Protocol v1 反向通道（config / permission / context），由 PluginManager 注入
+        self._engine_op_handler: Optional[Callable[[str, str, Dict[str, Any]], Any]] = None
         self._action_sem = asyncio.Semaphore(_MAX_CONCURRENT_ACTIONS)
 
     # ---------- 生命周期 ----------
@@ -90,7 +96,7 @@ class PluginRuntime:
         self._stderr_task = asyncio.create_task(self._stderr_loop())
         self._reader_task = asyncio.create_task(self._reader_loop())
         try:
-            await asyncio.wait_for(
+            reply = await asyncio.wait_for(
                 self.request("initialize", {"context": {"plugin_dir": self.plugin_dir}}),
                 timeout=self._limits["startup_timeout"],
             )
@@ -103,9 +109,17 @@ class PluginRuntime:
             self.status = "crashed"
             await self._kill("initialize failed")
             raise
+        ok, why, caps = negotiate_initialize(reply)
+        if not ok:
+            self.status = "crashed"
+            await self._kill("protocol negotiation failed")
+            raise RuntimeError(f"plugin {self.plugin_id} 协议协商失败：{why}")
+        self.protocol_version = str((reply or {}).get("protocol_version") or "1")
+        self.capabilities = set(caps)
         self.status = "running"
-        logger.info("plugin_started id=%s runtime=%s", self.plugin_id, self.manifest.runtime,
-                    extra={"event": "plugin_lifecycle"})
+        logger.info("plugin_started id=%s runtime=%s protocol=%s capabilities=%d",
+                    self.plugin_id, self.manifest.runtime, self.protocol_version,
+                    len(self.capabilities), extra={"event": "plugin_lifecycle"})
 
     async def shutdown(self, timeout: float = 5.0) -> None:
         """优雅停止：发 shutdown 请求 → 等待进程退出 → 强制清理。"""
@@ -286,6 +300,14 @@ class PluginRuntime:
         """注入 action 处理器（由 PluginManager 实现：权限检查 + 真实副作用）。"""
         self._action_handler = handler
 
+    def set_engine_op_handler(self, handler: Callable[[str, str, Dict[str, Any]], Any]) -> None:
+        """注入 engine op 处理器（Plugin Protocol v1 反向通道：config / permission / context）。"""
+        self._engine_op_handler = handler
+
+    def supports(self, method: str) -> bool:
+        """插件是否声明支持某个**可选**方法（引擎据此避免调用未声明的能力）。"""
+        return method in self.capabilities
+
     async def _reader_loop(self) -> None:
         """读 stdout：解析响应行 / 插件 action 请求。异常退出 → on_exit 通知。"""
         try:
@@ -315,6 +337,11 @@ class PluginRuntime:
                     await self._action_sem.acquire()
                     asyncio.create_task(self._handle_action_line_sem(msg))
                     continue
+                if msg.get("method") == "engine":
+                    # Plugin Protocol v1 反向通道（config / permission / context）
+                    await self._action_sem.acquire()
+                    asyncio.create_task(self._handle_engine_op_sem(msg))
+                    continue
                 if isinstance(msg_id, int) and msg_id in self._pending:
                     fut = self._pending[msg_id]
                     if not fut.done():
@@ -329,6 +356,29 @@ class PluginRuntime:
                 self.status = "crashed"
                 self._notify_exit("process_exit",
                                   self.proc.returncode if self.proc.returncode is not None else 0)
+
+    async def _handle_engine_op_sem(self, msg: Dict[str, Any]) -> None:
+        try:
+            await self._handle_engine_op(msg)
+        finally:
+            self._action_sem.release()
+
+    async def _handle_engine_op(self, msg: Dict[str, Any]) -> None:
+        """Plugin Protocol v1 反向通道：插件 → 引擎（config / permission / context）。"""
+        req_id = msg.get("id")
+        params = msg.get("params") or {}
+        op = str(params.get("op") or "")
+        args = params.get("args") if isinstance(params.get("args"), dict) else {}
+        try:
+            if self._engine_op_handler is None:
+                result = {"ok": False, "error": "no engine op handler"}
+            else:
+                result = await self._engine_op_handler(self.plugin_id, op, args)
+                if not isinstance(result, dict):
+                    result = {"ok": False, "error": "invalid op result"}
+        except Exception as e:  # noqa: BLE001 - op 异常反馈插件，不杀进程
+            result = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        await self._write({"id": req_id, "result": result})
 
     async def _handle_action_line_sem(self, msg: Dict[str, Any]) -> None:
         """带并发签名的 action 处理（防止插件刷请求堆积主进程任务）。"""
