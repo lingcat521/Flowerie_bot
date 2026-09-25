@@ -40,8 +40,13 @@ def build_settings(args):
     """显式构造 Settings：不读仓库 .env（cwd 是临时目录），端口/插件目录全部临时隔离。"""
     from src.config import Settings
 
+    # DEEPSEEK_API_KEY / BOT_QQ 是 Settings 的必填字段（真 pydantic 会校验；
+    # 本机 pydantic 是 stub 所以没暴露，CI 一跑就现形）：这里给测试用的哑值，
+    # 不读仓库 .env、不连真实协议端。
     settings = Settings(
         _env_file=None,
+        DEEPSEEK_API_KEY="sk-webui-e2e-test-000000",
+        BOT_QQ=10001,
         WEB_UI_PORT=args.port,
         WEB_UI_HOST="127.0.0.1",
         WEB_UI_ALLOW_LAN=False,

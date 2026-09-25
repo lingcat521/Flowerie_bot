@@ -197,7 +197,8 @@ class WebUIStack:
         self._deploy(SRC_B, self.plugin_b)
         self._deploy(SRC_B, self.plugin_c)          # §22：三插件隔离
 
-        cfg = Settings()
+        # Settings 的两个必填字段（真 pydantic 校验；本机 pydantic 是 stub，CI 才是真闸门）
+        cfg = Settings(DEEPSEEK_API_KEY="sk-webui-test-000000", BOT_QQ=10001)
         cfg.PLUGIN_DIR = self.plugin_dir
         cfg.SETTINGS_DB_PATH = os.path.join(self.root, "settings.db")
         cfg.WEB_UI_ENABLED = True
