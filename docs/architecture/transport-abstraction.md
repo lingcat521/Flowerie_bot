@@ -49,3 +49,18 @@
 3. `ws_server.py` 的 OneBot 信封 → 拆到 Adapter；
 4. `src/services/` 的 aiohttp：Web UI 部分**不是**协议传输（属应用服务器），已在 ADR 中显式区分，
    基线冻结，允许后续把 Web UI 独立成 app 层（不属本阶段硬门槛）。
+
+## 实施记录与教训（2026-08-09）
+
+本次重构在 CI 上连续暴露三类问题，全部为非功能性但会直接失败：
+
+1. **ruff I001（import 顺序）**：把 \`from src.transport...\` 留在原 \`src.core.websocket_server\` 的位置 →
+   模块名排序错误（\`adapters < config < core < repositories < services < transport < utils\`）。
+   **本地 flake8 代理只覆盖 F 规则，抓不到 I001**；本地也装不上 ruff（无预编译包）。
+   处置：新增 \`~/check_import_order.py\` 作为推送前自检（仅对**同一 import 块**内 \`from src.\` 的字母序告警，
+   已知会误报函数内 import 与 \`TYPE_CHECKING\` 块 → 以 CI 的 ruff 为唯一权威）。
+2. **TYPE_CHECKING 引发运行时 NameError**：\`message_router: MessageRouter\` 的参数注解在**定义期求值**，
+   改成 TYPE_CHECKING 导入后 \`import src.transport.ws_server\` 直接报 \`NameError\`。
+   处置：注解改字符串 \`"MessageRouter"\`。**教训：参数注解不是惰性的**，改 TYPE_CHECKING 时必须同步加引号。
+3. **本地测试盲区**：本机缺 \`websockets\`，\`src/transport/*\` 与 3 个 WS 测试在本地只能收集失败，
+   该类改动**只有 CI 能验证**。处置：涉及传输层的改动一律以 CI 结果为准，本地只跑可导入的测试子集。
