@@ -144,6 +144,44 @@ Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.
 | 在线文件 | — | [CODE] `onlinefile{msgId,elementId,fileName,fileSize,isDir}` | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | **未建模** | [UNKNOWN] |
 | markdown | — | [CODE] `markdown{content}` | [UNKNOWN] | [DOC] `markdown{content}`（since 1.3，两份实现都无）| [UNKNOWN] | [UNKNOWN] | [CODE] **内容并入** `text` | [UNKNOWN] |
 
+### 4.2 客户端档案矩阵（**由代码生成**，勿手改）
+
+> 数据源：`src/adapters/client_profile.py::PROFILES`；生成命令：
+> `python3 -c "from src.adapters.client_profile import render_matrix; print(render_matrix())"`
+> 漂移保护：`tests/test_client_contract_matrix.py::test_doc_matrix_matches_code` 会逐字比对下表。
+>
+> 四态含义：`SUPPORTED` 有源码/规范证据；`PARTIAL` 只支持一部分（如 forward 只能按 id 下载）；
+> `UNSUPPORTED` 证据表明**不存在**（规范无此段 / 客户端 case 表里没有）；
+> `UNKNOWN` 没查到 —— 空格是信息，不是待办勾。
+
+<!-- BEGIN GENERATED: client-matrix -->
+| 能力 | go-cqhttp | lagrange | llbot | napcat | spec |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `text` | SUPPORTED | UNKNOWN | SUPPORTED | SUPPORTED | SUPPORTED |
+| `face` | SUPPORTED | UNKNOWN | SUPPORTED | SUPPORTED | SUPPORTED |
+| `image` | SUPPORTED | UNKNOWN | SUPPORTED | SUPPORTED | SUPPORTED |
+| `record` | SUPPORTED | UNKNOWN | UNKNOWN | SUPPORTED | SUPPORTED |
+| `video` | SUPPORTED | UNKNOWN | UNKNOWN | SUPPORTED | SUPPORTED |
+| `at` | SUPPORTED | UNKNOWN | SUPPORTED | SUPPORTED | SUPPORTED |
+| `reply` | SUPPORTED | UNKNOWN | SUPPORTED | SUPPORTED | SUPPORTED |
+| `json` | SUPPORTED | UNKNOWN | SUPPORTED | SUPPORTED | SUPPORTED |
+| `xml` | SUPPORTED | UNKNOWN | UNKNOWN | SUPPORTED | SUPPORTED |
+| `share` | SUPPORTED | UNKNOWN | UNKNOWN | UNKNOWN | SUPPORTED |
+| `music` | SUPPORTED | UNKNOWN | UNKNOWN | UNKNOWN | SUPPORTED |
+| `poke` | SUPPORTED | UNKNOWN | SUPPORTED | SUPPORTED | SUPPORTED |
+| `dice` | SUPPORTED | UNKNOWN | UNKNOWN | UNKNOWN | SUPPORTED |
+| `rps` | SUPPORTED | UNKNOWN | UNKNOWN | UNKNOWN | SUPPORTED |
+| `mface` | UNSUPPORTED | UNKNOWN | UNKNOWN | SUPPORTED | UNSUPPORTED |
+| `file` | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | UNSUPPORTED |
+| `markdown` | UNSUPPORTED | UNKNOWN | UNKNOWN | UNKNOWN | UNSUPPORTED |
+| `forward_segment` | PARTIAL | SUPPORTED | UNKNOWN | SUPPORTED | PARTIAL |
+<!-- END GENERATED: client-matrix -->
+
+**这一版矩阵与 §4 第一版的关系**：§4 是各客户端混合的**首轮快照**（含 Milky 列与 Flowerie 现状列，保留不改）；
+§4.2 是**机器可核对**的 OneBot 11 客户端档案矩阵 —— 有代码、有生成命令、有漂移测试。
+Lagrange 列只有 `[DOC]`（实现源码 SOURCE_UNAVAILABLE）：文档只写了 File/Node 两类段，
+其余保持 UNKNOWN，**没有**因为"它参考了规范"就填 SUPPORTED。
+
 ### 4.1 Milky 列的证据（来自 LLBot 实现 [CODE]）
 
 > Milky 列以 **LLBot 的 Milky 实现**为 `[CODE]` 证据 + `SaltifyDev/milky` 规范为 `[DOC]` 证据，两者互证

@@ -50,14 +50,25 @@ ONEBOT11_SPEC = ClientProfile(
     protocol="onebot11", client="spec", version="botuniverse/onebot-11 d4456ee",
     evidence="[DOC]", source="~/proto_src/OneBot11-spec/（message/segment.md、api/public.md）",
     capabilities={
-        "text": SUPPORTED, "image": SUPPORTED, "face": SUPPORTED, "at": SUPPORTED,
-        "reply": SUPPORTED, "record": SUPPORTED, "video": SUPPORTED, "json": SUPPORTED,
-        "xml": SUPPORTED, "share": SUPPORTED, "music": SUPPORTED,
-        # 规范没有的段：明确 UNSUPPORTED（不是 UNKNOWN —— 规范里确实不存在）
-        "poke": UNSUPPORTED, "mface": UNSUPPORTED, "dice": UNSUPPORTED, "rps": UNSUPPORTED,
-        "markdown": UNSUPPORTED, "forward_segment": UNSUPPORTED,
+        # 逐节核对 ~/proto_src/OneBot11-spec/message/segment.md 的标题清单后填的：
+        "text": SUPPORTED, "face": SUPPORTED, "image": SUPPORTED, "record": SUPPORTED,
+        "video": SUPPORTED, "at": SUPPORTED, "rps": SUPPORTED, "dice": SUPPORTED,
+        "shake": SUPPORTED, "poke": SUPPORTED, "anonymous": SUPPORTED,
+        "share": SUPPORTED, "contact": SUPPORTED, "location": SUPPORTED,
+        "music": SUPPORTED, "reply": SUPPORTED, "forward_segment": PARTIAL,
+        "json": SUPPORTED, "xml": SUPPORTED,
+        # 规范里**确实不存在**的：明确 UNSUPPORTED（不是 UNKNOWN —— 不能把不存在写成"没查"）
+        "mface": UNSUPPORTED, "markdown": UNSUPPORTED, "file": UNSUPPORTED,
     },
-    quirks={"response_status_values": ["ok", "async", "failed"]},
+    quirks={
+        "response_status_values": ["ok", "async", "failed"],
+        "segment_doc_sections": ["纯文本", "QQ 表情", "图片", "语音", "短视频", "@某人",
+                                 "猜拳魔法表情", "掷骰子魔法表情", "窗口抖动（戳一戳）",
+                                 "戳一戳", "匿名发消息", "链接分享", "推荐好友", "推荐群",
+                                 "位置", "音乐分享", "音乐自定义分享", "回复", "合并转发",
+                                 "合并转发节点", "合并转发自定义节点", "XML 消息", "JSON 消息"],
+        "forward_is_receive_only": True,     # 合并转发（收）；发送用 节点/自定义节点
+    },
 )
 
 #: go-cqhttp：本仓库已逐行核对（见 docs/reverse-engineering/onebot11/go-cqhttp.md）
@@ -160,6 +171,30 @@ PROFILES: Dict[Tuple[str, str], ClientProfile] = {
     (p.protocol, p.client): p
     for p in (ONEBOT11_SPEC, GO_CQHTTP, NAPCAT, LLBOT, LAGRANGE_ONEBOT)
 }
+
+
+#: 渲染矩阵用的能力顺序（与 docs/client-compatibility.md §4.2 一致；加能力要同步文档）
+#: markdown 行内代码用的反引号（写成常量，避免生成器里出现裸反引号）
+TICK = chr(96)
+
+#: 渲染矩阵用的能力顺序（与 docs/client-compatibility.md §4.2 一致；加能力要同步文档）
+MATRIX_CAPABILITIES = (
+    "text", "face", "image", "record", "video", "at", "reply", "json", "xml",
+    "share", "music", "poke", "dice", "rps", "mface", "file", "markdown",
+    "forward_segment",
+)
+
+
+def render_matrix(protocol: str = "onebot11") -> str:
+    """把档案渲染成 markdown 表格（文档与代码同源，防止文档漂移）。"""
+    rows = [c for (p, c) in sorted(PROFILES) if p == protocol]
+    head = "| 能力 | " + " | ".join(rows) + " |"
+    sep = "| :--- | " + " | ".join(":---" for _ in rows) + " |"
+    lines = [head, sep]
+    for cap in MATRIX_CAPABILITIES:
+        cells = [PROFILES[(protocol, c)].state(cap) for c in rows]
+        lines.append("| %s%s%s | %s |" % (TICK, cap, TICK, " | ".join(cells)))
+    return "\n".join(lines)
 
 
 def profile_for(protocol: str, client: str = "spec") -> ClientProfile:

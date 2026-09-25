@@ -91,9 +91,17 @@ def test_out_of_range_values_are_refused():
     assert wire == [] and NOTE_VALUE_OUT_OF_RANGE in _reasons(notes)
 
 
-def test_spec_profile_does_not_claim_client_extensions():
-    """规范基线没有 poke/dice 段：序列化必须标成未验证，而不是当作支持。"""
-    assert ONEBOT11_SPEC.state("poke") == "UNSUPPORTED"
+def test_spec_profile_matches_spec_segment_list():
+    """规范基线只写规范里**确实存在 / 确实不存在**的段（逐节核对 segment.md）。
+
+    此前把 poke/dice/rps 误标成 UNSUPPORTED（其实规范有：戳一戳 / 掷骰子 / 猜拳魔法表情），
+    本轮按条文更正；规范**没有**的段仍然明确 UNSUPPORTED（file 只是 image/record/video 的参数）。
+    """
+    for name in ("poke", "dice", "rps", "shake", "anonymous"):
+        assert ONEBOT11_SPEC.state(name) == "SUPPORTED", name
+    for name in ("mface", "markdown", "file"):
+        assert ONEBOT11_SPEC.state(name) == "UNSUPPORTED", name
+    # 未调查的客户端：一个能力都不许"默认支持"
     assert profile_for("onebot11", "unknown-client").state("text") == "UNKNOWN"
 
 
