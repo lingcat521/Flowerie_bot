@@ -71,6 +71,22 @@
 | `00464b4` | 动作通道归位 transport | success | success | success |
 | `ac52d44` | Gate T 插件协议隔离 | 待记录 | 待记录 | 待记录 |
 | `2620788` | Gate J/K/L 容错测试 | 待记录 | 待记录 | 待记录 |
-| `f53bc87` | main import 顺序（ruff I001）| ⏳ | ⏳ | ⏳ |
+| `9242fb7` | 传输层搬出 Core（首版）| failure | failure | success |
+| `2c15c5f` | main.py transport import 归位 | failure | failure | success |
+| `cd26b61` | 测试 import 顺序 | failure | failure | success |
+| `242c306` | MessageRouter 改字符串注解（修 NameError）| **success** | **success** | success |
+| `5b8fae7` | 动作通道下沉（首版，放 adapters）| failure | failure | success |
+| `aa945e8` | 删除未用 import json | failure | failure | success |
+| `e765284` | 通道改组合根注入（触发 6 个测试 RuntimeError）| failure | failure | success |
+| `00464b4` | 通道归位 transport + 恢复默认工厂 | **success** | **success** | success |
+| `ac52d44` | Gate T 插件协议隔离（main.py import 顺序错）| failure | failure | success |
+| `2620788` | Gate J/K/L 容错测试（继承上一处 I001）| failure | failure | success |
+| `3a37139` | 两条端到端用例显式注入适配器（同上 I001）| failure | failure | success |
+| `f53bc87` | 修正 main.py import 顺序（ruff I001）| **success** | **success** | success |
+| `904fd4b` | 本 Dashboard | **success** | **success** | success |
 
-> 记录规则：只写实际查到的结论；`待记录` 表示尚未轮询到结果，**不写成 success**。
+> **记录规则**：只写实际查到的结论（逐提交从 GitHub API 读取），未查到就写 `待记录`，**不写成 success**。
+> **红提交如实保留**：上表 8 个 failure 的原因分别是 ① ruff I001（import 顺序，跨 6 个提交，
+> 最终由 `f53bc87` 修掉）② `TYPE_CHECKING` 参数注解运行期求值导致 `NameError`（`242c306` 修）
+> ③ 冻结层规则（services 不得依赖 adapters）连带 `channel_factory` 必填（`00464b4` 修）。
+> 每条 failure 对应的教训都记在 ADR-001 的实施记录里（含本地工具为何会漏报）。
