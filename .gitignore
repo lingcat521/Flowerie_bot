@@ -35,3 +35,6 @@ Flowerie_bot/
 # 五语言 SDK 示例：运行期产生的插件数据目录（手工运行时）
 examples/*/data/
 examples/*/.gocache/
+
+# 多语言最小插件的构建产物（build.sh 生成）
+examples/multilang-sdk/*/.build/
