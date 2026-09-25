@@ -162,8 +162,11 @@ class OneBotEventParser:
     def parse(self, raw: Dict[str, Any]) -> InternalEvent:
         raw = dict(raw or {})
         post_type = str(raw.get("post_type") or "unknown")
+        # 未知 post_type **原样保留为 kind**（与 MilkyEventParser / OneBot12EventParser 一致，Gate K）：
+        # 这样插件与日志能直接看出"遇到了哪种没见过的上报"，而不是只看到笼统的 unknown；
+        # 缺 post_type 时 post_type 已是字符串 "unknown" -> kind 仍为 unknown（旧行为不变）。
         kind = {"message": "message", "notice": "notice",
-                "request": "request", "meta_event": "lifecycle"}.get(post_type, "unknown")
+                "request": "request", "meta_event": "lifecycle"}.get(post_type, post_type or "unknown")
         message_type = raw.get("message_type")
         group_id = raw.get("group_id")
         if kind == "message":

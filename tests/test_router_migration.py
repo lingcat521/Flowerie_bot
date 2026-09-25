@@ -112,7 +112,8 @@ def test_private_scope():
 
 # ---------- 12/13/14 unknown / malformed / 缺失字段 ----------
 def test_unknown_and_malformed_are_ignorable():
-    assert PARSER.parse({"post_type": "whatever", "abc": 1}).kind == "unknown"  # 未知
+    # 未知 post_type 保留为 kind（与 Milky/OneBot12 解析器一致，Gate K）；缺 post_type 仍是 unknown
+    assert PARSER.parse({"post_type": "whatever", "abc": 1}).kind == "whatever"
     ev = PARSER.parse({"post_type": "message", "message_type": "group",
                        "group_id": 7, "message": [{"type": "text", "data": {"text": "t"}}]})
     assert ev.actor_id is None                                                    # 缺失 user_id
