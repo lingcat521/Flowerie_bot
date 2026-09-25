@@ -88,6 +88,21 @@ Plugin SDK → Core / Event / Session → Adapter → OneBot 11 / Milky / 具体
 4. **回归**：跑 `tests/test_adapter_segment_normalization.py` 同形用例 + 全量 pytest；
 5. **文档**：更新 `docs/client-compatibility.md` 与 `docs/source-acquisition.md`（含失败状态）。
 
+## 6.5 验证分层（每层都有测试；用例数为实测收集数）
+
+| 层 | 测试文件（用例数）| 断言什么 |
+| :--- | :--- | :--- |
+| 段级归一化 | `test_adapter_segment_normalization.py`(14)、`test_milky_segment_normalization.py`(9) | 各客户端段形态 → 归一化字段，键名与 OneBot 侧**同形** |
+| **语料回归（P5）** | `test_fixtures_corpus.py`(22) + `tests/fixtures/`（7 样本）| 每个样本强制带 `_provenance`（client/status/captured/evidence/note），并断言归一化结果 |
+| **round-trip** | `test_protocol_roundtrip.py`(23) | 归一化结果 → **只用归一化字段**重建协议负载 → 再解析：核心字段与段级通道（faces/pokes/files/json_cards/forwards）必须一致；**message 与 notice 两类事件都覆盖** |
+| **跨客户端等价** | 同上 | 同一逻辑消息在 NapCat / LLBot / Milky 形态下归一化核心字段必须相同（戳一戳 2 形态、文件上传 2 形态、file 段 2 形态、at+image 2 形态）|
+| 事件类型归一化 | `test_milky_event_kinds.py`(9) | Milky 规范 **21 种**事件类型全覆盖 → 领域 kind（见 protocol-reverse-engineering.md §9 C3）|
+| 发送方向（reverse）| `test_milky_mapping.py`(7)、`test_milky_message_seq.py`(5) + round-trip 的静态用例 | action 名映射"只许缩小"、Milky 段数组与撤回 `message_seq`、发送响应 `message_id`/`message_seq` 双兼容 |
+| 组装 / 下游迁移 | `test_multimsg_card.py`(9)、`test_face_context.py`(8)、`test_router_migration.py`(15) | 卡片优先级、表情进上下文、notice 文件等旧行为等价 |
+| 组合根与契约 | `test_adapters.py`(11)、`test_milky_protocol_selection.py`(3) | sender 满足 `MessageSender` 契约；`protocol=milky` 选到 Milky 解析器；冻结层只看到领域字段 |
+
+> **没有哪一层靠人工记忆**：改 Adapter 后跑 `pytest tests/` 就能看出"哪种客户端形态被改坏"。
+> 本机无第三方依赖时用 `PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/ -q`（见 source-acquisition.md §恢复步骤）。
 ## 7. 尚未做的与理由（诚实清单）
 
 | 项 | 状态 | 理由 / 阻塞 |
