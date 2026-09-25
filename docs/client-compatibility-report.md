@@ -139,9 +139,11 @@
 | **c18b70a** | Milky 出站 + 响应 + 档案 | ❌ **Ruff 2 条 I001** | 新增文件的 import 顺序（常量/类、大小写不敏感序）→ **4741794 修复** |
 | **6450f44** | 协议耦合度量 | ❌ **Ruff 2 条 F401** | 新测试里 `io`/`pytest` 未使用 → **7bf3623 修复** |
 | 7bf3623 | 上述修复 | ✅ 三项全绿 | **2007 passed / 23 skipped**（23 = 22 条实机 + 1 条 round-trip 覆盖说明）|
+| **b0d4daa** | 本报告 + message_sent 纳入真往返 | ✅ 三项全绿 | **2008 passed / 22 skipped**（22 条**全部**是实机用例 —— 那 1 条 round-trip 覆盖缺口已换成真断言）|
 
-**回归**：整仓 2007 passed / 23 skipped，0 失败；本轮把一处 round-trip skip 换成了真断言
-（`message_sent` 现在真往返），下一次 CI 的 skip 数会降到 22。
+**回归**：最新一次（b0d4daa）整仓 **2008 passed / 22 skipped，0 失败**；22 条 skip 全部是实机用例
+（缺协议端，逐条打印缺失条件）。本轮把一处 round-trip skip 换成了真断言：`message_sent`
+（机器人自己发的消息）现在走完整的 parse → 重建 → reparse 往返，skip 数因此从 23 降到 22。
 
 ## 7. 实机与阻塞项（BLOCKED BY EXTERNAL DEPENDENCY）
 
