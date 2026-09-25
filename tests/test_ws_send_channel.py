@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from src.core.websocket_server import WebSocketServer
+from src.transport.ws_server import WebSocketServer
 from src.services.sender import Sender
 
 

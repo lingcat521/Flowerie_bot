@@ -4,7 +4,7 @@ import json
 
 from websockets.exceptions import ConnectionClosed
 
-from src.core.websocket_server import WebSocketServer
+from src.transport.ws_server import WebSocketServer
 from tests.test_router_regression import build_router
 
 

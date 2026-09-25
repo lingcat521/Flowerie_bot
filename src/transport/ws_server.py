@@ -1,11 +1,13 @@
 import asyncio
 import json
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
+
+if TYPE_CHECKING:  # 仅类型注解，避免 transport 反向依赖 core 业务
+    from src.core.message_router import MessageRouter
 
 import websockets
 
 from src.config import Settings
-from src.core.message_router import MessageRouter
 from src.utils.logging_setup import get_logger
 from src.utils.metrics import registry
 from src.utils.trace import trace_context

@@ -8,7 +8,7 @@ import json
 import pytest
 import websockets
 
-from src.core.napcat_forward_client import NapCatForwardClient, redact_ws_url
+from src.transport.ws_forward_client import NapCatForwardClient, redact_ws_url
 
 
 class FakeConfig:

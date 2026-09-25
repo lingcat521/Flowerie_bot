@@ -1,7 +1,7 @@
 """NapCatForwardClient：正向 WebSocket 客户端（Flowerie 连接 NapCat 的 WS server）。
 
 与 WebSocketServer（反向 = NapCat 连接 Flowerie）二选一，由 NAPCAT_WS_MODE 决定：
-- reverse：src/core/websocket_server.py（原有行为）
+- reverse：src/transport/ws_server.py（原有行为）
 - forward：本客户端（Flowerie 作为 client 连接 NAPCAT_WS_URL）
 
 安全与健壮性（requirement 7.2）：
