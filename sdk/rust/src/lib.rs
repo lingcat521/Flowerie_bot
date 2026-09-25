@@ -628,6 +628,10 @@ fn normalize_webui(result: Json) -> Json {
     match result {
         Json::Str(html) => Json::obj(vec![("ok", Json::Bool(true)), ("html", Json::Str(html))]),
         Json::Obj(map) => {
+            if matches!(map.get("ok"), Some(Json::Bool(false))) {
+                let message = map.get("error").and_then(|v| v.as_str()).unwrap_or("插件返回 ok=false");
+                return Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(message))]);
+            }
             let mut pairs: Vec<(&str, Json)> = vec![("ok", Json::Bool(true))];
             for key in ["html", "vars", "context", "message", "content_type", "body",
                         "base64", "config_set", "storage_set"] {

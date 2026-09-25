@@ -7,5 +7,35 @@
   "runtime": "exec",
   "entry": "run.sh",
   "api_version": "1",
-  "permissions": ["send_message", "read_message"]
+  "permissions": [
+    "send_message",
+    "read_message",
+    "webui.view",
+    "webui.action",
+    "webui.config.read",
+    "webui.config.write",
+    "webui.storage.read",
+    "webui.storage.write"
+  ],
+  "web_ui": {
+    "static": "static",
+    "entry": "webui_page",
+    "pages": [
+      {
+        "id": "index",
+        "title": "总览",
+        "file": "pages/index.html"
+      },
+      {
+        "id": "settings",
+        "title": "设置",
+        "file": "pages/settings.html"
+      },
+      {
+        "id": "dynamic",
+        "title": "插件渲染页",
+        "render": "plugin"
+      }
+    ]
+  }
 }

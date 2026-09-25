@@ -441,7 +441,6 @@ async def test_config_and_storage_are_gated_by_permission(tmp_path, monkeypatch)
                                 manifest=_manifest(config={"values": {"greeting": "hi",
                                                                      "secret_token": "s3cr3t"}}))
     try:
-        from src.plugins.manager import PluginManager as _PM
         approved = mgr._webui_approved(PID)
         ctx = await mgr._webui_engine_context(PID, mgr.get_plugin(PID) or {}, {"id": "settings"},
                                               approved, method="GET", action="get")

@@ -464,6 +464,13 @@ func normalizeWebuiResult(res any) map[string]any {
 	case string:
 		return map[string]any{"ok": true, "html": typed}
 	case map[string]any:
+		if ok, exists := typed["ok"].(bool); exists && !ok {
+			message, _ := typed["error"].(string)
+			if message == "" {
+				message = "插件返回 ok=false"
+			}
+			return map[string]any{"ok": false, "error": message}
+		}
 		out := map[string]any{"ok": true}
 		for _, key := range []string{"html", "vars", "context", "message", "content_type",
 			"body", "base64", "config_set", "storage_set"} {

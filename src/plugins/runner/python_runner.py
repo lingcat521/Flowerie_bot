@@ -1044,6 +1044,10 @@ class PluginRunner:
             self._emit({"id": req_id, "result": {"ok": True, "html": res}})
             return
         if isinstance(res, dict):
+            if res.get("ok") is False:
+                self._emit({"id": req_id, "result": {
+                    "ok": False, "error": str(res.get("error") or "插件返回 ok=false")}})
+                return
             payload = {"ok": True}
             for key in ("html", "vars", "context", "message", "content_type", "body", "base64",
                         "config_set", "storage_set"):

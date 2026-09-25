@@ -44,8 +44,11 @@ const WEBUI_PAYLOAD_KEYS = ["html", "vars", "context", "message", "content_type"
 function normalizeWebuiResult(result: unknown): Record<string, unknown> {
   if (typeof result === "string") return { ok: true, html: result };
   if (result && typeof result === "object") {
-    const out: Record<string, unknown> = { ok: true };
     const src = result as Record<string, unknown>;
+    if (src.ok === false) {
+      return { ok: false, error: String(src.error || "插件返回 ok=false") };
+    }
+    const out: Record<string, unknown> = { ok: true };
     for (const key of WEBUI_PAYLOAD_KEYS) if (key in src) out[key] = src[key];
     return out;
   }

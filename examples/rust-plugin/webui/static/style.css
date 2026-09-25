@@ -1,0 +1,7 @@
+/* 磁盘静态资源：会过 sanitize_plugin_css（@import / 外链 url / expression 全部剔除） */
+body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+.plugin-page h1 { font-size: 1.3rem; }
+.plugin-page .desc { color: #6b7280; }
+.plugin-page .card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; max-width: 28rem; }
+.plugin-page .btn { display: inline-block; margin-right: 8px; }
+.plugin-page .msg { color: #1f6feb; }

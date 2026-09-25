@@ -1,0 +1,10 @@
+<h2>{{ page_title }}</h2>
+<p class="desc">同一个 save settings Action，五种语言的示例插件语义完全一致。</p>
+<form class="card" method="post" action="/panel/plugins/webui/{{ plugin_id }}/settings">
+  <input type="hidden" name="plugin_action" value="save">
+  <label>昵称 <input name="nickname" value="{{ nickname }}" maxlength="64"></label>
+  <button type="submit">保存</button>
+</form>
+<p class="msg">{{ message }}</p>
+<p class="hint">样式与图片走两条不同的资源通道：
+  <code>/static/style.css</code>（磁盘文件）与 <code>/asset/theme.css</code>（插件进程生成）。</p>

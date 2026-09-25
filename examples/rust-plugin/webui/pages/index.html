@@ -1,0 +1,12 @@
+<h1>{{ plugin_name }}</h1>
+<p class="desc">{{ page_description }}</p>
+<p>本页面是**真实 HTML**（No-JS），由 Flowerie WebUI Runtime 托管：
+路由、权限、模板变量转义、跨插件隔离都在引擎侧，插件只提供内容。</p>
+<ul class="facts">
+  <li>插件 id：<code>{{ plugin_id }}</code></li>
+  <li>页面 id：<code>{{ page_id }}</code></li>
+  <li>storage 里的昵称：<code>{{ nickname }}</code></li>
+</ul>
+<p><a class="btn" href="/panel/plugins/webui/{{ plugin_id }}/settings">去设置页</a>
+   <a class="btn" href="/panel/plugins/webui/{{ plugin_id }}/dynamic">插件渲染页</a></p>
+<p class="msg">{{ message }}</p>

@@ -388,6 +388,11 @@ public class FloweriePlugin {
         }
         if (result instanceof Map) {
             Map<?, ?> src = (Map<?, ?>) result;
+            if (Boolean.FALSE.equals(src.get("ok"))) {
+                out.put("ok", Boolean.FALSE);
+                out.put("error", src.get("error") == null ? "插件返回 ok=false" : src.get("error"));
+                return out;
+            }
             out.put("ok", Boolean.TRUE);
             for (String key : WEBUI_PAYLOAD_KEYS) {
                 if (src.containsKey(key)) {
