@@ -315,6 +315,17 @@ public class GroupNudgeEventData(long groupID, long senderId, long receiverId,
 验证方法：先往 `sys.modules` 注入最小 stub（`pydantic.Field/field_validator/BaseModel`、
 `pydantic_settings.BaseSettings/SettingsConfigDict`、`httpx.Timeout/Limits/AsyncClient`），再 import 真实模块，
 即可在本地跑真实代码路径（脚本示例：`~/verify_multimsg.py`）。
+**更好的办法（已落地）**：`~/stubplug.py` 是一个 pytest 插件，在 `pytest_configure` 里注入同样的 stub，
+于是依赖 pydantic 的测试也能在本地跑：
+
+```bash
+PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/test_multimsg_card.py tests/test_face_context.py -q
+```
+
+**教训（已被 CI 抓到过）**：本地验证脚本里修过的 stub 语义，**必须同步改到测试文件里** ——
+`tests/test_multimsg_card.py` 的 stub 一度比真实实现更宽松（对非 json 消息也返回卡片文本），
+导致 `test_non_json_segments_ignored` 在 CI 上失败（本地因缺依赖没跑到）。
+现在两个新测试文件都能用 stubplug 在本地跑通（14 条）。
 ## 8. 上下文压缩后的恢复步骤
 
 1. 读本文件（尤其 §3/§4/§5）—— 全部逆向事实与下一步都在这；
