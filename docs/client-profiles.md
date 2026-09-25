@@ -34,7 +34,9 @@ OneBot11Adapter / MilkyAdapter
 | onebot11 | **napcat** | `0b4cfe6` | [CODE] | 元素模型/段/合并转发（既有逆向，字段级）|
 | onebot11 | **llbot** | `9f374f6` | [CODE] | OneBot 入站 + `shake` 戳一戳段；其余多格 UNKNOWN |
 | onebot11 | **lagrange** | Lagrange.Doc `98e96e5` | [DOC]（且页面自称过时）| 实现源码 **SOURCE_UNAVAILABLE**（404，见 [source-acquisition.md](source-acquisition.md) C4）→ 只登记文档给出的 File/Node 段 |
-| milky | **spec** / 实现 | Milky-spec `151dd90` / 内嵌实现 | [DOC]+[CODE] | 段与事件（既有逆向：milky-protocol.md）|
+| milky | **spec**（基线）| SaltifyDev/milky `151dd90` | [DOC] | 出站段联合体 10 种（common.ts L393-445）；入站段另有一套（market_face/xml/markdown 只在入站）|
+| milky | **lagrange**（协议作者实现）| 内嵌 Lagrange.Core `20c2ba0` / LagrangeV2 `7011cdf` | [CODE] | 两份副本段集合不同（11 vs 15 个文件）；发送响应 `{message_seq, time}` |
+| milky | **llbot** | LLBot `9f374f6` | [CODE] | `mention` 仅群聊；`reply` 需可解析 `message_seq`；响应包封 `{status,retcode,data\|message}` |
 
 > 未调查的（onebots / Yogurt / OpenShamrock / imhelper 等）**不登记**，也不在矩阵里写 SUPPORTED ——
 > 查询它们会得到 `UNKNOWN`（`profile_for()` 返回空档案）。
@@ -57,6 +59,20 @@ OneBot11Adapter / MilkyAdapter
 | `dice` / `rps` | `value` 范围 0..6 / 0..2，越界**报错** | —— |
 | 未知段 | `IgnoreInvalidCQCode=false`（默认）时回退成**字面 CQ 文本** | 各客户端兜底策略不同 → 序列化器只标记，不复刻转义 |
 | 响应包封 | `ok` / `async` / `failed`；失败带 `msg+wording+message` | 规范定义三态；NapCat 同构但字段更少 |
+
+## 3.5 Milky 侧的已验证差异（本轮新增，全部 [CODE]/[DOC]）
+
+| 事实 | 值 | 证据 |
+| :--- | :--- | :--- |
+| 出站段联合体 | text / mention / mention_all / face / reply / image / record / video / forward / light_app | [DOC] common.ts L393-445 |
+| `uri` 支持的写法 | `file://` / `http(s)://` / `base64://` | [DOC] 同上 |
+| `reply` 字段 | `message_seq`（与 OneBot 的 `id` 不同命名空间）| [DOC]+[CODE] |
+| 入站 ≠ 出站 | 入站有 `market_face` / `xml` / `markdown`，出站联合体没有；入站 `forward` 只有 `forward_id`，'
+    '出站要构造 `messages[]` | [DOC] |
+| `mention` 私聊 | LLBot：**不产出元素**（`&& isGroup`）→ 序列化器丢段 + note | [CODE] outgoing.ts |
+| `reply` 解析失败 | LLBot：直接 throw「被回复的消息未找到」| [CODE] outgoing.ts |
+| 响应包封 | `{status:"ok", retcode:0, data}` / `{status:"failed", retcode, message}`（无 `msg`/`wording`）| [CODE] common/api.ts |
+| 发送响应字段 | Lagrange.Milky：`{message_seq, time}` | [CODE] SendGroupMessageHandler.cs |
 
 ## 4. 出站序列化怎么用（本轮新增）
 

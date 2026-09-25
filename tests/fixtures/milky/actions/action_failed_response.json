@@ -1,0 +1,13 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "LLBot src/milky/common/api.ts L38-40 Failed(retcode, message) → {status:'failed', retcode, message}（**没有** OneBot 的 wording/msg 字段）",
+    "version": "LLBot 9f374f6",
+    "note": "失败响应语料；值为示例（未实机抓包）"
+  },
+  "status": "failed",
+  "retcode": 1,
+  "message": "被回复的消息未找到"
+}

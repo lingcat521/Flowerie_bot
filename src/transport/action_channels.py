@@ -14,6 +14,7 @@ import json
 
 import aiohttp
 
+from src.transport.milky_response import parse_milky_response
 from src.transport.onebot_response import parse_onebot_response
 from src.utils.logging_setup import get_logger
 
@@ -166,10 +167,10 @@ class MilkyHTTPChannel(OneBotHTTPChannel):
                     j = json.loads(body) if body else {}
                 except ValueError:
                     j = {}
-                retcode = (j.get("retcode") if isinstance(j, dict) else None)
-                if resp.status == 200 and (retcode in (0, None)):
-                    return {"ok": True, "data": j.get("data")}
-                return {"ok": False, "error": f"HTTP {resp.status} retcode={retcode} {body[:160]}"}
+                if resp.status != 200:
+                    return {"ok": False, "error": f"HTTP {resp.status} {body[:160]}"}
+                # Milky 响应模型见 parse_milky_response 的 docstring（与 OneBot 11 不同）
+                return parse_milky_response(j)
         except Exception as e:  # noqa: BLE001
             logger.error("milky_action_failed action=%s err=%s", action, e,
                          extra={"event": "message_send_failed", "action": action})

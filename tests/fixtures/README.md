@@ -39,13 +39,13 @@
 
 ### 响应类语料放 `actions/` 子目录
 
-`tests/fixtures/<client>/actions/*.json` 放 **Action 响应包封**（不是事件）。
+`tests/fixtures/<client>/actions/*.json` 放 **Action 响应包封**（不是事件）—— 目前有 `go-cqhttp/` 与 `milky/` 两套。
 语料回归 `tests/test_fixtures_corpus.py` 只扫 `fixtures/<client>/*.json`（一层），
-所以响应样本不会被事件解析器误扫；它们由 `tests/test_onebot_response_contract.py` 驱动生产代码
-`src/transport/onebot_response.py` 断言：
+所以响应样本不会被事件解析器误扫；它们由 `tests/test_onebot_response_contract.py` 与 `tests/test_milky_serializer.py` 驱动生产代码
+`src/transport/onebot_response.py` / `src/transport/milky_response.py`（两套响应模型不通用）断言：
 
 ```text
-tests/fixtures/go-cqhttp/actions/
+tests/fixtures/<client>/actions/（此处以 go-cqhttp 为例）
 ├── action_get_msg_response.json      # {data,retcode:0,status:"ok",message:""}
 └── action_failed_response.json       # {data:null,retcode,msg,wording,message,status:"failed"}
 ```

@@ -210,6 +210,60 @@ def render_matrix(protocol: str = "onebot11") -> str:
     return "\n".join(lines)
 
 
+#: Milky 规范基线（SaltifyDev/milky；出站段联合体见 protocol/src/ir/common.ts L393-445）
+MILKY_SPEC = ClientProfile(
+    protocol="milky", client="spec", version="SaltifyDev/milky 151dd90",
+    evidence="[DOC]", source="~/proto_src/Milky-spec protocol/src/ir/common.ts L300-445",
+    capabilities={
+        "text": SUPPORTED, "mention": SUPPORTED, "mention_all": SUPPORTED, "face": SUPPORTED,
+        "reply": SUPPORTED, "image": SUPPORTED, "record": SUPPORTED, "video": SUPPORTED,
+        "forward": SUPPORTED, "light_app": SUPPORTED,
+        "market_face": UNSUPPORTED,   # 只在**入站**段里；出站联合体没有它
+        "xml": UNSUPPORTED,           # 同上（入站有 xml/light_app，出站只有 light_app）
+        "markdown": UNSUPPORTED,      # 入站 since 1.3；出站联合体未列
+        "file": UNSUPPORTED,          # 文件走 upload_file 接口，不是消息段
+    },
+    quirks={
+        "uri_schemes": ["file://", "http(s)://", "base64://"],
+        "reply_field": "message_seq",
+        "image_sub_types": ["normal", "sticker"],
+        "forward_can_be_constructed": True,   # 与 go-cqhttp（只能按 id 下载）相反
+        "response_model": {"ok": ["status=ok", "retcode=0"], "failed": ["status=failed", "retcode", "message"]},
+    },
+)
+
+#: LLBot 的 Milky 实现（[CODE] outgoing.ts / incoming.ts / common/api.ts）
+LLBOT_MILKY = ClientProfile(
+    protocol="milky", client="llbot", version="9f374f6",
+    evidence="[CODE]", source="~/proto_src/LLBot src/milky/transform/message/{incoming,outgoing}.ts + src/milky/common/api.ts",
+    capabilities={
+        "text": SUPPORTED, "mention": SUPPORTED, "mention_all": SUPPORTED, "face": SUPPORTED,
+        "reply": SUPPORTED, "image": SUPPORTED,
+        "record": UNKNOWN, "video": UNKNOWN, "forward": UNKNOWN, "light_app": UNKNOWN,
+    },
+    quirks={
+        "mention_group_only": True,        # outgoing.ts：mention/mention_all 只在 isGroup 时产出元素
+        "reply_requires_resolvable_seq": True,   # 查不到被引消息 → throw 被回复的消息未找到
+        "image_uri_download_first": True,
+    },
+)
+
+#: Lagrange.Milky：协议作者本人的实现，内嵌于 Lagrange.Core / LagrangeV2
+LAGRANGE_MILKY = ClientProfile(
+    protocol="milky", client="lagrange", version="Lagrange.Core 20c2ba0 / LagrangeV2 7011cdf（内嵌）",
+    evidence="[CODE]", source="~/proto_src/Lagrange.Core/Lagrange.Milky/（Api/Handlers/Message/SendGroupMessageHandler.cs 等；两份内嵌副本布局不同，见 protocol-reverse-engineering.md §6）",
+    capabilities={
+        "text": SUPPORTED, "mention": SUPPORTED, "mention_all": SUPPORTED, "face": SUPPORTED,
+        "reply": SUPPORTED, "image": SUPPORTED, "record": SUPPORTED, "video": SUPPORTED,
+        "forward": SUPPORTED, "light_app": UNKNOWN,
+    },
+    quirks={"embedded_copies": 2, "segment_files": {"LagrangeV2": 15, "Lagrange.Core": 11}},
+)
+
+PROFILES.update({(p.protocol, p.client): p
+                 for p in (MILKY_SPEC, LLBOT_MILKY, LAGRANGE_MILKY)})
+
+
 def profile_for(protocol: str, client: str = "spec") -> ClientProfile:
     """取档案；没有档案 → 规范基线（并保持 UNKNOWN 语义，不假装支持）。"""
     key = (str(protocol), str(client))

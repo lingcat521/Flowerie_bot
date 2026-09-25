@@ -1,0 +1,15 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "LLBot src/milky/common/api.ts L35-37 Ok(data) → {status:'ok', retcode:0, data}；SendGroupMessageHandler.cs L41 的 Result 字段是 message_seq",
+    "version": "LLBot 9f374f6 / Lagrange.Milky（内嵌）",
+    "note": "响应包封语料；值为示例（未实机抓包）"
+  },
+  "status": "ok",
+  "retcode": 0,
+  "data": {
+    "message_seq": 77130
+  }
+}

@@ -145,6 +145,39 @@ Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.
 | 在线文件 | — | [CODE] `onlinefile{msgId,elementId,fileName,fileSize,isDir}` | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | **未建模** | [UNKNOWN] |
 | markdown | — | [CODE] `markdown{content}` | [UNKNOWN] | [DOC] `markdown{content}`（since 1.3，两份实现都无）| [UNKNOWN] | [UNKNOWN] | [CODE] **内容并入** `text` | [UNKNOWN] |
 
+### 4.3 Milky 客户端档案矩阵（同样由代码生成）
+
+> 数据源：`render_matrix("milky")`；漂移测试同上（`test_doc_matrix_matches_code` 逐字比对两块表）。
+> 与 §4.1 的 Milky 列（以 LLBot 实现为 [CODE] + 规范为 [DOC] 互证）互为补充：
+> §4.1 讲**入站段**，这里讲**档案登记的能力**（含出站）。
+
+<!-- BEGIN GENERATED: milky-matrix -->
+| 能力 | lagrange | llbot | spec |
+| :--- | :--- | :--- | :--- |
+| `text` | SUPPORTED | SUPPORTED | SUPPORTED |
+| `face` | SUPPORTED | SUPPORTED | SUPPORTED |
+| `image` | SUPPORTED | SUPPORTED | SUPPORTED |
+| `record` | SUPPORTED | UNKNOWN | SUPPORTED |
+| `video` | SUPPORTED | UNKNOWN | SUPPORTED |
+| `at` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `reply` | SUPPORTED | SUPPORTED | SUPPORTED |
+| `json` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `xml` | UNKNOWN | UNKNOWN | UNSUPPORTED |
+| `share` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `music` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `poke` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `dice` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `rps` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `mface` | UNKNOWN | UNKNOWN | UNKNOWN |
+| `file` | UNKNOWN | UNKNOWN | UNSUPPORTED |
+| `markdown` | UNKNOWN | UNKNOWN | UNSUPPORTED |
+| `forward_segment` | UNKNOWN | UNKNOWN | UNKNOWN |
+<!-- END GENERATED: milky-matrix -->
+
+Lagrange 的 Milky 实现是**协议作者本人的实现**（内嵌 Lagrange.Core/V2，两份副本段集合不同）；
+LLBot 的 Milky 实现是第三方实现 —— 两者在 `mention` 私聊行为与段集合上有差异（见
+[reverse-engineering/milky/](reverse-engineering/milky/)）。**未调查**的 Milky 客户端不登记，查询得到 UNKNOWN。
+
 ### 4.2 客户端档案矩阵（**由代码生成**，勿手改）
 
 > 数据源：`src/adapters/client_profile.py::PROFILES`；生成命令：

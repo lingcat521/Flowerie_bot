@@ -168,18 +168,23 @@ def test_capability_matrix_is_reported(capsys):
     print("\n".join(lines))
     assert len(PROFILES) >= 4
 
-def test_doc_matrix_matches_code():
-    """docs/client-compatibility.md §4.2 的矩阵必须与 PROFILES 逐字一致（防文档漂移）。"""
+@pytest.mark.parametrize("protocol,marker", [
+    ("onebot11", "client-matrix"),
+    ("milky", "milky-matrix"),
+])
+def test_doc_matrix_matches_code(protocol, marker):
+    """文档里的生成矩阵必须与 PROFILES 逐字一致（防文档漂移）。"""
     import re
 
     from src.adapters.client_profile import render_matrix
 
     doc = open(os.path.join(ROOT, "docs", "client-compatibility.md"), encoding="utf-8").read()
-    block = re.search(r"<!-- BEGIN GENERATED: client-matrix -->\n(.*?)\n<!-- END GENERATED: client-matrix -->",
-                      doc, re.S)
-    assert block, "文档里缺少生成矩阵标记（<!-- BEGIN GENERATED: client-matrix -->）"
-    assert block.group(1).strip() == render_matrix().strip(), \
-        "文档矩阵与 client_profile.PROFILES 不一致：请重跑生成命令"
+    pattern = ("<!-- BEGIN GENERATED: %s -->\n(.*?)\n<!-- END GENERATED: %s -->"
+               % (marker, marker))
+    block = re.search(pattern, doc, re.S)
+    assert block, "文档里缺少生成矩阵标记：%s" % marker
+    assert block.group(1).strip() == render_matrix(protocol).strip(), \
+        "%s 矩阵与 client_profile.PROFILES 不一致：请重跑生成命令" % protocol
 
 
 # ---------------------------------------------------------------- 自发送消息（跨客户端）
