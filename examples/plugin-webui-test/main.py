@@ -57,8 +57,30 @@ NOT_ECHOED = "（对端未回传）"
 #: on_startup 注入的 API 句柄：webui_* 钩子没有 api 参数，只能从这里取
 _API = {"api": None, "plugin_id": PLUGIN_ID_FALLBACK}
 
-#: 页面只显示结构化错误；顺手抹掉绝对路径（§16：不泄露堆栈 / 路径 / 密钥）
-_ABS_PATH_RE = re.compile(r"/[\w.\-]+(?:/[\w.\-]+)+")
+#: 绝对路径抹除：**用字符串扫描而不是正则** —— 正则里 "(?:/[...]+)+" 这类嵌套量词会被仓库的
+#: 回溯歧义扫描（tests/test_code_scanning_redos.py）拦下，而这里根本不需要正则。
+_PATH_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-\\/+")
+
+
+def _redact_paths(text):
+    """把 "/a/b/c" 这类绝对路径换掉（§16：错误展示里不泄露文件系统路径）。
+
+    线性扫描（正则版会被回溯歧义扫描拦下）：遇到 "/" 且后面还有一个 "/"，就吞掉整段路径字符。
+    """
+    out = []
+    i = 0
+    while i < len(text):
+        if text[i] == "/":
+            j = i + 1
+            while j < len(text) and text[j] in _PATH_CHARS:
+                j += 1
+            if text.find("/", i + 1, j) != -1 and j - i >= 3:
+                out.append("[path]")
+                i = j
+                continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
 
 
 # ---------------------------------------------------------------- 基础工具
@@ -143,7 +165,7 @@ def _redact(message):
     cut = text.find("Traceback")
     if cut >= 0:
         text = text[:cut].strip()
-    return _ABS_PATH_RE.sub("[path]", text)
+    return _redact_paths(text)
 
 
 def _bounded(value, limit=MAX_DISPLAY_CHARS):

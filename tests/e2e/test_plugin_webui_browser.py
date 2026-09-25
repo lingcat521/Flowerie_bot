@@ -116,7 +116,13 @@ def test_zero_javascript_policy_in_real_browser(logged_in, webui_server):
     assert "<script" not in html
     assert "javascript:" not in html
     # 注入一个 <script>：CSP 应拦下它（全局变量不会被赋值）
-    page.add_script_tag(content="window.__e2e_injected = 42;")
+    blocked = False
+    try:
+        page.add_script_tag(content="window.__e2e_injected = 42;")
+    except Exception as error:  # noqa: BLE001 - CSP 拦截时 Playwright 直接抛错，这正是期望结果
+        blocked = "Content Security Policy" in str(error) or "violates" in str(error)
+        assert blocked, "注入脚本失败，但不是 CSP 原因：%s" % error
+    assert blocked, "CSP 没有拦住注入的内联脚本（add_script_tag 竟然成功了）"
     assert page.evaluate("window.__e2e_injected") is None, (
         "CSP 没有拦住注入的内联脚本：零 JS 策略在浏览器里失效了")
     assert logged_in.page_errors == []
