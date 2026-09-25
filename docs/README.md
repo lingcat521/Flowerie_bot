@@ -38,6 +38,12 @@
 | [install-release-windows.md](install-release-windows.md) | Windows exe 用法 / 首次配置 / 常见问题 | 运维 |
 | [onebot-compatibility.md](onebot-compatibility.md) | OneBot v11 全平台兼容（连接层 / 发送通道 / 识图 / 能力矩阵） | 运维 |
 | [milky-protocol.md](milky-protocol.md) | Milky 协议支持（配置 / 事件格式 / API 调用 / 已知边界） | 运维 |
+| [protocol-reverse-engineering.md](protocol-reverse-engineering.md) | **协议逆向总报告**：客户端源码证据（`[CODE]` 行号）/ 归一化差距 / 下一步 / **更正记录** | 开发者 |
+| [client-compatibility.md](client-compatibility.md) | **客户端兼容矩阵**：OneBot 11 / Milky / NapCat / Lagrange / SnowLuma / LLBot 逐项对照 + 生态覆盖分级 | 开发者 |
+| [message-model.md](message-model.md) | **归一化消息模型**：`InternalEvent` / `NormalizedSegment` 字段、四协议映射表、`[UNKNOWN]` 清单 | 开发者 |
+| [adapter-architecture.md](adapter-architecture.md) | **Adapter 分层架构**：依赖方向硬约束 / 数据流 / 归一化契约 / 接入新客户端五步清单 | 开发者 |
+| [mvp-analysis.md](mvp-analysis.md) | **MVP 对照报告**：事实清单 / 为什么能工作 / 值得迁移 / 不能直接迁移 | 开发者 |
+| [source-acquisition.md](source-acquisition.md) | **源码获取台账**：15 个仓库与 commit、各客户端 `SOURCE_*` 状态（含失败与更正） | 开发者 |
 
 ## 归档
 

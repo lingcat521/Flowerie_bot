@@ -108,16 +108,22 @@ return { finallySendElements: { elementType: ElementType.ARK,
 → **`{"type":"json"}` 不是一种东西**：`app === com.tencent.multimsg` 的才是合并转发卡片，
   要从 `meta.detail.resid` 取内层；其他 app（小程序、联系人卡片、markdown…）语义不同 `[CODE]`。
 
-### 3.3 发送时的元素分组规则（重要）
+### 3.3 发送时的元素分组规则（⚠️ 已更正）
 
 ```ts
-// SendMsg.ts L413-420
-element.elementType !== ElementType.FILE && element.elementType !== ElementType.VIDEO
-  && element.elementType !== ElementType.ARK && element.elementType !== ElementType.PTT
-// → 这几类元素被拆成「单独一条消息」发送（不能与其他段混在同一条里）
+// SendMsg.ts L411-431 —— 关键：这段代码在 handleForwardedNodes（合并转发节点路径）内部
+const MixElement = sendElements.filter(e => e.elementType !== ElementType.FILE && e.elementType !== ElementType.VIDEO
+  && e.elementType !== ElementType.ARK && e.elementType !== ElementType.PTT);
+const SingleElement = sendElements.filter(/* FILE / VIDEO / ARK / PTT */).map(e => [e]);
+// → 这些元素被 NapCat 拆成「单独一条消息」，发送后收集 msgId，再组装成一张转发卡片
 ```
 
-→ **文件 / 视频 / ARK / 语音必须独占一条消息**；给 Flowerie 的启示：多条回复里混这类段时要拆消息 `[CODE]`。
+→ **更正**：这不是对发送方的约束，而是 NapCat 在**合并转发节点路径**内的自身行为 ——
+全文**仅 L417 一处** `elementType ===` 比较，普通发送路径（`normalize()` L53-60 → `createSendElements`）**没有**任何拆分 `[CODE]`。
+Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.md` §9 C1。
+
+→ **对 Flowerie 真正有意义的约束**：合并转发 `node.content` 里**只能放 `node` 段** ——
+混入其他段时 NapCat 记 error 并 `continue`，**整个节点被丢弃**（L392-397）`[CODE]`。
 
 ## 4. 能力矩阵（第一版）
 

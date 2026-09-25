@@ -74,9 +74,10 @@ Plugin SDK → Core / Event / Session → Adapter → OneBot 11 / Milky / 具体
 
 - 统一入口：`Sender.send_msg_raw()`（`src/services/sender.py:229`），由 `MessageSender` Protocol 约束；
 - 上层只表达"发给谁 + 发什么（段/文本/图片路径）"，**不判断客户端类型**；
-- 已知协议差异（待纳入发送侧规则）见 `docs/protocol-reverse-engineering.md` §7：
-  NapCat `SendMsg.ts` L413-420 规定 **FILE / VIDEO / ARK / PTT 必须单独成条**；
-  Flowerie 目前未对该规则做发送侧拆分（**待办，见 §7**）。
+- 发送侧**不存在**客户端专属拆分规则：曾以为 NapCat 要求 "FILE/VIDEO/ARK/PTT 独占一条"，
+  复核后确认该逻辑位于 NapCat `handleForwardedNodes`（合并转发路径）内部，普通发送路径不涉及
+  —— 见 `docs/protocol-reverse-engineering.md` §9 更正记录 C1；
+- 唯一调用方可见的真实约束：`node` 段的内容数组**只允许 `node` 段**（否则 NapCat 丢弃整个节点，`SendMsg.ts` L392-397）。
 
 ## 6. 接入一个新客户端的标准步骤（可操作清单）
 
@@ -91,7 +92,7 @@ Plugin SDK → Core / Event / Session → Adapter → OneBot 11 / Milky / 具体
 
 | 项 | 状态 | 理由 / 阻塞 |
 | :--- | :--- | :--- |
-| 发送侧"独占消息"规则（FILE/VIDEO/ARK/PTT）| **未实现** | 需先确认 Flowerie 现有调用点是否可能混发；规则来源为 NapCat `[CODE]`，属客户端约束 |
+| 发送侧"独占消息"规则（FILE/VIDEO/ARK/PTT）| **已核实：无需实现** | 该拆分是 NapCat 合并转发路径内部行为（`SendMsg.ts` L411-431，全文仅 L417 一处比较），普通发送不受影响 —— 见 §9 C1 |
 | 多段卡片合并策略 | **未定** | 一条消息含多个 `json` 段时，`_assemble_card` 目前只处理第一个；是否合并需真实样本佐证 |
 | 能力声明（capability）系统 | **未实现** | 任务书 §十四提到；当前规模下 parser 直接判定即可，过早抽象无收益 |
 | Android 端客户端（OpenShamrock 等）| **SOURCE_UNAVAILABLE** | 仓库需鉴权克隆失败，差异保持 `[UNKNOWN]`，不编造 |

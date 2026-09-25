@@ -110,7 +110,9 @@
 - **接收识别**（L289-297）：`element.arkElement.bytesData` 解析后，**只有 `json.app === com.tencent.multimsg`**
   才是合并转发卡片：`resid = json.meta.detail.resid`、`uuid = json.meta.detail.uniseq || json.extra.filename`，
   再用 `FetchForwardMsgRaw(resId)` 拉内层（内层 `actionCommand === MultiMsg`）。
-- **发送分组规则**（L413-420）：`FILE` / `VIDEO` / `ARK` / `PTT` 会被拆成**独占一条消息**，不能与其他段混发。
+- **发送分组规则**（L411-431，⚠️ **已更正**，见 §9 更正记录 C1）：`FILE` / `VIDEO` / `ARK` / `PTT` 会被拆成**独占一条消息** ——
+  但这是 NapCat 在 `handleForwardedNodes`（**合并转发节点路径**）内部的行为，**不是**对普通 `send_group_msg` 调用方的约束。
+- **node 内容校验**（L392-397）：`node.content` 里混入非 node 段时，NapCat 记 error 并 `continue` —— **整个节点被丢弃**（这是调用方唯一可见的真实约束）。
 
 → 直接推翻两个常见假设："合并转发是一个 segment" 与 "所有 `type:json` 语义相同"。
 
@@ -333,3 +335,25 @@ PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/test_multimsg_card.py tests
 3. 继续 §4/§5 的下一步；
 4. 每完成一个客户端，更新 §3 样式的小节 + `docs/client-compatibility.md` 对应列；
 5. 落代码前先补 fixture（任务书 §17-A），改动只在 Adapter 层，Core 不得 import 客户端。
+
+## 9. 更正记录（corrections）
+
+> 任务书 §20：状态变化与更正必须**显式记录**，禁止静默替换。本节按时间倒序累积。
+
+### C1（2026-08-09）：NapCat「FILE/VIDEO/ARK/PTT 独占一条」不是发送方约束
+
+- **原表述**（本文件 §3.3 与 `client-compatibility.md` §3.3）：这类元素"必须独占一条消息，不能与其他段混发"，
+  并被登记为 Flowerie 的**待办发送侧规则**。
+- **复核证据**（`napcat-onebot/action/msg/SendMsg.ts`，共 514 行，全文实测）：
+  - 全文**仅 L417 一处** `elementType ===` 比较；
+  - 该比较位于 `handleForwardedNodes`（L368-435）内部 —— **只服务 `node`（合并转发）路径**：
+    NapCat 把节点内容拆成 `MixElement` + 每个 FILE/VIDEO/ARK/PTT 各自成条，分别发送后收集 `msgId`，
+    最后由 `multiForwardMsg(...)`（L472-483）组装成一张转发卡片；
+  - **普通发送路径**（`SendMsg` → `normalize()` L53-60 → `createSendElements`）**没有**任何此类拆分。
+- **结论**：
+  1. Flowerie **不需要**、也**不应该**在发送侧实现该拆分（会造成重复或意外的多条消息）；
+  2. 该代码对调用方唯一有意义的推论：**`node` 段的内容数组里只能放 `node` 段** ——
+     混入其他段时 NapCat 记 error 并 `continue`（L392-397），**整个节点被丢弃**；
+  3. 已同步更正 `docs/client-compatibility.md` §3.3 与 `docs/adapter-architecture.md` §5/§7。
+- **教训**：摘录源码时，**片段所在的函数与分支**与片段本身同等重要；
+  只看"一行 filter 条件"会把"客户端内部实现"误读成"协议对调用方的约束"。
