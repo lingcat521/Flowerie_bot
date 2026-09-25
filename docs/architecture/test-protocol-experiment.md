@@ -61,7 +61,11 @@ Core 里残留的耦合很容易被解释成"历史原因"。于是按任务书�
 | :--- | :--- | :--- | :--- | :--- |
 | 1 | 静态口径（任何环境可跑） | 扫 `src/core`、`src/services`、`src/sdk`、`src/plugins`、`plugin_sdk` 全部 `.py`，查找标记词 `testproto` / `testkit` / `TestProtocol` | 命中 **0** | ✅ |
 | 2 | 自包含口径 | 扫 testkit 的 import 行，非 `src.adapters.*` 的 `src.` 依赖 | **0** | ✅ |
-| 3 | 变更口径（本地 git 可用时） | `git diff --name-only HEAD` 列出本轮实际改动文件，逐条核对是否落在允许集 `src/adapters/`、`tests/`、`docs/` | 6 个文件全部在允许集内（3 改 + 3 增），禁止层 **0** | ✅ |
+| 3 | 变更口径（本地 git 可用时） | `git diff --name-only HEAD` 列出本轮实际改动文件，逐条核对是否落在允许集 `src/adapters/`、`src/transport/`、`tests/`、`docs/` | 6 个文件全部在允许集内（3 改 + 3 增），禁止层 **0** | ✅ |
+
+> 允许集**含 `src/transport/`**：新协议除了 Adapter，还需要一个动作通道（见 §5 接入清单第 3 步），
+> 它按架构约定就落在 Transport 层（`action_channels.py`）。允许集**不含** `src/core`、`src/services`、
+> `src/sdk`、`src/plugins`、`plugin_sdk` —— 那几层一个文件都不许动（口径 1 同样扫它们）。
 
 **PEC = 0**（口径 1/3 同时成立）。
 

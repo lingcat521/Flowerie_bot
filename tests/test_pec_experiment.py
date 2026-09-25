@@ -9,7 +9,7 @@ PEC 的**可复现**口径（两种，互为补充）：
 1. 静态口径（本文件断言，任何环境都能跑）：`src/core`、`src/services`、`src/sdk`、`src/plugins`、
    `plugin_sdk` 里**不出现** testproto / testkit 的任何引用 —— 新协议对这些层完全不可见；
 2. 变更口径（本地 git 可用时测量，CI 浅克隆下自动跳过）：与基线提交比对，列出本轮实际改动的文件，
-   人工核对它们全部属于 允许集（Adapter / 描述符 / Fixtures / Tests / Docs / Registry）。
+   核对它们全部属于允许集（Adapter 层 / Transport 层 / Tests / Docs）。
 """
 import os
 import subprocess
@@ -25,8 +25,9 @@ from src.adapters.testkit import (
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BOT_QQ = 10001
-# 允许集（任务书 Gate E）：新增协议只应改这些地方
-ALLOWED_PREFIXES = ("src/adapters/", "tests/", "docs/")
+# 允许集（任务书 Gate E）：新增协议只应改这些地方 —— Adapter 层、Transport 层（动作通道，
+# 见 ADR-004 §5 的接入清单第 3 步）、测试与文档；Core/Services/SDK/既有插件一个都不许动。
+ALLOWED_PREFIXES = ("src/adapters/", "src/transport/", "tests/", "docs/")
 FORBIDDEN_DIRS = ("src/core", "src/services", "src/sdk", "src/plugins", "plugin_sdk")
 FORBIDDEN_MARKERS = ("testproto", "testkit", "TestProtocol")
 

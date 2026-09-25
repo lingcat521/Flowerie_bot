@@ -39,12 +39,12 @@
 | N | Round-trip | 现有：fixture 语料 20 个 × message/notice/request 全量重解析稳定（0 skip）；**未按 7 类 × 2 协议建矩阵** | 14/14 | ⚠️ PARTIAL |
 | O | Action 映射 | `src/services` 无协议 action 名与分支（撤回/发送差异在 `src/transport/action_channels.py`）| Core 无协议 action | ✅ PASS |
 | P | Transport 解耦 | `src/core` 传输库 import = **0**；`websockets` 仅出现在 `src/transport/` | 0 | ✅ PASS |
-| Q | Transport Contract | 未建立 | 8 项 | ⬜ TODO |
+| Q | Transport Contract | **8/8**：`WebSocketTransport` 8 implemented；`HTTPTransport` 6 implemented + 2 N/A（附理由）= 8 covered | 8 项 | ✅ PASS |
 | R | Resource 抽象 | 未建立（现有 `ResourceRef` 概念未落地）| 3/3 | ⬜ TODO |
 | S | 多实例 | 未做（当前仍是单连接/单实例结构）| 3/3 | ⬜ TODO |
 | T | 插件协议隔离 | `src/plugins/manager.py` = 0；`plugin_sdk/` = 0 | 0 | ✅ PASS |
 | U | 真实现有功能零回归 | 能力矩阵未建；本地全量 pytest 零新增失败 | 15/15 | ⚠️ PARTIAL |
-| V | 现有测试不退化 | 新增测试 122 个（G1–G4/G8 = 56、Gate JKL = 43、Gate D 契约 +12、Gate E/F = 11）；删除 0；失败集合与基线一致（19 failed / 13 skipped 全为本地缺依赖）| 新增失败 = 0 | ✅ PASS |
+| V | 现有测试不退化 | 新增测试 141 个（G1–G4/G8 = 56、Gate JKL = 43、Gate D 契约 +12、Gate E/F = 11、Gate Q = 19）；删除 0；失败集合与基线一致（19 failed / 13 skipped 全为本地缺依赖）| 新增失败 = 0 | ✅ PASS |
 | W | CI | 见 CI 记录 | 100% | ⏳ |
 | X | Lint | ruff（CI）：0 违规；本地 flake8 F 规则 0、import 顺序自检 0 | 新增违规 = 0 | ✅ PASS |
 | Y | 源码证据覆盖 | 新结论均有 `[CODE]/[DOC]/[FIXTURE]` 标注；无证据的支持声明 = 0 | 0 | ✅ PASS |

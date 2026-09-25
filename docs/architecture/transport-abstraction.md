@@ -60,14 +60,17 @@
    TRANSFORMER 常量写作 os.path.join(src, sdk, onebot, ...) 分段形式，纯字符串替换扫不到 ——
    教训：搬迁后除 grep 模块名，还要 grep 分段路径写法。docs/archive/** 刻意不改（历史既定事实记录）。
 
-5. 仍未做：Adapter Contract 测试、Capability 模型、Resource 抽象、多实例、
-   TestProtocolAdapter（PEC/PCI=0）与 acceptance Dashboard。
+5. 状态更新（后续轮次）：Adapter Contract 测试（ADR-003，Gate D）✅、Capability 模型（ADR-002，Gate G/H）✅、
+   TestProtocolAdapter + PEC=0（ADR-004，Gate E/F）✅、acceptance Dashboard ✅、传输契约（ADR-005，Gate Q）✅；
+   **仍未做：Resource 抽象（Gate R）、多实例（Gate S）**。
 
 ## 原始待办（历史记录，部分已完成）
 
 1. `services/sender.py` 的 `if self._milky` 分支 → 下沉为 Adapter 的发送策略（Gate B/O）；
 2. `src/adapters/onebot/` 子树 → SDK 不得依赖具体协议（Gate T/§34）；
-3. `ws_server.py` 的 OneBot 信封 → 拆到 Adapter；
+3. `ws_server.py` 的 OneBot 信封 → 拆到 Adapter；**进展**：通用形态已在 ADR-005 的
+   `WebSocketTransport` 给出（`frame_builder` / `response_reader` 可注入），
+   但**生产连接路径尚未切换**（旧栈仍在用）—— 如实标注，不算完成；
 4. `src/services/` 的 aiohttp：Web UI 部分**不是**协议传输（属应用服务器），已在 ADR 中显式区分，
    基线冻结，允许后续把 Web UI 独立成 app 层（不属本阶段硬门槛）。
 

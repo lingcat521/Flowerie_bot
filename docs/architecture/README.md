@@ -10,12 +10,14 @@
 | [ADR-002 能力模型](capability-model.md) | 能力五态 `supported/partial/emulated/unsupported/unknown`；`unknown ≠ unsupported`；能力查询不靠猜 | G、H | 已实施 |
 | [ADR-003 Adapter 边界与契约测试](adapter-boundary.md) | Adapter 层职责边界 + 12 项契约夹具（登记一行即自动获得回归保护） | D | 已实施 |
 | [ADR-004 虚拟协议实验](test-protocol-experiment.md) | 发明 TestProtocolAdapter 测量新增协议成本：**PEC = 0**；8 项最小接入实验 | E、F | 已实施 |
+| [ADR-005 传输契约](transport-contract.md) | 8 项 TransportContract（connect/disconnect/send/receive/request/authentication/error/reconnect）；WS 8/8、HTTP 6 + 2 N/A；契约不绑网络库（懒加载 + I/O 注入） | Q | 已实施 |
 
 ## 配套文档
 
 | 文档 | 内容 |
 | :--- | :--- |
 | [acceptance-metrics.md](acceptance-metrics.md) | **验收 Dashboard**：八项绝对门槛 + Gate A–Z 实测值 + 逐提交 CI 真实记录（红色提交也如实保留）|
+| [transport-contract.md](transport-contract.md) | Gate Q 的 8 项契约与两个参考实现的逐项实测（含 N/A 理由）|
 
 ## 写一份新 ADR 的约定
 
