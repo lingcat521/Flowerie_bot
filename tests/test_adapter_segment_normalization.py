@@ -3,7 +3,8 @@
 证据来源（见 docs/message-model.md §3 与 docs/protocol-reverse-engineering.md）：
 - NapCat：napcat-onebot/types/message.ts（段 schema）、SendMsg.ts L289-297（app 分流）
 - LLBot：onebot11/transform/message/incoming.ts（file 段带 file_id/path；face→shake）
-- Milky 作者实现：Lagrange.Milky/Entity/Segment/*.cs（15 个段，无 poke 段）
+- Milky 作者实现（两份副本）：LagrangeV2 `Entity/Segment/`（15 个文件，13 种 incoming，无 poke 段）
+  与 Lagrange.Core `Models/Segments/`（11 个文件，10 种 incoming）
 - SnowLuma：packages/onebot/src/event-converter/element-codecs.ts（flash_file/inline_keyboard）
 - MVP：/storage/emulated/0/bot.py（json 卡片黑名单、文件 base64 信封）
 """

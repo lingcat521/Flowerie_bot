@@ -230,11 +230,20 @@
 
 路径：`~/proto_src/LagrangeV2/Lagrange.Milky/`（`Lagrange.Core` 里同名目录内容一致）。
 
-### 6.1 段类型（`Entity/Segment/`，作者实现，共 15 个文件）
+### 6.1 段类型（作者实现，⚠️ **两份内嵌副本布局不同**，勿混用）
 
 `TextSegment` `MentionSegment` `MentionAllSegment` `FaceSegment` `ImageSegment` `RecordSegment`
 `VideoSegment` `FileSegment` `MarketFaceSegment` **`LightAppSegment`** `ForwardSegment` `ReplySegment`
 `XmlSegment` + 基类 `SegmentBase` / 接口 `ISegment`
+
+**副本 A（本节来源）** `~/proto_src/LagrangeV2/Lagrange.Milky/Entity/Segment/`：**15 个文件**
+（13 种 incoming 段 + `SegmentBase` + `ISegment`），typeDiscriminator 见 `ISegment.cs` L6-18：
+text / mention / mention_all / face / reply / image / record / video / file / forward / market_face / light_app / xml（**无 markdown**）。
+
+**副本 B** `~/proto_src/Lagrange.Core/Lagrange.Milky/Models/Segments/`：**11 个文件**（10 种 incoming
++ `SegmentBase`），**没有** face / market_face / xml / markdown。两副本**字段宽度也不同**：
+副本 A 的 `market_face` 只有 `url`、`face` 只有 `face_id`；规范（`common.ts` L323-326 / L366-372）
+另有 `is_large` / `emoji_id` / `summary` 等 —— 解析必须逐字段兜底，不能假定字段存在。
 
 **关键结论**：
 

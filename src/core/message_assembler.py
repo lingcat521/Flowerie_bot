@@ -138,8 +138,10 @@ class MessageAssembler:
         证据：
         - [CODE] NapCat napcat-onebot/types/message.ts：face{id,resultId?,chainCount?}、
           mface{emoji_package_id,emoji_id,key,summary}；
-        - [CODE] Milky 作者实现 Entity/Segment/FaceSegment.cs（face{face_id,is_large}）、
-          LLBot market_face{summary,url} —— 三家字段不同但语义同属「QQ 表情」。
+        - [CODE] LagrangeV2 的 Lagrange.Milky/Entity/Segment/FaceSegment.cs（face{face_id}，
+          **无** is_large）、MarketFaceSegment.cs（market_face{url}，**仅 url**）；LLBot market_face{summary,url}；
+        - [DOC] Milky 规范 common.ts L323-326 的 face 另有 is_large（since 1.1）、L366-372 的 market_face
+          另有 emoji_id/emoji_package_id/key/summary —— **规范字段比实现宽**，故下面一律逐字段兜底。
         - [INFERENCE] 统一表达成文本提示；Core 只读 Adapter 归一化结果，不读协议字段。
 
         上限 3 条：与图片/转发一致，防单条消息刷屏。
@@ -152,7 +154,9 @@ class MessageAssembler:
             if not isinstance(f, dict):
                 continue
             if f.get("kind") == "market_face":
-                desc = str(f.get("summary") or f.get("emoji_id") or "商城表情")
+                # 实现（V2）的 market_face 只有 url，无 summary/emoji_id → 不能退化成
+                # 「[商城表情 商城表情]」，无描述时如实说明
+                desc = str(f.get("summary") or f.get("emoji_id") or "无描述")
                 parts.append("[商城表情 " + desc + "]")
             else:
                 fid = str(f.get("face_id") or "?")

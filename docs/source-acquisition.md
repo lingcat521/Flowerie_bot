@@ -65,7 +65,7 @@ fatal: unable to access https://github.com/SaltifyDev/milky.git/: Recv failure: 
 ## 状态更正（第二轮）
 
 LagrangeDev/Lagrange.Milky 这个**独立仓库**确实不存在（ls-remote exit 128），但 **Milky 的实现源码并非不可得**：
-它内嵌在 Lagrange.Core 与 LagrangeV2 的 Lagrange.Milky/ 目录（119 个 .cs 文件，含 Api/Handler、Entity/Segment、Entity/Event）。
+它内嵌在 Lagrange.Core 与 LagrangeV2 的 Lagrange.Milky/ 目录（119 个 .cs 文件，含 Api/Handler、Segment、Event；两份副本布局不同，见 protocol-reverse-engineering.md §6.1）。
 
 - 更正前：AUTH_REQUIRED / 仓库不存在 → 会让人误以为 Milky 实现层没有源码；
 - 更正后：**SOURCE_OBTAINED（内嵌）**，证据已记入 protocol-reverse-engineering.md §6；

@@ -209,6 +209,11 @@ class OneBotEventParser:
             elif seg_type == "file":
                 files.append(_normalize_file_segment(data))
                 summary.append((seg_type, dict(data)))
+            elif seg_type == "markdown":
+                # NapCat OB11 段词汇含 markdown（docs/client-compatibility.md §3.1）；
+                # 内容是文本 → 并入 text，避免丢掉用户可见内容（与 Milky 侧对称）
+                text_parts.append(str(data.get("content") or ""))
+                summary.append((seg_type, dict(data)))
             elif seg_type:
                 summary.append((seg_type, dict(data)))
         event.message_segments = [dict(seg) for seg in arr]  # 段浅拷贝（兼容组装）

@@ -9,10 +9,29 @@ Milky（OneBot 进化版）事件信封：
 - data.peer_id 替代 group_id/user_id（friend=对方；group=群号）
 - 消息段数组格式与 OneBot 相同（type/data 结构）——段扫描逻辑可复用
 
+段归一化（Milky → InternalEvent 新字段，与 OneBot 侧**同形**，Assembler 共用）：
+- light_app  → json_cards{app,is_forward_card,payload}   [DOC] 规范 common.ts L373-376 / [CODE] LightAppSegment.cs
+- market_face→ faces{kind:market_face,...}                [DOC] 规范 common.ts L366-372（作者实现无此类）
+- forward    → forwards{id,inline,title,preview,summary}  [DOC] L360-364 / [CODE] ForwardSegment.cs
+- file       → files{file_id,name,size,url,path}          [DOC] L354-358 / [CODE] FileSegment.cs
+- face       → faces{kind:face,face_id,is_large}        [CODE] V2 ISegment.cs L9 + FaceSegment.cs / [DOC] 规范 L323-326
+- markdown   → text（content）                           [DOC] 规范 L381-383（两份实现均未定义该段）
+未映射（两侧一致保留在 segments_summary）：xml / record / video（InternalEvent 暂无对应字段）。
+
+两份内嵌实现布局不同（均为 [CODE]，勿混用）：
+- `LagrangeV2/Lagrange.Milky/Entity/Segment/`：15 个文件，13 种 incoming（含 face/market_face/xml）
+- `Lagrange.Core/Lagrange.Milky/Models/Segments/`：11 个文件，10 种 incoming（无 face/market_face/xml/markdown）
+
 约束：与 OneBot 解析器输出等价（message_router 现有消费方零改动）。
 """
+import json
 from typing import Any, Dict, List, Optional
 
+from src.adapters.onebot_parser import (
+    _json_app,
+    _normalize_file_segment,
+    _normalize_market_face,
+)
 from src.adapters.proto import InternalEvent
 
 # event_type → 语义 kind（未列出的原样保留，由上游按 unknown 忽略）
@@ -110,11 +129,71 @@ def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> N
                 ev.reply_id = int(data.get("message_seq") or data.get("id"))
             except (TypeError, ValueError):
                 ev.reply_id = None
+            # Milky reply 还内联被引用消息（common.ts L332 segments[]）——当前只进 summary，
+            # 未消费（见 docs/message-model.md §6 已知缺口）
+            if data.get("segments"):
+                ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "light_app":
+            # 小程序卡片 → json_cards（与 OneBot json 段同形，Assembler 共用一条通路）
+            # 证据：Milky 规范 common.ts L373-376 light_app{app_name,json_payload}
+            #       + 作者实现 Lagrange.Milky/Models/Segments/LightAppSegment.cs L5-10（字段集一致）
+            payload = _parse_light_app_payload(data.get("json_payload"))
+            app = _json_app(payload) or str(data.get("app_name") or "")
+            ev.json_cards.append({
+                "app": app,
+                "is_forward_card": app == "com.tencent.multimsg",
+                "payload": payload if isinstance(payload, (dict, str)) else str(payload),
+            })
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "face":
+            # 表情 → faces（与 OneBot face 段同形：kind/face_id/result_id/chain_count）
+            # 证据：LagrangeV2 Entity/Segment/ISegment.cs L9 "face" + FaceSegment.cs{face_id}；
+            #      规范 common.ts L323-326 另有 is_large（since 1.1）——实现比规范窄，逐字段兜底
+            ev.faces.append({"kind": "face", "face_id": str(data.get("face_id") or ""),
+                             "result_id": "", "chain_count": None,
+                             "is_large": bool(data.get("is_large"))})
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "markdown":
+            # Markdown 消息段（规范 common.ts L381-383 markdown{content}）：内容即文本 → 并入 text
+            # 注意：两份内嵌实现（V2 Entity/Segment 与 Core Models/Segments）**都没有** markdown 段
+            text_parts.append(str(data.get("content") or ""))
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "market_face":
+            # 商城表情 → faces（复用 OneBot 归一化函数，保证键名同形）
+            # 证据：LagrangeV2 Entity/Segment/ISegment.cs L16 "market_face" + MarketFaceSegment.cs{url}（仅 url）；
+            #      规范 common.ts L366-372 另有 emoji_package_id/emoji_id/key/summary —— 实现比规范窄
+            ev.faces.append(_normalize_market_face(data))
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "forward":
+            # 合并转发 → forwards（OneBot 同形 id/inline + 附加 Milky 独有 title/preview/summary）
+            # 证据：规范 common.ts L360-364 + 作者实现 ForwardSegment.cs L7-14
+            preview = data.get("preview")
+            ev.forwards.append({
+                "id": str(data.get("forward_id") or data.get("id") or ""),
+                "inline": bool(data.get("messages")),
+                "title": str(data.get("title") or ""),
+                "preview": list(preview) if isinstance(preview, list) else [],
+                "summary": str(data.get("summary") or ""),
+            })
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "file":
+            # 文件段 → files（复用 OneBot 归一化：file_id/file_name/file_size 兜底一致）
+            # 证据：规范 common.ts L354-358 + 作者实现 FileSegment.cs L5-11
+            ev.files.append(_normalize_file_segment(data))
+            ev.segments_summary.append((seg_type, dict(data)))
         elif seg_type:
             ev.segments_summary.append((seg_type, dict(data)))
-        if seg_type and seg_type in ("forward", "json", "face", "sticker"):
-            pass  # 已进 segments_summary
     ev.text = "".join(text_parts).strip()
+
+
+def _parse_light_app_payload(raw: Any):
+    """light_app.json_payload：JSON 字符串优先解析为 dict，失败原样保留（绝不丢内容）。"""
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except (ValueError, TypeError):
+            return raw
+    return raw if raw is not None else ""
 
 
 def _event_id(ev: InternalEvent) -> str:
