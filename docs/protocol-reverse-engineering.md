@@ -295,7 +295,27 @@ public class GroupNudgeEventData(long groupID, long senderId, long receiverId,
 
 尚未产出：`message-model.md`、`adapter-architecture.md`、`mvp-analysis.md`（内容已在本文 §1/§2 里成型，可直接展开）。
 
-## 7. 上下文压缩后的恢复步骤
+## 7. 已落地的代码修复（P4 进度）
+
+| 提交 | 层 | 内容 | 证据 | 验证 |
+| :--- | :--- | :--- | :--- | :--- |
+| `529e6ae` | Adapter | `InternalEvent` 新增 `faces/pokes/files/json_cards/forwards`；`onebot_parser` 归一化 `json(含 app+is_forward_card)` / `face` / `mface` / `poke` / `shake` / `file` / `forward`，且**同时保留 `segments_summary` 旧通道** | NapCat schema、LLBot 段字段、Milky 作者实现、SnowLuma codecs、NoneBot 工厂 | 本地 25 条绿 + **CI 全绿** |
+| `4a6a157` | 组装 | multimsg 卡片按**合并转发**拉取内层（`app=com.tencent.multimsg` → `meta.detail.resid` → 复用 `_assemble_forward`），失败/无 resid 退回卡片文本 | NapCat SendMsg.ts L289-297、LLBot incoming.ts L210-235 | 新测试 6 条 + 本地 stub 注入真跑 6/6 |
+
+### 尚未落地的（下一步）
+
+1. **表情进入业务层**：`faces` 目前只落到事件上，`message_assembler` 还没把它拼进上下文（QQ 表情/商城表情对 AI 是"用户发了个表情"的语义）；
+2. **发送侧约束**：NapCat 的「FILE/VIDEO/ARK/PTT 必须独占一条消息」尚未在 `reply_dispatch`/`sender` 侧核对与实现；
+3. **Milky 侧适配**：`src/adapters/milky_parser.py` 还没吃到本轮新增的归一化字段（`mention` 藏在 Text、`reply` 内联段、`temp` 会话）；
+4. **多段合并**：多个 json 卡片/文件段目前只取第一个（`_assemble_card` 只返回一段），需要按证据决定是否全部拼进上下文。
+
+### 本地验证技巧（压缩后复用）
+
+本机缺 pydantic/pydantic_settings/httpx，无法直接 import 依赖 `src.config` 的模块。
+验证方法：先往 `sys.modules` 注入最小 stub（`pydantic.Field/field_validator/BaseModel`、
+`pydantic_settings.BaseSettings/SettingsConfigDict`、`httpx.Timeout/Limits/AsyncClient`），再 import 真实模块，
+即可在本地跑真实代码路径（脚本示例：`~/verify_multimsg.py`）。
+## 8. 上下文压缩后的恢复步骤
 
 1. 读本文件（尤其 §3/§4/§5）—— 全部逆向事实与下一步都在这；
 2. `ls ~/proto_src` 确认源码区仍在（若被清理，按 source-acquisition.md 重跑 `~/clone_sources.sh`）；
