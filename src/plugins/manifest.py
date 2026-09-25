@@ -20,7 +20,7 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.plugins.permissions import ALL_PERMISSIONS
+from src.plugins.permissions import ALL_PERMISSIONS, is_call_permission
 from src.plugins.webui_loader import PAGE_EXTS, PluginWebuiPathError, validate_relative
 
 # 允许的 manifest 顶层字段（严格白名单）
@@ -173,7 +173,9 @@ class PluginManifest:
         perms: List[str] = []
         for p in raw_perms:
             p = str(p).strip().lower()
-            if p not in ALL_PERMISSIONS:
+            # plugin.call.<target>[.<method>] 是动态键（任务书第 4 份 §十四）：由
+            # is_call_permission 校验形状，其余权限必须精确命中 ALL_PERMISSIONS
+            if p not in ALL_PERMISSIONS and not is_call_permission(p):
                 raise PluginManifestError(f"权限 '{p}' 不在允许列表内")
             if p not in perms:
                 perms.append(p)

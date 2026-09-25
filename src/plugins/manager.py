@@ -31,7 +31,9 @@ from src.core.sanitizer import validate_memory_content
 from src.plugins.http_action import plugin_http_request, redact_url
 from src.plugins.installer import PluginInstaller, PluginInstallError
 from src.plugins.manifest import PluginManifest, PluginManifestError
+from src.plugins import comm
 from src.plugins.permissions import PermissionManager
+from src.plugins.router import PluginBus, PluginRouter
 from src.plugins.runtime import PluginRuntime
 from src.plugins.webui_loader import PluginWebuiPathError, read_page, read_static, static_root
 from src.repositories.settings_repository import SettingsRepository
@@ -85,6 +87,10 @@ class PluginManager:
         # 插件管理器自身不认识任何协议（Gate T / 任务书 §34）。
         self._bot_factory = bot_factory
         self._schedules: Dict[str, dict] = {}     # schedule_id -> {plugin_id,name,kind,...}
+        # Plugin-to-Plugin 通信（任务书第 4 份 §二十七）：Core Router + Communication Bus。
+        # 管理器只做编排；路由/权限/超时/环保护全部在 router.py 里（Core 不依赖任何语言）。
+        self._comm_router = PluginRouter()
+        self._comm_bus = PluginBus(self._comm_router)
         self._schedule_tasks: Dict[str, Any] = {} # schedule_id -> asyncio.Task
 
     @property
@@ -942,7 +948,29 @@ class PluginManager:
         rt.set_action_handler(self._handle_action)
         rt.set_engine_op_handler(self._handle_engine_op)
         self._runtimes[plugin_id] = rt
+        self._register_comm_instance(plugin_id, rt)
         return rt
+
+    def _register_comm_instance(self, plugin_id: str, rt: PluginRuntime) -> None:
+        """把运行时登记进 Core Router（§四/§十六）：身份来自清单 + 握手结果。"""
+        row = self.get_plugin(plugin_id) or {}
+        manifest = None
+        try:
+            manifest = self._manifest_of(row) if row else None
+        except Exception:  # noqa: BLE001 - 身份取不到不影响插件本身运行
+            manifest = None
+        self._comm_router.register(
+            plugin_id, rt,
+            runtime_name=str(getattr(manifest, "runtime", "") or rt.runtime_name),
+            version=str(row.get("version") or (manifest.version if manifest else "")),
+            instance_id=str(getattr(rt, "instance_id", "0") or "0"),
+        )
+
+    def comm_snapshot(self) -> Dict[str, Any]:
+        """插件间通信的真实计数（验收报告用）：调用/拒绝/超时/取消/环保护/事件。"""
+        snap = self._comm_bus.snapshot()
+        snap["instances"] = [i.to_dict() for i in self._comm_router.all_instances()]
+        return snap
 
     async def start_all(self) -> None:
         """启动所有 enabled 插件（发现新插件；失败记状态不影响启动）。"""
@@ -967,6 +995,7 @@ class PluginManager:
                     (row.get("approved_permissions") or "").split(","),
                     row.get("protection") or "normal")
                 self._runtimes[row["id"]] = rt
+                self._register_comm_instance(row["id"], rt)
                 self._mark_status(row["id"], "running")
                 continue
             try:
@@ -990,10 +1019,15 @@ class PluginManager:
                 except Exception:  # noqa: BLE001
                     pass
         self._runtimes.clear()
+        for inst in list(self._comm_router.all_instances()):
+            self._comm_router.unregister(inst.plugin_id, inst.instance_id)
 
     def _stop_runtime(self, plugin_id: str) -> None:
         rt = self._runtimes.pop(plugin_id, None)
         if rt is not None:
+            # 路由表里保留这个实例并把状态置为 stopped：调用方拿到的是
+            # PLUGIN_UNAVAILABLE（插件停用）而不是 PLUGIN_NOT_FOUND（插件不存在）——§十七 区分这两者
+            rt.status = "stopped"
             # 同步关掉子进程 transport **再**调度异步 shutdown：
             # 这里是即发即忘（无运行中循环时协程根本不会被执行），若把关闭留给
             # rt.shutdown() → _cleanup()，transport 就可能活到事件循环关闭之后才被 GC，
@@ -1209,6 +1243,8 @@ class PluginManager:
         if row is None or not row.get("enabled"):
             return {"ok": False, "error": "插件未启用或不存在"}
         approved = set(row.get("approved_permissions") or [])
+        if op in ("plugin.call", "plugin.emit", "plugin.cancel"):
+            return await self._engine_op_comm(plugin_id, op, args, approved)
         try:
             manifest = self._manifest_of(row)
         except Exception:  # noqa: BLE001
@@ -1236,6 +1272,46 @@ class PluginManager:
         if isinstance(cfg, dict) and isinstance(cfg.get("values"), dict):
             cfg = cfg["values"]
         return {"ok": True, "values": cfg if isinstance(cfg, dict) else {}}
+
+    async def _engine_op_comm(self, plugin_id: str, op: str, args: Dict[str, Any],
+                              approved: set) -> dict:
+        """插件间通信的三条反向 op（任务书第 4 份 §十二）：插件 -> Core -> 其它插件。
+
+        身份由**连接**决定：插件自报的 source 一律被丢弃并覆盖（§四 安全不变式），
+        所以插件无法冒充别的插件去调用第三方；跨语言也走这里，不存在第二条通道。
+        """
+        if op == "plugin.call":
+            request = {k: v for k, v in dict(args or {}).items()
+                       if k in ("request_id", "target", "method", "params", "timeout",
+                                "trace_id", "call_id", "hop_count", "route", "metadata")}
+            request["request_id"] = str(request.get("request_id") or comm.new_call_id())
+            request["source"] = self._identity_dict(plugin_id)   # 覆盖，不信插件自报
+            request.setdefault("route", comm.ROUTE_AUTO)
+            request.setdefault("timeout", comm.DEFAULT_TIMEOUT_MS)
+            request.setdefault("params", {})
+            request.setdefault("metadata", {})
+            return await self._comm_bus.call(plugin_id, request, approved=approved)
+        if op == "plugin.emit":
+            event = {k: v for k, v in dict(args or {}).items()
+                     if k in ("event_id", "name", "payload", "trace_id", "hop_count", "metadata")}
+            event["source"] = self._identity_dict(plugin_id)
+            event.setdefault("event_id", comm.new_call_id())
+            event.setdefault("trace_id", comm.new_trace_id())
+            event.setdefault("hop_count", 0)
+            event.setdefault("payload", {})
+            event.setdefault("metadata", {})
+            return await self._comm_bus.emit(plugin_id, event, approved=approved)
+        return await self._comm_bus.cancel(
+            plugin_id, str((args or {}).get("request_id") or ""),
+            str((args or {}).get("reason") or ""))
+
+    def _identity_dict(self, plugin_id: str) -> Dict[str, Any]:
+        """插件在 Core Router 里的身份（§四）；未登记时退化为最小身份（不伪造 runtime）。"""
+        inst = self._comm_router.get(plugin_id)
+        if inst is None:
+            return {"plugin_id": plugin_id, "runtime": ""}
+        return {"plugin_id": inst.plugin_id, "runtime": inst.runtime_name,
+                "instance_id": inst.instance_id}
 
     # ================= Action 执行（唯一副作用出口） =================
     async def _handle_action(self, plugin_id: str, action: str, payload: Dict[str, Any]) -> dict:

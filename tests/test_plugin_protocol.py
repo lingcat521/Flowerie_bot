@@ -23,6 +23,7 @@ from src.plugins.protocol import (
     CORE_OPTIONAL_METHODS,
     ENGINE_OPS,
     OPTIONAL_METHODS,
+    PLUGIN_METHODS,
     PROTOCOL_VERSION,
     REQUIRED_METHODS,
     WEBUI_METHODS,
@@ -113,8 +114,10 @@ def test_version_negotiation_rules():
 def test_method_sets_are_disjoint_and_complete():
     assert set(REQUIRED_METHODS) & set(OPTIONAL_METHODS) == set()
     assert len(CORE_OPTIONAL_METHODS) == 8 and len(WEBUI_METHODS) == 3
-    assert len(OPTIONAL_METHODS) == 11, "可选方法 = 8 核心 + 3 WebUI（第 3 份任务书 §三）"
-    assert ENGINE_OPS == ("context.get", "config.get", "permission.check")
+    assert len(PLUGIN_METHODS) == 3, "插件间通信 = CALL / EVENT / CANCEL（第 4 份任务书 §十）"
+    assert len(OPTIONAL_METHODS) == 14, "可选方法 = 8 核心 + 3 WebUI + 3 插件间通信"
+    assert ENGINE_OPS == ("context.get", "config.get", "permission.check",
+                          "plugin.call", "plugin.emit", "plugin.cancel")
 
 
 # ---------------------------------------------------------------- 3. 真子进程端到端

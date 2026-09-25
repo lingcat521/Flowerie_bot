@@ -68,6 +68,9 @@ class PluginRuntime:
         self._shutting_down = False
         self._output_bytes = 0
         self.status = "stopped"  # stopped | starting | running | crashed | unhealthy
+        #: 插件间通信的身份（任务书第 4 份 §四）：一个插件进程 = 一个实例；
+        #: 多实例托管时由 Manager 显式指定（默认 "0" -> plugin.a#0）
+        self.instance_id = "0"
         # Plugin Protocol v1：initialize 协商出的协议版本与插件声明的能力
         self.protocol_version: str = ""
         self.capabilities: set = set()
@@ -255,33 +258,70 @@ class PluginRuntime:
             except (BrokenPipeError, ConnectionResetError):
                 logging_runtime_conn_lost(self.plugin_id)
 
+    @property
+    def runtime_name(self) -> str:
+        """清单里的运行时名（python/node/exec/...）—— 插件间通信身份字段之一（§四）。"""
+        return str(getattr(self.manifest, "runtime", "") or "")
+
     async def request(self, method: str, params: Optional[Dict[str, Any]] = None,
-                      timeout: Optional[float] = None) -> Dict[str, Any]:
-        """发送请求并等待响应（默认用事件超时；超时杀进程）。"""
+                      timeout: Optional[float] = None,
+                      kill_on_timeout: bool = True) -> Dict[str, Any]:
+        """发送请求并等待响应（默认用事件超时；超时杀进程）。
+
+        kill_on_timeout=False 供插件间调用使用：一次慢调用不该升级成一次插件崩溃
+        （插件间调用有自己的超时语义，见 router.PluginBus._deliver）。
+        """
         if self.proc is None:
             raise RuntimeError(f"plugin {self.plugin_id} 未启动")
         timeout = timeout if timeout is not None else self._limits["event_timeout"]
         async with self._req_lock:
-            self._req_id += 1
-            req_id = self._req_id
-            loop = asyncio.get_running_loop()
-            fut: asyncio.Future = loop.create_future()
-            self._pending[req_id] = fut
+            return await self._request_now(method, params, timeout, kill_on_timeout)
+
+    async def _request_now(self, method: str, params: Optional[Dict[str, Any]],
+                           timeout: float, kill_on_timeout: bool = True) -> Dict[str, Any]:
+        """真正的收发（**不持串行锁**）：调用方决定要不要串行化。
+
+        为什么插件间调用必须能并发：插件是可重入的 —— B 正在处理引擎投递的一个请求，
+        同时 A 又调用 B。若这里仍然串行化，引擎第二次向 B 投递时会排在第一次后面，
+        整条链路就会卡到超时（实测：A->B->A 的回环从 PLUGIN_CALL_LOOP 退化成 TIMEOUT）。
+        并发是安全的：请求用自增 id 区分，响应按 id 派发，写通道另有 _writer_lock 保护。
+        """
+        self._req_id += 1
+        req_id = self._req_id
+        loop = asyncio.get_running_loop()
+        fut: asyncio.Future = loop.create_future()
+        self._pending[req_id] = fut
+        try:
+            await self._write({"id": req_id, "method": method, "params": params or {}})
             try:
-                await self._write({"id": req_id, "method": method, "params": params or {}})
-                try:
-                    result = await asyncio.wait_for(fut, timeout=timeout)
-                except asyncio.TimeoutError:
+                result = await asyncio.wait_for(fut, timeout=timeout)
+            except asyncio.TimeoutError:
+                if kill_on_timeout:
                     await self._kill("timeout")
                     self.status = "crashed"
-                    raise PluginTimeoutError(
-                        f"plugin {self.plugin_id} {method} 超过 {timeout}s（已终止）") from None
-            finally:
-                self._pending.pop(req_id, None)
-            if isinstance(result, dict) and result.get("error"):
-                raise RuntimeError(f"plugin {self.plugin_id} {method} 返回错误: {result['error']}")
-            payload_out = result.get("result") if isinstance(result, dict) else None
-            return payload_out if isinstance(payload_out, dict) else {}
+                raise PluginTimeoutError(
+                    f"plugin {self.plugin_id} {method} 超过 {timeout}s（已终止）") from None
+        finally:
+            self._pending.pop(req_id, None)
+        if isinstance(result, dict) and result.get("error"):
+            raise RuntimeError(f"plugin {self.plugin_id} {method} 返回错误: {result['error']}")
+        payload_out = result.get("result") if isinstance(result, dict) else None
+        return payload_out if isinstance(payload_out, dict) else {}
+
+    async def comm_request(self, method: str, params: Dict[str, Any],
+                           timeout: float = 5.0) -> Dict[str, Any]:
+        """插件间通信投递（PluginBus 专用）：CALL / EVENT / CANCEL 三种方法共用一条通道。
+
+        - 与普通请求走**同一套** JSON-Lines 协议与同一把写锁（不新造通道，§二十五 同理）；
+        - 超时**不杀进程**：把 PluginTimeoutError 翻成 asyncio.TimeoutError 交给 Bus 处理。
+        """
+        if self.proc is None:
+            raise ConnectionError("plugin %s 未启动" % self.plugin_id)
+        try:
+            # 不持串行锁：见 _request_now 的说明（插件必须可重入，否则 A->B->A 会死等）
+            return await self._request_now(method, params, timeout, kill_on_timeout=False)
+        except PluginTimeoutError:
+            raise asyncio.TimeoutError() from None
 
     async def dispatch_event(self, event: str, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
         """投递事件，返回插件动作列表（已截断到上限）。"""

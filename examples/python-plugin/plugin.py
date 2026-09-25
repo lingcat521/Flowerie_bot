@@ -4,9 +4,46 @@
 """
 
 
+API = {"api": None}
+
+
 def on_startup(context, api=None):
-    """握手后调用；异常会阻止插件启动（runner 会把异常回报引擎）。"""
+    """握手后调用；异常会阻止插件启动（runner 会把异常回报引擎）。
+
+    同时暴露一个可被其它插件调用的方法（任务书《通信》§五）：
+    五种语言的示例插件暴露的方法名、字段与语义完全一致，跨语言契约测试逐项比对。
+    """
+    API["api"] = api
+    if api is not None:
+        api.plugin.expose("get_status", _get_status)
     return None
+
+
+def _get_status(request):
+    """被其它插件调用（plugin.call）：handler 收到**完整请求模型**，返回值就是 result。"""
+    return {"plugin_id": str((request.get("target") or {}).get("plugin_id") or "python_demo"),
+            "runtime": "python",
+            "trace_id": str(request.get("trace_id") or ""),
+            "hop_count": int(request.get("hop_count") or 0),
+            "echo": request.get("params") or {}}
+
+
+def comm_call(target, method, params=None, timeout=None):
+    """控制面 hook：让引擎侧真实驱动本插件走一次 plugin.call（反向 op → Core → 目标）。
+
+    失败**不抛出**，回结构化错误码（让引擎侧/测试能断言错误码，§二十一）。
+    """
+    kwargs = {} if timeout is None else {"timeout": int(timeout)}
+    try:
+        return {"ok": True,
+                "result": API["api"].plugin.call(target, method, params or {}, **kwargs)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "code": getattr(e, "code", "PLUGIN_ERROR"), "message": str(e)}
+
+
+def comm_emit(name, payload=None):
+    """控制面 hook：广播事件（§九），返回 {ok, delivered, failed}。"""
+    return API["api"].plugin.emit(name, payload or {})
 
 
 def on_message(event, api=None):

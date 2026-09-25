@@ -54,8 +54,11 @@ CORE_OPTIONAL_METHODS = (
 )
 #: WebUI Protocol（任务书第 3 份 §三）：插件声明能力后引擎才会调用
 WEBUI_METHODS = ("webui.page", "webui.action", "webui.asset")
-#: 全部可选方法 = 核心 + WebUI（能力握手比对的就是这个集合）
-OPTIONAL_METHODS = CORE_OPTIONAL_METHODS + WEBUI_METHODS
+#: Plugin-to-Plugin 通信（任务书第 4 份 §十/§十六）：插件间 CALL / EVENT / CANCEL 三条方法。
+#: 插件只有声明了这些能力，引擎才会把别的插件的调用投递进来（能力矩阵不撒谎）。
+PLUGIN_METHODS = ("plugin.call", "plugin.event", "plugin.cancel")
+#: 全部可选方法 = 核心 + WebUI + 插件间通信（能力握手比对的就是这个集合）
+OPTIONAL_METHODS = CORE_OPTIONAL_METHODS + WEBUI_METHODS + PLUGIN_METHODS
 #: 引擎内部方法（插件不实现，由引擎发起）：hook 供控制面调用插件函数
 ENGINE_INTERNAL_METHODS = ("hook",)
 #: 能力分组：SDK 与文档按组表述，协议按方法名表述（两者在此对齐，避免各写一份）
@@ -65,10 +68,13 @@ CAPABILITY_GROUPS = {
     "permission": ("permission.check",),
     "storage": ("storage.get", "storage.set", "storage.delete", "storage.list"),
     "webui": WEBUI_METHODS,
+    "plugin": PLUGIN_METHODS,
 }
 
-#: 插件 → 引擎 的反向 op（引擎按 op 分派；未知 op 一律拒绝）
-ENGINE_OPS = ("context.get", "config.get", "permission.check")
+#: 插件 → 引擎 的反向 op（引擎按 op 分派；未知 op 一律拒绝）。
+#: plugin.call / plugin.emit / plugin.cancel 是插件间通信的唯一发起路径（§十二 不许旁路）。
+ENGINE_OPS = ("context.get", "config.get", "permission.check",
+              "plugin.call", "plugin.emit", "plugin.cancel")
 
 ACTION_ID_BASE = 1_000_000        # 插件 → 引擎 请求 id 偏移（与引擎请求 id 不共用命名空间）
 STORAGE_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")

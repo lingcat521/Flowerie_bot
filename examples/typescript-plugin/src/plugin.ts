@@ -2,10 +2,28 @@
 // 运行：node src/plugin.ts（Node ≥22.6 直接跑 TS；旧版 node 先 tsc 编译）
 import { FloweriePlugin } from "../../../sdk/typescript/flowerie_sdk.ts";
 
-const plugin = new FloweriePlugin();
+/** 自己的 plugin_id：manifest.json 的 id（引擎若在 initialize 里给了 plugin_id，SDK 会覆盖它）。 */
+const PLUGIN_ID = "typescript_demo";
+
+const plugin = new FloweriePlugin({ pluginId: PLUGIN_ID });
 
 plugin.onStartup((ctx) => {
   ctx.logger.info("typescript 示例插件启动 plugin_id=" + ctx.pluginId);
+});
+
+// ---------------- Plugin-to-Plugin 通信（任务书《通信》§五-§二十七） ----------------
+// 与 Python / Go / Rust / Java 示例**完全一致**的语义：被调方 get_status + 两个控制面钩子。
+
+plugin.onStartup(() => {
+  // 暴露给其它插件（§五 CALL 的被调方）：handler 收到的是**完整请求模型**
+  // （含 source / trace_id / hop_count / params），返回值就是 CALL 的 result。
+  plugin.expose("get_status", (request) => ({
+    plugin_id: plugin.ctx.pluginId,
+    runtime: "typescript",
+    trace_id: request.trace_id || "",
+    hop_count: request.hop_count || 0,
+    echo: request.params === undefined || request.params === null ? {} : request.params,
+  }));
 });
 
 plugin.onMessage((ctx, event) => {
@@ -29,6 +47,27 @@ plugin.registerHook("status", (ctx?: unknown) => {
   const value = plugin.ctx.storageGet("counter") as { n?: number } | null;
   return { counter: value && typeof value.n === "number" ? value.n : null };
 });
+
+/** 控制面钩子 comm_call：[target, method, params] -> plugin.call。
+ *  失败**不抛出**，回结构化错误码（让引擎侧能断言错误码，§二十一）。 */
+plugin.registerHook("comm_call", async (target, method, params) => {
+  try {
+    const result = await plugin.call(String(target), String(method),
+      params === undefined ? {} : params);
+    return { ok: true, result };
+  } catch (err) {
+    const comm = err as { code?: string; message?: string };
+    return {
+      ok: false,
+      code: comm && comm.code ? comm.code : "PLUGIN_ERROR",
+      message: String((comm && comm.message) || err),
+    };
+  }
+});
+
+/** 控制面钩子 comm_emit：[name, payload] -> plugin.emit，返回 { ok, delivered, failed }（§九）。 */
+plugin.registerHook("comm_emit", (name, payload) =>
+  plugin.emit(String(name), payload === undefined ? {} : payload));
 
 plugin.onShutdown((ctx) => {
   ctx.logger.info("typescript 示例插件退出");

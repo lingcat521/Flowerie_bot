@@ -2,7 +2,7 @@
   "_provenance": {
     "purpose": "跨语言一致性向量：各语言示例插件必须对同一批输入给出等价结果（任务书第 2 份 §十二 / 第 3 份 §十三）",
     "used_by": "tests/test_plugin_sdk_contract.py",
-    "note": "新增语言 SDK 时先跑通本文件，再谈 Capability Matrix"
+    "note": "新增语言 SDK 时先跑通本文件，再谈 Capability Matrix；插件间通信三项能力（plugin.call/event/cancel）随第 4 份任务书加入；插件间通信向量（comm 段）随第 4 份任务书加入"
   },
   "protocol_version": "1",
   "required_capabilities": [
@@ -10,13 +10,16 @@
     "config.set",
     "context.get",
     "permission.check",
+    "plugin.call",
+    "plugin.cancel",
+    "plugin.event",
     "storage.delete",
     "storage.get",
     "storage.list",
     "storage.set",
-    "webui.page",
     "webui.action",
-    "webui.asset"
+    "webui.asset",
+    "webui.page"
   ],
   "event": {
     "event": "message",
@@ -33,8 +36,21 @@
       "message": "pong"
     }
   },
-  "command_event": {"event": "command", "payload": {"text": "/ping", "group_id": 123456, "user_id": 456789}},
-  "expected_command_action": {"type": "send_group_msg", "params": {"group_id": 123456, "message": "pong"}},
+  "command_event": {
+    "event": "command",
+    "payload": {
+      "text": "/ping",
+      "group_id": 123456,
+      "user_id": 456789
+    }
+  },
+  "expected_command_action": {
+    "type": "send_group_msg",
+    "params": {
+      "group_id": 123456,
+      "message": "pong"
+    }
+  },
   "non_matching_event": {
     "event": "message",
     "payload": {
@@ -62,5 +78,58 @@
   },
   "engine_values": {
     "operator_key": "from_engine"
+  },
+  "comm": {
+    "call_method": "get_status",
+    "call_request": {
+      "request_id": "vectors-req-1",
+      "source": {
+        "plugin_id": "vectors.caller",
+        "runtime": "vectors"
+      },
+      "target": {
+        "plugin_id": "vectors.peer",
+        "runtime": "vectors"
+      },
+      "method": "get_status",
+      "params": {
+        "q": 1
+      },
+      "timeout": 5000,
+      "trace_id": "trace-vectors-1",
+      "call_id": "call-vectors-1",
+      "hop_count": 0,
+      "route": "core",
+      "metadata": {}
+    },
+    "unknown_method": "definitely_not_exposed",
+    "event": {
+      "event_id": "vectors-evt-1",
+      "name": "weather.updated",
+      "payload": {
+        "city": "上海"
+      },
+      "source": {
+        "plugin_id": "vectors.caller",
+        "runtime": "vectors"
+      },
+      "trace_id": "trace-vectors-1",
+      "hop_count": 0,
+      "metadata": {}
+    },
+    "cancel": {
+      "request_id": "vectors-req-1",
+      "reason": "vectors"
+    },
+    "hook_call": {
+      "name": "comm_call",
+      "args": [
+        "vectors.peer",
+        "get_status",
+        {
+          "q": 2
+        }
+      ]
+    }
   }
 }

@@ -22,6 +22,8 @@
 保留权限说明：为 API 兼容而定义并参与校验，但 v1 未实现任何执行路径；
 即使管理员批准，运行时 Action 检查也会返回 "not supported in v1"。
 """
+import re
+
 from typing import Dict, Optional
 
 # 完整权限集（manifest 校验 + 运行时检查共用）
@@ -55,6 +57,11 @@ ALL_PERMISSIONS = frozenset({
     "webui.config.write",    # 动作可把配置写回插件自己的覆盖层
     "webui.storage.read",    # WebUI 上下文可带插件存储快照
     "webui.storage.write",   # 动作可写插件存储
+    # Plugin-to-Plugin 通信（任务书第 4 份 §十四/§十五）：粗粒度只有通配，细粒度见
+    # is_call_permission()（plugin.call.<target>[.<method>] 是动态键，不在本 frozenset 里）
+    "plugin.emit",           # 插件事件广播（plugin.emit）
+    "plugin.call",           # 调用任意插件（等价于 plugin.call.*；默认不给）
+    "plugin.call.*",         # 同上，写法更显式
 })
 
 # Action 类型 → 所需权限（None = 无需权限：log / test 等无害动作）
@@ -264,6 +271,55 @@ WEBUI_PERMISSION_ALIASES = {
     "webui.view": ("web_ui",),
     "webui.action": ("web_ui",),
 }
+
+
+#: Plugin-to-Plugin 调用权限前缀（任务书第 4 份 §十四）
+CALL_PERMISSION_PREFIX = "plugin.call."
+#: 通配授权：plugin.call（全部）与 plugin.call.*（同义）
+CALL_WILDCARD_PERMISSIONS = ("plugin.call", "plugin.call.*")
+#: 事件广播权限（§九）：没有它就只能被调用，不能向其它插件广播
+EMIT_PERMISSION = "plugin.emit"
+
+_CALL_TARGET_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+_CALL_METHOD_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]{0,95}$")
+
+
+def is_call_permission(permission: str) -> bool:
+    """动态权限键 plugin.call.<target>[.<method>]（manifest 声明与运行时判定共用）。"""
+    text = str(permission or "")
+    if not text.startswith(CALL_PERMISSION_PREFIX):
+        return False
+    rest = text[len(CALL_PERMISSION_PREFIX):]
+    if rest in ("", "*"):
+        return False          # 这两个是通配键，必须显式写在 ALL_PERMISSIONS 里
+    head, _, tail = rest.partition(".")
+    if not _CALL_TARGET_RE.match(head):
+        return False
+    return (not tail) or bool(_CALL_METHOD_RE.match(tail))
+
+
+def call_permission_granted(approved, target: str, method: str = "") -> bool:
+    """§十四 权限判定：细粒度优先，通配兜底；未批准一律拒绝（同语言直连也要过，§十五）。
+
+    接受的授权串（从细到粗）：
+        plugin.call.<target>.<method>  ->  plugin.call.<target>  ->  plugin.call.*  ->  plugin.call
+    """
+    perms = {str(p).strip().lower() for p in (approved or []) if p}
+    if not perms:
+        return False
+    plugin_id = str(target or "").split("#")[0].strip().lower()
+    method_name = str(method or "").strip().lower()
+    if plugin_id and method_name and ("plugin.call.%s.%s" % (plugin_id, method_name)) in perms:
+        return True
+    if plugin_id and ("plugin.call.%s" % plugin_id) in perms:
+        return True
+    return any(w in perms for w in CALL_WILDCARD_PERMISSIONS)
+
+
+def emit_permission_granted(approved) -> bool:
+    """§九 事件广播权限（plugin.emit；plugin.call.* 亦视为拥有广播权）。"""
+    perms = {str(p).strip().lower() for p in (approved or []) if p}
+    return EMIT_PERMISSION in perms or any(w in perms for w in CALL_WILDCARD_PERMISSIONS)
 
 
 def webui_permission_granted(approved, permission: str) -> bool:

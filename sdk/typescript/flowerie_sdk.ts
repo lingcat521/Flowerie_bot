@@ -4,6 +4,8 @@
  * 零 npm 依赖：只用 node 内置模块（readline / fs / path）。
  * 协议规范见 docs/plugin-protocol.md；与 Python runner 的行为由
  * tests/test_plugin_sdk_contract.py + tests/fixtures/plugin_protocol_vectors.json 交叉验证。
+ * Plugin-to-Plugin 通信（任务书《通信》§五-§二十七）见 docs/plugin-communication.md：
+ * plugin.call / plugin.emit / plugin.on / plugin.expose / plugin.cancel，跨语言一律经 Core Router。
  *
  * 运行方式（二选一）：
  * 1. **零构建**：Node ≥ 22.6 可直接执行 .ts（类型擦除）—— `node src/plugin.ts`
@@ -20,15 +22,35 @@ export const OPTIONAL_METHODS = [
   "context.get", "config.get", "config.set", "permission.check",
   "storage.get", "storage.set", "storage.delete", "storage.list",
   "webui.page", "webui.action", "webui.asset",
+  "plugin.call", "plugin.event", "plugin.cancel",
 ] as const;
 /** WebUI Protocol 方法（任务书第 3 份 §三）：与其它语言 SDK 同名同义。 */
 export const WEBUI_METHODS = ["webui.page", "webui.action", "webui.asset"] as const;
+/** Plugin-to-Plugin 通信方法（任务书第 4 份 §十）：CALL / EVENT / CANCEL 语义互不混用。 */
+export const PLUGIN_METHODS = ["plugin.call", "plugin.event", "plugin.cancel"] as const;
+/** 路由策略（§十三）：默认 auto；测试用 core 验证统一协议路径，local 是同进程托管时的保留通道。 */
+export const ROUTE_POLICIES = ["auto", "core", "local"] as const;
+/** 结构化错误码（§二十一 十个 + §十七 生命周期 + §二十二 循环保护）：与 comm.ERROR_CODES 同源。 */
+export const ERROR_CODES = [
+  "PLUGIN_NOT_FOUND", "PLUGIN_NOT_READY", "METHOD_NOT_FOUND", "PERMISSION_DENIED",
+  "INVALID_ARGUMENT", "TIMEOUT", "CANCELLED", "SERIALIZATION_ERROR", "PLUGIN_ERROR",
+  "INTERNAL_ERROR", "PLUGIN_UNAVAILABLE", "PLUGIN_CALL_LOOP",
+] as const;
+/** 默认超时（毫秒，§十八）：与 comm.DEFAULT_TIMEOUT_MS 同源。 */
+export const DEFAULT_TIMEOUT_MS = 5000;
+/** 循环保护（§二十二）：hop_count 由 SDK 直传，+1 由引擎负责；超过上限回 PLUGIN_CALL_LOOP。 */
+export const MAX_HOP_COUNT = 8;
+/** 入站消息嵌套深度上限：防退化递归（正常链路远小于此，与 Python runner 同口径）。 */
+const MAX_INBOUND_DEPTH = 16;
+/** 已取消 request_id 的记忆上限：有界，不无限增长（§十八）。 */
+const MAX_CANCELLED_IDS = 256;
 export const CAPABILITY_GROUPS: Record<string, string[]> = {
   context: ["context.get"],
   config: ["config.get", "config.set"],
   permission: ["permission.check"],
   storage: ["storage.get", "storage.set", "storage.delete", "storage.list"],
   webui: ["webui.page", "webui.action", "webui.asset"],
+  plugin: ["plugin.call", "plugin.event", "plugin.cancel"],
 };
 const STORAGE_KEY_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_STORAGE_KEYS = 200;
@@ -36,6 +58,214 @@ const MAX_STORAGE_VALUE_BYTES = 64 * 1024;
 const MAX_CONFIG_KEYS = 64;
 const MAX_CONFIG_VALUE_BYTES = 8 * 1024;
 
+
+// ==================== Plugin-to-Plugin 通信（任务书第 4 份） ====================
+// 语义与 Python runner / Go / Rust / Java SDK 完全一致：只有一种线格式（JSON-Lines）
+// 与一套消息模型；跨语言一律经 Core Router，SDK 里没有任何绕过 Core 的直连通道。
+
+/** 调用方/被调方身份（§四）；source 由**引擎按连接**填写，插件自报的一律被覆盖。 */
+export interface CommSource { plugin_id?: string; runtime?: string; instance_id?: string }
+
+/** §六 请求模型：expose() 的 handler 收到的是**完整请求模型**（不是裸 params）。 */
+export interface CommRequest {
+  request_id?: string;
+  source?: CommSource;
+  target?: CommSource | string;
+  method?: string;
+  params?: unknown;
+  timeout?: number;
+  trace_id?: string;
+  call_id?: string;
+  hop_count?: number;
+  route?: string;
+  metadata?: Record<string, unknown>;
+}
+
+/** §九/§十 事件模型：plugin.on() 的 handler 收到的是完整事件模型。 */
+export interface CommEvent {
+  event_id?: string;
+  name?: string;
+  payload?: unknown;
+  source?: CommSource;
+  trace_id?: string;
+  hop_count?: number;
+  metadata?: Record<string, unknown>;
+}
+
+/** 结构化错误载荷（§七/§二十一）：code 一定是 12 个错误码之一。 */
+export interface CommErrorData { code: string; message: string; data: Record<string, unknown> }
+
+/** plugin.call() 的可选策略：timeout（毫秒，默认 5000）与 route（auto|core|local）。 */
+export interface CommCallOptions { timeout?: number; route?: string }
+
+/** plugin.emit() 的结果（§九）：广播是**事件**，不是 RPC，所以不抛异常。 */
+export interface CommEmitResult {
+  ok: boolean;
+  delivered: number;
+  failed: Array<Record<string, unknown>>;
+  error?: CommErrorData;
+  trace_id?: string;
+}
+
+/** plugin.cancel() 的结果（§十八）。 */
+export interface CommCancelResult {
+  ok: boolean;
+  cancelled: boolean;
+  request_id?: string;
+  target?: string;
+  error?: CommErrorData;
+}
+
+/** expose 的 handler 签名：(完整请求模型, 插件实例)，返回值就是 CALL 的 result。 */
+export type CommHandler = (request: CommRequest, plugin: FloweriePlugin) => unknown | Promise<unknown>;
+
+/** 当前入站消息的 trace 上下文（§二十二/§二十三）：出站调用自动带上。 */
+export interface CommTraceContext {
+  trace_id: string;
+  hop_count: number;
+  source: CommSource;
+  request_id: string;
+}
+
+/** 插件间通信失败（§七/§二十一）：TS 侧的原生异常形态。
+ *
+ * 引擎返回的永远是响应模型（跨语言没有异常这个东西）；SDK 负责把它转成本语言的异常，
+ * 错误码原样保留 12 个码之一，**不允许退化成字符串**。message 保持引擎给的原话，
+ * String(err) 与 Python 的 str(exc) 同形（CODE: message）。
+ */
+export class PluginCommError extends Error {
+  readonly code: string;
+  readonly data: Record<string, unknown>;
+  constructor(code: string, message: string, data?: Record<string, unknown> | null) {
+    const raw = code === undefined || code === null ? "" : String(code);
+    const normalized = (ERROR_CODES as readonly string[]).includes(raw) ? raw : "INTERNAL_ERROR";
+    super(message === undefined || message === null ? "" : String(message));
+    this.name = "PluginCommError";
+    this.code = normalized;
+    this.data = data && typeof data === "object" && !Array.isArray(data)
+      ? { ...(data as Record<string, unknown>) } : {};
+  }
+  toString(): string { return this.code + ": " + this.message; }
+}
+
+const COMM_NAME_RE = /^[A-Za-z_][A-Za-z0-9_.]{0,95}$/;
+
+/** Python str(x or "") 的等价：null/undefined 归一成空串（身份/方法名/request_id）。 */
+function asString(value: unknown): string {
+  return value === undefined || value === null ? "" : String(value);
+}
+
+/** 超时归一（与 comm.normalize_timeout_ms 的**入参**口径一致）：0/空 -> 默认值，非法 -> 结构化错误。 */
+function normalizeTimeout(value: unknown): number {
+  if (value === undefined || value === null || value === 0 || value === false) return DEFAULT_TIMEOUT_MS;
+  const ms = Number(value);
+  if (!Number.isFinite(ms)) {
+    throw new PluginCommError("INVALID_ARGUMENT", "timeout 必须是毫秒数字: " + String(value),
+      { timeout: String(value) });
+  }
+  return ms;
+}
+
+/** hop_count 归一：非数字/NaN 一律按 0（与 Python int(x or 0) 的容错一致）。 */
+function toHopCount(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.trunc(value);
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) {
+    return Math.trunc(Number(value));
+  }
+  return 0;
+}
+
+/** §十九/§二十 线格式校验：只允许语言无关数据类型，语言内部对象一律拒绝。
+ *
+ * 与 Python 的 json.dumps 口径一致但要**显式**：undefined / 函数 / symbol / BigInt /
+ * 非有限数字 / class 实例（Map、Set、Date、Buffer…）不会被悄悄丢掉或 toString，
+ * 而是抛 SERIALIZATION_ERROR（引擎边界同样会拒绝）。
+ */
+function wireCopy(value: unknown, path: string): unknown {
+  if (value === null || typeof value === "boolean" || typeof value === "string") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new PluginCommError("SERIALIZATION_ERROR", "数字必须是有限值: " + path, { path });
+    }
+    return value;
+  }
+  if (Array.isArray(value)) return value.map((item, i) => wireCopy(item, path + "[" + i + "]"));
+  if (typeof value === "object") {
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      const ctor = (value as { constructor?: { name?: string } }).constructor;
+      throw new PluginCommError("SERIALIZATION_ERROR",
+        "不允许传语言内部对象（只允许 JSON 值）: " + path + " -> " + ((ctor && ctor.name) || "object"),
+        { path });
+    }
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+      if (item === undefined) {
+        throw new PluginCommError("SERIALIZATION_ERROR",
+          "undefined 字段会被 JSON 悄悄丢掉: " + path + "." + key, { path: path + "." + key });
+      }
+      out[key] = wireCopy(item, path + "." + key);
+    }
+    return out;
+  }
+  throw new PluginCommError("SERIALIZATION_ERROR",
+    "不支持的类型 " + typeof value + ": " + path, { path });
+}
+
+/** 把引擎的错误载荷（{code,message,data} 或字符串）转成本语言的结构化错误（§七/§二十一）。 */
+export function pluginCommErrorFrom(error: unknown, message = "插件调用失败"): PluginCommError {
+  if (error instanceof PluginCommError) return error;
+  if (error && typeof error === "object") {
+    const src = error as Record<string, unknown>;
+    const code = asString(src.code);
+    if (code) {
+      return new PluginCommError(code, asString(src.message) || code,
+        (src.data && typeof src.data === "object" && !Array.isArray(src.data))
+          ? src.data as Record<string, unknown> : {});
+    }
+  }
+  return new PluginCommError("PLUGIN_ERROR", typeof error === "string" && error ? error : message, {});
+}
+
+/** 结构化错误载荷（回给引擎的响应模型里用它）。 */
+function commFailure(code: string, message: string, data?: Record<string, unknown>): Record<string, unknown> {
+  return { ok: false, error: { code, message, data: data || {} } };
+}
+
+function toCommErrorData(error: unknown): CommErrorData {
+  const err = pluginCommErrorFrom(error);
+  return { code: err.code, message: err.message, data: err.data };
+}
+
+/** handler 抛异常时的消息文本：与 Python "%s: %s" % (type(e).__name__, e) 同形。 */
+function errorText(err: unknown): string {
+  if (err instanceof PluginCommError) return err.toString();
+  if (err instanceof Error) return (err.name || "Error") + ": " + err.message;
+  return String(err);
+}
+
+/** plugin.emit() 的结果归一（广播失败**不抛**，失败信息保持结构化，§九/§二十一）。 */
+function normalizeEmitResult(res: unknown): CommEmitResult {
+  const src = (res && typeof res === "object") ? res as Record<string, unknown> : {};
+  const out: CommEmitResult = {
+    ok: src.ok === true,
+    delivered: typeof src.delivered === "number" && Number.isFinite(src.delivered) ? src.delivered : 0,
+    failed: Array.isArray(src.failed) ? src.failed as Array<Record<string, unknown>> : [],
+  };
+  if (src.error !== undefined) out.error = toCommErrorData(src.error);
+  if (typeof src.trace_id === "string" && src.trace_id) out.trace_id = src.trace_id;
+  return out;
+}
+
+/** plugin.cancel() 的结果归一（§十八）。 */
+function normalizeCancelResult(res: unknown): CommCancelResult {
+  const src = (res && typeof res === "object") ? res as Record<string, unknown> : {};
+  const out: CommCancelResult = { ok: src.ok === true, cancelled: src.cancelled === true };
+  if (typeof src.request_id === "string" && src.request_id) out.request_id = src.request_id;
+  if (typeof src.target === "string" && src.target) out.target = src.target;
+  if (src.error !== undefined) out.error = toCommErrorData(src.error);
+  return out;
+}
 
 /** WebUI 应答允许透传的字段（其余字段一律丢弃，不把插件内部对象塞进协议）。 */
 const WEBUI_PAYLOAD_KEYS = ["html", "vars", "context", "message", "content_type", "body",
@@ -236,6 +466,12 @@ export class FloweriePlugin {
   private healthHooks: Array<() => boolean | void> = [];
   private hooks = new Map<string, (...args: unknown[]) => unknown>();
   private webuiHandlers = new Map<string, WebuiHandler>();
+  /** 被调方：method -> handler（plugin.expose 注册，§五 CALL 的被调方）。 */
+  private exposedHandlers = new Map<string, CommHandler>();
+  /** 入站消息栈（trace/hop 传播，§二十二/§二十三）：嵌套调用期间链路连续。 */
+  private inboundStack: CommTraceContext[] = [];
+  /** 已取消的 request_id（§十八）：有界记忆，避免无限增长。 */
+  private cancelledRequests = new Set<string>();
 
   constructor(opts: { capabilities?: string[]; pluginId?: string; pluginDir?: string } = {}) {
     const groups = opts.capabilities && opts.capabilities.length
@@ -244,11 +480,21 @@ export class FloweriePlugin {
     this.caps = [...new Set(groups.flatMap((g) => CAPABILITY_GROUPS[g] || []))]
       .filter((m) => (OPTIONAL_METHODS as readonly string[]).includes(m)).sort();
     const dir = opts.pluginDir || process.env.FLOWERIE_PLUGIN_DIR || process.cwd();
-    this.context = new PluginContext(this.client, opts.pluginId || "unknown", dir,
+    // plugin_id 优先级：显式传入 > 宿主注入的环境变量 > 占位符（引擎在 initialize 里给的值会覆盖它）
+    this.context = new PluginContext(this.client,
+      opts.pluginId || process.env.FLOWERIE_PLUGIN_ID || "unknown", dir,
       path.join(dir, "data"), {});
   }
 
   onMessage(fn: MessageHook): this { this.messageHooks.push(fn); return this; }
+  /** 订阅具名事件。两类来源共用同一张注册表：
+   *
+   * - 引擎事件（message / command / notice / request / lifecycle / schedule）：
+   *   handler 收 (ctx, { event, plugin_id, ...payload })，返回值是 action；
+   * - 插件间事件（plugin.event，任务书第 4 份 §九）：handler 收 (ctx, 完整事件模型)
+   *   即 { event_id, name, payload, source, trace_id, hop_count, metadata }，
+   *   事件名 "*" 匹配全部插件间事件。
+   */
   on(event: string, fn: MessageHook): this {
     const list = this.eventHooks.get(event) || [];
     list.push(fn);
@@ -293,6 +539,84 @@ export class FloweriePlugin {
     return this;
   }
   get ctx(): PluginContext { return this.context; }
+
+  // ================= Plugin-to-Plugin 通信（任务书第 4 份 §五-§二十七） =================
+  /** 调用其它插件的暴露方法（§五/§六/§七）：成功返回 result，失败抛 PluginCommError。
+   *
+   * opts 支持 { timeout, route }（route: auto|core|local，默认 auto）；跨语言一律经 Core
+   * Router，SDK 不做任何自动重试（§八：避免插件之间形成请求风暴）。
+   * 处理入站消息期间发起的调用会自动带上当前 trace_id/hop_count（§二十三），
+   * +1 由引擎负责。
+   */
+  async call(target: string, method: string, params: unknown = {},
+             opts: CommCallOptions | number = {}): Promise<any> {
+    const options: CommCallOptions = typeof opts === "number" ? { timeout: opts } : (opts || {});
+    const trace = this.commTrace();
+    const args: Record<string, unknown> = {
+      target: asString(target),
+      method: asString(method),
+      params: params === undefined || params === null ? {} : wireCopy(params, "params"),
+      timeout: normalizeTimeout(options.timeout),
+      route: asString(options.route) || "auto",
+      trace_id: trace.trace_id,
+      hop_count: trace.hop_count,
+    };
+    const res = await this.client.engineOp("plugin.call", args);
+    const response = (res && typeof res === "object") ? res as Record<string, unknown> : {};
+    if (response.ok !== true) throw pluginCommErrorFrom(response.error, "插件调用失败");
+    return response.result === undefined ? null : response.result;
+  }
+
+  /** 广播事件给所有订阅者（§九）：返回 { ok, delivered, failed }；失败不抛，错误保持结构化。 */
+  async emit(name: string, payload: unknown = {}): Promise<CommEmitResult> {
+    const trace = this.commTrace();
+    const res = await this.client.engineOp("plugin.emit", {
+      name: asString(name),
+      payload: payload === undefined || payload === null ? {} : wireCopy(payload, "payload"),
+      trace_id: trace.trace_id,
+      hop_count: trace.hop_count,
+    });
+    return normalizeEmitResult(res);
+  }
+
+  /** 暴露一个可被其它插件调用的方法（§五 CALL 的被调方）；handler 传 null 表示注销。 */
+  expose(method: string, handler: CommHandler | null = null): this {
+    const name = asString(method);
+    if (!COMM_NAME_RE.test(name)) {
+      throw new PluginCommError("INVALID_ARGUMENT",
+        "方法名非法（字母/下划线开头，允许 . _，≤96）: " + JSON.stringify(name), { method: name });
+    }
+    if (handler === null || handler === undefined) {
+      this.exposedHandlers.delete(name);
+      return this;
+    }
+    if (typeof handler !== "function") {
+      throw new PluginCommError("INVALID_ARGUMENT", "handler 必须是函数: " + name, { method: name });
+    }
+    this.exposedHandlers.set(name, handler);
+    return this;
+  }
+
+  /** 取消自己发起的一次在途调用（§十八）；目标插件收到 CANCEL 后应尽可能停止。 */
+  async cancel(requestId: string, reason = ""): Promise<CommCancelResult> {
+    const res = await this.client.engineOp("plugin.cancel", {
+      request_id: asString(requestId),
+      reason: asString(reason),
+    });
+    return normalizeCancelResult(res);
+  }
+
+  /** 当前入站消息的 trace/hop（§二十二/§二十三）：出站调用自动带上，插件作者不用写 trace 代码。 */
+  commTrace(): CommTraceContext {
+    const frame = this.inboundStack.length ? this.inboundStack[this.inboundStack.length - 1] : null;
+    return frame
+      ? { trace_id: frame.trace_id, hop_count: frame.hop_count,
+          source: frame.source, request_id: frame.request_id }
+      : { trace_id: "", hop_count: 0, source: {}, request_id: "" };
+  }
+
+  /** 已暴露的方法名（升序）：METHOD_NOT_FOUND 的 data.exposed 与自检都用它。 */
+  exposedMethods(): string[] { return [...this.exposedHandlers.keys()].sort(); }
 
   async run(): Promise<void> {
     this.client.start((msg) => { void this.handle(msg); });
@@ -371,6 +695,19 @@ export class FloweriePlugin {
           }
           return;
         }
+        // ---- Plugin-to-Plugin 通信（任务书第 4 份 §十）：引擎 → 插件的 CALL / EVENT / CANCEL ----
+        case "plugin.call": {
+          await this.handleInboundCall(id, params as Record<string, unknown>);
+          return;
+        }
+        case "plugin.event": {
+          await this.handleInboundEvent(id, params as Record<string, unknown>);
+          return;
+        }
+        case "plugin.cancel": {
+          this.handleInboundCancel(id, params as Record<string, unknown>);
+          return;
+        }
         // ---- 可选方法 ----
         case "storage.get": {
           try { this.client.reply(id, { ok: true, value: this.context.storageGet(String(params.key || "")) }); }
@@ -424,6 +761,98 @@ export class FloweriePlugin {
     } catch (err: any) {
       this.client.fail(id, "runner 异常: " + String(err && err.message || err));
     }
+  }
+
+  // ---------- 入站 CALL / EVENT / CANCEL（§十）：不丢消息、不阻塞后续消息 ----------
+  /** 入站 CALL：查 expose 注册表 → handler（收到**完整请求模型**）→ 应答（§五/§六/§七）。 */
+  private async handleInboundCall(id: number, params: Record<string, unknown>): Promise<void> {
+    const requestId = asString(params.request_id);
+    const method = asString(params.method);
+    const frame = this.pushInbound(params, requestId);
+    try {
+      if (requestId && this.cancelledRequests.has(requestId)) {
+        this.cancelledRequests.delete(requestId);
+        this.client.reply(id, commFailure("CANCELLED", "调用已被取消"));
+        return;
+      }
+      const handler = this.exposedHandlers.get(method);
+      if (!handler) {
+        this.client.reply(id, commFailure("METHOD_NOT_FOUND", "插件未暴露方法: " + method,
+          { method, exposed: this.exposedMethods() }));
+        return;
+      }
+      let result: unknown;
+      try {
+        result = await handler(params as CommRequest, this);
+      } catch (err) {
+        // handler 异常 -> 结构化 PLUGIN_ERROR（不杀进程、不退化成字符串）
+        this.client.reply(id, commFailure("PLUGIN_ERROR", errorText(err)));
+        return;
+      }
+      try {
+        const wire = result === undefined ? null : wireCopy(result, "result");
+        this.client.reply(id, { ok: true, result: wire });
+      } catch (err) {
+        // 返回值无法序列化 -> SERIALIZATION_ERROR（§十九/§二十）
+        const failure = err instanceof PluginCommError ? err : pluginCommErrorFrom(err);
+        this.client.reply(id, commFailure(
+          failure.code === "PLUGIN_ERROR" ? "SERIALIZATION_ERROR" : failure.code,
+          failure.message, failure.data));
+      }
+    } finally {
+      this.popInbound(frame);
+    }
+  }
+
+  /** 入站 EVENT：投给 on() 注册的 handler（"*" 匹配全部），回 { ok, handled }（§九）。 */
+  private async handleInboundEvent(id: number, params: Record<string, unknown>): Promise<void> {
+    const name = asString(params.name);
+    const frame = this.pushInbound(params, "");
+    try {
+      const handlers = [...(this.eventHooks.get(name) || [])];
+      if (name !== "*") handlers.push(...(this.eventHooks.get("*") || []));
+      let handled = 0;
+      for (const fn of handlers) {
+        try {
+          await fn(this.context, params);
+          handled += 1;
+        } catch {
+          // 单个订阅者异常不影响其它订阅者，也不计入 handled（与 Python 的计数口径一致）
+        }
+      }
+      this.client.reply(id, { ok: true, handled });
+    } finally {
+      this.popInbound(frame);
+    }
+  }
+
+  /** 入站 CANCEL：记录 request_id（有界记忆），回 { ok: true, cancelled }（§十八）。 */
+  private handleInboundCancel(id: number, params: Record<string, unknown>): void {
+    const requestId = asString(params.request_id);
+    if (requestId) {
+      this.cancelledRequests.add(requestId);
+      if (this.cancelledRequests.size > MAX_CANCELLED_IDS) this.cancelledRequests.clear();
+    }
+    this.client.reply(id, { ok: true, cancelled: Boolean(requestId) });
+  }
+
+  /** 入站消息入栈：trace/hop 传播（§二十二/§二十三）；深度超限只影响 trace，不丢消息。 */
+  private pushInbound(params: Record<string, unknown>, requestId: string): CommTraceContext {
+    const source = (params.source && typeof params.source === "object")
+      ? params.source as CommSource : {};
+    const frame: CommTraceContext = {
+      trace_id: asString(params.trace_id),
+      hop_count: toHopCount(params.hop_count),
+      source,
+      request_id: requestId,
+    };
+    if (this.inboundStack.length < MAX_INBOUND_DEPTH) this.inboundStack.push(frame);
+    return frame;
+  }
+
+  private popInbound(frame: CommTraceContext): void {
+    const idx = this.inboundStack.lastIndexOf(frame);
+    if (idx >= 0) this.inboundStack.splice(idx, 1);
   }
 
   private async dispatchEvent(event: string, payload: any): Promise<Action[]> {

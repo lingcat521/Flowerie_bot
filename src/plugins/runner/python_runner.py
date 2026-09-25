@@ -49,23 +49,147 @@ OPTIONAL_METHODS = (
     "context.get", "config.get", "config.set", "permission.check",
     "storage.get", "storage.set", "storage.delete", "storage.list",
     "webui.page", "webui.action", "webui.asset",
+    "plugin.call", "plugin.event", "plugin.cancel",
 )
 #: 核心可选能力（前 8 项，任务书第 2 份）
 CORE_OPTIONAL_METHODS = OPTIONAL_METHODS[:8]
-#: WebUI Protocol 方法（后 3 项，任务书第 3 份 §三）：与其它语言 SDK 同名同义
-WEBUI_METHODS = OPTIONAL_METHODS[8:]
+#: WebUI Protocol 方法（第 9-11 项，任务书第 3 份 §三）：与其它语言 SDK 同名同义
+WEBUI_METHODS = OPTIONAL_METHODS[8:11]
+#: Plugin-to-Plugin 通信（第 12-14 项，任务书第 4 份 §十）：CALL / EVENT / CANCEL 三条方法
+PLUGIN_METHODS = OPTIONAL_METHODS[11:14]
+#: 五类消息必须区分（§十）：RPC 与 Event 不共用一套语义
+MESSAGE_KINDS = ("CALL", "RESPONSE", "EVENT", "ERROR", "CANCEL")
+#: 路由策略（§十三）：默认 AUTO；测试用 CORE 验证统一协议路径
+ROUTE_POLICIES = ("auto", "core", "local")
+#: 循环保护（§二十二）：调用链最大跳数
+MAX_HOP_COUNT = 8
+#: 结构化错误码（§二十一 十个 + §十七 生命周期 + §二十二 循环）
+ERROR_CODES = (
+    "PLUGIN_NOT_FOUND", "PLUGIN_NOT_READY", "METHOD_NOT_FOUND", "PERMISSION_DENIED",
+    "INVALID_ARGUMENT", "TIMEOUT", "CANCELLED", "SERIALIZATION_ERROR", "PLUGIN_ERROR",
+    "INTERNAL_ERROR", "PLUGIN_UNAVAILABLE", "PLUGIN_CALL_LOOP",
+)
 CAPABILITY_GROUPS = {
     "context": ("context.get",),
     "config": ("config.get", "config.set"),
     "permission": ("permission.check",),
     "storage": ("storage.get", "storage.set", "storage.delete", "storage.list"),
     "webui": ("webui.page", "webui.action", "webui.asset"),
+    "plugin": ("plugin.call", "plugin.event", "plugin.cancel"),
 }
 STORAGE_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 MAX_STORAGE_KEYS = 200
 MAX_STORAGE_VALUE_BYTES = 64 * 1024
 MAX_CONFIG_KEYS = 64
 MAX_CONFIG_VALUE_BYTES = 8 * 1024
+
+
+class PluginCommError(Exception):
+    """插件间通信失败（任务书第 4 份 §二十一）：Python 侧的原生异常形态。
+
+    引擎返回的永远是响应模型（跨语言没有异常这个东西）；SDK 负责把它转成本语言的异常。
+    """
+
+    def __init__(self, code: str, message: str, data=None):
+        self.code = code if code in ERROR_CODES else "INTERNAL_ERROR"
+        self.message = str(message or "")
+        self.data = dict(data or {})
+        super().__init__("%s: %s" % (self.code, self.message))
+
+
+#: Normalized DTO 字段表（§二十）：与 src/plugins/comm.py 同源，tests 会逐项比对两份
+DTO_FIELDS = {
+    "message": ("message_id", "group_id", "user_id", "sender", "segments", "text", "time"),
+    "user": ("user_id", "nickname", "card", "role", "is_bot"),
+    "group": ("group_id", "name", "member_count", "max_member_count"),
+    "file": ("file_id", "name", "size", "url", "ref", "mime"),
+    "image": ("file_id", "url", "width", "height", "ref", "mime"),
+    "segment": ("type", "data"),
+    "event": ("name", "payload", "trace_id", "hop_count"),
+    "context": ("plugin_id", "runtime", "instance_id", "trace_id", "request_id"),
+    "result": ("ok", "value", "error"),
+}
+
+
+def dto(kind: str, **fields):
+    """构造 Normalized DTO（§二十）：跨插件传 Message/User/Group/... 用它，别传语言对象。"""
+    if kind not in DTO_FIELDS:
+        raise PluginCommError("INVALID_ARGUMENT", "未知 DTO 类型: %r" % (kind,))
+    unknown = [k for k in fields if k not in DTO_FIELDS[kind]]
+    if unknown:
+        raise PluginCommError("INVALID_ARGUMENT",
+                              "DTO %s 不认识的字段: %s" % (kind, sorted(unknown)))
+    out = {"type": kind}
+    for key in DTO_FIELDS[kind]:
+        if key in fields:
+            out[key] = fields[key]
+    return out
+
+
+class PluginCommApi:
+    """统一抽象 plugin.call() / plugin.emit() / plugin.on()（§二十七，各语言语义一致）。
+
+    插件作者不需要知道实际走的是 LOCAL 还是 CORE_ROUTED（§十一）：route 只是**策略**，
+    引擎侧目前一律经 Core Router（跨语言必须经 Core，§十二）。
+    """
+
+    def __init__(self, runner):
+        self._runner = runner
+
+    # ---- RPC（§五/§六/§七/§八） ----
+    def call(self, target: str, method: str, params=None, timeout: int = 5000,
+             route: str = "auto"):
+        """调用其它插件；成功返回 result，失败抛 PluginCommError（结构化错误码）。"""
+        if self._runner is None:
+            raise PluginCommError("INTERNAL_ERROR", "runner 未注入（插件 API 不可用）")
+        return self._runner.comm_call(target, method, params, timeout, route)
+
+    async def acall(self, target: str, method: str, params=None, timeout: int = 5000,
+                    route: str = "auto"):
+        """异步写法（§八）：语义与 call() 完全一致（runner 是单线程循环，内部同步执行）。"""
+        return self.call(target, method, params, timeout, route)
+
+    def cancel(self, request_id: str, reason: str = ""):
+        """取消自己发起的一次调用（§十八）；目标插件收到 CANCEL 后应尽可能停止。"""
+        if self._runner is None:
+            raise PluginCommError("INTERNAL_ERROR", "runner 未注入")
+        return self._runner.comm_cancel(request_id, reason)
+
+    def is_cancelled(self, request_id: str) -> bool:
+        """该请求是否已被调用方取消（§十八）：长任务在步骤之间查一下，能停就停。
+
+        诚实说明：Python runner 是单线程的，**阻塞中的 handler 无法被立刻打断** ——
+        CANCEL 会在 handler 返回后才被处理。所以这是"尽可能停止"而不是"强制中断"。
+        """
+        if self._runner is None:
+            return False
+        return str(request_id or "") in self._runner._cancelled
+
+    def cancelled_requests(self):
+        """已收到的 CANCEL 请求 id 列表（有界；供插件自查与测试断言）。"""
+        if self._runner is None:
+            return []
+        return sorted(self._runner._cancelled)
+
+    # ---- Event（§九） ----
+    def emit(self, name: str, payload=None):
+        """广播事件给所有订阅者（需要 plugin.emit 权限）；返回 {ok, delivered, failed}。"""
+        if self._runner is None:
+            raise PluginCommError("INTERNAL_ERROR", "runner 未注入")
+        return self._runner.comm_emit(name, payload)
+
+    def on(self, event: str, handler):
+        """订阅事件（§九）。event 传 "*" 表示订阅全部。"""
+        if self._runner is None:
+            raise PluginCommError("INTERNAL_ERROR", "runner 未注入")
+        return self._runner.register_event_handler(event, handler)
+
+    # ---- 作为被调方 ----
+    def expose(self, method: str, handler):
+        """暴露一个可被其它插件调用的方法（§五 CALL 的被调方）。"""
+        if self._runner is None:
+            raise PluginCommError("INTERNAL_ERROR", "runner 未注入")
+        return self._runner.register_handler(method, handler)
 
 
 class PluginApi:
@@ -76,6 +200,8 @@ class PluginApi:
         self.plugin_id = plugin_id
         #: 与其它语言 SDK 对齐的 API（storage/config/permission/context）需要 runner 的本地实现
         self._runner = runner
+        #: 统一抽象 plugin.call() / plugin.emit() / plugin.on()（§二十七）
+        self.plugin = PluginCommApi(runner)
 
     # ---------- Plugin Protocol v1：与其它语言 SDK 对齐的 API ----------
     def storage_get(self, key: str) -> Any:
@@ -748,6 +874,14 @@ class PluginRunner:
         self.plugin_id = plugin_id
         self.module = None
         self._req_id = 0
+        #: 被调方：method -> handler（plugin.expose 注册，§五）
+        self._handlers: Dict[str, Any] = {}
+        #: 订阅方：event 名 -> [handler]（plugin.on 注册，§九）
+        self._event_handlers: Dict[str, List[Any]] = {}
+        #: 入站消息栈（trace/hop 传递，§二十二/§二十三）：嵌套调用时链路连续
+        self._inbound: List[Dict[str, Any]] = []
+        #: 已被取消的 request_id（§十八）
+        self._cancelled: set = set()
         self.api = PluginApi(self._send_action_inner, plugin_id, self)
 
     # ---------- 基础 ----------
@@ -784,6 +918,8 @@ class PluginRunner:
                 continue
             if msg.get("id") == my_id:
                 return msg.get("result") or {"ok": False, "error": "empty result"}
+            # 不是我在等的那条：可能是引擎投递进来的 plugin.call / plugin.event / plugin.cancel
+            self._pump_nested(msg)
 
     def _send_action_safe(self, action: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         try:
@@ -863,6 +999,189 @@ class PluginRunner:
                     return {"ok": False, "error": str(msg["error"])}
                 result = msg.get("result")
                 return result if isinstance(result, dict) else {"ok": False, "error": "empty result"}
+            self._pump_nested(msg)
+
+    # ---------- Plugin-to-Plugin 通信（任务书第 4 份 §五/§九/§十八/§二十二） ----------
+    @staticmethod
+    def _valid_comm_name(name: str) -> bool:
+        return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.]{0,95}", str(name or "")))
+
+    def register_handler(self, method: str, handler) -> Dict[str, Any]:
+        """暴露方法给其它插件（§五 CALL 的被调方）；handler 传 None 表示注销。"""
+        name = str(method or "")
+        if not self._valid_comm_name(name):
+            return {"ok": False, "error": "方法名非法（字母/下划线开头，允许 . _，≤96）"}
+        if handler is None:
+            self._handlers.pop(name, None)
+            return {"ok": True, "removed": name}
+        if not callable(handler):
+            return {"ok": False, "error": "handler 必须可调用"}
+        self._handlers[name] = handler
+        return {"ok": True, "exposed": name}
+
+    def register_event_handler(self, event: str, handler) -> Dict[str, Any]:
+        """订阅事件（§九）；event 传 * 表示订阅全部。"""
+        name = str(event or "")
+        if name != "*" and not self._valid_comm_name(name):
+            return {"ok": False, "error": "事件名非法（字母/下划线开头，允许 . _，≤96）"}
+        if not callable(handler):
+            return {"ok": False, "error": "handler 必须可调用"}
+        self._event_handlers.setdefault(name, []).append(handler)
+        return {"ok": True, "subscribed": name}
+
+    def comm_context(self) -> Dict[str, Any]:
+        """当前入站消息的 trace/hop（嵌套调用时链路连续，§二十二/§二十三）。"""
+        return dict(self._inbound[-1]) if self._inbound else {}
+
+    def comm_call(self, target, method, params=None, timeout=5000, route="auto"):
+        """plugin.call 的底层：反向 op（插件 -> Core -> 目标插件），返回 result 或抛错。"""
+        ctx = self.comm_context()
+        request = {
+            "target": str(target or ""),
+            "method": str(method or ""),
+            "params": params if params is not None else {},
+            "timeout": int(timeout or 5000),
+            "route": str(route or "auto"),
+            "trace_id": str(ctx.get("trace_id") or ""),
+            "hop_count": int(ctx.get("hop_count") or 0),
+        }
+        res = self._send_engine_op("plugin.call", request)
+        if not isinstance(res, dict) or res.get("ok") is not True:
+            error = res.get("error") if isinstance(res, dict) else None
+            code, message, data = self._error_tuple(error)
+            raise PluginCommError(code, message, data)
+        return res.get("result")
+
+    @staticmethod
+    def _error_tuple(error):
+        if isinstance(error, dict):
+            code = str(error.get("code") or "PLUGIN_ERROR")
+            data = error.get("data") if isinstance(error.get("data"), dict) else {}
+            return code, str(error.get("message") or code), data
+        return "PLUGIN_ERROR", str(error or "插件调用失败"), {}
+
+    def comm_emit(self, name, payload=None) -> Dict[str, Any]:
+        ctx = self.comm_context()
+        res = self._send_engine_op("plugin.emit", {
+            "name": str(name or ""),
+            "payload": payload if payload is not None else {},
+            "trace_id": str(ctx.get("trace_id") or ""),
+            "hop_count": int(ctx.get("hop_count") or 0)})
+        return res if isinstance(res, dict) else {"ok": False, "error": "empty result"}
+
+    def comm_cancel(self, request_id, reason="") -> Dict[str, Any]:
+        res = self._send_engine_op("plugin.cancel", {"request_id": str(request_id or ""),
+                                                     "reason": str(reason or "")})
+        return res if isinstance(res, dict) else {"ok": False, "error": "empty result"}
+
+    def _pump_nested(self, msg: Dict[str, Any]) -> None:
+        """等待响应期间引擎投递进来的请求：必须原地处理，不能丢。
+
+        插件是单线程的（读写 stdio 的循环）。若这里把消息丢掉，A 调用 B、B 又回调 A 时
+        A 永远收不到回调 —— 任务书 §二十二 的环保护也就没有真实链路可观察了。
+        """
+        if len(self._inbound) > 16:            # 防退化递归（正常链路远小于此）
+            return
+        method = str(msg.get("method") or "")
+        if method in PLUGIN_METHODS or method in ("hook", "health"):
+            self.handle(msg)
+
+    def _handle_plugin_comm(self, req_id, method: str, params: Dict[str, Any]) -> None:
+        if method == "plugin.call":
+            self._handle_inbound_call(req_id, params)
+        elif method == "plugin.event":
+            self._handle_inbound_event(req_id, params)
+        else:
+            self._handle_inbound_cancel(req_id, params)
+
+    def _emit_comm_result(self, req_id, payload: Dict[str, Any]) -> None:
+        """回一条插件间通信应答；语言内部对象在这里被拦下（§十九/§二十）。"""
+        try:
+            self._emit({"id": req_id, "result": payload})
+        except TypeError as e:
+            self._emit({"id": req_id, "result": {"ok": False, "error": {
+                "code": "SERIALIZATION_ERROR",
+                "message": "返回值不是语言无关类型: %s" % e,
+                "data": {}}}})
+
+    def _handle_inbound_call(self, req_id, params: Dict[str, Any]) -> None:
+        request_id = str(params.get("request_id") or "")
+        method = str(params.get("method") or "")
+        source = params.get("source") if isinstance(params.get("source"), dict) else {}
+        self._inbound.append({"trace_id": str(params.get("trace_id") or ""),
+                              "hop_count": int(params.get("hop_count") or 0),
+                              "source": source, "request_id": request_id})
+        try:
+            if request_id and request_id in self._cancelled:
+                self._cancelled.discard(request_id)
+                self._emit_comm_result(req_id, {"ok": False, "error": {
+                    "code": "CANCELLED", "message": "调用已被取消", "data": {}}})
+                return
+            handler = self._handlers.get(method)
+            if handler is None:
+                self._emit_comm_result(req_id, {"ok": False, "error": {
+                    "code": "METHOD_NOT_FOUND",
+                    "message": "插件未暴露方法: %s" % method,
+                    "data": {"method": method, "exposed": sorted(self._handlers)}}})
+                return
+            result = self._invoke_comm_handler(handler, params)
+            if isinstance(result, dict) and "__error__" in result:
+                self._emit_comm_result(req_id, {"ok": False, "error": {
+                    "code": str(result.get("__code__") or "PLUGIN_ERROR"),
+                    "message": str(result["__error__"]), "data": {}}})
+                return
+            self._emit_comm_result(req_id, {"ok": True, "result": result})
+        finally:
+            self._inbound.pop()
+
+    def _handle_inbound_event(self, req_id, params: Dict[str, Any]) -> None:
+        name = str(params.get("name") or "")
+        source = params.get("source") if isinstance(params.get("source"), dict) else {}
+        self._inbound.append({"trace_id": str(params.get("trace_id") or ""),
+                              "hop_count": int(params.get("hop_count") or 0),
+                              "source": source, "request_id": ""})
+        try:
+            handlers = list(self._event_handlers.get(name, []))
+            if name != "*":
+                handlers += list(self._event_handlers.get("*", []))
+            handled = 0
+            for handler in handlers:
+                res = self._invoke_comm_handler(handler, params)
+                if not (isinstance(res, dict) and "__error__" in res):
+                    handled += 1
+            self._emit({"id": req_id, "result": {"ok": True, "handled": handled}})
+        finally:
+            self._inbound.pop()
+
+    def _handle_inbound_cancel(self, req_id, params: Dict[str, Any]) -> None:
+        request_id = str(params.get("request_id") or "")
+        if request_id:
+            self._cancelled.add(request_id)
+            if len(self._cancelled) > 256:      # 有界：取消记录不无限增长
+                self._cancelled.clear()
+        self._emit({"id": req_id, "result": {"ok": True, "cancelled": bool(request_id)}})
+
+    def _invoke_comm_handler(self, handler, params: Dict[str, Any]):
+        """按签名调用 handler（兼容 (params) 与 (params, api)），支持 async handler。"""
+        try:
+            sig = inspect.signature(handler)
+            n_args = len([p for p in sig.parameters.values()
+                          if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)])
+            call_args = (params, self.api)[:n_args]
+        except (TypeError, ValueError):
+            call_args = (params, self.api)
+        try:
+            result = handler(*call_args)
+            if inspect.isawaitable(result):
+                import asyncio
+                result = asyncio.run(result)
+            return result
+        except PluginCommError as e:
+            # 嵌套调用链上的错误必须**保住错误码**（否则 A→B→A 的 PLUGIN_CALL_LOOP 会被
+            # 中间层降级成 PLUGIN_ERROR，插件作者再也看不到真实原因）
+            return {"__error__": "%s: %s" % (e.code, e.message), "__code__": e.code}
+        except Exception as e:  # noqa: BLE001 - handler 异常 -> 结构化 PLUGIN_ERROR（不杀进程）
+            return {"__error__": "%s: %s" % (type(e).__name__, e)}
 
     # ---- storage：只落在本插件自己的 data 目录（进程级隔离，天然不跨插件） ----
     def _storage_dir(self) -> str:
@@ -1084,7 +1403,7 @@ class PluginRunner:
                 caps = []
                 declared = getattr(self.module, "PLUGIN_CAPABILITIES", None)
                 for group in (declared if isinstance(declared, (list, tuple)) else
-                              ("context", "config", "permission", "storage", "webui")):
+                              ("context", "config", "permission", "storage", "webui", "plugin")):
                     caps.extend(CAPABILITY_GROUPS.get(str(group), ()))
                 self._emit({"id": req_id, "result": {
                     "ok": True, "api_version": "1", "protocol_version": PROTOCOL_VERSION,
@@ -1094,6 +1413,8 @@ class PluginRunner:
                 event = params.get("event", "")
                 payload = params.get("payload", {})
                 self._emit({"id": req_id, "result": {"actions": self._dispatch_event(event, payload)}})
+            elif method in PLUGIN_METHODS:
+                self._handle_plugin_comm(req_id, method, params)
             elif method in OPTIONAL_METHODS:
                 self._handle_optional(req_id, method, params)
             elif method == "hook":

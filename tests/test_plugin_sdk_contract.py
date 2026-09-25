@@ -81,7 +81,18 @@ class _Peer:
         op = (msg.get("params") or {}).get("op")
         args = (msg.get("params") or {}).get("args") or {}
         self.engine_ops.append(op)
-        if op == "permission.check":
+        if op == "plugin.call":
+            # 插件间通信的反向 op：测试充当 Core Router，回**响应模型**（§七）
+            result = {"request_id": "vectors-req-from-plugin", "ok": True, "result": {
+                "plugin_id": str(args.get("target") or ""), "runtime": "vectors.engine",
+                "trace_id": str(args.get("trace_id") or ""),
+                "hop_count": int(args.get("hop_count") or 0) + 1,
+                "echo": args.get("params") or {}}}
+        elif op == "plugin.emit":
+            result = {"ok": True, "delivered": 2, "failed": [], "trace_id": args.get("trace_id")}
+        elif op == "plugin.cancel":
+            result = {"ok": True, "cancelled": True, "request_id": args.get("request_id")}
+        elif op == "permission.check":
             want = str(args.get("permission") or "")
             result = {"ok": True, "permission": want, "granted": want == VECTORS["permission"]["granted"]}
         elif op == "config.get":
@@ -284,3 +295,69 @@ def test_availability_table_is_reported(capsys):
     print("跨语言 SDK 可用性：" + " | ".join(table))
     assert any(_missing_reason(lang) is None for lang in LANGUAGES), \
         "没有任何语言可跑 —— CI 至少要能跑起来（本机允许只有 python/node）"
+
+
+# ---------------------------------------------------------------- 插件间通信（第 4 份任务书 §五–§二十七）
+
+COMM = VECTORS["comm"]
+
+
+@pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
+def test_plugin_call_inbound_matches_vector(peer):
+    """引擎投递 plugin.call：五种语言都必须按请求模型分派到 expose 的方法并回响应模型。"""
+    peer.initialize()
+    msg = peer.call("plugin.call", COMM["call_request"])
+    result = msg["result"]
+    assert result["ok"] is True, "%s 的 plugin.call 未成功：%s" % (peer.lang, result)
+    payload = result["result"]
+    assert payload["runtime"] != "", payload
+    assert payload["trace_id"] == COMM["call_request"]["trace_id"], \
+        "%s 没有把 trace_id 原样带进 handler：%s" % (peer.lang, payload)
+    assert payload["hop_count"] == COMM["call_request"]["hop_count"], payload
+    assert payload["echo"] == COMM["call_request"]["params"], payload
+
+
+@pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
+def test_plugin_call_unknown_method_is_structured_error(peer):
+    peer.initialize()
+    request = dict(COMM["call_request"])
+    request["method"] = COMM["unknown_method"]
+    result = peer.call("plugin.call", request)["result"]
+    assert result["ok"] is False, result
+    error = result["error"]
+    assert error["code"] == "METHOD_NOT_FOUND", "%s 的错误码不一致：%s" % (peer.lang, error)
+    assert isinstance(error.get("data"), dict) and error["message"]
+
+
+@pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
+def test_plugin_event_inbound_is_acked(peer):
+    """事件不是 RPC：回的是 {ok, handled}，没有 result（§十 两类消息不混用）。"""
+    peer.initialize()
+    result = peer.call("plugin.event", COMM["event"])["result"]
+    assert result["ok"] is True, result
+    assert isinstance(result.get("handled"), int) and result["handled"] >= 0, result
+    assert "result" not in result
+
+
+@pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
+def test_plugin_cancel_is_acknowledged(peer):
+    peer.initialize()
+    result = peer.call("plugin.cancel", COMM["cancel"])["result"]
+    assert result["ok"] is True and result["cancelled"] is True, result
+
+
+@pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
+def test_hook_comm_call_goes_through_reverse_op(peer):
+    """插件侧 plugin.call：经反向 engine op 发出，响应模型 → 本语言的返回/异常语义。"""
+    peer.initialize()
+    envelope = peer.call("hook", COMM["hook_call"])["result"]
+    # hook 的信封是 {ok,result}（协议既有语义，与 status 向量一致）；示例的 comm_call
+    # 自己再回一层 {ok,result}/{ok,code}，所以真正要断言的是信封里的那一层。
+    assert envelope["ok"] is True, envelope
+    hook_return = envelope["result"]
+    assert hook_return["ok"] is True, "%s 的 comm_call hook 失败：%s" % (peer.lang, hook_return)
+    echoed = hook_return["result"]
+    assert echoed["plugin_id"] == COMM["hook_call"]["args"][0], echoed
+    assert echoed["echo"] == COMM["hook_call"]["args"][2], echoed
+    assert echoed["hop_count"] == 1, "引擎转发时 hop+1（这里由测试侧 Core 实现）"
+    assert "plugin.call" in peer.engine_ops, "%s 没有走反向 op 通道" % peer.lang

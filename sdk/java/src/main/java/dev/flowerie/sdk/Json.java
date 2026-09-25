@@ -42,6 +42,52 @@ public final class Json {
         return out.toString();
     }
 
+    /** 语言无关类型校验（§十九，Plugin-to-Plugin 边界专用）：只允许 null / Boolean / Number /
+     * String / List / Map（键必须是 String）。
+     *
+     * <p>为什么必须显式校验：{@link #dump} 遇到不认识的 Java 对象会退化成 {@code toString()}
+     * —— 那正是跨语言边界上最危险的「悄悄序列化」。插件间通信的参数/返回值在这里被**拒绝**，
+     * 由 SDK 映射成 SERIALIZATION_ERROR（§十九/§二十）。深度上限 32、NaN/Infinity 一律拒绝。
+     */
+    public static void checkJsonValue(Object value, String path) {
+        checkValue(value, (path == null || path.isEmpty()) ? "value" : path, 0);
+    }
+
+    private static void checkValue(Object value, String path, int depth) {
+        if (depth > 32) {
+            throw new JsonException("嵌套层级过深（>32）: " + path);
+        }
+        if (value == null || value instanceof Boolean || value instanceof String) {
+            return;
+        }
+        if (value instanceof Number) {
+            double d = ((Number) value).doubleValue();
+            if (Double.isNaN(d) || Double.isInfinite(d)) {
+                throw new JsonException("NaN/Infinity 不能跨语言传输（JSON 无此类型）: " + path);
+            }
+            return;
+        }
+        if (value instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) value).entrySet()) {
+                if (!(entry.getKey() instanceof String)) {
+                    throw new JsonException("对象键必须是字符串: " + path);
+                }
+                checkValue(entry.getValue(), path + "." + entry.getKey(), depth + 1);
+            }
+            return;
+        }
+        if (value instanceof List) {
+            int index = 0;
+            for (Object item : (List<?>) value) {
+                checkValue(item, path + "[" + index + "]", depth + 1);
+                index++;
+            }
+            return;
+        }
+        throw new JsonException("语言内部对象不能跨插件边界: " + value.getClass().getName()
+                + "（" + path + "；只允许 null/boolean/number/string/array/object）");
+    }
+
     @SuppressWarnings("unchecked")
     private static void write(Object value, StringBuilder out) {
         if (value == null) {

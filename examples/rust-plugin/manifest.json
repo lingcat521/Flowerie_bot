@@ -15,7 +15,9 @@
     "webui.config.read",
     "webui.config.write",
     "webui.storage.read",
-    "webui.storage.write"
+    "webui.storage.write",
+    "plugin.call.*",
+    "plugin.emit"
   ],
   "web_ui": {
     "static": "static",

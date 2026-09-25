@@ -76,6 +76,9 @@ Flowerie（引擎）                        插件进程（任意语言）
 | `storage.set` | `{"key":"note","value":<json>}` | `{"ok":true,"size":N}` | 同上（≤64 KiB/键，≤200 键） |
 | `storage.delete` | `{"key":"note"}` | `{"ok":true,"deleted":true/false}` | 同上 |
 | `storage.list` | `{"prefix":"no"?}` | `{"ok":true,"keys":[...]}` | 同上 |
+| `plugin.call` | 请求模型（见 `docs/plugin-communication.md` §2）| `{"ok":true,"result":<any>}` / `{"ok":false,"error":{code,message,data}}` | 插件间 RPC（第 4 份任务书 §五–§七）|
+| `plugin.event` | 事件模型（同上 §9）| `{"ok":true,"handled":N}` | 插件间事件广播（§九）|
+| `plugin.cancel` | `{"request_id":"…","reason":"…"}` | `{"ok":true,"cancelled":true}` | 取消在途调用（§十八）|
 
 **能力分组**：SDK 与文档可以按组声明（`{"context":true,"config":true,"permission":true,"storage":true}`），
 协议内部统一展开成方法名（`src/plugins/protocol.py` 的 `CAPABILITY_GROUPS` 是唯一映射表）。
@@ -90,6 +93,8 @@ Flowerie（引擎）                        插件进程（任意语言）
 ```
 
 - `op ∈ {context.get, config.get, permission.check}`（`ENGINE_OPS`）；未知 op 一律 `ok:false`；
+- **插件间通信**（第 4 份任务书 §十二）同样只走这条反向通道，没有第二条路：
+  `op ∈ {plugin.call, plugin.emit, plugin.cancel}` —— 详见 `docs/plugin-communication.md`；
 - 已有的 `method:"action"`（发消息、撤回、加群……）保持不变，它才是**副作用**通道，
   一切 action 先过 `PermissionManager`。
 
@@ -146,7 +151,11 @@ Flowerie（引擎）                        插件进程（任意语言）
 
 任务书第 3 份的核心要求是"**WebUI 是 Plugin Protocol 的一部分，而不是 Python SDK 的附属**"。
 因此 WebUI 相关能力（页面声明 / 模板 Context / Action / Asset）也走同一套信封与同一套能力声明，
-不另开进程、不另开端口；详见 `docs/plugin-webui.md` 的 §3.5 与（后续）`docs/plugin-webui-protocol.md`。
+不另开进程、不另开端口；详见 `docs/plugin-webui.md` 的 §3.5 与 `docs/plugin-webui-protocol.md`。
+
+同理，**插件间通信**（第 4 份任务书 §二十五）也建立在本协议之上：WebUI Action → Plugin SDK →
+Plugin Router → 其它插件，不另造一套机制。协议模型见 `src/plugins/comm.py`（可执行的单一事实
+来源），说明见 `docs/plugin-communication.md`。
 
 ## 11. 测试与证据
 
@@ -157,6 +166,12 @@ tests/test_plugin_protocol.py            25 passed（本文件描述的全部规
   · 真子进程端到端：真起 python_runner，走 initialize→storage→config→permission→context→event→hook→未知方法→shutdown
     （反向 engine op 通道由测试实现，走**真管道**，不是 mock 协议）
   · 引擎侧 op 安全：未知 op 拒绝 / 未启用拒绝 / permission 只读 / config 只读
+tests/test_plugin_comm_model.py        86 passed（模型层：五类消息 / 请求响应错误模型 /
+  语言无关类型与 Normalized DTO / 环保护 / 权限串 / 超时归一；并与 runner 内联常量逐项比对）
+tests/test_plugin_comm_bus.py          16 passed（真子进程：真 Core Router 投递、权限拒绝不投递、
+  超时 + CANCEL、事件广播、A<->B 环保护 PLUGIN_CALL_LOOP、实例寻址、生命周期 PLUGIN_UNAVAILABLE）
+tests/test_plugin_comm_paths.py        Python->Go / TS->Java / TS->TS 三条验收路径（真编译真进程；
+  本机缺 go/javac 时 skip 并打印原因，CI 全跑）
 插件子集回归                             216 passed / 11 skipped（2 个 ruby/perl 失败是本地缺工具链的既有基线）
 ```
 

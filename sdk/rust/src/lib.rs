@@ -3,6 +3,10 @@
 //!
 //! 协议规范：docs/plugin-protocol.md。与其它语言示例的行为一致性由
 //! `tests/test_plugin_sdk_contract.py` 用真进程 + 真管道比对（同一批向量）。
+//!
+//! Plugin-to-Plugin 通信（plugin.call / plugin.emit / plugin.on / plugin.expose /
+//! plugin.cancel）见 docs/plugin-communication.md：语义与其它四种语言完全一致，
+//! 唯一出口是引擎的反向 op —— SDK 里没有任何绕过 Core 的直连通道。
 
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -25,11 +29,35 @@ const MAX_STORAGE_KEYS: usize = 200;
 const MAX_STORAGE_VALUE: usize = 64 * 1024;
 const MAX_CONFIG_KEYS: usize = 64;
 const MAX_CONFIG_VALUE: usize = 8 * 1024;
-const OPTIONAL_METHODS: [&str; 11] = [
+const OPTIONAL_METHODS: [&str; 14] = [
     "config.get", "config.set", "context.get", "permission.check",
+    "plugin.call", "plugin.cancel", "plugin.event",
     "storage.delete", "storage.get", "storage.list", "storage.set",
     "webui.action", "webui.asset", "webui.page",
 ];
+const MAX_COMM_NAME: usize = 96;
+const MAX_INBOUND_DEPTH: usize = 16;
+const MAX_CANCELLED_REQUESTS: usize = 256;
+const MAX_DEFERRED_MESSAGES: usize = 64;
+
+/// 结构化错误码（§二十一 十个 + §十七 生命周期 + §二十二 循环），与 Core 的 comm.ERROR_CODES 同源。
+pub const ERROR_CODES: [&str; 12] = [
+    "PLUGIN_NOT_FOUND", "PLUGIN_NOT_READY", "METHOD_NOT_FOUND", "PERMISSION_DENIED",
+    "INVALID_ARGUMENT", "TIMEOUT", "CANCELLED", "SERIALIZATION_ERROR", "PLUGIN_ERROR",
+    "INTERNAL_ERROR", "PLUGIN_UNAVAILABLE", "PLUGIN_CALL_LOOP",
+];
+
+/// 插件间通信的三条入站方法（§十）：CALL / EVENT / CANCEL 不混成一种机制。
+pub const PLUGIN_METHODS: [&str; 3] = ["plugin.call", "plugin.event", "plugin.cancel"];
+
+/// 路由策略（§十三）：默认 auto；测试用 core 验证统一协议路径。
+pub const ROUTE_POLICIES: [&str; 3] = ["auto", "core", "local"];
+
+/// 调用链最大跳数（§二十二）：判定在 Core（SDK 只负责直传 hop_count，不自己 +1）。
+pub const MAX_HOP_COUNT: i64 = 8;
+
+/// 默认调用超时（毫秒）。
+pub const DEFAULT_TIMEOUT_MS: i64 = 5000;
 
 /// 插件返回给引擎的动作（唯一副作用出口）。
 pub type Action = Json;
@@ -51,6 +79,8 @@ pub struct Context {
     pub plugin_dir: PathBuf,
     pub data_dir: PathBuf,
     shared: Shared,
+    /// 插件间通信的注册表与链路状态（与 Plugin 共享同一份）。
+    comm: CommShared,
 }
 
 fn valid_key(key: &str) -> bool {
@@ -239,6 +269,10 @@ impl Context {
             };
             let msg_id = msg.get("id").and_then(|v| v.as_f64()).map(|n| n as u64);
             if msg_id != Some(id) {
+                // 不是我在等的那条：可能是引擎投递进来的 plugin.call / plugin.event /
+                // plugin.cancel —— 必须原地处理，不能丢（§二十二；否则 A -> B -> A 的回调
+                // 永远到不了，环保护也就没有真实链路可观察）。
+                self.pump_nested(&msg)?;
                 continue;
             }
             if let Some(err) = msg.get("error").and_then(|v| v.as_str()) {
@@ -331,6 +365,7 @@ impl Plugin {
                 plugin_dir: dir,
                 data_dir: data,
                 shared,
+                comm: Rc::new(RefCell::new(CommState::default())),
             },
         }
     }
@@ -410,6 +445,13 @@ impl Plugin {
     pub fn run(&mut self) -> Result<(), String> {
         let stdin = io::stdin();
         loop {
+            // 等待应答期间被推迟的引擎请求（hook / health / ...）：先按到达顺序补处理，
+            // 再阻塞读下一行 —— 相对顺序不乱，引擎的请求也不会永远等不到应答。
+            while let Some(pending) = self.ctx.take_deferred() {
+                if self.handle_message(&pending)? {
+                    return Ok(());
+                }
+            }
             let mut line = String::new();
             let read = stdin.lock().read_line(&mut line).map_err(|e| e.to_string())?;
             if read == 0 {
@@ -422,16 +464,21 @@ impl Plugin {
                 Ok(value) => value,
                 Err(_) => continue,
             };
-            let method = msg.get("method").and_then(|v| v.as_str()).unwrap_or("").to_string();
-            if method.is_empty() {
-                continue;
-            }
-            let id = msg.get("id").and_then(|v| v.as_f64()).unwrap_or(0.0) as i64;
-            let params = msg.get("params").cloned().unwrap_or(Json::Null);
-            if self.handle(id, &method, &params)? {
+            if self.handle_message(&msg)? {
                 return Ok(());
             }
         }
+    }
+
+    /// 把一条协议消息（主循环读到的，或嵌套等待期间推迟下来的）交给 handle。
+    fn handle_message(&mut self, msg: &Json) -> Result<bool, String> {
+        let method = msg.get("method").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        if method.is_empty() {
+            return Ok(false);
+        }
+        let id = msg.get("id").and_then(|v| v.as_f64()).unwrap_or(0.0) as i64;
+        let params = msg.get("params").cloned().unwrap_or(Json::Null);
+        self.handle(id, &method, &params)
     }
 
     fn reply(&self, id: i64, result: Json) -> Result<(), String> {
@@ -598,6 +645,10 @@ impl Plugin {
                 Err(err) => self.reply(id, Json::obj(vec![("ok", Json::Bool(false)),
                     ("error", Json::str(&err))]))?,
             },
+            // Plugin-to-Plugin 通信的入站方法（§五/§九/§十八）：与嵌套等待共用同一条路径
+            "plugin.call" | "plugin.event" | "plugin.cancel" => {
+                self.ctx.dispatch_plugin_method(id, method, params)?;
+            }
             other => self.reply_error(id, &format!("未知方法: {:?}", other))?,
         }
         Ok(false)
@@ -669,4 +720,638 @@ fn valid_hook_name(name: &str) -> bool {
 /// 便捷：把目录规范化成插件目录（嵌入场景用）。
 pub fn plugin_dir_from(path: &Path) -> PathBuf {
     fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
+
+// ==================== Plugin-to-Plugin 通信（任务书《通信》§五–§二十七） ====================
+//
+// 与其它四种语言 SDK 的语义完全一致（docs/plugin-communication.md §8）：
+//   * 出站：plugin.call / plugin.emit / plugin.cancel —— 反向 op 交给引擎，经 Core Router 转发；
+//     SDK 里没有任何直连通道（没有 socket / http），权限判定在 Core，SDK 跳不过去。
+//   * 入站：plugin.call / plugin.event / plugin.cancel —— 引擎投递进来的三条方法（§十 不混用）。
+//   * 嵌套：等待自己发起的调用响应期间，投递进来的入站消息**原地处理，绝不丢弃**（§二十二）。
+//   * trace/hop：处理入站消息时记住 trace_id / hop_count，出站自动带上（引擎负责 hop+1）。
+//   * 失败：一律映射成 PluginCommError（code / message / data），不退化成字符串；不自动重试。
+
+/// 一次 plugin.call 的可选参数（Rust 用结构体代替其它语言的关键字参数）。
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallOptions {
+    /// 超时毫秒（默认 5000；引擎侧会夹到 [1, 60000]）。
+    pub timeout: i64,
+    /// 路由策略：auto | core | local（§十三）。
+    pub route: String,
+}
+
+impl Default for CallOptions {
+    fn default() -> Self {
+        CallOptions { timeout: DEFAULT_TIMEOUT_MS, route: "auto".to_string() }
+    }
+}
+
+impl CallOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 设置超时（毫秒）。
+    pub fn with_timeout(mut self, timeout_ms: i64) -> Self {
+        self.timeout = timeout_ms;
+        self
+    }
+
+    /// 设置路由策略（auto | core | local）。
+    pub fn with_route(mut self, route: &str) -> Self {
+        self.route = route.to_string();
+        self
+    }
+}
+
+/// plugin.emit 的结果（§九）：广播不是 RPC，没有 result，只有投递统计。
+#[derive(Debug, Clone, PartialEq)]
+pub struct EmitResult {
+    /// 成功投递到的插件数。
+    pub delivered: u64,
+    /// 投递失败的插件清单（[{"plugin_id":…,"code":…}]）。
+    pub failed: Vec<Json>,
+    /// 本次广播的 trace_id（入站消息沿用，否则引擎生成）。
+    pub trace_id: String,
+}
+
+/// plugin.cancel 的结果（§十八）。
+#[derive(Debug, Clone, PartialEq)]
+pub struct CancelResult {
+    pub request_id: String,
+    pub cancelled: bool,
+    pub target: String,
+}
+
+/// 当前入站消息的链路上下文（§二十二/§二十三）：出站调用自动带上它。
+#[derive(Debug, Clone, PartialEq)]
+pub struct CommContext {
+    pub trace_id: String,
+    pub hop_count: i64,
+    pub source: Json,
+    pub request_id: String,
+}
+
+impl Default for CommContext {
+    fn default() -> Self {
+        CommContext {
+            trace_id: String::new(),
+            hop_count: 0,
+            source: Json::Null,
+            request_id: String::new(),
+        }
+    }
+}
+
+/// 插件间通信失败（§二十一）：Rust 侧的原生形态（Result::Err）。
+///
+/// 引擎返回的永远是响应模型（跨语言没有异常这个东西），SDK 负责把它转成本语言的 Result。
+/// 未知错误码按 Core 的约定归一成 INTERNAL_ERROR —— 错误绝不退化成一句字符串。
+#[derive(Debug, Clone, PartialEq)]
+pub struct PluginCommError {
+    pub code: String,
+    pub message: String,
+    pub data: Json,
+}
+
+impl PluginCommError {
+    /// 构造：未知错误码归一成 INTERNAL_ERROR（与 Core 的 PluginCommError 一致）。
+    pub fn new(code: &str, message: &str, data: Json) -> Self {
+        let normalized = if is_error_code(code) { code } else { "INTERNAL_ERROR" };
+        PluginCommError {
+            code: normalized.to_string(),
+            message: message.to_string(),
+            data,
+        }
+    }
+
+    /// 默认形态 PLUGIN_ERROR：handler 内部失败 / 传输层失败。
+    pub fn plugin(message: &str) -> Self {
+        Self::new("PLUGIN_ERROR", message, Json::obj(vec![]))
+    }
+
+    /// 目标插件没暴露这个方法（§五）：data 带 method 与 exposed 清单，方便对方定位。
+    pub fn method_not_found(method: &str, exposed: &[String]) -> Self {
+        let listed: Vec<Json> = exposed.iter().map(|name| Json::str(name)).collect();
+        Self::new(
+            "METHOD_NOT_FOUND",
+            &format!("插件未暴露方法: {}", method),
+            Json::obj(vec![("method", Json::str(method)), ("exposed", Json::Arr(listed))]),
+        )
+    }
+
+    /// 从对方 / 引擎给的 error 字段（对象 / 字符串 / 缺失）还原结构化错误。
+    pub fn from_error(error: &Json) -> Self {
+        match error {
+            Json::Obj(map) => {
+                let code = map.get("code").and_then(|v| v.as_str()).unwrap_or("PLUGIN_ERROR");
+                let message = map.get("message").and_then(|v| v.as_str()).unwrap_or(code);
+                let data = map.get("data").cloned().unwrap_or_else(|| Json::obj(vec![]));
+                Self::new(code, message, data)
+            }
+            Json::Str(text) => Self::new("PLUGIN_ERROR", text, Json::obj(vec![])),
+            _ => Self::new("PLUGIN_ERROR", "插件调用失败", Json::obj(vec![])),
+        }
+    }
+
+    /// 从响应模型（§七）取出 result；ok != true（含空响应）一律 Err。
+    pub fn from_response(response: &Json) -> Result<Json, Self> {
+        if response.get("ok").and_then(|v| v.as_bool()) == Some(true) {
+            return Ok(response.get("result").cloned().unwrap_or(Json::Null));
+        }
+        let error = response.get("error").cloned().unwrap_or(Json::Null);
+        Err(Self::from_error(&error))
+    }
+
+    /// 协议三件套 {"code":…,"message":…,"data":…}。
+    pub fn to_error(&self) -> Json {
+        Json::obj(vec![
+            ("code", Json::str(&self.code)),
+            ("message", Json::str(&self.message)),
+            ("data", self.data.clone()),
+        ])
+    }
+
+    /// 失败应答体（§七）：{"ok":false,"error":{code,message,data}}。
+    pub fn to_body(&self) -> Json {
+        Json::obj(vec![("ok", Json::Bool(false)), ("error", self.to_error())])
+    }
+}
+
+impl std::fmt::Display for PluginCommError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}: {}", self.code, self.message)
+    }
+}
+
+impl std::error::Error for PluginCommError {}
+
+/// expose 注册的 handler：收到**完整请求模型**，返回值就是 CALL 的 result。
+pub type CommMethod = dyn Fn(&Context, &Json) -> Result<Json, PluginCommError>;
+/// on 注册的事件 handler（订阅方；plugin.event 只回报 handled 数）。
+pub type CommEvent = dyn Fn(&Context, &Json);
+
+type CommMethodRef = Rc<CommMethod>;
+type CommEventRef = Rc<CommEvent>;
+type CommShared = Rc<RefCell<CommState>>;
+
+/// 插件间通信的注册表 + 链路状态（Context 持有；Plugin 通过 ctx 用同一份）。
+#[derive(Default)]
+struct CommState {
+    /// 被调方：method -> handler（expose，§五）。
+    methods: HashMap<String, CommMethodRef>,
+    /// 订阅方：事件名 -> [handler]（on，§九）；"*" 匹配全部。
+    events: HashMap<String, Vec<CommEventRef>>,
+    /// 入站消息栈（trace / hop 传递，§二十二/§二十三）。
+    inbound: Vec<CommContext>,
+    /// 已取消的 request_id（§十八）—— 有界。
+    cancelled: Vec<String>,
+    /// 等待应答期间到达、但不属于插件间通信的引擎请求（hook / health / …）：
+    /// 推迟给主循环按到达顺序处理（与 Go SDK 的 deferred 一致）—— 不丢消息。
+    deferred: Vec<Json>,
+}
+
+impl Context {
+    // ---------- 出站：插件 -> 引擎（反向 op）-> Core Router -> 目标插件 ----------
+
+    /// 当前入站消息的链路上下文（trace / hop）；不在处理入站消息时返回空值。
+    pub fn comm_context(&self) -> CommContext {
+        match self.comm.borrow().inbound.last() {
+            Some(context) => context.clone(),
+            None => CommContext::default(),
+        }
+    }
+
+    /// 调用另一个插件（§五）：plugin.call(target, method, params, opts)。
+    ///
+    /// 走引擎的反向 op -> Core Router（跨语言必须经 Core；权限在 Core 判定，SDK 绕不过）。
+    /// trace_id / hop_count 自动沿用在处理的入站消息（hop 直传，引擎负责 +1）。不自动重试。
+    pub fn call(&self, target: &str, method: &str, params: &Json,
+                opts: CallOptions) -> Result<Json, PluginCommError> {
+        if !json_serializable(params) {
+            // 语言内部对象不能过线（§十九）：NaN / Infinity 直接拦在边界上，别写出一行非法 JSON。
+            return Err(PluginCommError::new(
+                "SERIALIZATION_ERROR",
+                "params 不是语言无关类型（NaN / Infinity 无法序列化）",
+                Json::obj(vec![]),
+            ));
+        }
+        let context = self.comm_context();
+        let args = Json::obj(vec![
+            ("target", Json::str(target)),
+            ("method", Json::str(method)),
+            ("params", params.clone()),
+            ("timeout", Json::num(opts.timeout)),
+            ("route", Json::str(&opts.route)),
+            ("trace_id", Json::str(&context.trace_id)),
+            ("hop_count", Json::num(context.hop_count)),
+        ]);
+        let response = self.comm_engine_op("plugin.call", &args)?;
+        PluginCommError::from_response(&response)
+    }
+
+    /// 广播事件给其它插件（§九）：plugin.emit(name, payload)；失败即结构化错误。
+    pub fn emit(&self, name: &str, payload: &Json) -> Result<EmitResult, PluginCommError> {
+        if !json_serializable(payload) {
+            return Err(PluginCommError::new(
+                "SERIALIZATION_ERROR",
+                "payload 不是语言无关类型（NaN / Infinity 无法序列化）",
+                Json::obj(vec![]),
+            ));
+        }
+        let context = self.comm_context();
+        let args = Json::obj(vec![
+            ("name", Json::str(name)),
+            ("payload", payload.clone()),
+            ("trace_id", Json::str(&context.trace_id)),
+            ("hop_count", Json::num(context.hop_count)),
+        ]);
+        let response = self.comm_engine_op("plugin.emit", &args)?;
+        if response.get("ok").and_then(|v| v.as_bool()) != Some(true) {
+            let error = response.get("error").cloned().unwrap_or(Json::Null);
+            return Err(PluginCommError::from_error(&error));
+        }
+        Ok(EmitResult {
+            delivered: json_u64(response.get("delivered")),
+            failed: response.get("failed").and_then(|v| v.as_arr()).cloned().unwrap_or_default(),
+            trace_id: json_text(response.get("trace_id")),
+        })
+    }
+
+    /// 取消一次**自己发起的**在途调用（§十八）。
+    pub fn cancel(&self, request_id: &str, reason: &str) -> Result<CancelResult, PluginCommError> {
+        let args = Json::obj(vec![
+            ("request_id", Json::str(request_id)),
+            ("reason", Json::str(reason)),
+        ]);
+        let response = self.comm_engine_op("plugin.cancel", &args)?;
+        if response.get("ok").and_then(|v| v.as_bool()) != Some(true) {
+            let error = response.get("error").cloned().unwrap_or(Json::Null);
+            return Err(PluginCommError::from_error(&error));
+        }
+        let echoed = json_text(response.get("request_id"));
+        Ok(CancelResult {
+            request_id: if echoed.is_empty() { request_id.to_string() } else { echoed },
+            cancelled: response.get("cancelled").and_then(|v| v.as_bool()).unwrap_or(false),
+            target: json_text(response.get("target")),
+        })
+    }
+
+    // ---------- 注册：被调方（expose）/ 订阅方（on） ----------
+
+    /// 暴露方法给其它插件（§五）；方法名非法 -> Err(INVALID_ARGUMENT)。
+    pub fn expose<F>(&self, method: &str, handler: F) -> Result<(), PluginCommError>
+    where
+        F: Fn(&Context, &Json) -> Result<Json, PluginCommError> + 'static,
+    {
+        if !valid_comm_name(method) {
+            return Err(PluginCommError::new(
+                "INVALID_ARGUMENT",
+                &format!("方法名非法（字母/下划线开头，允许 . _，不超过 96 字符）: {}", method),
+                Json::obj(vec![("method", Json::str(method))]),
+            ));
+        }
+        self.comm.borrow_mut().methods.insert(method.to_string(), Rc::new(handler));
+        Ok(())
+    }
+
+    /// 注销暴露的方法；返回是否真的注销了。
+    pub fn unexpose(&self, method: &str) -> bool {
+        self.comm.borrow_mut().methods.remove(method).is_some()
+    }
+
+    /// 订阅事件（§九）；name 传 "*" 订阅全部。
+    pub fn on<F>(&self, name: &str, handler: F) -> Result<(), PluginCommError>
+    where
+        F: Fn(&Context, &Json) + 'static,
+    {
+        if !valid_event_name(name) {
+            return Err(PluginCommError::new(
+                "INVALID_ARGUMENT",
+                &format!("事件名非法（字母/下划线开头，允许 . _，不超过 96 字符；单个 * 表示全部）: {}", name),
+                Json::obj(vec![("name", Json::str(name))]),
+            ));
+        }
+        self.comm.borrow_mut().events.entry(name.to_string()).or_default().push(Rc::new(handler));
+        Ok(())
+    }
+
+    /// 已暴露的方法名（有序）—— 回 METHOD_NOT_FOUND 时给对方的 exposed 清单就是它。
+    pub fn exposed_methods(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.comm.borrow().methods.keys().cloned().collect();
+        names.sort();
+        names
+    }
+
+    // ---------- 入站：引擎投递进来的 plugin.call / plugin.event / plugin.cancel ----------
+
+    /// 主循环与嵌套等待共用同一条入站路径：调用点只有一处，语义不会漂移。
+    fn dispatch_plugin_method(&self, id: i64, method: &str, params: &Json) -> Result<(), String> {
+        match method {
+            "plugin.call" => self.handle_inbound_call(id, params),
+            "plugin.event" => self.handle_inbound_event(id, params),
+            "plugin.cancel" => self.handle_inbound_cancel(id, params),
+            _ => Ok(()),
+        }
+    }
+
+    /// 等待自己发起的调用响应期间，引擎投递进来的请求**不能丢**（§二十二）。
+    ///
+    /// 插件是单线程的（读写 stdio 的循环）。这里把消息丢掉的话，A 调用 B、B 又回调 A 时
+    /// A 永远收不到回调 —— 环保护也就没有真实链路可观察了。因此：
+    ///   * plugin.call / plugin.event / plugin.cancel：**原地处理**（§二十二 的硬要求）；
+    ///   * 其它请求（hook / health / ...）：按到达顺序推迟给主循环（不丢，引擎不会白等）。
+    fn pump_nested(&self, msg: &Json) -> Result<(), String> {
+        let method = msg.get("method").and_then(|v| v.as_str()).unwrap_or("");
+        let id = msg.get("id").and_then(|v| v.as_f64()).unwrap_or(0.0) as i64;
+        if !PLUGIN_METHODS.contains(&method) {
+            let queued = {
+                let mut state = self.comm.borrow_mut();
+                if state.deferred.len() >= MAX_DEFERRED_MESSAGES {
+                    false
+                } else {
+                    state.deferred.push(msg.clone());
+                    true
+                }
+            };
+            if !queued {
+                return self.reply_protocol_error(
+                    id, "推迟队列已满（等待应答期间堆积了过多非通信请求）");
+            }
+            return Ok(());
+        }
+        if self.comm.borrow().inbound.len() > MAX_INBOUND_DEPTH {
+            // 防退化递归（正常链路远小于此）；不静默丢弃，回一条结构化错误（§二十一）。
+            return self.reply_comm(id, PluginCommError::new(
+                "INTERNAL_ERROR",
+                "嵌套处理深度超过上限",
+                Json::obj(vec![("depth", Json::num(MAX_INBOUND_DEPTH as i64))]),
+            ).to_body());
+        }
+        let params = msg.get("params").cloned().unwrap_or(Json::Null);
+        self.dispatch_plugin_method(id, method, &params)
+    }
+
+    /// 入站 plugin.call：查 expose 注册表 -> 调 handler（拿完整请求模型）-> 回响应模型。
+    fn handle_inbound_call(&self, id: i64, params: &Json) -> Result<(), String> {
+        let request_id = json_text(params.get("request_id"));
+        if !request_id.is_empty() && self.take_cancelled(&request_id) {
+            return self.reply_comm(id, PluginCommError::new(
+                "CANCELLED", "调用已被取消", Json::obj(vec![])).to_body());
+        }
+        let method = json_text(params.get("method"));
+        let registered = self.comm.borrow().methods.get(&method).cloned();
+        let handler = match registered {
+            Some(handler) => handler,
+            None => {
+                let error = PluginCommError::method_not_found(&method, &self.exposed_methods());
+                return self.reply_comm(id, error.to_body());
+            }
+        };
+        self.push_inbound(params);
+        let invoke: &CommMethod = &*handler;
+        let outcome = invoke_comm_handler(|| invoke(self, params));
+        self.pop_inbound();
+        match outcome {
+            Ok(value) => {
+                if json_serializable(&value) {
+                    self.reply_comm(id, Json::obj(vec![
+                        ("ok", Json::Bool(true)),
+                        ("result", value),
+                    ]))
+                } else {
+                    self.reply_comm(id, PluginCommError::new(
+                        "SERIALIZATION_ERROR",
+                        "返回值不是语言无关类型（NaN / Infinity 无法序列化）",
+                        Json::obj(vec![])).to_body())
+                }
+            }
+            Err(error) => self.reply_comm(id, error.to_body()),
+        }
+    }
+
+    /// 入站 plugin.event：投给 on() 注册的 handler（"*" 匹配全部），回 handled 计数。
+    fn handle_inbound_event(&self, id: i64, params: &Json) -> Result<(), String> {
+        let name = json_text(params.get("name"));
+        let handlers: Vec<CommEventRef> = {
+            let state = self.comm.borrow();
+            let mut list: Vec<CommEventRef> = state.events.get(&name).cloned().unwrap_or_default();
+            if name != "*" {
+                if let Some(wildcard) = state.events.get("*") {
+                    list.extend(wildcard.iter().cloned());
+                }
+            }
+            list
+        };
+        self.push_inbound(params);
+        let mut handled: i64 = 0;
+        for handler in handlers.iter() {
+            let invoke: &CommEvent = &**handler;
+            if invoke_comm_event(|| invoke(self, params)) {
+                handled += 1;
+            }
+        }
+        self.pop_inbound();
+        self.reply_comm(id, Json::obj(vec![
+            ("ok", Json::Bool(true)),
+            ("handled", Json::num(handled)),
+        ]))
+    }
+
+    /// 入站 plugin.cancel：记下这个 request_id（有界），下次收到它就直接回 CANCELLED。
+    fn handle_inbound_cancel(&self, id: i64, params: &Json) -> Result<(), String> {
+        let request_id = json_text(params.get("request_id"));
+        if !request_id.is_empty() {
+            let mut state = self.comm.borrow_mut();
+            state.cancelled.push(request_id.clone());
+            if state.cancelled.len() > MAX_CANCELLED_REQUESTS {
+                state.cancelled.clear();        // 有界：取消记录不无限增长
+            }
+        }
+        self.reply_comm(id, Json::obj(vec![
+            ("ok", Json::Bool(true)),
+            ("cancelled", Json::Bool(!request_id.is_empty())),
+        ]))
+    }
+
+    /// 取走（并清除）一个已取消的 request_id；命中即「这次调用已被取消」。
+    fn take_cancelled(&self, request_id: &str) -> bool {
+        let mut state = self.comm.borrow_mut();
+        match state.cancelled.iter().position(|item| item.as_str() == request_id) {
+            Some(index) => {
+                state.cancelled.remove(index);
+                true
+            }
+            None => false,
+        }
+    }
+
+    fn push_inbound(&self, params: &Json) {
+        let context = CommContext {
+            trace_id: json_text(params.get("trace_id")),
+            hop_count: json_i64(params.get("hop_count")),
+            source: params.get("source").cloned().unwrap_or(Json::Null),
+            request_id: json_text(params.get("request_id")),
+        };
+        self.comm.borrow_mut().inbound.push(context);
+    }
+
+    fn pop_inbound(&self) {
+        let _ = self.comm.borrow_mut().inbound.pop();
+    }
+
+    /// 插件间通信应答（协议信封：{"id":N,"result":{...}}）。
+    fn reply_comm(&self, id: i64, payload: Json) -> Result<(), String> {
+        write_line(&Json::obj(vec![("id", Json::num(id)), ("result", payload)]))
+    }
+
+    /// 协议级错误应答（{"id":N,"error":"..."}，与 Plugin::reply_error 同一形状）。
+    fn reply_protocol_error(&self, id: i64, message: &str) -> Result<(), String> {
+        let trimmed: String = message.chars().take(800).collect();
+        write_line(&Json::obj(vec![("id", Json::num(id)), ("error", Json::str(&trimmed))]))
+    }
+
+    /// 取出一条「等待应答期间被推迟」的引擎请求（FIFO）；没有就返回 None。
+    fn take_deferred(&self) -> Option<Json> {
+        let mut state = self.comm.borrow_mut();
+        if state.deferred.is_empty() {
+            None
+        } else {
+            Some(state.deferred.remove(0))
+        }
+    }
+
+    /// 反向 op（与 action 共用一套 id 命名空间）；传输层失败映射成 PLUGIN_ERROR（与 Core 一致）。
+    fn comm_engine_op(&self, op: &str, args: &Json) -> Result<Json, PluginCommError> {
+        self.engine_op(op, args).map_err(|err| PluginCommError::plugin(&err))
+    }
+}
+
+/// Plugin 上的插件间通信入口（与 Python 的 api.plugin.* 一一对应，§二十七）。
+impl Plugin {
+    /// 暴露方法给其它插件（§五）。注册表是共享的：on_startup 里用 ctx.expose 等价。
+    pub fn expose<F>(&mut self, method: &str, handler: F) -> Result<&mut Self, PluginCommError>
+    where
+        F: Fn(&Context, &Json) -> Result<Json, PluginCommError> + 'static,
+    {
+        self.ctx.expose(method, handler)?;
+        Ok(self)
+    }
+
+    /// 注销暴露的方法。
+    pub fn unexpose(&mut self, method: &str) -> &mut Self {
+        self.ctx.unexpose(method);
+        self
+    }
+
+    /// 订阅事件（§九）；name 传 "*" 订阅全部。
+    pub fn on<F>(&mut self, name: &str, handler: F) -> Result<&mut Self, PluginCommError>
+    where
+        F: Fn(&Context, &Json) + 'static,
+    {
+        self.ctx.on(name, handler)?;
+        Ok(self)
+    }
+
+    /// 调用另一个插件（§五）：plugin.call(target, method, params, opts)。
+    pub fn call(&self, target: &str, method: &str, params: &Json,
+                opts: CallOptions) -> Result<Json, PluginCommError> {
+        self.ctx.call(target, method, params, opts)
+    }
+
+    /// 广播事件（§九）：plugin.emit(name, payload)。
+    pub fn emit(&self, name: &str, payload: &Json) -> Result<EmitResult, PluginCommError> {
+        self.ctx.emit(name, payload)
+    }
+
+    /// 取消一次自己发起的在途调用（§十八）。
+    pub fn cancel(&self, request_id: &str, reason: &str) -> Result<CancelResult, PluginCommError> {
+        self.ctx.cancel(request_id, reason)
+    }
+
+    /// 当前入站消息的链路上下文（trace / hop）。
+    pub fn comm_context(&self) -> CommContext {
+        self.ctx.comm_context()
+    }
+}
+
+/// 错误码是否是协议定义的 12 个之一（§二十一）。
+pub fn is_error_code(code: &str) -> bool {
+    ERROR_CODES.iter().any(|known| *known == code)
+}
+
+/// 插件间通信的方法名（§五）：字母/下划线开头，允许 . 与 _，不超过 96 字符。
+fn valid_comm_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) if first.is_ascii_alphabetic() || first == '_' => {}
+        _ => return false,
+    }
+    if name.chars().count() > MAX_COMM_NAME {
+        return false;
+    }
+    chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == '.')
+}
+
+/// 事件名允许单独的 *（订阅全部，§九）。
+fn valid_event_name(name: &str) -> bool {
+    name == "*" || valid_comm_name(name)
+}
+
+/// 协议只认语言无关类型（§十九）：NaN / Infinity 不是合法 JSON，在边界处拦下。
+fn json_serializable(value: &Json) -> bool {
+    match value {
+        Json::Num(number) => number.is_finite(),
+        Json::Arr(items) => items.iter().all(json_serializable),
+        Json::Obj(map) => map.values().all(json_serializable),
+        _ => true,
+    }
+}
+
+fn json_text(value: Option<&Json>) -> String {
+    value.and_then(|item| item.as_str()).unwrap_or("").to_string()
+}
+
+fn json_i64(value: Option<&Json>) -> i64 {
+    value.and_then(|item| item.as_f64()).map(|number| number as i64).unwrap_or(0)
+}
+
+fn json_u64(value: Option<&Json>) -> u64 {
+    value.and_then(|item| item.as_f64())
+        .filter(|number| number.is_finite() && *number > 0.0)
+        .map(|number| number as u64)
+        .unwrap_or(0)
+}
+
+/// 调 expose 注册的 handler：panic 等价于其它语言的「抛异常」-> 结构化 PLUGIN_ERROR（不杀进程）。
+fn invoke_comm_handler<F>(call: F) -> Result<Json, PluginCommError>
+where
+    F: FnOnce() -> Result<Json, PluginCommError>,
+{
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)) {
+        Ok(outcome) => outcome,
+        Err(payload) => Err(PluginCommError::new(
+            "PLUGIN_ERROR",
+            &format!("handler panic: {}", panic_message(&*payload)),
+            Json::obj(vec![]),
+        )),
+    }
+}
+
+/// 调 on 注册的事件 handler；返回它是否正常跑完（panic 不计入 handled）。
+fn invoke_comm_event<F: FnOnce()>(call: F) -> bool {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)).is_ok()
+}
+
+/// 从 panic payload 取人类可读消息（字面量与格式化两种 panic 都覆盖）。
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    if let Some(text) = payload.downcast_ref::<&str>() {
+        return (*text).to_string();
+    }
+    if let Some(text) = payload.downcast_ref::<String>() {
+        return text.clone();
+    }
+    "panic".to_string()
 }

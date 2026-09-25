@@ -85,3 +85,32 @@ PATH="$HOME/tscheck/bin:$PATH" FLOWERIE_FORCE_TSC=1 \
 ```
 
 > 表格里任何 `SUPPORTED` 都必须能指到上面某条绿色输出或 §2 的 CI run；指不到就改成 `PARTIAL`/`UNKNOWN`。
+
+## 4. 插件间通信（第 4 份任务书《通信》）
+
+协议与语义见 `docs/plugin-communication.md`；这里只列**逐语言能力与证据**。
+
+| Capability（协议方法 / API） | Python | TypeScript | Go | Rust | Java |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `plugin.call`（被调用：expose + 分派 handler）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| `plugin.event`（收事件：on + 通配）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| `plugin.cancel`（收 CANCEL：记录 + 可查询）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| 出站 `plugin.call`（反向 op → Core）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| 出站 `plugin.emit`（广播）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| 出站 `plugin.cancel` | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| 结构化错误码映射（12 个码）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| trace_id / hop_count 自动传播 | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+| 嵌套调用（等待响应时仍处理入站消息）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+
+**证据（本地可复核）**：
+
+- 模型层：`tests/test_plugin_comm_model.py`（86 passed）—— 五类消息、请求/响应/错误模型、
+  语言无关类型、Normalized DTO、环保护、权限串、超时归一，并与 Python runner 内联常量逐项比对。
+- 总线层：`tests/test_plugin_comm_bus.py`（16 passed）—— **真子进程**跑真 Core Router：
+  投递、权限拒绝不投递、超时 + CANCEL、事件广播、A↔B 环保护（PLUGIN_CALL_LOOP）、
+  实例寻址（`plugin.b#instance1` 与"任意健康实例"）、生命周期（PLUGIN_UNAVAILABLE）。
+- 跨语言层：`tests/test_plugin_comm_paths.py` —— Python→Go / TS→Java / TS→TS 三条路径，
+  真编译真启动（本机只有 node + python，缺工具链的路径 skip 并打印原因；CI 全跑）。
+  Go / Rust / Java 的编译与运行证据**只能来自 CI**，本轮 CI 记录见最终报告
+  `docs/plugin-communication-report.md`。
+
