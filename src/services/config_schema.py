@@ -60,6 +60,9 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     # ---------- 基础配置 ----------
     "BOT_QQ": ("Bot", "int", False, False, "机器人 QQ 号（需重启）"),
     "QQ_PROTOCOL": ("Bot", "str", False, False, "协议端：onebot（NapCat 等）/ milky（Milky 协议端）"),
+    # 出站段按哪个客户端档案收敛（空 = 不收敛，行为与历史一致）；取值见 docs/client-profiles.md
+    "CLIENT_PROFILE": ("Bot", "str", False, True,
+                       "出站段收敛的客户端档案：空 / go-cqhttp / napcat / llbot / onebot11:<client> / milky:<client>"),
     "MILKY_API_BASE": ("Bot", "str", False, False, "Milky 协议端 HTTP 根（/api/<action>）"),
     "MILKY_EVENT_URL": ("Bot", "str", False, False, "Milky 事件推送 WebSocket（/event）"),
     "MILKY_ACCESS_TOKEN": ("Bot", "str", False, False, "Milky Bearer 鉴权 token"),
