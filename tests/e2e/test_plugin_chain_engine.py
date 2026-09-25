@@ -17,8 +17,12 @@ import pytest
 
 from tests.e2e import _harness as H
 
+#: 页面/插件自报的 runtime = 语言名
 TARGET_RUNTIME = {"go": "go", "java": "java", "rust": "rust", "typescript": "typescript",
                   "python": "python"}
+#: 注册表里的 runtime = manifest 的 runtime（exec runtime 的语言插件都写 "exec"）
+MANIFEST_RUNTIME = {"go": "exec", "java": "exec", "rust": "exec", "typescript": "exec",
+                   "python": "python"}
 
 
 async def _deploy_fixture(rig):
@@ -128,4 +132,4 @@ async def test_engine_chain(chain, rig_ctx, tmp_path):
         assert snapshot["by_route"].get("core", 0) >= 1, snapshot
         instances = {i["plugin_id"]: i for i in snapshot["instances"]}
         assert instances[ids["target"]]["state"] == "READY"
-        assert instances[ids["target"]]["runtime"] == TARGET_RUNTIME[spec["target_lang"]]
+        assert instances[ids["target"]]["runtime"] == MANIFEST_RUNTIME[spec["target_lang"]]

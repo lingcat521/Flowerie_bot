@@ -23,6 +23,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/lingcat521/Flowerie_bot/sdk/go/flowerie"
@@ -105,15 +106,49 @@ func main() {
 	app.plugin.On("test.event", app.onTestEvent)
 	app.plugin.OnMessage(app.onMessage)
 
-	// §23 WebUI：与其它四种语言**同一套** API（plugin.WebUI().Page）。
+	// §23/§12 WebUI：与其它四种语言**同一套** API（plugin.WebUI().Page / .Action）。
 	// HTML 文件页的模板变量（manifest 的 web_ui.entry，与其它语言同名同义）。
 	app.plugin.RegisterHook("webui_page", func(args ...any) any {
-		return map[string]any{"vars": app.webuiVars(app.pluginID())}
+		pluginID := app.pluginID()
+		if len(args) > 0 && textOf(args[0]) == "communication" {
+			return map[string]any{"vars": app.communicationVars(pluginID)}
+		}
+		return map[string]any{"vars": app.webuiVars(pluginID)}
 	})
-	// 插件渲染页：Plugin 取受控 context 的 plugin id，Runtime 取 SDK 值。
+	// 插件渲染页（index / communication）：Plugin 取受控 context 的 plugin id。
 	app.plugin.WebUI().Page(func(args map[string]any) any {
 		pluginID := ctxPluginID(args, app.pluginID())
+		if pageID(args["page"]) == "communication" {
+			context, _ := args["context"].(map[string]any)
+			form := contextForm(context)
+			if isCallAction(context) && len(form) > 0 {
+				vars := app.applyCall(form, pluginID)
+				return map[string]any{"html": app.communicationHTML(vars), "vars": vars}
+			}
+			vars := app.communicationVars(pluginID)
+			return map[string]any{"html": app.communicationHTML(vars), "vars": vars}
+		}
 		return map[string]any{"html": webuiHTML(pluginID), "vars": app.webuiVars(pluginID)}
+	}).Action(func(args map[string]any) any {
+		// 调用页的 POST（按钮 name=plugin_action value=call）-> 真调用 -> 重渲染。
+		pluginID := ctxPluginID(args, app.pluginID())
+		action := textOf(args["action"])
+		if pageID(args["page"]) != "communication" {
+			return map[string]any{"ok": false, "error": "未知动作: " + action}
+		}
+		form, _ := args["form"].(map[string]any)
+		if form == nil {
+			form = map[string]any{}
+		}
+		var vars map[string]any
+		if action == "call" || stringField(form, "plugin_action") == "call" {
+			vars = app.applyCall(form, pluginID)
+		} else {
+			vars = app.communicationVars(pluginID)
+			vars["message"] = "未知动作: " + action
+		}
+		return map[string]any{"html": app.communicationHTML(vars), "vars": vars,
+			"message": vars["message"]}
 	})
 
 	if err := app.plugin.Run(); err != nil {
@@ -251,6 +286,172 @@ func webuiHTML(pluginID string) string {
 		"<dt>Plugin</dt><dd class=\"plugin\">" + html.EscapeString(pluginID) + "</dd>" +
 		"<dt>Runtime</dt><dd class=\"runtime\">" + html.EscapeString(runtimeName) + "</dd>" +
 		"</dl>"
+}
+
+// ---------------- WebUI 调用页（任务书《plugin_to_webui》§12/§28） ----------------
+// 页面契约见 tests/e2e/README.md §3：元素 id 就是断言契约；零 JS：form POST + 服务端渲染。
+// 真调用：plugin.call -> 引擎 Core Router -> **目标插件进程** -> 结果回本页（失败也如实显示）。
+// 关联 id：随请求发给目标、由目标原样带回（echo 原样回 params 即往返证明）；拿不到就如实标注。
+
+const (
+	defaultRequest = `{"hello": "world"}` // 默认请求（与 tests/e2e 的链路请求同形）
+	callTimeoutMs  = 2500                // 引擎给 webui.action 的上限是 4s，这里留足余量
+	traceKey       = "_e2e_trace"        // 随请求往返的关联 id（与 tests/e2e 夹具插件同一约定）
+	unreturned     = "（对端未回传）"
+)
+
+var (
+	callSeq     uint64
+	commMethods = []string{"ping", "echo", "get_info", "no_such_method"}
+	commRoutes  = []string{"auto", "core", "local"}
+)
+
+// newCallID 本页这次调用的关联 id（插件侧生成）。
+func newCallID() string {
+	seq := atomic.AddUint64(&callSeq, 1)
+	return fmt.Sprintf("%x%02x", time.Now().UnixNano(), seq)
+}
+
+// pageID 取 page 的 id（引擎给的是对象 {id,title,description}）。
+func pageID(page any) string {
+	if obj, ok := page.(map[string]any); ok {
+		if id, ok := obj["id"].(string); ok && id != "" {
+			return id
+		}
+	}
+	if text, ok := page.(string); ok && text != "" {
+		return text
+	}
+	return "index"
+}
+
+// contextForm 引擎若把表单塞进 context（当前版本不塞；webui.action 的 form 才是常规通道）。
+func contextForm(context map[string]any) map[string]any {
+	if form, ok := context["form"].(map[string]any); ok {
+		return form
+	}
+	return map[string]any{}
+}
+
+func isCallAction(context map[string]any) bool {
+	request, _ := context["request"].(map[string]any)
+	action, _ := request["action"].(string)
+	return action == "call"
+}
+
+// stringField 取 map 里的字符串字段（缺失/类型不对一律空串）。
+func stringField(obj map[string]any, key string) string {
+	value, _ := obj[key].(string)
+	return value
+}
+
+// engineBlock 对端回传的引擎字段：_engine 块（夹具约定）与顶层平铺（README §3 约定）都认。
+func engineBlock(result any) map[string]any {
+	obj, ok := result.(map[string]any)
+	if !ok {
+		return map[string]any{}
+	}
+	out := map[string]any{}
+	if engine, ok := obj["_engine"].(map[string]any); ok {
+		for key, value := range engine {
+			out[key] = value
+		}
+	}
+	for _, key := range []string{"request_id", "trace_id", "route"} {
+		if value, ok := obj[key]; ok && value != nil && out[key] == nil {
+			out[key] = value
+		}
+	}
+	return out
+}
+
+// observedRuntime 目标插件**自报**的 runtime：先看回包，再问一次 get_info；拿不到就留空。
+func (m *minimal) observedRuntime(target, routePolicy string, result any) string {
+	if obj, ok := result.(map[string]any); ok {
+		if runtime := stringField(obj, "runtime"); runtime != "" {
+			return runtime
+		}
+	}
+	info, err := m.plugin.Call(target, "get_info", map[string]any{},
+		flowerie.WithTimeout(callTimeoutMs), flowerie.WithRoute(routePolicy))
+	if err != nil {
+		return ""
+	}
+	if obj, ok := info.(map[string]any); ok {
+		return stringField(obj, "runtime")
+	}
+	return ""
+}
+
+// callTarget 真调用目标插件；任何失败都变成页面可渲染的结构化结果。
+func (m *minimal) callTarget(target, method, requestText, routePolicy string) map[string]any {
+	payload := map[string]any{}
+	if trimmed := strings.TrimSpace(requestText); trimmed != "" {
+		if err := json.Unmarshal([]byte(trimmed), &payload); err != nil {
+			return map[string]any{"response_ok": "error", "error_code": "INVALID_ARGUMENT",
+				"error": "INVALID_ARGUMENT: request 不是合法 JSON: " + err.Error()}
+		}
+	}
+	if payload == nil {
+		return map[string]any{"response_ok": "error", "error_code": "INVALID_ARGUMENT",
+			"error": "INVALID_ARGUMENT: request 必须是 JSON 对象"}
+	}
+	callID := newCallID()
+	params := map[string]any{}
+	for key, value := range payload {
+		params[key] = value
+	}
+	params[traceKey] = callID // 发给目标；echo 原样带回 -> 证明回包来自目标进程
+	result, err := m.plugin.Call(target, method, params,
+		flowerie.WithTimeout(callTimeoutMs), flowerie.WithRoute(routePolicy))
+	if err != nil {
+		code := errorCode(err)
+		body := map[string]any{"ok": false, "error": map[string]any{
+			"code": code, "message": err.Error()}}
+		return map[string]any{"response": jsonString(body), "response_ok": "error",
+			"error_code": code, "error": code + ": " + err.Error(),
+			"request_id": callID, "request_id_source": "插件侧 call id（调用失败）",
+			"trace_id": callID, "trace_id_source": "插件侧（调用失败，无回包）"}
+	}
+	traceBack := ""
+	if obj, ok := result.(map[string]any); ok {
+		traceBack = stringField(obj, traceKey)
+		if traceBack == "" {
+			traceBack = stringField(obj, "trace_id")
+		}
+	}
+	engine := engineBlock(result)
+	engineRequestID := stringField(engine, "request_id")
+	engineTraceID := stringField(engine, "trace_id")
+	engineRoute := stringField(engine, "route")
+	traceID := engineTraceID
+	traceSource := "引擎（目标插件回传）"
+	if traceID == "" {
+		traceID = traceBack
+		traceSource = "目标插件原样回传（随请求往返）"
+	}
+	if traceID == "" {
+		traceID = callID
+		traceSource = "插件侧（无回包）"
+	}
+	requestID := engineRequestID
+	requestSource := "引擎（目标插件回传）"
+	if requestID == "" {
+		requestID = callID
+		requestSource = "插件侧 call id"
+	}
+	route := engineRoute
+	routeSource := "引擎（目标插件回传）"
+	if route == "" {
+		route = routePolicy
+		routeSource = "调用方请求的路由策略"
+	}
+	return map[string]any{"response": jsonString(map[string]any{"ok": true, "result": result}),
+		"response_ok": "ok",
+		"target_runtime": m.observedRuntime(target, routePolicy, result),
+		"request_id": requestID, "request_id_source": requestSource,
+		"trace_id": traceID, "trace_id_source": traceSource,
+		"route": route, "route_source": routeSource}
 }
 
 // ---------------- §五/§六 命令 ----------------

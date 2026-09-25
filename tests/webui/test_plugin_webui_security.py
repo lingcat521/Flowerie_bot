@@ -9,7 +9,10 @@ import re
 
 import pytest
 
-from tests.webui.conftest import SECRETS, TRAVERSAL_PATHS  # 绝对导入：避免与 tests/e2e/conftest.py 撞名（整套 pytest 同跑时）
+from tests.webui.conftest import (  # 绝对导入：避免与 tests/e2e/conftest.py 撞名（整套 pytest 同跑时）
+    SECRETS,
+    TRAVERSAL_PATHS,
+)
 
 MANIFEST_MARKERS = ('"id"', '"runtime"', '"web_ui"', "plugin_webui_test")
 PASSWD_MARKERS = ("root:x:0:0", "root:*)", "/bin/sh")

@@ -18,7 +18,8 @@
     "static": "static",
     "entry": "webui_page",
     "pages": [
-      { "id": "index", "title": "Index", "render": "plugin" }
+      { "id": "index", "title": "Index", "render": "plugin" },
+      { "id": "communication", "title": "Communication", "render": "plugin" }
     ]
   }
 }
