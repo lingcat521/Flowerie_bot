@@ -2,7 +2,7 @@ import json
 import os
 import time
 from datetime import datetime
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.config import Settings
 from src.core.sanitizer import sanitize_untrusted_text
@@ -22,11 +22,15 @@ class MessageAssembler:
     注意：辅助方法返回"要追加的文本块"（字符串不可变，不能原地改外层变量）。
     """
 
-    def __init__(self, config: Settings, ai_client: AIClient, file_parser: FileParser, global_state: GlobalState):
+    def __init__(self, config: Settings, ai_client: AIClient, file_parser: FileParser,
+                 global_state: GlobalState, resource_fetcher: Optional[Any] = None):
         self.config = config
         self.ai_client = ai_client
         self.file_parser = file_parser
         self.global_state = global_state
+        # 资源取数（Gate R）：**协议无关**的取数出口，由组合根注入（OneBot/Milky 各自的实现在 Adapter 层）。
+        # Core 只做"拿资源引用 -> 交给 fetcher -> 把字节交给解码器"，不认识协议侧的 id 字段名。
+        self.resource_fetcher = resource_fetcher
 
     async def assemble(
         self,
@@ -280,7 +284,7 @@ class MessageAssembler:
         if pending_key not in self.global_state.pending_files:
             return ""
         file_info = self.global_state.pending_files.pop(pending_key)
-        file_id = file_info.get("file_id")
+        resource = file_info.get("resource")          # 边界层给的统一资源引用（协议中立）
         file_name = file_info.get("file_name", "未命名文件")
         try:
             file_size = int(file_info.get("file_size") or 0)
@@ -290,8 +294,11 @@ class MessageAssembler:
         # 大小门槛与解码兜底上限对齐（MAX_FILE_DOWNLOAD_BYTES），避免"通知说 1MB 内但实际超限"
         size_limit = max(1, int(getattr(self.config, "MAX_FILE_DOWNLOAD_BYTES", 2 * 1024 * 1024)))
 
-        if file_id and file_size <= size_limit:
-            file_content, success = await self.file_parser.fetch_and_parse_file(file_id, file_name)
+        if resource is not None and file_size <= size_limit:
+            content_bytes, fetched = await self._fetch_resource(resource)
+            file_content, success = ("", False)
+            if fetched and content_bytes:
+                file_content, success = self.file_parser.decode_bytes(content_bytes, file_name)
             if success and file_content:
                 # 代码层防注入：文件内容清洗后再进上下文（文件是最高危注入载体）
                 file_content, inject_hit = sanitize_untrusted_text(file_content)
@@ -303,8 +310,22 @@ class MessageAssembler:
         elif file_size > size_limit:
             logger.warning(f"File too large, skipped: {file_name} ({file_size} bytes)")
         else:
-            logger.debug(f"No file_id for pending file: {file_name}")
+            logger.debug(f"No resource for pending file: {file_name}")
         return ""
+
+    async def _fetch_resource(self, resource: Any) -> Tuple[bytes, bool]:
+        """取资源字节（Gate R）：**Core 不认识协议**——取数由注入的 fetcher 完成。
+
+        未接线 fetcher 时明确失败并留日志（不静默返回空内容，也不去猜协议）。
+        """
+        if self.resource_fetcher is None:
+            logger.warning("resource_fetcher 未接线，跳过资源取数")
+            return b"", False
+        try:
+            return await self.resource_fetcher.fetch(resource)
+        except Exception as exc:  # noqa: BLE001 - 取数失败不得打断消息组装
+            logger.warning(f"Resource fetch failed: {exc}")
+            return b"", False
 
     # ---------- 存档（ARCHIVE_ENABLED 开关，默认关——隐私优先） ----------
     def _archive(self, group_id: int, user_id: int, text: str, raw_time: int) -> None:

@@ -55,71 +55,43 @@ class FileParser:
             return text[:limit] + "\n...(内容过长已截断)"
         return text
 
-    # ========== 新增：通过 NapCat HTTP API 获取并解析文件 ==========
-    async def fetch_and_parse_file(self, file_id: str, file_name: str) -> Tuple[str, bool]:
-        """
-        调用 NapCat /get_file 接口获取文件内容，并调用 decode_napcat_file_response 解析
-        返回: (提取的文本内容, 是否成功)
-        """
-        if not file_id:
-            return "", False
+    # ========== 通用：URL 下载（协议无关；Gate R 的 ResourceRef(URL) 走这里） ==========
+    async def fetch_url_bytes(self, url: str, max_bytes: int = 2 * 1024 * 1024) -> Tuple[bytes, bool]:
+        """下载 URL 内容（流式 + 字节上限；任何异常都返回 (b"", False)，不抛给调用方）。
 
+        协议无关：Milky 的临时资源链接、以及未来的图片/文件直链都复用这里。
+        """
         try:
             client = self._get_client(timeout=30)
-            # 流式读取 + 字节兜底上限：/get_file 返回的是 base64 文本（≈原始字节 × 4/3），
-            # 超上限立刻中止，防止 NapCat 返回超大内容时整包载入内存
-            max_bytes = int(getattr(self.config, "MAX_FILE_DOWNLOAD_BYTES", 2 * 1024 * 1024))
-            cap = max_bytes * 2 + 4096  # base64 上限 + 余量
             body = b""
-            rejected = False
-            async with client.stream(
-                "GET",
-                f"{self.config.HTTP_API_BASE}/get_file",
-                params={"file_id": file_id},
-            ) as resp:
+            async with client.stream("GET", url) as resp:
                 if resp.status_code != 200:
-                    logger.error(f"Fetch file {file_id} failed: HTTP {resp.status_code}")
-                    return "", False
-                cl = resp.headers.get("content-length")
-                if cl and cl.isdigit() and int(cl) > cap:
-                    rejected = True
-                else:
-                    async for chunk in resp.aiter_bytes():
-                        body += chunk
-                        if len(body) > cap:
-                            rejected = True
-                            body = b""
-                            break
-            if rejected:
-                logger.error(f"Fetch file {file_id} response exceeds limit ({cap} bytes), aborted")
-                return "", False
-
-            # 调用已有的解码方法
-            return self.decode_napcat_file_response(body.decode("utf-8", errors="ignore"), file_name)
-
+                    logger.error(f"Fetch url failed: HTTP {resp.status_code}")
+                    return b"", False
+                async for chunk in resp.aiter_bytes():
+                    body += chunk
+                    if len(body) > max_bytes:
+                        logger.error(f"Fetch url response exceeds limit ({max_bytes} bytes), aborted")
+                        return b"", False
+            return body, True
         except httpx.TimeoutException:
-            logger.error(f"Fetch file {file_id} timeout")
-            return "", False
+            logger.error("Fetch url timeout")
+            return b"", False
         except httpx.HTTPError as e:
-            logger.error(f"Fetch file {file_id} HTTP error: {e}")
-            return "", False
+            logger.error(f"Fetch url HTTP error: {e}")
+            return b"", False
         except Exception as e:
-            logger.exception(f"Fetch file {file_id} unexpected error: {e}")
-            return "", False
+            logger.exception(f"Fetch url unexpected error: {e}")
+            return b"", False
 
-    # ========== 解码 NapCat 文件响应 ==========
-    def decode_napcat_file_response(self, response_text: str, file_name: str) -> Tuple[str, bool]:
-        """从 /get_file 返回的 JSON 中提取 base64 并解码"""
+    # ========== 解码：字节 -> 文本（协议无关；Gate R 的第三步） ==========
+    def decode_bytes(self, content_bytes: bytes, file_name: str) -> Tuple[str, bool]:
+        """字节 -> 文本：**纯解码**，不关心资源从哪来、属于哪个协议。
+
+        取数（协议差异）在 Adapter 层的 ResourceFetcher；本方法只做格式分派与安全预检
+        （大小上限、xlsx zip 炸弹预检、PDF 页数/Excel 单元格/CSV 行数上限）。
+        """
         try:
-            data = json.loads(response_text)
-            if data.get("retcode") != 0:
-                return "", False
-            file_data = data.get("data", {})
-            b64 = file_data.get("base64", "")
-            if not b64:
-                return "", False
-            content_bytes = base64.b64decode(b64)
-            # 兜底字节上限（防 NapCat 返回超预期内容，不信任上传通知里的 file_size）
             max_bytes = getattr(self.config, "MAX_FILE_DOWNLOAD_BYTES", 2 * 1024 * 1024)
             if len(content_bytes) > max_bytes:
                 logger.error(f"File decode bytes exceed limit: {len(content_bytes)} > {max_bytes}")
@@ -225,7 +197,32 @@ class FileParser:
             return "", False
         except Exception as e:
             logger.error(f"File decode error: {e}")
+        except Exception as e:
+            logger.error(f"File decode error: {e}")
             return "", False
+
+    # ========== [兼容保留] NapCat /get_file 的 JSON(base64) 响应 -> 文本 ==========
+    def decode_napcat_file_response(self, response_text: str, file_name: str) -> Tuple[str, bool]:
+        """[兼容保留] 新路径：取数在 Adapter（src/adapters/onebot/resource_fetcher.py），
+        本方法只为老调用方保留 —— 仍然是"非 JSON 一律拒绝、绝不当成文件内容"的严格口径。
+        """
+        try:
+            data = json.loads(response_text)
+        except json.JSONDecodeError:
+            logger.error("NapCat get_file 响应不是合法 JSON，已拒绝")
+            return "", False
+        if not isinstance(data, dict) or data.get("retcode") != 0:
+            return "", False
+        payload = data.get("data")
+        b64 = payload.get("base64", "") if isinstance(payload, dict) else ""
+        if not b64:
+            return "", False
+        try:
+            content_bytes = base64.b64decode(b64)
+        except Exception as e:
+            logger.error(f"base64 decode error: {e}")
+            return "", False
+        return self.decode_bytes(content_bytes, file_name)
 
     # ========== 提取合并转发消息 ==========
     async def extract_forward_messages(self, message_array: List[Dict]) -> Tuple[str, List[str], bool]:

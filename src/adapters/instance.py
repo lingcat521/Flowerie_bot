@@ -153,7 +153,8 @@ def make_instance(instance_id: str, config: Any, *, channel: Any = None,
     proto = "milky" if proto == "milky" else "onebot"
     qq = bot_qq if bot_qq is not None else getattr(config, "BOT_QQ", None)
     if channel is None and session is not None:
-        from src.transport.action_channels import make_action_channel   # 懒 import：本模块不依赖 aiohttp
+        # 懒 import：本模块不依赖 aiohttp
+        from src.transport.action_channels import make_action_channel
 
         channel = make_action_channel(config, session, ws_sender)
     return AdapterInstance(

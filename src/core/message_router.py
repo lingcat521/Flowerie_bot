@@ -70,6 +70,7 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
         plugin_manager: Optional["PluginManager"] = None,
         event_parser: Optional[Any] = None,
         blossom_memory: Optional[Any] = None,
+        resource_fetcher: Optional[Any] = None,
     ):
         self.config = config
         self.ai_client = ai_client
@@ -95,7 +96,10 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
         # 每日梗总结任务：None 或未启用时不注册
         self.meme_summary = meme_summary
         # 消息组装（文本/识图/转发/卡片/文件/存档）→ MessageAssembler
-        self.assembler = MessageAssembler(config, ai_client, file_parser, self.global_state)
+        # 资源取数出口（Gate R）：协议无关，由组合根注入（Adapter 层实现）
+        self.resource_fetcher = resource_fetcher
+        self.assembler = MessageAssembler(config, ai_client, file_parser, self.global_state,
+                                          resource_fetcher=resource_fetcher)
         # 指令处理 → CommandHandler
         self.commands = CommandHandler(config, sender, memory_manager, prompt_manager)
         # AI 预算/限速 → BudgetManager（外部可注入共享实例，供每日总结等复用同一计数）
@@ -500,7 +504,9 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
             pending_key = f"{user_id}_{group_id}"
             self.global_state.pending_files[pending_key] = {
                 "file_name": file_data.get("name", "未命名文件"),
-                "file_id": file_data.get("id", ""),
+                # 统一资源引用（Gate R）：边界层已把各协议的资源 id 归一成 ResourceRef ——
+                # Core 不再认识协议侧的 id 字段名（取数交给注入的 resource_fetcher）
+                "resource": file_data.get("resource"),
                 "file_size": file_data.get("size", 0),
                 "busid": file_data.get("busid", 0),
                 "user_id": user_id,

@@ -156,5 +156,9 @@ def test_upload_boundary_fields():
                        "user_id": 9, "time": 3000,
                        "file": {"name": "a.txt", "id": "f1", "size": 1024, "busid": 0}})
     assert ev.notice_kind == "group_upload"
-    assert ev.notice_file == {"name": "a.txt", "id": "f1", "size": 1024, "busid": 0}
+    # 协议原字段保持不变 + 新增协议中立的 resource（Gate R / ADR-007）
+    assert {k: v for k, v in ev.notice_file.items() if k != "resource"} == {
+        "name": "a.txt", "id": "f1", "size": 1024, "busid": 0}
+    assert ev.notice_file["resource"].ref == "f1"
+    assert ev.notice_file["resource"].origin == "onebot11"
     assert ev.group_id == 7 and ev.actor_id == 9 and ev.timestamp == 3000

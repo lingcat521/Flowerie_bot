@@ -13,6 +13,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from src.adapters.proto import InternalEvent, as_event_dict
+from src.adapters.resource import attach_resource
 
 
 def _normalize_array(raw: Any) -> List[Dict[str, Any]]:
@@ -76,6 +77,15 @@ def _normalize_file_segment(data: Dict[str, Any]) -> Dict[str, Any]:
         "url": str(data.get("url") or ""),
         "path": str(data.get("path") or ""),
     }
+
+def _notice_file(raw: Any, origin: str) -> Dict[str, Any]:
+    """上传通知里的文件对象：保持原字段不变，**新增**统一 ResourceRef（Gate R）。
+
+    Core 只读 `resource`（协议中立），因此"OneBot 用 file{id,name,size}"与
+    "Milky 用 file_id/file_name/file_size"的差异被挡在 Adapter 层。
+    """
+    return attach_resource(dict(raw), origin) if isinstance(raw, dict) else {}
+
 
 def _scene_of(kind: str, scope: str, raw: Dict[str, Any]) -> str:
     """会话类型归一化：group | friend | temp | stranger（跨协议同一套名字）。
@@ -195,11 +205,9 @@ class OneBotEventParser:
         event.operator_id = raw.get("operator_id") or actor_id
         event.target_id = raw.get("target_id")
         if kind == "notice" and str(raw.get("notice_type") or "") == "group_upload":
-            file_raw = raw.get("file")
-            event.notice_file = dict(file_raw) if isinstance(file_raw, dict) else {}
+            event.notice_file = _notice_file(raw.get("file"), "onebot11")
         elif kind == "notice" and raw.get("file") is not None:
-            file_raw = raw.get("file")
-            event.notice_file = dict(file_raw) if isinstance(file_raw, dict) else {}
+            event.notice_file = _notice_file(raw.get("file"), "onebot11")
         if kind == "message":
             self._fill_message(event, raw)
         elif kind == "notice":

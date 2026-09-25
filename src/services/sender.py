@@ -54,6 +54,14 @@ class Sender:
         """统一出口：协议差异（OneBot HTTP / OneBot WS / Milky）全部在 Adapter 通道内（Gate B/O）。"""
         return await self._ensure_channel().post(endpoint, payload, timeout)
 
+    async def call_api(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
+        """通用协议调用（公开接口）：供 Adapter 层的资源取数等使用。
+
+        与 `_post` 完全同路径（同一通道、同一协议映射），只是名字表达"这是给外部组合用的"。
+        （Gate R：OneBot `/get_file`、Milky `get_resource_temp_url` 都经这里调用。）
+        """
+        return await self._post(endpoint, payload, timeout)
+
     async def send_group_message_with_image(self, group_id: int, text: str, image_path: str,
                                             retries: int = 2) -> bool:
         """发送文字 + 本地图片（段数组消息，OneBot11 image 段用 file:// 绝对路径）。"""

@@ -14,7 +14,7 @@
 | 3 | Adapter Contract 合规率（ACC）| **100%**（48/48；onebot11、milky、onebot12、testproto 各 12 项）| 100% | ✅ PASS | 契约夹具 src/adapters/contract.py（新增协议只需登记一行即自动获得 12 项）|
 | 4 | Unknown Data Safety（段 + 事件）| **20/20** | 100% | ✅ PASS | `tests/test_unknown_tolerance.py`（10 段 × 双解析器 + 10 事件 × 双协议）|
 | 4b | Real Integration Coverage（实机验证覆盖率）| **0%** | ≥90% | 🚫 BLOCKED BY EXTERNAL DEPENDENCY | 设备控制未授权（无障碍/ADB 两路均 denied），且无运行中的协议端；详见 docs/protocol-gap-closure.md §6 |
-| 5 | Existing Regression | **1093 passed / 19 failed（全为本地缺依赖，与本轮改动无关）/ 14 skipped / 32 collection errors（同样缺依赖）**；新增失败 0 | 100% | ✅ PASS（就"零新增失败"而言）| 本地全量 pytest；待 Gate U 的 15 项能力矩阵补全 |
+| 5 | Existing Regression | **1112 passed / 19 failed（全为本地缺依赖，与本轮改动无关）/ 15 skipped / 32 collection errors（同样缺依赖）**；新增失败 0 | 100% | ✅ PASS（就"零新增失败"而言）| 本地全量 pytest；待 Gate U 的 15 项能力矩阵补全 |
 | 6 | CI | 见下方"CI 记录" | 100% success | ⏳ 进行中 | GitHub Actions: Push on main / Acceptance / CI |
 | 7 | Plugin Protocol Imports | **0** | 0 | ✅ PASS | `src/plugins/manager.py` 移除 `OneBotAdapter` 导入，改组合根注入；`plugin_sdk/` 无协议 import |
 | 8 | TestProtocol 不修改 Core | **0 处修改**：虚拟协议接入的 6 个改动文件全部在 Adapter 层与 tests/，并有一条测试直接扫 Core/Services/SDK/插件源码钉住 | 必须 | ✅ PASS | ADR-004；实验 8 用陌生协议事件直接驱动 `src/core/message_assembler.py` 零改动运行 |
@@ -40,11 +40,11 @@
 | O | Action 映射 | `src/services` 无协议 action 名与分支（撤回/发送差异在 `src/transport/action_channels.py`）| Core 无协议 action | ✅ PASS |
 | P | Transport 解耦 | `src/core` 传输库 import = **0**；`websockets` 仅出现在 `src/transport/` | 0 | ✅ PASS |
 | Q | Transport Contract | **8/8**：`WebSocketTransport` 8 implemented；`HTTPTransport` 6 implemented + 2 N/A（附理由）= 8 covered | 8 项 | ✅ PASS |
-| R | Resource 抽象 | 未建立（现有 `ResourceRef` 概念未落地）| 3/3 | ⬜ TODO |
+| R | Resource 抽象 | **3/3**：local path / URL / protocol_id 全部进统一 `ResourceRef`；OneBot `/get_file`（base64 或本地路径）与 Milky `get_resource_temp_url`（两步，[CODE] 证据）按 `origin` 分派；Core 里 `file_id`/`resource_id` = **0**（AST 扫描，含反向对照）| 3/3 | ✅ PASS |
 | S | 多实例 | **3/3**：OneBot11 #1 + OneBot11 #2 + Milky #1 并存；并发 20 轮 × 3 实例串台 = **0**；独立生命周期/配置/发送；源码里禁止单例出现 0 次（AST 扫描）| 3/3 | ✅ PASS |
 | T | 插件协议隔离 | `src/plugins/manager.py` = 0；`plugin_sdk/` = 0 | 0 | ✅ PASS |
 | U | 真实现有功能零回归 | 能力矩阵未建；本地全量 pytest 零新增失败 | 15/15 | ⚠️ PARTIAL |
-| V | 现有测试不退化 | 新增测试 148 个（G1–G4/G8 = 56、Gate JKL = 43、Gate D 契约 +12、Gate E/F = 11、Gate Q = 19、Gate S = 7）；删除 0；失败集合与基线一致（19 failed / 14 skipped，全为本地缺依赖）| 新增失败 = 0 | ✅ PASS |
+| V | 现有测试不退化 | 新增测试 161 个（G1–G4/G8 = 56、Gate JKL = 43、Gate D 契约 +12、Gate E/F = 11、Gate Q = 19、Gate S = 7、Gate R = 13）；删除 0；失败集合与基线一致（19 failed / 15 skipped，全为本地缺依赖）。**2 个既有用例按 ADR-007 的新边界契约更新**（`notice_file` 新增 `resource`；原字段断言逐字保留，强度不变）| 新增失败 = 0 | ✅ PASS |
 | W | CI | 见 CI 记录 | 100% | ⏳ |
 | X | Lint | ruff（CI）：0 违规；本地 flake8 F 规则 0、import 顺序自检 0 | 新增违规 = 0 | ✅ PASS |
 | Y | 源码证据覆盖 | 新结论均有 `[CODE]/[DOC]/[FIXTURE]` 标注；无证据的支持声明 = 0 | 0 | ✅ PASS |
@@ -54,9 +54,9 @@
 
 | 指标 | 值 |
 | :--- | :--- |
-| 测试文件 | 138（新增 4：`test_temp_scene`、`test_request_events`、`test_media_segments`、`test_reply_inline`、`test_onebot12_adapter`、`test_fixtures_corpus`、`test_protocol_roundtrip`、`test_unknown_tolerance`、`test_architecture_gates` 等）|
+| 测试文件 | 139（新增 4：`test_temp_scene`、`test_request_events`、`test_media_segments`、`test_reply_inline`、`test_onebot12_adapter`、`test_fixtures_corpus`、`test_protocol_roundtrip`、`test_unknown_tolerance`、`test_architecture_gates` 等）|
 | fixture 语料 | 20 个（含 `onebot12/message_group.json`；全部带 `_provenance`）|
-| 本地全量 | 1093 passed / 19 failed（缺依赖）/ 14 skipped / 32 collection errors（同样缺依赖）|
+| 本地全量 | 1112 passed / 19 failed（缺依赖）/ 15 skipped / 32 collection errors（同样缺依赖）|
 | 迁移/新增模块 | `src/transport/`（3 迁移 + 通道）、`src/adapters/onebot12_parser.py`、`src/adapters/testkit/`（Gate E/F 虚拟协议）、`docs/architecture/`（ADR-001 ~ 004）|
 
 ## 四、CI 记录
@@ -95,7 +95,8 @@
 | `6b09d4e` | feat(gate-d) 契约测试 36 项 + 解析器鲁棒性修复 | **success** | **success** | success |
 | `1178592` | feat(gate-ef) 虚拟协议 + PEC=0 + ADR-004 | **success** | **success** | success |
 | `96bc7b6` | feat(gate-q) TransportContract 8 项 + WS/HTTP 参考实现 | failure | failure | success |
-| 本轮 | fix(gate-q) B024 + Gate S 多实例 + ADR-006 | 待记录 | 待记录 | 待记录 |
+| `8769d52` | fix(gate-q) B024 + Gate S 多实例 + ADR-006 | failure | failure | success |
+| 本轮 | feat(gate-r) Resource 抽象 + ADR-007 | 待记录 | 待记录 | 待记录 |
 
 > **记录规则**：只写实际查到的结论（逐提交从 GitHub API 读取），未查到就写 `待记录`，**不写成 success**。
 > **红提交如实保留**：上表 8 个 failure 的原因分别是 ① ruff I001（import 顺序，跨 6 个提交，
@@ -110,3 +111,6 @@
 > 修法不是加 `@abstractmethod`（那会让"把某项标 N/A 的 HTTPTransport"无法实例化），而是**不继承 ABC**；
 > 教训：**ruff 的 B 规则比 flake8 默认更严**，本地 flake8 代理只跑 `--select=F`，抓不到 B024 ——
 > 涉及类继承/异常处理的改动要额外自查 flake8-bugbear 的规则面（B0xx）。
+> `8769d52`（Gate S）红在 ruff **I001**，位置是 `src/adapters/instance.py` 的**行内注释间距**：
+> isort 会把 `import x   # 注释`（三个空格）规范成两个空格，ruff 因此判"un-formatted"。
+> 修法：注释放到独立行；本地检查器已加"import 行内注释间距"扫描。**教训：I001 不只是排序，还包括格式。**

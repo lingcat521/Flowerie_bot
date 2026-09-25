@@ -39,6 +39,7 @@ from src.adapters.onebot_parser import (
     _normalize_xml_segment,
 )
 from src.adapters.proto import InternalEvent, as_event_dict, to_int
+from src.adapters.resource import attach_resource
 
 # Milky 顶层事件类型 → 归一化 kind。
 # ⚠️ 规范（common.ts 的 Event 联合，实测 **21 种**）里**没有 notice_receive** —— 通知类事件各有
@@ -156,9 +157,9 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
             if _g is not None and str(_g) != "":
                 ev.group_id = _int_or(_g, ev.group_id)
             ev.scope = "group"
-            ev.notice_file = {"id": str(data.get("file_id") or ""),
-                              "name": str(data.get("file_name") or ""),
-                              "size": data.get("file_size")}
+            ev.notice_file = attach_resource({"id": str(data.get("file_id") or ""),
+                                             "name": str(data.get("file_name") or ""),
+                                             "size": data.get("file_size")}, "milky")
         else:
             ev.actor_id = _int_or(sender_id)
             ev.notice_kind = data.get("notice_type") or event_type
@@ -167,7 +168,7 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
             if data.get("operator_id"):
                 ev.operator_id = _int_or(data.get("operator_id"))
             if data.get("file"):
-                ev.notice_file = dict(data["file"])
+                ev.notice_file = attach_resource(dict(data["file"]), "milky")
     # lifecycle / unknown 仅保留基础字段（上游按 kind 处理）
 
     # 稳定标识（与 OneBot 解析器同规）

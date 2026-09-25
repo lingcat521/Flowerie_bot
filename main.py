@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from src.adapters import make_adapters
 from src.adapters.onebot.adapter import OneBotAdapter
+from src.adapters.resource import build_resource_fetcher
 from src.config import load_config, validate_config
 from src.core.message_router import MessageRouter
 from src.core.policy_engine import PolicyEngine
@@ -201,6 +202,13 @@ async def main():
                 plugin_manager=plugin_manager, group_nicknames=group_nicknames,
             )
         file_parser = FileParser(config)
+        # 资源取数（Gate R）：三种资源形态一次接上；协议差异（OneBot /get_file、Milky 临时 URL）在 Adapter 层，
+        # Core 只拿 ResourceRef，因此不认识任何协议侧的 id 字段名。
+        resource_fetcher = build_resource_fetcher(
+            call_api=sender.call_api,
+            http_get=file_parser.fetch_url_bytes,
+            max_bytes=int(getattr(config, "MAX_FILE_DOWNLOAD_BYTES", 2 * 1024 * 1024)),
+        )
         # 共享 AI 预算实例：聊天与每日梗总结复用同一套全局/群计数（总结不绕过预算）
         from src.core.budget_manager import BudgetManager
         budget_manager = BudgetManager(config, policy_engine.global_state, sender)
@@ -222,6 +230,7 @@ async def main():
             plugin_manager=plugin_manager,
             event_parser=adapters.parser,
             blossom_memory=blossom_memory,
+            resource_fetcher=resource_fetcher,
         )
         message_router.group_nicknames = group_nicknames
         message_router.group_style_rules = group_style_rules  # 与 Web UI 共享同一 store

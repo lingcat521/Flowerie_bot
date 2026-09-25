@@ -59,7 +59,13 @@ def test_group_file_upload_normalized_like_onebot():
     ev = _ev("group_file_upload", {"group_id": 123456, "user_id": 456789, "file_id": "f1",
                                    "file_name": "a.zip", "file_size": 2048})
     assert ev.kind == "notice" and ev.notice_kind == "group_upload"
-    assert ev.group_id == 123456 and ev.notice_file == {"id": "f1", "name": "a.zip", "size": 2048}
+    assert ev.group_id == 123456
+    # 边界对象：协议原字段保持不变，**新增**协议中立的 resource（Gate R / ADR-007）
+    assert {k: v for k, v in ev.notice_file.items() if k != "resource"} == {
+        "id": "f1", "name": "a.zip", "size": 2048}
+    assert ev.notice_file["resource"].is_protocol_id
+    assert ev.notice_file["resource"].ref == "f1"
+    assert ev.notice_file["resource"].origin == "milky"      # 来源标记：取数时据此分派实现
 
 
 def test_message_recall_keeps_specific_notice_kind():
