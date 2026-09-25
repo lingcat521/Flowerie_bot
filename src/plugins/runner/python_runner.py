@@ -1458,7 +1458,14 @@ class PluginRunner:
         elif event == "schedule":
             hook_name = "on_schedule"
         if hook_name is None:
-            return []
+            # 任意事件类型（任务书《插件测试》§四 的 test.event 这类自定义事件）：
+            # 先试事件名派生的钩子（test.event -> on_test_event），再试通用 on_event；
+            # 两个都没有时返回空动作 —— 未知事件不是错误，只是没人订阅。
+            derived = "on_" + re.sub(r"[^a-z0-9_]", "_", str(event).lower())
+            generic = self._call_hook(derived, event_obj, self.api)
+            if generic is None:
+                generic = self._call_hook("on_event", event_obj, self.api)
+            return self._normalize_actions(generic)
         result = self._call_hook(hook_name, event_obj, self.api)
         return self._normalize_actions(result)
 

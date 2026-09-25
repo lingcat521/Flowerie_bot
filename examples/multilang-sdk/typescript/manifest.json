@@ -1,0 +1,16 @@
+{
+  "id": "minimal_ts",
+  "name": "Minimal TypeScript Plugin",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "任务书《插件测试》的最小 TypeScript 插件（与其它语言语义完全一致）",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": "1",
+  "permissions": [
+    "read_message",
+    "send_message",
+    "plugin.call.*",
+    "plugin.emit"
+  ]
+}

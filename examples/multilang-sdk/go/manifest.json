@@ -1,0 +1,16 @@
+{
+  "id": "minimal_go",
+  "name": "Minimal Go 插件",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "任务书《插件测试》的多语言最小插件（Go）：只用 sdk/go/flowerie，零第三方依赖",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": 1,
+  "permissions": [
+    "read_message",
+    "send_message",
+    "plugin.call.*",
+    "plugin.emit"
+  ]
+}

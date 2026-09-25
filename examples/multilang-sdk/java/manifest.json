@@ -1,0 +1,17 @@
+{
+  "id": "minimal_java",
+  "name": "Minimal Java Plugin",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "任务书《插件测试》的最小 Java 插件（与 Python/TS/Go/Rust 最小插件语义完全一致）：runtime=exec，run.sh exec javac 产物",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": 1,
+  "permissions": [
+    "read_message",
+    "send_message",
+    "plugin.call.*",
+    "plugin.emit"
+  ]
+}
+
