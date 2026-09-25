@@ -27,7 +27,7 @@ from src.adapters.onebot_parser import (
     _normalize_record_segment,
     _normalize_video_segment,
 )
-from src.adapters.proto import InternalEvent
+from src.adapters.proto import InternalEvent, as_event_dict, to_int
 
 # v12 事件 type → 领域 kind（[DOC] event.md：必须是 meta/message/notice/request 之一）
 _V12_KIND = {"message": "message", "notice": "notice", "request": "request", "meta": "lifecycle"}
@@ -51,15 +51,8 @@ V12_ACTION_MAP = {
 }
 
 
-def _to_int(value: Any) -> Optional[int]:
-    """v12 的 ID 是字符串；Flowerie 内部仍是 int（QQ 号数字）。无法转换时返回 None，不猜。"""
-    if value is None or str(value) == "":
-        return None
-    try:
-        return int(str(value))
-    except (TypeError, ValueError):
-        return None
-
+# 统一使用共享的容错整数转换（proto.to_int）：不重复实现，避免两份行为漂移
+_to_int = to_int
 
 class OneBot12EventParser:
     """OneBot 12 raw dict → InternalEvent（骨架，未实机验证）。"""
@@ -69,7 +62,7 @@ class OneBot12EventParser:
         self._note = note
 
     def parse(self, raw: Dict[str, Any]) -> InternalEvent:
-        raw = dict(raw or {})
+        raw = as_event_dict(raw)
         ev = InternalEvent(raw_data=raw)
         ev.event_id = str(raw.get("id") or "")
         if isinstance(raw.get("time"), (int, float)):

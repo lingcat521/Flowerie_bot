@@ -12,7 +12,7 @@ import re
 import time
 from typing import Any, Dict, List, Optional
 
-from src.adapters.proto import InternalEvent
+from src.adapters.proto import InternalEvent, as_event_dict
 
 
 def _normalize_array(raw: Any) -> List[Dict[str, Any]]:
@@ -160,7 +160,7 @@ class OneBotEventParser:
         self._note = note
 
     def parse(self, raw: Dict[str, Any]) -> InternalEvent:
-        raw = dict(raw or {})
+        raw = as_event_dict(raw)
         post_type = str(raw.get("post_type") or "unknown")
         # 未知 post_type **原样保留为 kind**（与 MilkyEventParser / OneBot12EventParser 一致，Gate K）：
         # 这样插件与日志能直接看出"遇到了哪种没见过的上报"，而不是只看到笼统的 unknown；

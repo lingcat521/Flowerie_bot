@@ -13,6 +13,32 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 
+def to_int(value: Any) -> Optional[int]:
+    """容错整数转换（Gate K/§33）：脏数据（"abc" / None / 对象）返回 None，绝不抛异常。
+
+    QQ 号、群号、消息号在真实事件里可能被实现方写成字符串（v12 规范就是字符串），
+    也可能出现脏数据；解析器统一经此转换，避免 int() 抛 ValueError 打断整个事件处理。
+    """
+    if value is None:
+        return None
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def as_event_dict(raw: Any) -> Dict[str, Any]:
+    """把任意输入安全地当作事件字典（Gate K/§33：畸形输入不得抛异常）。
+
+    - dict  -> 浅拷贝（避免解析器改到调用方对象）
+    - 其它（None / str / int / list / 自定义对象）-> 空字典
+      （字符串曾被 dict() 当成键值对序列而抛 ValueError，这是本函数要堵的坑）
+    """
+    if isinstance(raw, dict):
+        return dict(raw)
+    return {}
+
+
 @dataclass
 class InternalEvent:
     """领域事件（按 Flowerie 真实消费方设计，不复制 OneBot Event）。"""

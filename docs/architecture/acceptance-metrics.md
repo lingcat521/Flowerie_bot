@@ -11,7 +11,7 @@
 | --- | :--- | :--- | :--- | :--- | :--- |
 | 1 | **PCI**（Core/Services/SDK 协议专用引用数）| **0** | 0 | ✅ PASS | `src/core`、`src/services`、`src/sdk`、`src/plugins` 全为 0；OneBot 实现子树已迁到 `src/adapters/onebot/`（Gate A 同项）|
 | 2 | **PEC**（新增协议需改 Core/Services/SDK/插件文件数）| 未测 | 0 | ⬜ TODO | 需 Gate E/F 的 TestProtocolAdapter 实验 |
-| 3 | Adapter Contract 合规率 | 未建立 | 100% | ⬜ TODO | Gate D：12 项 × OneBot11/Milky |
+| 3 | Adapter Contract 合规率（ACC）| **100%**（36/36；onebot11、milky、onebot12 各 12 项）| 100% | ✅ PASS | 契约夹具 src/adapters/contract.py |
 | 4 | Unknown Data Safety（段 + 事件）| **20/20** | 100% | ✅ PASS | `tests/test_unknown_tolerance.py`（10 段 × 双解析器 + 10 事件 × 双协议）|
 | 4b | Real Integration Coverage（实机验证覆盖率）| **0%** | ≥90% | 🚫 BLOCKED BY EXTERNAL DEPENDENCY | 设备控制未授权（无障碍/ADB 两路均 denied），且无运行中的协议端；详见 docs/protocol-gap-closure.md §6 |
 | 5 | Existing Regression | **997 passed / 19 failed（全为本地缺依赖）/ 13 skipped**；新增失败 0 | 100% | ✅ PASS（就"零新增失败"而言）| 本地全量 pytest；待 Gate U 的 15 项能力矩阵补全 |
@@ -26,7 +26,7 @@
 | A | Core 协议零依赖 | `src/core`=0、`src/services`=0、`src/sdk`=0、`src/plugins`=0（扫描含 `^(import|from)` 与协议词）| 0 | ✅ PASS |
 | B | 协议分支污染率 | `src/core|services|sdk|plugins` 中 `if protocol ==` / `if self._milky` / `if self._use_ws` = **0** | 0 | ✅ PASS |
 | C | Adapter 独立性 | `src/transport/` 可独立 import（不含 Core 业务依赖，`MessageRouter` 仅 TYPE_CHECKING）| 可分别加载 | ✅ PASS |
-| D | Adapter Contract Tests | 未建立 | 12 项 × 2 Adapter | ⬜ TODO |
+| D | Adapter Contract Tests | **36/36**（3 适配器 × 12 项，见 tests/test_adapter_contract.py）| 12 项 × 2 Adapter | ✅ PASS |
 | E | 新增协议成本（PEC）| 未测 | Core/Services/SDK/插件 = 0 | ⬜ TODO |
 | F | 虚拟协议最小接入实验 | 未做 | 7 项实验 | ⬜ TODO |
 | G | Capability 覆盖率 | **100%**（onebot11 / milky / onebot12 各 18/18 显式声明）| ≥95% | ✅ PASS |

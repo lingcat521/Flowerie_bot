@@ -38,7 +38,7 @@ from src.adapters.onebot_parser import (
     _normalize_video_segment,
     _normalize_xml_segment,
 )
-from src.adapters.proto import InternalEvent
+from src.adapters.proto import InternalEvent, as_event_dict, to_int
 
 # Milky 顶层事件类型 → 归一化 kind。
 # ⚠️ 规范（common.ts 的 Event 联合，实测 **21 种**）里**没有 notice_receive** —— 通知类事件各有
@@ -91,7 +91,7 @@ _SCENE_ALIAS = {"group_temp": "temp"}
 
 def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> InternalEvent:
     """Milky raw dict → InternalEvent（机械转换唯一入口；raw_data 隔离保留）。"""
-    raw = dict(raw or {})
+    raw = as_event_dict(raw)
     ev = InternalEvent(raw_data=raw)
     ev.timestamp = raw.get("time") or raw.get("timestamp")
 
@@ -106,21 +106,21 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
     sender_id = data.get("sender_id")
 
     if ev.kind == "message":
-        ev.actor_id = int(sender_id) if sender_id else None
+        ev.actor_id = _int_or(sender_id)
         if scene == "friend":
             ev.group_id = None
-            ev.actor_id = ev.actor_id or (int(peer_id) if peer_id else None)
+            ev.actor_id = ev.actor_id or _int_or(peer_id)
         elif scene == "group":
-            ev.group_id = int(peer_id) if peer_id else None
+            ev.group_id = _int_or(peer_id)
         elif scene == "temp":
             # 临时会话（QQ 群内发起）：私聊范围 + 来源群只做**上下文**，不冒充群会话
             # 证据：[DOC] 规范 L284-291（peer_id=对端，group=可选 GroupEntity L158-168 的 group_id）
             ev.group_id = None
-            ev.actor_id = ev.actor_id or (int(peer_id) if peer_id else None)
+            ev.actor_id = ev.actor_id or _int_or(peer_id)
             _grp = data.get("group") if isinstance(data.get("group"), dict) else {}
             _gid = _grp.get("group_id")
             if _gid is not None and str(_gid) != "":
-                ev.context_group_id = int(_gid)
+                ev.context_group_id = _int_or(_gid)
         # 消息号：Milky 规范/实现**只有 message_seq**（无 message_id）
         # 证据：LLBot src/milky/transform/event.ts L80/L99/L118 均写 message_seq；
         #      Lagrange.Milky Models/Messages/IncomingMessageBase.cs L13 message_seq
@@ -140,32 +140,32 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
             is_group = event_type == "group_nudge"
             ev.scope = "group" if is_group else "private"
             ev.notice_kind = "poke"
-            ev.actor_id = int(sender_id) if sender_id else None
+            ev.actor_id = _int_or(sender_id)
             _recv = data.get("receiver_id") if is_group else data.get("user_id")
-            ev.target_id = int(_recv) if _recv is not None and str(_recv) != "" else None
+            ev.target_id = _int_or(_recv)
             if is_group:
                 _g = data.get("group_id")
-                ev.group_id = int(_g) if _g is not None and str(_g) != "" else ev.group_id
+                ev.group_id = _int_or(_g, ev.group_id)
         elif event_type == "group_file_upload":
             # 群文件上传 → 与 OneBot notice/group_upload 同语义（路由 _handle_group_upload）
             # 证据：[DOC] 规范 common.ts L135-141 group_file_upload{group_id,user_id,file_id,file_name,file_size}；
             #       [CODE] NapCat OB11GroupUploadNoticeEvent.ts L4-9（file{id,name,size,busid}）
             ev.notice_kind = "group_upload"
-            ev.actor_id = int(sender_id) if sender_id else None
+            ev.actor_id = _int_or(sender_id)
             _g = data.get("group_id") or peer_id
             if _g is not None and str(_g) != "":
-                ev.group_id = int(_g)
+                ev.group_id = _int_or(_g, ev.group_id)
             ev.scope = "group"
             ev.notice_file = {"id": str(data.get("file_id") or ""),
                               "name": str(data.get("file_name") or ""),
                               "size": data.get("file_size")}
         else:
-            ev.actor_id = int(sender_id) if sender_id else None
+            ev.actor_id = _int_or(sender_id)
             ev.notice_kind = data.get("notice_type") or event_type
             if peer_id is not None:
-                ev.target_id = int(peer_id)
+                ev.target_id = _int_or(peer_id)
             if data.get("operator_id"):
-                ev.operator_id = int(data.get("operator_id"))
+                ev.operator_id = _int_or(data.get("operator_id"))
             if data.get("file"):
                 ev.notice_file = dict(data["file"])
     # lifecycle / unknown 仅保留基础字段（上游按 kind 处理）
@@ -191,15 +191,15 @@ def _fill_request(ev: InternalEvent, event_type: str, data: Dict[str, Any]) -> N
     ev.request_kind = coarse
     ev.request_scene = scene
     _init = data.get("initiator_id")
-    ev.actor_id = int(_init) if _init is not None and str(_init) != "" else None
+    ev.actor_id = _int_or(_init)
     _target = data.get("target_user_id")
-    ev.target_id = int(_target) if _target is not None and str(_target) != "" else None
+    ev.target_id = _int_or(_target)
     ev.comment = str(data.get("comment") or "")
     ev.text = ev.comment[:500]          # 兼容既有行为：comment 曾放在 text
     ev.request_uid = str(data.get("initiator_uid") or "")
     ev.request_filtered = bool(data.get("is_filtered"))
     if data.get("group_id") is not None and str(data.get("group_id")) != "":
-        ev.group_id = int(data["group_id"])
+        ev.group_id = _int_or(data["group_id"], ev.group_id)
         ev.scope = "group"
     else:
         # [INFERENCE] 好友请求与群无关，归一化为私聊范围（规范未定义 scene 字段）
@@ -207,14 +207,17 @@ def _fill_request(ev: InternalEvent, event_type: str, data: Dict[str, Any]) -> N
     _rid = data.get("notification_seq")
     if _rid is None:
         _rid = data.get("invitation_seq")
-    ev.request_id = str(int(_rid)) if _rid is not None and str(_rid) != "" else ""
+    _rv = _int_or(_rid)
+    ev.request_id = str(_rv) if _rv is not None else ""
 
 
 def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> None:
     """Milky 消息段扫描（type/data 格式同 OneBot；解析结果与 OneBot 等价）。"""
     text_parts: List[str] = []
     bot = str(bot_qq) if bot_qq is not None else ""
-    ev.message_segments = [dict(s) for s in segments] if isinstance(segments, list) else []
+# 只保留 dict 元素：段数组里混入 None/数字时不得抛异常（Gate K/§33），也不丢其它段
+    ev.message_segments = ([dict(s) for s in segments if isinstance(s, dict)]
+                           if isinstance(segments, list) else [])
     for seg in ev.message_segments:
         seg_type = str(seg.get("type") or "")
         data = seg.get("data") if isinstance(seg.get("data"), dict) else {}
@@ -245,11 +248,8 @@ def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> N
                 # 无 URL 时记录资源 id（由上层按 resource_id 后续获取）
                 ev.images.append("resource:" + str(data.get("resource_id")))
         elif seg_type == "reply":
-            try:
-                # Milky: data.message_seq；OneBot 兼容: data.id
-                ev.reply_id = int(data.get("message_seq") or data.get("id"))
-            except (TypeError, ValueError):
-                ev.reply_id = None
+            # Milky: data.message_seq；OneBot 兼容: data.id（脏数据 -> None）
+            ev.reply_id = _int_or(data.get("message_seq") or data.get("id"))
             _fill_reply(ev, data)          # G4：内联被引段进入 Reply 模型
             if data.get("segments"):
                 ev.segments_summary.append((seg_type, dict(data)))
@@ -360,6 +360,12 @@ def _parse_light_app_payload(raw: Any):
         except (ValueError, TypeError):
             return raw
     return raw if raw is not None else ""
+
+
+def _int_or(value: Any, default: Any = None) -> Any:
+    """容错转换：能转成 int 就用它，否则用 default（脏数据不打断解析）。"""
+    v = to_int(value)
+    return v if v is not None else default
 
 
 def _event_id(ev: InternalEvent) -> str:
