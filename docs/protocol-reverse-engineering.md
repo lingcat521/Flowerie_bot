@@ -366,3 +366,23 @@ PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/test_multimsg_card.py tests
   3. 已同步更正 `docs/client-compatibility.md` §3.3 与 `docs/adapter-architecture.md` §5/§7。
 - **教训**：摘录源码时，**片段所在的函数与分支**与片段本身同等重要；
   只看"一行 filter 条件"会把"客户端内部实现"误读成"协议对调用方的约束"。
+
+### C2（2026-08-09）：Milky 作者实现有**两份布局不同**的内嵌副本（此前文档只写了一份）
+
+- **问题**：本文 §6.1 与测试 docstring 曾先后只写一条路径 —— 先写 `Entity/Segment/`（15 个段），
+  补 Milky 映射时又写成 `Models/Segments/`（10 个段），把两份**不同**的副本当成同一个"作者实现"，
+  容易误导后续实现与审计。
+- **实测**（两份副本都在源码区里，均为 `[CODE]`）：
+
+  | 副本 | 路径 | 文件数 | incoming 段 |
+  | :--- | :--- | ---: | :--- |
+  | A | `LagrangeV2/Lagrange.Milky/Entity/Segment/` | 15 | **13 种**：text / mention / mention_all / face / reply / image / record / video / file / forward / market_face / light_app / xml（无 markdown） |
+  | B | `Lagrange.Core/Lagrange.Milky/Models/Segments/` | 11 | **10 种**：text / mention / mention_all / reply / image / record / video / file / forward / light_app |
+
+- **字段宽度也不同**：副本 A 的 `market_face` 只有 `url`、`face` 只有 `face_id`；
+  规范 `common.ts` L323-326 / L366-372 另有 `is_large` / `emoji_id` / `summary` 等 ——
+  **实现比规范窄**，故 `milky_parser` 一律逐字段兜底（并已修 Assembler 的退化渲染）。
+- **影响**：`markdown` 段规范有、两副本都无（标注 `[DOC]` 且不入实现的"段清单"）；
+  `face` / `market_face` 只在副本 A 有 —— 对 Flowerie 而言都必须能解析（同生态里两种客户端并存）。
+- **教训**：同一个项目在不同仓库里的副本可能**目录布局与字段宽度都不同**；
+  引用源码必须写清"**哪个仓库的哪份副本**"，说"实现没有某段"时要指明**是哪一份实现**。
