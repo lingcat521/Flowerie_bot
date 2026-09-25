@@ -53,7 +53,14 @@
    也保留注入替换能力。**教训：新模块的落点要先看既有守护测试，再谈理想分层。**
 3. **Gate T（插件协议隔离）已完成**：`src/plugins/manager.py` 不再 import `OneBotAdapter`，改为构造参数
    `bot_factory` 由组合根（`main.py`）注入 `OneBotAdapter`。`src/adapters/onebot/` 子树保留 —— 它就是 OneBot 适配器实现本身。
-4. 仍未做：Adapter Contract 测试、Capability 模型、Unknown 段/事件容错、Resource 抽象、多实例、
+4. **SDK 协议实现搬迁（Gate A / PCI 归零，提交 5fb28b0）**：src/sdk/onebot/（dto / transformer / adapter）
+   迁到 src/adapters/onebot/。理由：src/sdk/ 是面向插件的协议中立层（任务书 §34），OneBot 实现属 Adapter 层；
+   搬迁后 KNOWN_PROTOCOL_IMPORTS 归零，Gate A 与 PCI 实测均为 0。
+   关联修正：tests/test_sdk_lagrange.py 的端点红线 glob 覆盖新位置；tests/test_code_scanning_redos.py 的
+   TRANSFORMER 常量写作 os.path.join(src, sdk, onebot, ...) 分段形式，纯字符串替换扫不到 ——
+   教训：搬迁后除 grep 模块名，还要 grep 分段路径写法。docs/archive/** 刻意不改（历史既定事实记录）。
+
+5. 仍未做：Adapter Contract 测试、Capability 模型、Resource 抽象、多实例、
    TestProtocolAdapter（PEC/PCI=0）与 acceptance Dashboard。
 
 ## 原始待办（历史记录，部分已完成）
