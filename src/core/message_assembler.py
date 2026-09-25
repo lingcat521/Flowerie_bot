@@ -1,3 +1,4 @@
+import json
 import os
 import time
 from datetime import datetime
@@ -57,7 +58,7 @@ class MessageAssembler:
         full_text += await self._assemble_forward(message_array)
 
         # JSON 卡片
-        full_text += self._assemble_card(message_array)
+        full_text += await self._assemble_card(message_array)
 
         # 待解析文件配对（NapCat 先发上传通知，消息过来后再取内容）
         full_text += await self._assemble_pending_file(user_id, group_id)
@@ -128,7 +129,41 @@ class MessageAssembler:
         return block
 
     # ---------- JSON 卡片 ----------
-    def _assemble_card(self, message_array: List[Dict]) -> str:
+    def _multimsg_as_forward(self, message_array: List[Dict]):
+        """把 app=com.tencent.multimsg 的 json 卡片转成等价的 forward 段；无则 None。
+
+        证据：NapCat SendMsg.ts L289-297 判定 arkElement JSON 的 app == com.tencent.multimsg，
+        取 meta.detail.resid 拉取内层；LLBot 同样判定（milky/transform/message/incoming.ts L210-235）。
+        即：这种卡片不是普通卡片，而是合并转发 —— 必须走拉取内层，否则内层消息全丢。
+        """
+        for seg in message_array or []:
+            if not isinstance(seg, dict) or seg.get("type") != "json":
+                continue
+            data = seg.get("data") if isinstance(seg.get("data"), dict) else {}
+            payload = data.get("data")
+            if payload is None:
+                payload = data.get("content") or data.get("text")
+            if isinstance(payload, str):
+                try:
+                    payload = json.loads(payload)
+                except (ValueError, TypeError):
+                    continue
+            if not isinstance(payload, dict) or payload.get("app") != "com.tencent.multimsg":
+                continue
+            detail = (payload.get("meta") or {}).get("detail") or {}
+            resid = detail.get("resid")
+            if resid:
+                return [{"type": "forward", "data": {"id": str(resid)}}]
+        return None
+
+    async def _assemble_card(self, message_array: List[Dict]) -> str:
+        # multimsg 卡片 = 合并转发（证据见 _multimsg_as_forward）：优先按转发拉内层
+        fwd = self._multimsg_as_forward(message_array)
+        if fwd is not None:
+            block = await self._assemble_forward(fwd)
+            if block:
+                return block
+            logger.debug('multimsg 卡片拉取内层失败，退回卡片文本路径')
         card_text, has_card = self.file_parser.extract_json_card_content(message_array)
         if has_card and card_text:
             # 代码层防注入：卡片文本清洗后再进上下文
