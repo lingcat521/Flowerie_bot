@@ -9,5 +9,6 @@
 | onebot-coupling-audit.md / onebot-decoupling-final-report.md | OneBot 解耦工程审计+封口报告 |
 | phase2-internal-event-design.md / phase6-assembler-audit.md | 阶段设计/审计 |
 | report-v1.3.0-sdk.md / sdk-audit.md | v1.3 SDK 交付报告+审计 |
+| code-scanning-report.md | **Code Scanning 告警审计与修复最终报告**（56 条 open 告警逐条判定：修复 6 类真漏洞、18 条举证误报、其余如实保留为 open） |
 | review-v1.2.0.md | v1.2 评审 |
 | qwq1-audit-webui-livingmemory.md / qwq-final-report.md | qwq 任务审计+最终交付报告（v1.6） |

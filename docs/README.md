@@ -10,7 +10,7 @@
 
 | 你的目标 | 按顺序读 |
 | --- | --- |
-| 🧩 **写插件** | [quick-start](quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugin-webui.md) / [sdk](sdk.md) / [api](api.md)；**不用 Python/Node？** 直接看 [plugin-developer-guide](plugin-developer-guide.md) §31（13 种语言最小实现，照抄即可） |
+| 🧩 **写插件** | [quick-start](quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugin-webui.md) / [sdk](sdk.md) / [api](api.md)；**不用 Python/Node？** 直接看 [plugin-developer-guide](plugin-developer-guide.md) §12.2（13 种语言最小实现，照抄即可） |
 | 🔧 **部署运维** | 安装（[Windows](install-release-windows.md) · [Linux/macOS/Termux 资产](install-release-guide.md) · [**Termux 权威步骤**](install-termux.md)）→ [configuration](configuration.md) → [web-ui](web-ui.md) → [security](security.md) |
 | 🛠 **改代码** | [development](development.md)（目录结构 / 测试 / CI）→ [sdk](sdk.md)（三层架构）→ [archive/](archive/README.md)（历史审计） |
 
@@ -22,8 +22,8 @@
 | 文档 | 内容 | 谁需要 |
 | --- | --- | --- |
 | **[quick-start.md](quick-start.md)** | **第一层·小白快速开始**（10 分钟：创建 / manifest / 收发消息 / 记忆 / HTTP / 权限 / 完整例子 / 安装测试） | 插件新人 |
-| **[plugin-developer-guide.md](plugin-developer-guide.md)** | **第二层·完整参考**（Manifest 规则 / Python·Node·JSON / **任意语言 exec §4.5** 与 **§31 十三种语言实测清单** / 生命周期 / Event·Action·Permission API / 超时·资源·安全 / 打包 / WebUI 安装） | 插件开发者 |
-| **[plugin-developer-guide.md](plugin-developer-guide.md) §31** | **任意语言插件**：exec 协议三分钟说明 + **13 种语言完整最小实现**（C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R）+ 构建入口速查 + 排查清单 | 非 Python/Node 的插件作者 |
+| **[plugin-developer-guide.md](plugin-developer-guide.md)** | **第二层·完整参考**（Manifest 规则 / Python·Node·JSON / **任意语言 exec §3.4** 与 **§12.2 十三种语言实测清单** / 生命周期 / Event·Action·Permission API / 超时·资源·安全 / 打包 / WebUI 安装） | 插件开发者 |
+| **[plugin-developer-guide.md](plugin-developer-guide.md) §3.4 · §12.2** | **任意语言插件**：exec 协议三分钟说明 + **13 种语言完整最小实现**（C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R）+ 构建入口速查 + 排查清单 | 非 Python/Node 的插件作者 |
 | [plugin-webui.md](plugin-webui.md) | **Plugin WebUI**（DSL 组件全集 / hook / 权限 / 文件 / 安全边界） | 插件开发者 |
 | [protocol-implementation.md](protocol-implementation.md) | **协议实现说明**：分层与依赖方向、一次往返经过谁、未知数据安全、档案如何进运行时、语料/契约测试组织、明确还没做的 | 协议/适配层开发者 |
 | [client-compatibility-report.md](client-compatibility-report.md) | **客户端兼容扩展最终报告**：§二十四 全部量化指标 + 证据等级分层 + BLOCKED 清单 + §二十二 禁令自查 | 评审 |
@@ -34,6 +34,7 @@
 | [plugin-communication.md](plugin-communication.md) | **插件间通信协议**：五类消息 / 请求·响应·错误模型 / 12 个错误码 / 语言无关类型与 DTO / 十四节权限 / LOCAL·CORE·AUTO 路由 / 五语言 API 对照 | 插件开发者 |
 | [plugin-sdk-minimal-test.md](plugin-sdk-minimal-test.md) | **多语言 SDK 最小化插件实测契约**：五种语言的 ping/get_info/echo、/sdk 命令表、动作形状、错误探针、Build/Load 分离 | 插件开发者 + 评审 |
 | [plugin-sdk-minimal-report.md](plugin-sdk-minimal-report.md) | **最小化插件实测报告**：§十七 验收表（11 行 × 5 语言）+ 七条跨语言链路 + §十八 17 问 + 五轮红→绿 | 评审 |
+| [plugin-webui-migration.md](plugin-webui-migration.md) | **Plugin WebUI 迁移审计**（DSL → 真实 HTML：审计结论 / 迁移决策 / 不变量 / 证据与复现；状态 DONE） | 评审 |
 | [plugin-webui-test.md](plugin-webui-test.md) | **Plugin WebUI 第二阶段测试说明**：现状审计（DSL vs HTML / 路由 / 零 JS 策略）、测试目录、安全边界、环境与阻塞口径 | 插件开发者 + 评审 |
 | [plugin-webui-report.md](plugin-webui-report.md) | **Plugin WebUI 第二阶段最终报告**：环境表 / 五语言矩阵 / 三条 E2E / 安全逐项 / 回归 / QQ-P2P=BLOCKED 单列 / Gate A–R 判定 | 评审 |
 | [plugin-webui-e2e-report.md](plugin-webui-e2e-report.md) | **Plugin WebUI 真浏览器 E2E 报告**（任务书 §8/§26/§28/§31）：真 Chromium（Playwright）+ 真 WebUI 服务器 + 真插件进程；本机 BLOCKED 逐项理由 + §28 三条链路状态 + CI 片段 | 评审 |
@@ -55,6 +56,7 @@
 | [install-release-guide.md](install-release-guide.md) | Release 资产用法：Linux / macOS / Termux 源码包（含 `build-termux.sh`） | 运维 |
 | [install-release-windows.md](install-release-windows.md) | Windows exe 用法 / 首次配置 / 常见问题 | 运维 |
 | [onebot-compatibility.md](onebot-compatibility.md) | OneBot v11 全平台兼容（连接层 / 发送通道 / 识图 / 能力矩阵） | 运维 |
+| [onebot12-research.md](onebot12-research.md) | **OneBot 12 研究报告**（规范级研究 + 未接入生产的骨架适配器；状态 `NOT_REAL_DEVICE_VALIDATED`，不得声称支持 v12） | 协议/适配层开发者 |
 | [milky-protocol.md](milky-protocol.md) | Milky 协议支持（配置 / 事件格式 / API 调用 / 已知边界） | 运维 |
 | [protocol-reverse-engineering.md](protocol-reverse-engineering.md) | **协议逆向总报告**：客户端源码证据（`[CODE]` 行号）/ 归一化差距 / 下一步 / **更正记录** | 开发者 |
 | [client-compatibility.md](client-compatibility.md) | **客户端兼容矩阵**：OneBot 11 / Milky / NapCat / Lagrange / SnowLuma / LLBot 逐项对照 + 生态覆盖分级 | 开发者 |

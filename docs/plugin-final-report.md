@@ -182,7 +182,7 @@ Flowerie Core
 # 已知限制（如实）
 
 1. **实机集成用例 skip**：需要运行中的协议端（NapCat / Lagrange / LLBot）与真实群号 —— 本环境没有；按任务书要求 skip 并打印缺失条件，**不当作通过**（基线 22 条，当前整仓 39 条）。
-2. **本机没有 go / rustc / javac**：本地只有 Python 与 TypeScript 真跑，其余三种语言在 CI 上真编译真跑（本地 skip 会打印原因）；CI 是这三种语言的唯一编译器，所以本轮有三个 bug 只有 CI 能抓到（已修复，记录在 [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) §2.1）。
+2. **本机没有 go / rustc / javac**：本地只有 Python 与 TypeScript 真跑，其余三种语言在 CI 上真编译真跑（本地 skip 会打印原因）；CI 是这三种语言的唯一编译器，所以本轮有三个 bug 只有 CI 能抓到（已修复，记录在 [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) §2）。
 3. **No-JS 是硬约束**：插件页面不能带 JS，`webui.asset` 的 MIME 白名单也不含 svg/字体，想用 JS 的插件当前不可行（与主 WebUI 政策一致）。
 4. **插件资源上限 256 KiB / 静态 4 MiB**：超限直接拒绝，不截断。
 5. **旧 DSL 兼容层仍在**（任务书要求）：它不会被新插件使用，但会在兼容期内继续存在。

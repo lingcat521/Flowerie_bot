@@ -192,4 +192,4 @@
 
 > 每个 fixture 都带 `_provenance{client,version,source,evidence,captured:false}`，`source` 精确到文件与行号。
 > 契约测试（Parse/Normalize/Serialize/Action/Response/Unknown×3）在多客户端矩阵测试里统一驱动，见
-> [../../client-compatibility.md](../../client-compatibility.md) §7。
+> [../../client-compatibility.md](../../client-compatibility.md) §4。

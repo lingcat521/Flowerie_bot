@@ -22,4 +22,4 @@ plugins/
 
 - 目录由配置 `PLUGIN_DIR` 控制（默认 `./plugins`）；**首次启动自动创建**，不存在时手动 `mkdir plugins` 也行
 - 本目录（个人插件/代码）**被 git 忽略**：默认不提交你的插件到仓库（本 README 是唯一的占位文件）
-- 新手看 [docs/quick-start.md](../docs/quick-start.md)；完整规则看 [docs/plugin-developer-guide.md](../docs/plugin-developer-guide.md) §22
+- 新手看 [docs/quick-start.md](../docs/quick-start.md)；完整规则看 [docs/plugin-developer-guide.md](../docs/plugin-developer-guide.md) §11
