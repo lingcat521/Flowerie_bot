@@ -9,12 +9,9 @@
 
 本文件同时是最终报告 §二十一「Client Imports = 0」的**度量来源**（打印每层计数）。
 """
-import io
 import os
 import re
 import tokenize
-
-import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
