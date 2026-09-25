@@ -143,6 +143,10 @@ element.elementType !== ElementType.FILE && element.elementType !== ElementType.
 > Lagrange.Milky 实现仓库不可得（见 source-acquisition.md），因此 Milky 列以 **LLBot 的 Milky 实现**
 > 为 `[CODE]` 证据 + `SaltifyDev/milky` 规范为 `[DOC]` 证据，两者互证。
 > 源码：`~/proto_src/LLBot/src/milky/transform/message/incoming.ts`（252 行）。
+>
+> **更权威的第二来源已补**：Milky 协议作者本人的实现内嵌在 `Lagrange.Core` / `LagrangeV2` 的
+> `Lagrange.Milky/` 目录（119 个 .cs，15 个段类型 + `GroupNudgeEvent`），见
+> [protocol-reverse-engineering.md](protocol-reverse-engineering.md) §6 —— 与 LLBot 逐字段互证。
 
 | 能力 | Milky 段与字段 [CODE] |
 | :--- | :--- |
