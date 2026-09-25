@@ -454,6 +454,144 @@ func (m *minimal) callTarget(target, method, requestText, routePolicy string) ma
 		"route": route, "route_source": routeSource}
 }
 
+// communicationVars 调用页的全部模板变量（名字与引擎侧断言一致：response_ok / target_runtime …）。
+func (m *minimal) communicationVars(pluginID string) map[string]any {
+	return map[string]any{
+		"plugin_name": pluginID, "plugin_id": pluginID, "plugin_status": "running",
+		"plugin_runtime": runtimeName, "plugin_sdk_version": sdkVersion,
+		"target": "", "method": "echo", "request": defaultRequest, "route_policy": "auto",
+		"response": "", "response_ok": "", "error": "", "error_code": "", "target_runtime": "",
+		"request_id": "", "request_id_source": "", "trace_id": "", "trace_id_source": "",
+		"route": "", "route_source": "", "message": "",
+	}
+}
+
+// applyCall 把表单变成一次真调用 + 一页可渲染的变量（任何分支都必须渲染得出来）。
+func (m *minimal) applyCall(form map[string]any, pluginID string) map[string]any {
+	target := strings.TrimSpace(stringField(form, "target"))
+	method := strings.TrimSpace(stringField(form, "method"))
+	if method == "" {
+		method = "ping"
+	}
+	requestText := stringField(form, "request")
+	if requestText == "" {
+		requestText = stringField(form, "params")
+	}
+	if requestText == "" {
+		requestText = defaultRequest
+	}
+	routePolicy := strings.TrimSpace(stringField(form, "route"))
+	if routePolicy == "" {
+		routePolicy = "auto"
+	}
+	vars := m.communicationVars(pluginID)
+	vars["target"] = target
+	vars["method"] = method
+	vars["request"] = requestText
+	vars["route_policy"] = routePolicy
+	if target == "" {
+		vars["response_ok"] = "error"
+		vars["error_code"] = "INVALID_ARGUMENT"
+		vars["error"] = "INVALID_ARGUMENT: 请填写目标插件 id"
+	} else {
+		for key, value := range m.callTarget(target, method, requestText, routePolicy) {
+			vars[key] = value
+		}
+	}
+	if textOf(vars["response_ok"]) == "ok" {
+		vars["message"] = "Status: OK · 调用完成"
+	} else {
+		code := textOf(vars["error_code"])
+		if code == "" {
+			code = flowerie.CodePluginError
+		}
+		vars["message"] = "Status: Failed · Code: " + code
+	}
+	return vars
+}
+
+// htmlEsc 本语言原生的 HTML 转义（插件不假设引擎一定会替自己转义动态数据）。
+func htmlEsc(value any) string {
+	return html.EscapeString(textOf(value))
+}
+
+func containsString(values []string, needle string) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
+}
+
+func optionsHTML(values []string, current string) string {
+	var builder strings.Builder
+	for _, value := range values {
+		builder.WriteString(`<option value="` + htmlEsc(value) + `"`)
+		if current == value {
+			builder.WriteString(" selected")
+		}
+		builder.WriteString(">" + htmlEsc(value) + "</option>")
+	}
+	if current != "" && !containsString(values, current) {
+		// 自定义方法名也要能原样回填提交
+		builder.WriteString(`<option value="` + htmlEsc(current) + `" selected>` + htmlEsc(current) + "</option>")
+	}
+	return builder.String()
+}
+
+// communicationHTML 调用页 HTML（零 JS）：表单 + 结果区；元素 id 见 tests/e2e/README.md §3。
+func (m *minimal) communicationHTML(v map[string]any) string {
+	base := "/panel/plugins/webui/" + htmlEsc(v["plugin_id"])
+	runtime := textOf(v["target_runtime"])
+	if runtime == "" {
+		runtime = unreturned
+	}
+	return `<link rel="stylesheet" href="` + base + `/static/style.css">` +
+		`<h1 id="plugin-name">` + htmlEsc(v["plugin_name"]) + `</h1>` +
+		`<p id="plugin-status" class="status">状态：` + htmlEsc(v["plugin_status"]) + `</p>` +
+		`<section id="communication-panel" class="card">` +
+		`<h2>跨插件调用（Browser → ` + htmlEsc(languageName) +
+		` 插件 → Core Router → 目标插件 → 回本页）</h2>` +
+		`<form id="communication-form" method="post" action="` + base + `/communication">` +
+		`<label for="communication-target">目标插件（target plugin）</label>` +
+		`<input type="text" id="communication-target" name="target" value="` +
+		htmlEsc(v["target"]) + `" placeholder="minimal_go">` +
+		`<label for="communication-method">方法（method）</label>` +
+		`<select id="communication-method" name="method">` +
+		optionsHTML(commMethods, textOf(v["method"])) + `</select>` +
+		`<label for="communication-route">路由策略（route）</label>` +
+		`<select id="communication-route" name="route">` +
+		optionsHTML(commRoutes, textOf(v["route_policy"])) + `</select>` +
+		`<label for="communication-request">请求参数（request，JSON 对象）</label>` +
+		`<textarea id="communication-request" name="request" rows="3">` +
+		htmlEsc(v["request"]) + `</textarea>` +
+		`<button type="submit" id="communication-submit" name="plugin_action" value="call">调用</button>` +
+		`</form>` +
+		`<table id="communication-result">` +
+		`<tr><th>target plugin</th><td id="communication-target-out">` + htmlEsc(v["target"]) + `</td></tr>` +
+		`<tr><th>method</th><td id="communication-method-out">` + htmlEsc(v["method"]) + `</td></tr>` +
+		`<tr><th>request</th><td><pre id="communication-request-out">` + htmlEsc(v["request"]) + `</pre></td></tr>` +
+		`<tr><th>response</th><td><pre id="communication-response">` + htmlEsc(v["response"]) + `</pre></td></tr>` +
+		`<tr><th>request_id</th><td id="communication-request-id">` + htmlEsc(v["request_id"]) +
+		` <small id="communication-request-id-source">` + htmlEsc(v["request_id_source"]) +
+		`</small></td></tr>` +
+		`<tr><th>trace_id</th><td id="communication-trace-id">` + htmlEsc(v["trace_id"]) +
+		` <small id="communication-trace-id-source">` + htmlEsc(v["trace_id_source"]) +
+		`</small></td></tr>` +
+		`<tr><th>route</th><td id="communication-route-out">` + htmlEsc(v["route"]) +
+		` <small id="communication-route-source">` + htmlEsc(v["route_source"]) +
+		`</small></td></tr>` +
+		`<tr><th>目标运行时（观察值）</th><td id="communication-target-runtime">` + htmlEsc(runtime) + `</td></tr>` +
+		`<tr><th>结果</th><td id="communication-response-ok">` + htmlEsc(v["response_ok"]) + `</td></tr>` +
+		`<tr><th>错误</th><td id="communication-error">` + htmlEsc(v["error"]) + `</td></tr>` +
+		`</table>` +
+		`<p id="communication-message">` + htmlEsc(v["message"]) + `</p>` +
+		`</section>` +
+		`<nav id="plugin-nav"><a id="nav-index" href="` + base + `/index">Index</a>` +
+		`<a id="nav-communication" href="` + base + `/communication">Communication</a></nav>`
+}
+
 // ---------------- §五/§六 命令 ----------------
 
 // onMessage：message 事件 -> 只认发给自己的命令 -> 结果用动作回给引擎。

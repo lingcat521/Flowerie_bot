@@ -169,8 +169,10 @@ class Rig:
         self.build(lang)
         self.deploy(lang, plugin_id, declared=declared)
         self.mgr.discover()                      # 幂等：扫描插件目录并把新插件登记为未启用
+        # 默认批准 manifest 声明的四项基础权限 + web_ui（§23/§12 的插件 WebUI 页面：
+        # index / communication；页面渲染与表单提交都要 web_ui，见 tests/e2e/README.md §3）。
         approved = approved if approved is not None else [
-            "read_message", "send_message", "plugin.call.*", "plugin.emit"]
+            "read_message", "send_message", "plugin.call.*", "plugin.emit", "web_ui"]
         ok, why = await self.mgr.enable(plugin_id, approved_permissions=list(approved))
         assert ok, "启用 %s 失败：%s" % (plugin_id, why)
         self.loaded[plugin_id] = lang
