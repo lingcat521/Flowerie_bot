@@ -10,6 +10,11 @@ testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# 实机（real-device）用例：需要真实协议端与测试群，默认 skip（见 tests/integration/README.md）。
+# 单独打标记，便于 `-m "not real_device"` 或 `-m real_device` 精确选择。
+markers = [
+    "real_device: 需要真实客户端/协议端的 integration test（默认 skip）",
+]
 
 [tool.ruff]
 line-length = 120

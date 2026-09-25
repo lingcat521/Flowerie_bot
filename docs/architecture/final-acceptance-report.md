@@ -70,11 +70,41 @@ CI: success（CI + Acceptance + Push on main 三项）
 | 项 | 状态 | 已尝试 | 缺失条件 |
 | :--- | :--- | :--- | :--- |
 | **G5** Milky 多媒体发送实机联调（6/6）| 🚫 BLOCKED | 设备控制授权查询（无障碍/ADB 两条路径）均返回未授权；`android_device_info` / `android_adb_shell_exec` 返回 `denied: true` | ① 系统设置开启「DSH 设备控制」无障碍，或无线调试 ADB 配对；② 一个运行中的协议端（NapCat/Lagrange/LLBot）；③ 测试群号 |
-| **G6** 真实 Integration Test（OneBot11 10/10 + Milky 12/12 = 22/22）| 🚫 BLOCKED | 同上 | 同上 |
+| **G6** 真实 Integration Test（OneBot11 10/10 + Milky 12/12 = 22/22）| 🚫 BLOCKED（**harness 就绪，执行 0/22**）| 同上；已按 §13 建好 `tests/integration/`（22 个用例 + 证据记录器 + manual 流程），默认 skip 并打印缺失条件 | 同上 |
 | **门槛 4b** 实机验证覆盖率 ≥90% | 🚫 BLOCKED（0%）| 同上 | 同上 |
 | **G7** OpenShamrock | ✅ 按任务书允许的分支结案 | 带 token 查询 `GET /repos/whitechi73/OpenShamrock` → **404**；`/users/whitechi73` → **404**（账号与仓库均已不存在，非鉴权问题）→ `SOURCE_UNAVAILABLE` + 真实原因 + 已完成文档研究（docs/source-acquisition.md）| —— |
 
 BLOCKED 的完整证据链（含每次尝试的命令与返回）记录在 [../protocol-gap-closure.md](../protocol-gap-closure.md) §6。
+
+### 指标口径（任务书 §19 / §20 / §21）
+
+```text
+Gap Closure Rate = 6/8 = 75%          # G1 G2 G3 G4 G7 G8 = CLOSED；G5 G6 = BLOCKED（不是 CLOSED）
+Real Integration Coverage = 0%        # BLOCKED BY EXTERNAL DEPENDENCY（§20 允许的唯一例外分支），证据见 §五
+Milky Gap Phase = NOT COMPLETE        # §21：G1/G2/G3/G4 = 100%；G5（多媒体发送实机）BLOCKED → 如实标 NOT COMPLETE
+```
+
+### §13 实机测试目录（已建立，执行 BLOCKED）
+
+| 文件 | 内容 |
+| :--- | :--- |
+| `tests/integration/test_onebot11_real.py` | §8.1 的 10 项：text/image/file/forward/JSON-Ark/poke/recall（通过客户端 API 发送 → 取回 → **真解析器**归一化）|
+| `tests/integration/test_milky_real.py` | §8.2 的 12 项：text/image/record/file/forward/reply/poke/request event |
+| `tests/integration/_realenv.py` | 环境探测 + §8.3 缺失条件文案 + §14 证据记录器（禁止记录 token/cookie/私聊内容）|
+| `tests/integration/README.md` | 三层测试边界（unit / integration / **manual real-device**）+ 运行方式 + 手工步骤 |
+
+**诚实标注**：这 22 个用例**从未在真实客户端上执行过**（`[UNVERIFIED]`），代码路径本身也未经实机验证；
+本地/CI 里它们全部 skip 并打印缺失条件（`22 skipped`）。
+
+### §22 合规声明（禁止用文档修改代替修复）
+
+```text
+删除 docs 中的缺口                      → 未做（缺口台账 G1–G8 全量保留，BLOCKED 项照实写）
+把 UNKNOWN 改成 SUPPORTED               → 未做（docs/message-model.md §5 仍列 [UNKNOWN] 项）
+把"未验证"改成"已支持"                   → 未做（onebot12 标 NOT_REAL_DEVICE_VALIDATED；实机项标 BLOCKED）
+减少 capability matrix 项目             → 未做（能力项 18 项 × 4 适配器描述符，只增不减；有测试钉住）
+删除失败 fixture / 失败测试              → 未做（fixture 21 个；失败用例与其原因逐条保留在 Dashboard）
+```
 
 ## 六、证据可追溯性抽样
 
