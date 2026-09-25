@@ -62,26 +62,27 @@
 >    （缺 `libtermux-exec` 的 `LD_PRELOAD`）—— 白名单是安全不变式，不为测试放宽。
 > 另外本沙箱**禁止硬链接**（已实测 `ln` 失败），因此 udocker 容器（Ubuntu 镜像层含硬链接）无法落地。
 
-### 3.2 CI（真数字，不是估计）
+### 3.2 CI（真数字，不是估计；最终提交 `47c9862`）
 
 | workflow | 结果 | 关键数字 |
 | :--- | :--- | :--- |
-| `CI`（Python 3.12）| **success** | `ruff check .` -> All checks passed!；pytest **2133 passed / 22 skipped** |
-| `CI`（Python 3.9）| **success** | `ruff check .` -> All checks passed!；pytest **2133 passed / 22 skipped** |
-| `Acceptance`（accept）| **success** | 验收汇总 **37/37 通过**（含 pytest 2129 passed / 26 skipped 与 ruff）|
+| `CI`（Python 3.12）| **success** | `ruff check .` -> All checks passed!；pytest **2136 passed / 22 skipped** |
+| `CI`（Python 3.9）| **success** | `ruff check .` -> All checks passed!；pytest **2136 passed / 22 skipped** |
+| `Acceptance`（accept）| **success** | 验收汇总 **37/37 通过**（含 pytest 2132 passed / 26 skipped 与 ruff）|
 | `Push on main` | **success** | CodeQL：actions / javascript-typescript / python 三份分析全过 |
 
 - 22 skipped 全部是**实机集成**用例（没有协议端环境，按任务书要求 skip 并打印缺失条件），
   与上一版基线（1755 passed / 22 skipped）**skip 数完全相同** —— 说明本轮新增的
   Python->Go / TS->Java / TS->TS 与五语言 SDK 契约用例在 CI 上**全部真跑，没有一条被跳过**。
-- 测试规模 1755 -> **2133 passed（+378）**。
+- 测试规模 1755 -> **2136 passed（+381）**（最终提交）；中间提交 9814b93 绿跑为 2133 passed，
+  差异来自随后补的 trace 整合用例与两条扩展验收路径。
 
 ### 3.3 一次真实的红 -> 绿（如实记录）
 
 | commit | 结果 | 根因 | 修复 |
 | :--- | :--- | :--- | :--- |
 | `1731884` | **红**（CI + Acceptance）| 1) Ruff 8 条（I001 x6 + F401 x2）；2) Python->Go 的 `get_status` 回 `plugin_id="unknown"` | 见 `9814b93` |
-| `9814b93` | **绿**（三项 workflow 全过）| —— | 1) 按 CI 给出的 Organize imports 逐条修正；2) 引擎在 `initialize` 上下文补上 `plugin_id`/`instance_id`（§四 身份：任意语言的可执行入口没有别的途径知道自己的身份），Go 示例改为优先读请求模型的 `target.plugin_id`（与 Java/Rust 一致），`ctx.PluginID` 兜底 |
+| `9814b93` / `139f955` / `47c9862` | **绿**（三项 workflow 全过）| —— | 1) 按 CI 给出的 Organize imports 逐条修正；2) 引擎在 `initialize` 上下文补上 `plugin_id`/`instance_id`（§四 身份：任意语言的可执行入口没有别的途径知道自己的身份），Go 示例改为优先读请求模型的 `target.plugin_id`（与 Java/Rust 一致），`ctx.PluginID` 兜底 |
 
 > 这条记录的意义：**本机没有 go/javac/rustc、也没有 ruff、容器方案被沙箱禁硬链接挡住**，
 > 所以 `1731884` 的红只有 CI 能抓 —— 与"skip 不等于 pass"是同一条纪律：真实数字优先于好看。
