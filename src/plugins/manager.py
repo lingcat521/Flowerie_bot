@@ -32,8 +32,7 @@ from src.plugins.installer import PluginInstaller, PluginInstallError
 from src.plugins.manifest import PluginManifest, PluginManifestError
 from src.plugins.permissions import PermissionManager
 from src.plugins.runtime import PluginRuntime
-from src.plugins.webui_loader import (PluginWebuiPathError, read_page, read_static,
-                                      static_root)
+from src.plugins.webui_loader import PluginWebuiPathError, read_page, read_static, static_root
 from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
 from src.sdk.event import BotEvent

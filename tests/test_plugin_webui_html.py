@@ -18,8 +18,12 @@ import pytest
 from src.plugins.manager import PluginManager
 from src.plugins.manifest import PluginManifest, PluginManifestError
 from src.plugins.webui_loader import PluginWebuiPathError
-from src.plugins.webui_security import (PluginHtmlError, render_plugin_template,
-                                        sanitize_plugin_css, sanitize_plugin_html)
+from src.plugins.webui_security import (
+    PluginHtmlError,
+    render_plugin_template,
+    sanitize_plugin_css,
+    sanitize_plugin_html,
+)
 
 PID = "html_demo"
 OTHER = "other_plugin"
