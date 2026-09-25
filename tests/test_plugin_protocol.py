@@ -18,9 +18,16 @@ import tempfile
 
 import pytest
 
-from src.plugins.protocol import (CAPABILITY_GROUPS, ENGINE_OPS, OPTIONAL_METHODS, PROTOCOL_VERSION,
-                                  REQUIRED_METHODS, negotiate_initialize, normalize_capabilities,
-                                  valid_storage_key)
+from src.plugins.protocol import (
+    CAPABILITY_GROUPS,
+    ENGINE_OPS,
+    OPTIONAL_METHODS,
+    PROTOCOL_VERSION,
+    REQUIRED_METHODS,
+    negotiate_initialize,
+    normalize_capabilities,
+    valid_storage_key,
+)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, "src/plugins/runner/python_runner.py")
