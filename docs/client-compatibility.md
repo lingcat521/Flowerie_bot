@@ -132,22 +132,22 @@ Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.
 | 文本收发 | [DOC] 段 `text` | [CODE] `text` | [UNKNOWN] | [DOC] `text` | [UNKNOWN] | [UNKNOWN] | [CODE] 已支持 | [MVP] 已支持 |
 | 图片接收 | [DOC] `image`(file/url) | [CODE] FileBase+summary/sub_type | [UNKNOWN] | [DOC] `image`(temp_url/resource_id) | [UNKNOWN] | [UNKNOWN] | [CODE] url/file 提取 | [MVP] **未实现** |
 | 图片发送 | [DOC] `image` | [CODE] SendPicElement | [UNKNOWN] | [DOC] `image` 段 | [UNKNOWN] | [UNKNOWN] | [CODE] 走 sender 段数组/图片路径 | [UNKNOWN] |
-| QQ 表情 face | [DOC] `face` | [CODE] `{id,resultId?,chainCount?}` | [UNKNOWN] | [DOC] `face{face_id}` | [UNKNOWN] | [UNKNOWN] | **未建模** | [MVP] 未处理 |
-| 商城表情 mface | [DOC] 非标准 | [CODE] `{emoji_package_id,emoji_id,key,summary}` | [UNKNOWN] | [DOC] 无对应 | [UNKNOWN] | [UNKNOWN] | **未建模** | [MVP] 未处理 |
-| 文件接收（消息段） | [DOC] `file` | [CODE] FileBase | [UNKNOWN] | [DOC] `file` | [UNKNOWN] | [UNKNOWN] | [CODE] 段 `file` **未分类**（仅在通用 summary） | [MVP] url+base64 信封 |
+| QQ 表情 face | [DOC] `face` | [CODE] `{id,resultId?,chainCount?}` | [UNKNOWN] | [DOC] `face{face_id}` | [UNKNOWN] | [UNKNOWN] | [CODE] **已建模** `faces`（连击/大表情渲染进上下文，上限 3 条）| [MVP] 未处理 |
+| 商城表情 mface | [DOC] 非标准 | [CODE] `{emoji_package_id,emoji_id,key,summary}` | [UNKNOWN] | [DOC] `market_face`（实现只有 `url`）| [UNKNOWN] | [UNKNOWN] | [CODE] **已建模**（`faces` kind=market_face，无描述时不退化渲染）| [MVP] 未处理 |
+| 文件接收（消息段） | [DOC] `file` | [CODE] FileBase | [UNKNOWN] | [DOC] `file` | [UNKNOWN] | [UNKNOWN] | [CODE] **已分类** `files`（`file_id/name/size/url/path`；NapCat 无 file_id 与 LLBot 有 file_id 均兜底）| [MVP] url+base64 信封 |
 | 文件接收（notice） | [DOC] `group_upload` | [CODE] `OB11GroupUploadNoticeEvent` | [UNKNOWN] | [DOC] 文件事件 | [UNKNOWN] | [UNKNOWN] | [CODE] `notice_file` + `/get_file` 下载解码 | [MVP] 同左 |
 | 文件发送 | [DOC] `upload_group_file` | [CODE] 独占一条消息（§3.3） | [UNKNOWN] | [DOC] 上传 API | [UNKNOWN] | [UNKNOWN] | [UNKNOWN] 待核对 | [UNKNOWN] |
-| 合并转发接收 | [DOC] `forward`/`node` | [CODE] ARK+resid 或 MULTIFORWARD | [UNKNOWN] | [DOC] `get_forwarded_messages` | [UNKNOWN] | [UNKNOWN] | [CODE] 递归展开+预算控制（强于 MVP） | [MVP] 递归收 text |
-| JSON 卡片 | [DOC] `json` | [CODE] `{data,config?}`，靠 `app` 区分 | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | [CODE] 有 `extract_json_card_content`，但**不区分 app** | [MVP] 黑名单过滤收集 |
+| 合并转发接收 | [DOC] `forward`/`node` | [CODE] ARK+resid 或 MULTIFORWARD | [UNKNOWN] | [DOC] `get_forwarded_messages` | [UNKNOWN] | [UNKNOWN] | [CODE] 递归展开+预算控制 + **ARK multimsg 卡片按 `resid` 拉内层**（强于 MVP）| [MVP] 递归收 text |
+| JSON 卡片 | [DOC] `json` | [CODE] `{data,config?}`，靠 `app` 区分 | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | [CODE] **已区分 `app`**：`json_cards` 保留 `app/is_forward_card`，`com.tencent.multimsg` 走转发拉内层 | [MVP] 黑名单过滤收集 |
 | poke（notice） | [DOC] `notice/notify/poke` | [CODE] `OB11PokeEvent` | [UNKNOWN] | [DOC] `send_group_nudge` | [UNKNOWN] | [UNKNOWN] | [CODE] 已支持（target 回退链齐全） | [MVP] 同左 |
-| poke（消息段） | [DOC] 非标准 | [CODE] `poke{type,id}` + GreyTip(8) | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | **未建模** | [MVP] 未处理 |
+| poke（消息段） | [DOC] 非标准 | [CODE] `poke{type,id}` + GreyTip(8) | [UNKNOWN] | [DOC] 无（Milky 是 `group_nudge` 事件）| [UNKNOWN] | [CODE] `shake{}`（face type=Poke，无目标）| [CODE] **已建模** `pokes`（含 shake，target 可为 None）| [MVP] 未处理 |
 | 在线文件 | — | [CODE] `onlinefile{msgId,elementId,fileName,fileSize,isDir}` | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | **未建模** | [UNKNOWN] |
-| markdown | — | [CODE] `markdown{content}` | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | **未建模** | [UNKNOWN] |
+| markdown | — | [CODE] `markdown{content}` | [UNKNOWN] | [DOC] `markdown{content}`（since 1.3，两份实现都无）| [UNKNOWN] | [UNKNOWN] | [CODE] **内容并入** `text` | [UNKNOWN] |
 
 ### 4.1 Milky 列的证据（来自 LLBot 实现 [CODE]）
 
-> Lagrange.Milky 实现仓库不可得（见 source-acquisition.md），因此 Milky 列以 **LLBot 的 Milky 实现**
-> 为 `[CODE]` 证据 + `SaltifyDev/milky` 规范为 `[DOC]` 证据，两者互证。
+> Milky 列以 **LLBot 的 Milky 实现**为 `[CODE]` 证据 + `SaltifyDev/milky` 规范为 `[DOC]` 证据，两者互证
+> （早期曾误判「Lagrange.Milky 实现仓库不可得」，实为内嵌在 LagrangeV2/Core —— 见 source-acquisition.md「状态更正」）。
 > 源码：`~/proto_src/LLBot/src/milky/transform/message/incoming.ts`（252 行）。
 >
 > **更权威的第二来源已补**：Milky 协议作者本人的实现内嵌在 `Lagrange.Core` / `LagrangeV2` 的
@@ -186,6 +186,32 @@ Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.
 >
 > 状态用 `source-acquisition.md` 的词表；**未取得源码的一律标 `NOT_INVESTIGATED`，不假装看过**。
 
+### 6.0 一览（截至 2026-08-09）
+
+**源码获取**（明细见 source-acquisition.md）：**15 个仓库 / 369M 已取得**，1 个 `SOURCE_UNAVAILABLE`（OpenShamrock）。
+
+**能力覆盖的证据密度**（按 message-model.md §3 的 14 行能力表**逐格统计标注** —— 报告的是标注密度，不是重新审计）：
+
+| 客户端 | [CODE] | [DOC] | [UNKNOWN] | 说明 |
+| :--- | ---: | ---: | ---: | :--- |
+| NapCat | **14** | 0 | 0 | 唯一逐格全 [CODE] 的协议端（§1–§3）|
+| SnowLuma | **14** | 0 | 0 | 段编解码层逐格有据 |
+| Milky | 11 | 3 | 2 | 实现内嵌 LagrangeV2/Core（两份副本）+ 规范互证（§4.1、§6）|
+| LLBot（OneBot）| 10 | 0 | 3 | OneBot 实现侧；Milky 侧计入 Milky 列 |
+| OneBot 11 规范 | 1 | 9 | 2 | 规范文档级参照（`[DOC]` 为主）|
+
+**生态分层**（"已取得并核对" = 字段定义被逐行读过且结论以 `[CODE]` 落进文档；"已取得未逐行核对" = 仓库在本地但**不声称支持**）：
+
+| 层 | 已取得并核对 | 已取得未逐行核对 | 未调查 | 不可得 |
+| :--- | :--- | :--- | :--- | :--- |
+| 协议端（决定 wire 形态）| NapCatQQ、LLBot、Lagrange.Milky（内嵌）| Lagrange.OneBot、go-cqhttp | onebots、Yogurt、onebot-kotlin | OpenShamrock |
+| SDK / 框架（消费侧）| NoneBot2 + adapter-onebot、SnowLuma | Koishi、Kovi、ROneBot、milky-python-sdk | imhelper 及 40+ 项（见 6.2）| — |
+| 规范 / 文档 | OneBot11-spec、Milky-spec | Lagrange.Milky.Document（Lagrange.Milky.Document）| — | — |
+| 工具 / 中间件 | — | — | matcha、nonebot-plugin-all4one | — |
+
+**行动结论**：① 必须逐个核对 wire 形态的协议端里，只剩 **onebots / Yogurt**（仓库地址未确认）与 **OpenShamrock**（不可得）；
+② 消费侧 SDK 的差异靠**宽容解析 + unknown 保留**覆盖，不为每个 SDK 写分支；
+③ 未调查项不影响当前归一化层的正确性 —— 它们消费的是同一套形态。
 ### 6.1 协议端（OneBot 11）
 
 | 项目 | 语言 | 状态 | 说明 |
@@ -237,7 +263,11 @@ Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.
 3. LLBot：定位 OneBot 11 + Milky 双实现（它两个协议都支持）；
 4. NoneBot2 + adapter-onebot：定位它对非标准字段的兼容策略（任务书 §二点名）；
 5. OneBot 11 规范：逐段核对 `[DOC]` 列；
-6. Milky：实现仓库不可得 → 只能 [DOC]（SaltifyDev/milky protocol 定义 + Lagrange.Milky.Document）。
+6. ~~Milky：实现仓库不可得 → 只能 [DOC]~~ **已完成**：实现内嵌于 LagrangeV2/Core
+   （`Entity/Segment/` 与 `Models/Segments/` 两份副本），现已具 `[CODE]` 证据；
+   Milky 段归一化与 21 种事件类型归一化均已落地（见 milky-protocol.md、message-model.md）。
 
-> 说明：本文件当前只有 NapCat 一列是 `[CODE]` 完成态，其余列显式标 `[UNKNOWN]`。
-> 按任务书 §22，绝不用别的客户端的实现去填某列的空白。
+> 说明（2026-08-09 更新）：§4 矩阵的**客户端列**是**第一版**快照 —— Lagrange / SnowLuma / LLBot 的多数格子仍标 `[UNKNOWN]`，
+> 这些客户端的实际证据写在 protocol-reverse-engineering.md §4（LLBot 双协议）与 §6（Lagrange.Milky）中；**未逐格回填**是为了不把
+> 「某一处已核对」扩写成「整列已核对」（任务书 §22）。**「Flowerie 现状」列已按本会话落地情况更新**
+> （face / mface / file 段 / poke 段 / json 卡片 app 分流 / 合并转发 multimsg / markdown）。
