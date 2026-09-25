@@ -1,0 +1,27 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[DOC]+[CODE]",
+    "captured": false,
+    "evidence": "Milky 规范 common.ts L377-380（xml{service_id,xml_payload}）+ Entity/Segment/XmlSegment.cs",
+    "note": "XML 段：只保真保存，Flowerie 不解析（任务书 §5.3）"
+  },
+  "time": 1756000302,
+  "self_id": 10001,
+  "event_type": "message_receive",
+  "data": {
+    "message_scene": "group",
+    "peer_id": 123456,
+    "sender_id": 456789,
+    "message_seq": 990003,
+    "segments": [
+      {
+        "type": "xml",
+        "data": {
+          "service_id": 60,
+          "xml_payload": "<msg serviceID=\"60\"><item/></msg>"
+        }
+      }
+    ]
+  }
+}

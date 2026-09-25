@@ -1,0 +1,47 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "NapCat packages/napcat-onebot/types/message.ts L80-86 FileBaseDataSchema{file,path?,url?,name?,thumb?}、L106-109 record 段、L112-115 video 段、L228-233 xml{data}",
+    "note": "OneBot 侧 record/video 与 file 共用 FileBase；xml 的负载在 data.data"
+  },
+  "time": 1756000303,
+  "self_id": 10001,
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "message_id": 990004,
+  "group_id": 123456,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "record",
+      "data": {
+        "file": "file:///data/voice.amr",
+        "path": "/data/voice.amr",
+        "name": "voice.amr"
+      }
+    },
+    {
+      "type": "video",
+      "data": {
+        "file": "https://example/v.mp4",
+        "url": "https://example/v.mp4",
+        "name": "v.mp4"
+      }
+    },
+    {
+      "type": "xml",
+      "data": {
+        "data": "<msg serviceID=\"1\"><item/></msg>"
+      }
+    }
+  ],
+  "raw_message": "",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友"
+  }
+}

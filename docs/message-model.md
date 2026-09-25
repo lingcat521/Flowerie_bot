@@ -99,6 +99,6 @@ NormalizedSegment（kind 为语义类型，attrs 为已归一字段）
 - **已知缺口（不是 `[UNKNOWN]`，而是"证据已得、尚未消费"）**：
   - Milky `reply.segments`（**内联被引用消息内容**，规范 `common.ts` L332 `since 1.2`）——
     Flowerie 目前只取 `message_seq` 当 `reply_id`，内联内容未用（Milky 独有优势：无需再调 API 拉引用）；
-  - Milky `record{resource_id,temp_url,duration}` / `video{resource_id,temp_url,width,height,duration}` ——
-    两个解析器都未建模，仅进 `segments_summary`（`InternalEvent` 暂无对应字段）；
-  - Milky `xml{service_id,xml_payload}` —— 与 OneBot 的 `xml` 段一样只进 `segments_summary`（两侧一致）。
+  - ~~`record` / `video` / `xml` 未建模~~ **已解决（G3）**：`InternalEvent.records/videos/xmls` 三个段载体，
+    两侧解析器复用同一组归一化函数；未知字段进各载体的 `extra`（§5.4）；
+    XML 只保真保存 `raw_xml`，**不解析**（§5.3），组装层只报存在与长度。

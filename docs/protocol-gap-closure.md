@@ -25,7 +25,7 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **G1** | Milky `message_scene=temp` | incomplete（`scope=""`）| complete | source + fixture + test | **CLOSED**（CI `9e4a9fc` 三项全绿，2026-08-09）|
 | **G2** | Milky 请求类事件字段级映射 | incomplete（只有 kind/request_kind）| complete | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（Docs 已更新，待 CI 绿 → CLOSED）|
-| **G3** | Milky `record` / `video` / `xml` | incomplete（仅 `segments_summary`）| complete/explicit | source + fixture + test | OPEN |
+| **G3** | Milky `record` / `video` / `xml` | incomplete（仅 `segments_summary`）| complete/explicit | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（待 CI 绿 → CLOSED）|
 | **G4** | Milky `reply.segments` | incomplete（只消费 message_seq）| complete | source + fixture + test | OPEN |
 | **G5** | Milky 多媒体发送（upload→resource_id→send）| no real validation | complete | source + real device | OPEN（依赖实机）|
 | **G6** | 实机 Integration Test（OneBot11 10 + Milky 12）| missing | complete | integration test | OPEN（依赖实机）|
@@ -38,7 +38,7 @@
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | G1 temp | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
 | G2 request | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
-| G3 media/XML | | | | | | | | OPEN |
+| G3 media/XML | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
 | G4 reply.segments | | | | | | | | OPEN |
 | G5 media send | | | | | | | | OPEN |
 | G6 real integration | | -- | -- | -- | -- | | | OPEN |
@@ -80,9 +80,9 @@
 
 | 指标 | 定义 | 当前 | 目标 |
 | :--- | :--- | :--- | :--- |
-| Gap Closure Rate | CLOSED / 8 | **1/8**（G1 CLOSED；G2 待 CI）| 8/8 或明确 BLOCKED |
+| Gap Closure Rate | CLOSED / 8 | **2/8**（G1/G2 CLOSED；G3 待 CI）| 8/8 或明确 BLOCKED |
 | Real Integration Coverage | 实机验证能力 / 要求验证能力 | 0%（无实机）| ≥90% 或 BLOCKED |
-| 新增测试（G1–G5）| 任务书 §17 | G1 = 11、G2 = 12（要求 G1≥3、G2≥3）| ≥19 累计 |
+| 新增测试（G1–G5）| 任务书 §17 | G1 = 11、G2 = 12、G3 = 10（要求 ≥3 各 Gap）| ≥19 累计（现已 33）|
 
 ## 4b. G2 封口记录（Milky 请求类事件字段级映射）
 
@@ -113,5 +113,31 @@ OneBot=`flag`、Milky=`notification_seq`/`invitation_seq`）、`request_uid`（M
 - `tests/test_protocol_roundtrip.py` 扩展请求类重建路径 → 语料 round-trip **0 skip**。
 
 **DoD**：Source ✓ Model ✓ Fixture ✓ Unit ✓ Roundtrip ✓ Real（不适用，请求事件无实机语义验证项）Docs ✓ CI（待本提交 CI 结果）
+
+## 4c. G3 封口记录（Milky record / video / xml 类型化 Segment）
+
+**证据（Source Verified）**
+- `[DOC]` Milky 规范 `common.ts` L342-346 `record{resource_id,temp_url,duration}`、L347-353
+  `video{resource_id,temp_url,width,height,duration}`、L377-380 `xml{service_id,xml_payload}`。
+- `[CODE]` NapCat `napcat-onebot/types/message.ts` L80-86 `FileBaseDataSchema{file,path?,url?,name?,thumb?}`；
+  L106-109 `record` 段 data = FileBaseData（枚举 `voice = 'record'`，**线上值 record**，L8）；
+  L112-115 `video` 段同 FileBaseData；L228-233 `xml{data}`。
+- 任务书 §5.3（XML 不得塞进 text、不得擅自解析）、§5.4（未知字段不得导致解析失败并要保留）。
+
+**Model（Implemented）** — `InternalEvent` 新增 `records` / `videos` / `xmls` 三个段载体，
+两侧解析器**复用同一组归一化函数**（`_normalize_record_segment` / `_normalize_video_segment` /
+`_normalize_xml_segment`），保证键名同形：
+`{resource_id, url, file, path, name, duration, extra}` / `{...+width, height}` / `{service_id, raw_xml, extra}`。
+`extra` 承载**已知字段之外的全部原始字段**（§5.4 前向兼容）；XML 只保真保存，`raw_xml` 原样。
+组装层新增 `_assemble_media`：语音/视频/XML 各上限 3 条渲染成一句话（XML 只报 service_id 与字符数，未解析）。
+
+**Fixture / Test（Fixture Verified）**
+- 4 个新 fixture：`milky/segment_record.json`、`milky/segment_video.json`、`milky/segment_xml.json`、
+  `napcat/message_media_segments.json`（一条消息含三种段）。
+- `tests/test_media_segments.py`：**10 个用例**（Milky 三种段 + extra 保真 + NapCat FileBase/xml +
+  跨协议语义等价 + Assembler 渲染 + 夹具解析）。
+- `tests/test_protocol_roundtrip.py` 段级通道比较扩展到 `records/videos/xmls`（语料 round-trip 仍 0 skip）。
+
+**DoD**：Source ✓ Model ✓ Fixture ✓ Unit ✓ Roundtrip ✓ Real（不适用）Docs ✓ CI（待提交后确认）
 
 > 本文件随每个 Gap 的推进更新；**没有真实测试输出支撑的数字一律不写**。

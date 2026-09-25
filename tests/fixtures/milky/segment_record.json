@@ -1,0 +1,28 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[DOC]+[CODE]",
+    "captured": false,
+    "evidence": "Milky 规范 protocol/src/ir/common.ts L342-346（record{resource_id,temp_url,duration}）+ LagrangeV2 Lagrange.Milky/Entity/Segment/RecordSegment.cs",
+    "note": "语音段：Milky 只有 resource_id + 临时 URL，没有本地文件路径"
+  },
+  "time": 1756000300,
+  "self_id": 10001,
+  "event_type": "message_receive",
+  "data": {
+    "message_scene": "group",
+    "peer_id": 123456,
+    "sender_id": 456789,
+    "message_seq": 990001,
+    "segments": [
+      {
+        "type": "record",
+        "data": {
+          "resource_id": "res-voice-1",
+          "temp_url": "https://example/v1.amr",
+          "duration": 3
+        }
+      }
+    ]
+  }
+}

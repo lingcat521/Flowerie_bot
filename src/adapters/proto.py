@@ -54,6 +54,9 @@ class InternalEvent:
     files: List[Dict[str, Any]] = field(default_factory=list)     # 文件段（file_id/name/size/url/path）
     json_cards: List[Dict[str, Any]] = field(default_factory=list)  # JSON/Ark 卡片：app + 是否合并转发
     forwards: List[Dict[str, Any]] = field(default_factory=list)  # 合并转发段（id / 是否内联）
+    records: List[Dict[str, Any]] = field(default_factory=list)   # 语音段（G3）
+    videos: List[Dict[str, Any]] = field(default_factory=list)    # 视频段（G3）
+    xmls: List[Dict[str, Any]] = field(default_factory=list)      # XML 段（G3：保真保存，不解析）
     # 高级段摘要（合并转发/卡片等）：(kind, data)；data 为平台释义 dict（解析期使用）
     segments_summary: List[Tuple[str, dict]] = field(default_factory=list)
     # 原始消息段（浅拷贝的段数组，供 GroupMessage.message_array 兼容组装；

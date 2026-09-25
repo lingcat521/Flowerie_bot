@@ -1,0 +1,30 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[DOC]+[CODE]",
+    "captured": false,
+    "evidence": "Milky 规范 common.ts L347-353（video{resource_id,temp_url,width,height,duration}）+ Entity/Segment/VideoSegment.cs",
+    "note": "视频段"
+  },
+  "time": 1756000301,
+  "self_id": 10001,
+  "event_type": "message_receive",
+  "data": {
+    "message_scene": "group",
+    "peer_id": 123456,
+    "sender_id": 456789,
+    "message_seq": 990002,
+    "segments": [
+      {
+        "type": "video",
+        "data": {
+          "resource_id": "res-video-1",
+          "temp_url": "https://example/v1.mp4",
+          "width": 640,
+          "height": 480,
+          "duration": 12
+        }
+      }
+    ]
+  }
+}

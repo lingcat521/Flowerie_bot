@@ -51,6 +51,7 @@ class MessageAssembler:
 
         # 表情（QQ 表情 / 商城表情）：Adapter 已归一化，这里只做语义化（证据见 docs/message-model.md §3）
         full_text += self._assemble_faces(event)
+        full_text += self._assemble_media(event)
 
         # 回复与@：边界语义字段（parser 与旧 _scan_reply_and_at 同规则）
         is_reply_to_bot = event.is_reply_to_bot
@@ -132,6 +133,43 @@ class MessageAssembler:
         return block
 
     # ---------- JSON 卡片 ----------
+    def _assemble_media(self, event) -> str:
+        """把语音/视频/XML 归一化字段变成 AI 能理解的一句话（G3）。
+
+        证据：
+        - [CODE] NapCat `napcat-onebot/types/message.ts` L106-115（`record`/`video` 均用
+          `FileBaseDataSchema`）、L228-233（`xml{data}`）；
+        - [DOC] Milky 规范 `common.ts` L342-353（`record`/`video` 字段）、L377-380（`xml{service_id,xml_payload}`）。
+        XML **只报告存在与长度、不解析内容**（任务书 §5.3：先保真保存，再考虑高级解析）。
+        上限各 3 条：与图片/表情/转发一致，防单条消息刷屏。
+        """
+        parts = []
+        for rec in (getattr(event, "records", None) or [])[:3]:
+            if not isinstance(rec, dict):
+                continue
+            dur = rec.get("duration")
+            parts.append("[语音%s]" % (("，%s 秒" % dur) if dur else ""))
+        for vid in (getattr(event, "videos", None) or [])[:3]:
+            if not isinstance(vid, dict):
+                continue
+            extra = []
+            if vid.get("duration"):
+                extra.append("%s 秒" % vid["duration"])
+            if vid.get("width") and vid.get("height"):
+                extra.append("%sx%s" % (vid["width"], vid["height"]))
+            parts.append("[视频%s]" % (("（" + "，".join(extra) + "）") if extra else ""))
+        for xml in (getattr(event, "xmls", None) or [])[:3]:
+            if not isinstance(xml, dict):
+                continue
+            raw = str(xml.get("raw_xml") or "")
+            sid = str(xml.get("service_id") or "")
+            parts.append("[XML 卡片（%s已保真保存，未解析；%d 字符）]"
+                         % (("service_id=" + sid + "，") if sid else "", len(raw)))
+        if not parts:
+            return ""
+        note, _hit = sanitize_untrusted_text(" ".join(parts))
+        return chr(10) + "[用户发送了媒体：" + note + "]"
+
     def _assemble_faces(self, event) -> str:
         """把表情归一化字段变成 AI 能理解的一句话。
 

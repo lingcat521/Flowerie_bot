@@ -158,8 +158,9 @@ def test_roundtrip_reparse_is_stable(path):
         for field in ("request_kind", "request_scene", "request_id", "request_uid",
                       "request_filtered", "comment", "actor_id", "target_id", "group_id"):
             assert getattr(ev1, field) == getattr(ev2, field), (path, field)
-    # 段级通道同样必须稳定（含新增的 faces/pokes/files/json_cards/forwards）
-    for field in ("faces", "pokes", "files", "json_cards", "forwards"):
+    # 段级通道同样必须稳定（含 faces/pokes/files/json_cards/forwards/records/videos/xmls）
+    for field in ("faces", "pokes", "files", "json_cards", "forwards",
+                  "records", "videos", "xmls"):
         assert getattr(ev1, field) == getattr(ev2, field), field
 
 

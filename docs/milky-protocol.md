@@ -60,9 +60,9 @@ python main.py
 | 小程序 | `light_app` | `app_name` + `json_payload` | `json_cards`（payload 内 `app` 为 `com.tencent.multimsg` 时按合并转发拉内层）|
 | 合并转发 | `forward` | `forward_id` + title/preview/summary | `forwards` |
 | 文件 | `file` | `file_id` + `file_name` + `file_size`（+`file_hash`?）| `files` |
-| 语音 | `record` | `resource_id` + `temp_url` + `duration` | 仅 `segments_summary`（暂无对应字段）|
-| 视频 | `video` | `resource_id` + `temp_url`（+宽高/时长）| 仅 `segments_summary`（暂无对应字段）|
-| XML | `xml` | `service_id` + `xml_payload` | 仅 `segments_summary`（与 OneBot `xml` 一致）|
+| 语音 | `record` | `resource_id` + `temp_url` + `duration` | `records`（G3 已建模，未知字段进 `extra`）|
+| 视频 | `video` | `resource_id` + `temp_url`（+宽高/时长）| `videos`（G3 已建模）|
+| XML | `xml` | `service_id` + `xml_payload` | `xmls`（G3：只保真保存 `raw_xml`，**不解析**）|
 | Markdown | `markdown` | `content` | `text`（规范 since 1.3；两份实现都未定义该段）|
 
 ⚠️ **与 OneBot 的差异**：

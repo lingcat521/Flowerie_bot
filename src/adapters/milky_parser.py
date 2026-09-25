@@ -16,7 +16,10 @@ Milky（OneBot 进化版）事件信封：
 - file       → files{file_id,name,size,url,path}          [DOC] L354-358 / [CODE] FileSegment.cs
 - face       → faces{kind:face,face_id,is_large}        [CODE] V2 ISegment.cs L9 + FaceSegment.cs / [DOC] 规范 L323-326
 - markdown   → text（content）                           [DOC] 规范 L381-383（两份实现均未定义该段）
-未映射（两侧一致保留在 segments_summary）：xml / record / video（InternalEvent 暂无对应字段）。
+- record     → records{resource_id,url,file,name,duration,extra}   [CODE] NapCat types/message.ts L106-109 / [DOC] 规范 L342-346
+- video      → videos{...同上 + width,height}                       [CODE] NapCat L112-115 / [DOC] 规范 L347-353
+- xml        → xmls{service_id,raw_xml,extra}（**只保真，不解析**）   [CODE] NapCat L228-233 / [DOC] 规范 L377-380
+未知字段：一律进各载体的 extra（§5.4 前向兼容，不丢原始信息）。
 
 两份内嵌实现布局不同（均为 [CODE]，勿混用）：
 - `LagrangeV2/Lagrange.Milky/Entity/Segment/`：15 个文件，13 种 incoming（含 face/market_face/xml）
@@ -31,6 +34,9 @@ from src.adapters.onebot_parser import (
     _json_app,
     _normalize_file_segment,
     _normalize_market_face,
+    _normalize_record_segment,
+    _normalize_video_segment,
+    _normalize_xml_segment,
 )
 from src.adapters.proto import InternalEvent
 
@@ -259,6 +265,17 @@ def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> N
                 "is_forward_card": app == "com.tencent.multimsg",
                 "payload": payload if isinstance(payload, (dict, str)) else str(payload),
             })
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "record":
+            # 语音 → records（与 OneBot 侧同形：复用 _normalize_record_segment）
+            ev.records.append(_normalize_record_segment(data))
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "video":
+            ev.videos.append(_normalize_video_segment(data))
+            ev.segments_summary.append((seg_type, dict(data)))
+        elif seg_type == "xml":
+            # XML：保真保存，不解析成业务模型（任务书 §5.3）
+            ev.xmls.append(_normalize_xml_segment(data))
             ev.segments_summary.append((seg_type, dict(data)))
         elif seg_type == "face":
             # 表情 → faces（与 OneBot face 段同形：kind/face_id/result_id/chain_count）

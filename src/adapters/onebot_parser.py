@@ -100,6 +100,58 @@ def _scene_of(kind: str, scope: str, raw: Dict[str, Any]) -> str:
     return scope or ""
 
 
+def _extra_fields(data: Dict[str, Any], known: tuple) -> Dict[str, Any]:
+    """§5.4 前向兼容：已知字段之外的原始字段一律**保真保留**（不丢信息，也不参与语义）。"""
+    return {k: v for k, v in data.items() if k not in known}
+
+
+def _normalize_record_segment(data: Dict[str, Any]) -> Dict[str, Any]:
+    """语音段（G3）。证据：
+
+    - [CODE] NapCat `napcat-onebot/types/message.ts` L106-109：`record` 段的 data 就是
+      `FileBaseDataSchema{file, path?, url?, name?, thumb?}`（L80-86）；
+    - [DOC] Milky 规范 `common.ts` L342-346：`record{resource_id, temp_url, duration}`。
+    """
+    known = ("resource_id", "temp_url", "url", "file", "name", "duration", "path", "thumb")
+    return {
+        "resource_id": str(data.get("resource_id") or ""),
+        "url": str(data.get("temp_url") or data.get("url") or ""),
+        "file": str(data.get("file") or ""),
+        "path": str(data.get("path") or ""),
+        "name": str(data.get("name") or ""),
+        "duration": data.get("duration"),
+        "extra": _extra_fields(data, known),
+    }
+
+
+def _normalize_video_segment(data: Dict[str, Any]) -> Dict[str, Any]:
+    """视频段（G3）。证据：
+
+    - [CODE] NapCat 同文件 L112-115：`video` 段 data = `FileBaseDataSchema`（与 record 同）；
+    - [DOC] Milky 规范 L347-353：`video{resource_id, temp_url, width, height, duration}`。
+    """
+    known = ("resource_id", "temp_url", "url", "file", "name", "duration", "path", "thumb",
+             "width", "height")
+    out = _normalize_record_segment(data)
+    out["width"] = data.get("width")
+    out["height"] = data.get("height")
+    out["extra"] = _extra_fields(data, known)
+    return out
+
+
+def _normalize_xml_segment(data: Dict[str, Any]) -> Dict[str, Any]:
+    """XML 段（G3）：**只保真保存，不解析**（任务书 §5.3）。证据：
+
+    - [CODE] NapCat 同文件 L228-233：`xml` 段 data = `{data: string}`（XML 数据）；
+    - [DOC] Milky 规范 L377-380：`xml{service_id, xml_payload}`。
+    """
+    return {
+        "service_id": str(data.get("service_id") or ""),
+        "raw_xml": str(data.get("xml_payload") or data.get("data") or data.get("xml") or ""),
+        "extra": _extra_fields(data, ("service_id", "xml_payload", "data", "xml")),
+    }
+
+
 class OneBotEventParser:
     """OneBot raw dict → InternalEvent（转换唯一入口；raw_data 隔离保留）。"""
 
@@ -188,6 +240,9 @@ class OneBotEventParser:
         is_reply_to_bot = has_reply_to_other = has_at_others = False
         summary: List[tuple] = []
         faces: List[Dict[str, Any]] = []
+        records: List[Dict[str, Any]] = []
+        videos: List[Dict[str, Any]] = []
+        xmls: List[Dict[str, Any]] = []
         pokes: List[Dict[str, Any]] = []
         files: List[Dict[str, Any]] = []
         json_cards: List[Dict[str, Any]] = []
@@ -257,6 +312,15 @@ class OneBotEventParser:
             elif seg_type == "file":
                 files.append(_normalize_file_segment(data))
                 summary.append((seg_type, dict(data)))
+            elif seg_type == "record":
+                records.append(_normalize_record_segment(data))
+                summary.append((seg_type, dict(data)))
+            elif seg_type == "video":
+                videos.append(_normalize_video_segment(data))
+                summary.append((seg_type, dict(data)))
+            elif seg_type == "xml":
+                xmls.append(_normalize_xml_segment(data))
+                summary.append((seg_type, dict(data)))
             elif seg_type == "markdown":
                 # NapCat OB11 段词汇含 markdown（docs/client-compatibility.md §3.1）；
                 # 内容是文本 → 并入 text，避免丢掉用户可见内容（与 Milky 侧对称）
@@ -274,6 +338,9 @@ class OneBotEventParser:
         event.has_reply_to_other = has_reply_to_other
         event.has_at_others = has_at_others
         event.faces = faces
+        event.records = records
+        event.videos = videos
+        event.xmls = xmls
         event.pokes = pokes
         event.files = files
         event.json_cards = json_cards
