@@ -10,7 +10,8 @@
 //!
 //! 动作形状（容易踩的坑）：引擎执行事件动作时读的是 action["payload"]，所以回包是
 //! {"type":"send_message","payload":{"group_id":…,"message":"<结果 JSON 字符串>"}}；
-//! 仓库旧示例里的 {"type":"send_group_msg","params":{…}} 只被断言、不被执行，别照抄。
+//! 历史坑：`{"type":"send_group_msg","params":{…}}` 不是插件动作形状 —— 引擎只读 `action["payload"]`，
+//! `params` 会被静默丢弃（本仓库示例已统一为 `send_message` + `payload`）。
 
 mod flowerie;
 

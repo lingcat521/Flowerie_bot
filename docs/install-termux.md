@@ -1,38 +1,31 @@
 # 📱 花璃 · 安卓 (Termux) 专用安装
 
-> 部署（Termux）以本文为准；v1.7 功能开关/存储后端不影响部署步骤（默认 SQLite、默认全关高级功能）。
+> 当前版本 **v2.3.0**。本文是 Termux 部署的**唯一权威步骤**（[README](../README.md) 与 [Release 资产说明](install-release-guide.md) 都指向本文）。
+> 安卓与 PC 的差别：`pydantic-core` 在 Termux 没有匹配 wheel（源码编译需 Rust，极易失败），必须走 Termux 专用源拿预编译包；
+> `aiohttp` / `lxml` 等仍需本地用 clang 编译，耗时数分钟属正常。
 
-
-> 本文是 Termux 部署的**唯一权威步骤**（[README](../README.md) 与 [Release 安装说明](install-release-guide.md) 均指向本文），方便单独收藏、转发或在手机上直接打开。
-
-由于安卓环境与 PC 不同（需绕过 `pydantic` 编译且依赖预编译库），请严格按以下步骤执行：
-
-## 步骤一：更换软件源（避免下载超时）
-
-首次安装务必切换国内镜像，否则 `pkg` 可能无法连接：
-```bash
-termux-change-repo
-```
-（在界面中选择 `Tsinghua` 或 `USTC` 镜像）
-
-## 步骤二：安装基础环境
+## 一、基础环境
 
 ```bash
+termux-change-repo        # 1) 换源（界面里选 Tsinghua 或 USTC），否则 pkg 可能连不上
 pkg update && pkg upgrade -y
-pkg install python python-pip git -y
-# 如需读取手机存储（/sdcard），执行下方命令并授权：
-termux-setup-storage
+pkg install python git -y
+termux-setup-storage      # 可选：需要读取手机存储（/sdcard）时执行并授权
+```
 
-# 获取项目代码（克隆后已进入项目目录，后续 pip/运行命令都在项目内执行）
+## 二、获取代码
+
+```bash
 git clone https://github.com/lingcat521/Flowerie_bot.git
 cd Flowerie_bot
 ```
 
-## 步骤三：安装项目依赖（关键步骤）
+> 也可以解压 Release 的 `Flowerie_bot-termux-source.tar.gz` 源码包（内含 `build-termux.sh`），效果相同。
 
-> 以下命令需在**项目目录内**执行（步骤二末尾已 `cd Flowerie_bot` 进入）。
+## 三、安装项目依赖（关键步骤）
 
-**请直接复制整条命令**，它强制从安卓专用源获取预编译包，**避免耗时 10 分钟以上的源码编译**：
+必须**在项目目录内**执行。整条复制：它从安卓专用源取预编译的 `pydantic-core`，避免十几分钟的源码编译。
+
 ```bash
 pip install -r requirements.txt \
   -i https://termux-user-repository.github.io/pypi/ \
@@ -40,73 +33,84 @@ pip install -r requirements.txt \
   --only-binary pydantic-core,pydantic
 ```
 
-> **⚠️ 如果出现 SSL 报错**（`SSL: UNEXPECTED_EOF_WHILE_READING`、`Could not fetch URL ... tuna`）——清华源 HTTPS 偶发被网络重置，按顺序尝试：
->
-> **1. 更新 CA 证书后重试**（证书过期/缺失最常见）：
-> ```bash
-> pkg install ca-certificates -y
-> pkg upgrade -y
-> ```
->
-> **2. 换一个备用 PyPI 镜像**（任选其一，把清华源换成下面的）：
-> ```bash
-> # 阿里云镜像
-> pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ \
->   --extra-index-url https://termux-user-repository.github.io/pypi/ \
->   --only-binary pydantic-core,pydantic
-> # 中科大镜像
-> pip install -r requirements.txt -i https://mirrors.ustc.edu.cn/pypi/simple/ \
->   --extra-index-url https://termux-user-repository.github.io/pypi/ \
->   --only-binary pydantic-core,pydantic
-> # 官方源
-> pip install -r requirements.txt -i https://pypi.org/simple/ \
->   --extra-index-url https://termux-user-repository.github.io/pypi/ \
->   --only-binary pydantic-core,pydantic
-> ```
->
-> **3. 若 HTTPS 握手持续被重置**，用 http + `--trusted-host` 绕过 TLS 校验：
-> ```bash
-> pip install -r requirements.txt \
->   -i http://pypi.tuna.tsinghua.edu.cn/simple \
->   --extra-index-url https://termux-user-repository.github.io/pypi/ \
->   --trusted-host pypi.tuna.tsinghua.edu.cn \
->   --only-binary pydantic-core,pydantic
-> ```
+> **一键等价脚本**：`bash build-termux.sh`（`pkg install python clang rust` → 上面这条 pip → 直接 `python main.py`）。
 
-> **💡 说明**：`aiohttp`、`lxml` 等包在 Termux 没有预编译包（Termux 专用源只预编译了 `pydantic-core` 等少数几个），pip 会**自动下载源码用 clang 编译**，耗时几分钟属正常现象。建议**提前装好编译工具与 C 库**，避免编译中途失败：
-> ```bash
-> pkg install python-yaml clang binutils rust libxml2 libxslt -y
-> ```
->
-> **⚠️ 若编译报错 `Please make sure the libxml2 and libxslt development packages are installed`**（这是 `lxml`——`python-docx` 的依赖——需要 C 库），执行：
-> ```bash
-> pkg install libxml2 libxslt -y
-> ```
-> 装完重新运行上面的 pip install 命令即可。
+### 报 SSL 错误（`SSL: UNEXPECTED_EOF_WHILE_READING`、`Could not fetch URL ... tuna`）
 
-> **⚠️ 如果仍因网络问题下载失败**（提示 `github.com` 超时），请尝试：
-> 1. 先安装系统自带的 yaml：`pkg install python-yaml -y`
-> 2. 安装编译工具：`pkg install clang binutils rust -y`
-> 3. 升级 pip 后直接编译安装（耗时约 10~20 分钟，请耐心等待）：
+清华源 HTTPS 偶发被重置，按顺序试：
+
+1. 补 CA 证书后重试（最常见）：`pkg install ca-certificates -y && pkg upgrade -y`
+2. 换备用 PyPI 镜像（任选其一，把 `-i` 换成下面任一源，`--only-binary` 参数保持不变）：
+   ```bash
+   pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/ \
+     --extra-index-url https://termux-user-repository.github.io/pypi/ --only-binary pydantic-core,pydantic
+   pip install -r requirements.txt -i https://mirrors.ustc.edu.cn/pypi/simple/ \
+     --extra-index-url https://termux-user-repository.github.io/pypi/ --only-binary pydantic-core,pydantic
+   pip install -r requirements.txt -i https://pypi.org/simple/ \
+     --extra-index-url https://termux-user-repository.github.io/pypi/ --only-binary pydantic-core,pydantic
+   ```
+3. HTTPS 握手持续被重置时，用 http + `--trusted-host` 绕过 TLS：
+   ```bash
+   pip install -r requirements.txt -i http://pypi.tuna.tsinghua.edu.cn/simple \
+     --extra-index-url https://termux-user-repository.github.io/pypi/ \
+     --trusted-host pypi.tuna.tsinghua.edu.cn --only-binary pydantic-core,pydantic
+   ```
+
+### 报 `Please make sure the libxml2 and libxslt development packages are installed`
+
+这是 `lxml`（`python-docx` 的依赖）缺 C 库：`pkg install python-yaml clang binutils rust libxml2 libxslt -y`，装完重跑第三节的 pip 命令。
+
+### 仍因网络问题失败（GitHub 超时等）
 
 ```bash
-pip install --upgrade pip 
-pip install -r requirements.txt
+pkg install python-yaml clang binutils rust -y
+pip install --upgrade pip
+pip install -r requirements.txt        # 直接源码编译，约 10~20 分钟
 ```
 
-## 步骤四：运行项目
+## 四、运行
 
 ```bash
-cd Flowerie_bot 2>/dev/null || true  # 确保在项目目录（步骤二已进入且未离开时，此行自动跳过）
-cp .env_example .env     # 复制示例配置生成 .env
-# 然后编辑 .env，填入 DEEPSEEK_API_KEY（DeepSeek 密钥）与 BOT_QQ（机器人 QQ 号）
-python main.py           # 启动机器人
+python main.py
 ```
+
+首次运行会在项目根**自动生成 `.env` 完整配置模板**（171 项，带中文说明），然后因为
+`DEEPSEEK_API_KEY` 仍是占位值 `sk-your-key-here` 而退出——**这是正常的**。编辑 `.env` 填两项后重启：
+
+```ini
+DEEPSEEK_API_KEY=sk-你的真实Key
+BOT_QQ=你的机器人QQ号
+```
+
+```bash
+python main.py          # 再次运行即正常启动
+```
+
+**后台常驻（防锁屏断连）**：
+
+```bash
+termux-wake-lock && nohup bash run.sh >/dev/null 2>&1 &   # run.sh = 崩溃自动重启的守护脚本
+# 或：pkg install tmux && tmux new -s flowerie 'python main.py'
+```
+
+## 五、NapCat（QQ 协议端）与 Web UI
+
+- NapCat 建议**同机运行**：反向 WS 填 `ws://127.0.0.1:3001`（默认 `WS_HOST`/`WS_PORT`）。
+- NapCat 在另一台设备时：`.env` 把 `WS_HOST=127.0.0.1` 改成那台设备 IP，并在防火墙放行 3001。
+- Web UI 默认 `http://127.0.0.1:8080/panel`（首次进注册页创建管理员）。
+
+## 六、排查
+
+| 现象 | 处理 |
+| :--- | :--- |
+| 装依赖卡在编译 / `pydantic-core` 报 Rust 错误 | 确认用了第三节的 `--only-binary pydantic-core,pydantic` 与 Termux 专用源 |
+| SSL / `Could not fetch URL` / `lxml` 编译失败 | 见第三节三个子小节（证书 → 换镜像 → `libxml2 libxslt`） |
+| 启动即退出并提示 Key 占位 | 正常流程：编辑 `.env` 的 `DEEPSEEK_API_KEY` / `BOT_QQ` 后重启 |
+| 端口占用（3001 / 3000 / 8080） | 改 `.env` 对应端口，NapCat 同步改；Web UI 端口不能与 `WS_PORT` 相同 |
+| 群里不回复 | 先 `@` 测试，再看 `logs/bot.log` 的 `message_send_failed` |
+
+> 其余配置项、Web UI、插件与安全说明见 [配置说明](configuration.md) 与 [文档中心](README.md)。
 
 ---
 
 [← 返回 README](../README.md)
-
-## 现状说明（演进记录）
-
-安装方式不变；新增插件 SDK（`plugin_sdk/`）随仓库一起分发，无需额外安装步骤。

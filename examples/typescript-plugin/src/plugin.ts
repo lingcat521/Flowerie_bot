@@ -29,7 +29,7 @@ plugin.onStartup(() => {
 plugin.onMessage((ctx, event) => {
   // 与其它语言示例**完全一致**的语义：收到消息 → 回一条 pong（跨语言等价由契约测试比对）
   if (event && event.text === "ping") {
-    return { type: "send_group_msg", params: { group_id: event.group_id, message: "pong" } };
+    return { type: "send_message", payload: { group_id: event.group_id, message: "pong" } };
   }
   return null;
 });
@@ -37,7 +37,7 @@ plugin.onMessage((ctx, event) => {
 // 命令事件（与 Python 的 on_command 对齐）：/ping → pong
 plugin.onCommand((ctx, event) => {
   if (event && event.text === "/ping") {
-    return { type: "send_group_msg", params: { group_id: event.group_id, message: "pong" } };
+    return { type: "send_message", payload: { group_id: event.group_id, message: "pong" } };
   }
   return null;
 });

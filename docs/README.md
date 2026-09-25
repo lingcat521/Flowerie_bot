@@ -1,8 +1,9 @@
 # Flowerie 文档
 
-> 对应 **v2.2.6**：Code Scanning 全量安全整改、原生多条回复（Multi-Reply + AI 自主拆分的 Native Reply Tool）、
-> Milky 能力补齐（协议 1.3 / 65 动作全量对照）、**多语言 SDK（五语言，46 条最小插件实测）**、
-> **插件间通信（plugin.call/emit/on + Core Router）**、**Plugin WebUI 第二阶段（真服务器 + 真浏览器 E2E）**；
+> 对应 **v2.3.0**（2026-09-26）：**多语言 SDK（五语言，46 条最小插件实测）**、
+> **插件间通信（plugin.call/emit/on + Core Router：权限/超时/取消/环保护/trace）**、
+> **Plugin WebUI 第二阶段（真服务器 + 真浏览器 E2E）**、版本号规范化（SemVer）与文档体系重写。
+> 上一版 v2.2.6 的内容（Code Scanning 整改 / 原生多条回复 / Milky 补齐）见 `CHANGELOG.md`；
 > 更早版本见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走

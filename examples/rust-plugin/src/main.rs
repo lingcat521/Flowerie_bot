@@ -15,8 +15,8 @@ fn main() {
         if ev.get("text").and_then(|v| v.as_str()) == Some("ping") {
             let group_id = ev.get("group_id").cloned().unwrap_or(Json::Null);
             return Some(Json::obj(vec![
-                ("type", Json::str("send_group_msg")),
-                ("params", Json::obj(vec![
+                ("type", Json::str("send_message")),
+                ("payload", Json::obj(vec![
                     ("group_id", group_id),
                     ("message", Json::str("pong")),
                 ])),
@@ -30,8 +30,8 @@ fn main() {
         if ev.get("text").and_then(|v| v.as_str()) == Some("/ping") {
             let group_id = ev.get("group_id").cloned().unwrap_or(Json::Null);
             return Some(Json::obj(vec![
-                ("type", Json::str("send_group_msg")),
-                ("params", Json::obj(vec![
+                ("type", Json::str("send_message")),
+                ("payload", Json::obj(vec![
                     ("group_id", group_id),
                     ("message", Json::str("pong")),
                 ])),

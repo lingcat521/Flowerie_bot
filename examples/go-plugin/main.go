@@ -23,8 +23,8 @@ func main() {
 	plugin.OnMessage(func(ctx *flowerie.Context, ev map[string]any) any {
 		if text, _ := ev["text"].(string); text == "ping" {
 			return flowerie.Action{
-				"type": "send_group_msg",
-				"params": map[string]any{
+				"type": "send_message",
+				"payload": map[string]any{
 					"group_id": ev["group_id"],
 					"message":  "pong",
 				},
@@ -37,8 +37,8 @@ func main() {
 	plugin.OnCommand(func(ctx *flowerie.Context, ev map[string]any) any {
 		if text, _ := ev["text"].(string); text == "/ping" {
 			return flowerie.Action{
-				"type": "send_group_msg",
-				"params": map[string]any{
+				"type": "send_message",
+				"payload": map[string]any{
 					"group_id": ev["group_id"],
 					"message":  "pong",
 				},

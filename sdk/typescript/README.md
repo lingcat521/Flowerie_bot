@@ -27,7 +27,7 @@ const plugin = new FloweriePlugin();
 plugin.onStartup((ctx) => ctx.logger.info("启动 " + ctx.pluginId));
 plugin.onMessage((ctx, ev) => {
   if (ev.text === "ping") {
-    return { type: "send_group_msg", params: { group_id: ev.group_id, message: "pong" } };
+    return { type: "send_message", payload: { group_id: ev.group_id, message: "pong" } };
   }
   return null;
 });
@@ -41,8 +41,8 @@ await plugin.run();
 | 能力 | 用法 |
 | :--- | :--- |
 | 生命周期 | `onStartup(ctx)` / `onShutdown(ctx)` / `run()` |
-| 事件 | `onMessage(fn)`（`text=ping → send_group_msg`）/ `on(event, fn)` |
-| 动作 | `ctx.action("send_group_msg", {...})`（引擎侧过 PermissionManager）|
+| 事件 | `onMessage(fn)`（`text=ping → send_message`）/ `on(event, fn)` |
+| 动作 | `ctx.action("send_message", {...})`（引擎侧过 PermissionManager）|
 | 存储 | `ctx.storageGet/Set/Delete/List`（只落本插件 `data/`，键有格式与大小上限）|
 | 配置 | `await ctx.configGet([...])` / `ctx.configSet({...})`（操作员值只读 + 插件覆盖层）|
 | 权限 | `await ctx.permissionCheck("send_message")`（只读查询）|

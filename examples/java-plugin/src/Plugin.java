@@ -23,8 +23,8 @@ public final class Plugin {
 
         plugin.onMessage((ctx, event) -> {
             if ("ping".equals(event.get("text"))) {
-                return Json.obj("type", "send_group_msg",
-                        "params", Json.obj("group_id", event.get("group_id"), "message", "pong"));
+                return Json.obj("type", "send_message",
+                        "payload", Json.obj("group_id", event.get("group_id"), "message", "pong"));
             }
             return null;
         });
@@ -32,8 +32,8 @@ public final class Plugin {
         // 命令事件（与 Python 的 on_command 对齐）：/ping → pong
         plugin.onCommand((ctx, event) -> {
             if ("/ping".equals(event.get("text"))) {
-                return Json.obj("type", "send_group_msg",
-                        "params", Json.obj("group_id", event.get("group_id"), "message", "pong"));
+                return Json.obj("type", "send_message",
+                        "payload", Json.obj("group_id", event.get("group_id"), "message", "pong"));
             }
             return null;
         });

@@ -49,16 +49,16 @@ def comm_emit(name, payload=None):
 def on_message(event, api=None):
     """收到消息 → 回 pong（与其它语言示例同一语义）。"""
     if str(event.get("text") or "") == "ping":
-        return {"type": "send_group_msg",
-                "params": {"group_id": event.get("group_id"), "message": "pong"}}
+        return {"type": "send_message",
+                "payload": {"group_id": event.get("group_id"), "message": "pong"}}
     return None
 
 
 def on_command(event, api=None):
     """命令事件：/ping → pong（与其它语言示例同一语义，跨语言契约测试比对）。"""
     if str(event.get("text") or "") == "/ping":
-        return {"type": "send_group_msg",
-                "params": {"group_id": event.get("group_id"), "message": "pong"}}
+        return {"type": "send_message",
+                "payload": {"group_id": event.get("group_id"), "message": "pong"}}
     return None
 
 

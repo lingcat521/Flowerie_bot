@@ -54,7 +54,6 @@ def webui_page(page, action, params, values):
         "vars": {
             "greeting": state["greeting"],
             "notify": "已开启" if state["notify"] else "已关闭",
-            "notify_checked": "checked" if state["notify"] else "",
             "saved_at": state["saved_at"] or "（尚未保存）",
             "server_time": time.strftime("%Y-%m-%d %H:%M:%S"),
             "page_id": page,

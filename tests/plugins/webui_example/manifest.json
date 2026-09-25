@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "runtime": "python",
   "entry": "plugin.py",
+  "api_version": "1",
   "permissions": [
     "web_ui"
   ],

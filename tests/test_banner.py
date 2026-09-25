@@ -34,10 +34,10 @@ def test_art_is_pure_ascii():
 
 
 def test_banner_contains_art_head_summary_and_signature():
-    text = banner_text("2.2.6", [("协议", "milky"), ("模型", "deepseek-flash")])
+    text = banner_text("2.3.0", [("协议", "milky"), ("模型", "deepseek-flash")])
     assert ",------." in text and ",---." in text  # 艺术字（F 与 o，figlet soft）
     assert "Flowerie · 花璃" in text
-    assert "v2.2.6" in text
+    assert "v2.3.0" in text
     assert "协议" in text and "deepseek-flash" in text
     assert MADE_BY in text
     assert "made by lingcat521" in text

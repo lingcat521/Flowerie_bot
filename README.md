@@ -1,4 +1,4 @@
-# 花璃 · QQ 群聊机器人
+# 花璃 · 以 QQ Bot 为原生场景的跨语言插件平台
 
 <p align="center">
   <b>银发灰瞳的小恶魔系青梅竹马 · DeepSeek 驱动 ·  OneBot11/Milky</b>
@@ -22,7 +22,16 @@
 ---
 ## 这是什么
 
-**花璃** 是一个基于 **DeepSeek API** 的 **QQ 群聊机器人**：像真实群友一样聊天、识图、看转发、记记忆、被戳会回应，还能自定义人格、发表情包、用 MCP 工具上网查信息，并且可以通过 Web UI 管理配置（当前版本 **v2.2.6**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.3.0**）。
+
+- **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
+  **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
+  [插件间通信](docs/plugin-communication.md)（`plugin.call/emit/on`，跨语言经 Core Router，权限/超时/取消/环保护/trace）+
+  [Plugin WebUI](docs/plugin-webui-protocol.md)（插件自带管理页面，零 JavaScript）。
+  受控运行时：独立子进程 + 权限批准 + 保护级别 + 资源上限；CI 里 **13 种语言**最小插件真编译真运行。
+- **QQ Bot 是原生场景**：开箱即用的群聊机器人 —— DeepSeek 驱动的人设对话、识图、转发/卡片解析、
+  长期记忆、人格系统、表情包、MCP 工具、主动聊天、冷却与预算；OneBot11 / Milky 双协议接入。
+- **零 JavaScript 的 Web 管理后台**：配置/人格/群昵称/群聊知识/外观/日志/用户状态/插件，热更新。
 
 ## 功能
 

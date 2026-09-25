@@ -1,10 +1,10 @@
 # Plugin WebUI 真浏览器 E2E 报告（任务书 §8 / §26 / §28 / §31）
 
-> 任务书：`~/storage/emulated/0/plugin_to_webui.txt`　·　产物：`tests/e2e/`　·　本报告：`docs/plugin-webui-e2e-report.md`
-> 一句话：**浏览器 E2E 的测试代码、可复用启动夹具与 CI 口径全部落地，并且本机实测过能跑的部分都真跑了**；
-> 本机（Termux / Android 沙箱）**装不上 Playwright/Chromium、也起不了真 WebUI 服务器**，
-> 因此**浏览器层与服务器层一律 `BLOCKED BY ENVIRONMENT`（写清缺什么，绝不 PASS）**；
-> **引擎层（真 PluginManager + 真插件进程 + 真 Core Router）在本机真跑通过**。
+> 任务书：`/storage/emulated/0/plugin_to_webui.txt`　·　产物：`tests/e2e/`　·　本报告：`docs/plugin-webui-e2e-report.md`
+> 一句话：**浏览器 E2E 的测试代码、可复用启动夹具与 CI 口径全部落地，本机实测过能跑的部分都真跑了**；
+> 本机（Termux / Android 沙箱）**装不上 Playwright/Chromium、也起不了真 WebUI 服务器**（缺 pydantic），
+> 因此**浏览器层与服务器层在本机一律 `BLOCKED BY ENVIRONMENT`（写清缺什么，绝不 PASS）**；
+> **引擎层（真 PluginManager + 真插件进程 + 真 Core Router）在本机真跑通过**；CI 上三条链路真浏览器真跑（21 passed，见 §6）。
 
 ## 1. 环境实测（先查再写；每条都带命令与原始结果）
 
@@ -71,8 +71,7 @@ drill 里真跑出来的东西（都是真服务器 + 真插件进程，只有 p
   **引擎真实的 request_id / trace_id**（`610966a9…` / `570855e7…`）—— 两个真插件进程 + 真 Core Router 的端到端证据。
 
 > 也就是说：**浏览器层本机无法验证**（缺 Playwright/Chromium，见 §1），但浏览器用例之外的全部代码路径
-> （服务器组装、登录、路由、渲染、契约 id、表单 POST、跨插件调用、静态资源）都在本机真跑过。
-
+> （服务器组装、登录、路由、渲染、契约 id、表单 POST、跨插件调用、静态资源）都在本机真跑过，且在 CI 上由 21 passed 覆盖。
 
 ## 3. 交付物
 
@@ -102,11 +101,13 @@ drill 里真跑出来的东西（都是真服务器 + 真插件进程，只有 p
 
 ## 5. §28 三条链路
 
-| 链路 | 入口 WebUI 插件 | 目标插件 | 本机 | CI（工具链齐全时） |
+| 链路 | 入口 WebUI 插件 | 目标插件 | 本机 | CI |
 | :--- | :--- | :--- | :--- | :--- |
-| E2E-1 Browser -> Python WebUI -> Python 插件 -> **Go** 插件 -> 回 Browser | `tests/e2e` 夹具插件 `webui_e2e_py` | `examples/multilang-sdk/go`（`minimal_go`，真 `go build`） | **BLOCKED**（缺 go） | **可真跑**（引擎层同链路本机已用 Python 目标验证过同一段代码路径） |
-| E2E-2 Browser -> **TS** WebUI -> TS 插件 -> **Java** 插件 -> 回 Browser | `examples/multilang-sdk/typescript`（需要 `communication` 页面） | `examples/multilang-sdk/java` | **BLOCKED**（node 被白名单挡 + 缺 javac/java + 入口插件没有 communication 页面） | 工具链齐；**卡在入口插件还没有 communication 页面**（当前 manifest 只有 `index`） |
-| E2E-3 Browser -> **Go** WebUI -> Go 插件 -> **Rust** 插件 -> 回 Browser | `examples/multilang-sdk/go`（需要 `communication` 页面） | `examples/multilang-sdk/rust` | **BLOCKED**（缺 go/rustc + 入口插件没有 communication 页面） | 同上 |
+| E2E-1 Browser -> Python WebUI -> Python 插件 -> **Go** 插件 -> 回 Browser | `tests/e2e` 夹具插件 `webui_e2e_py` | `examples/multilang-sdk/go`（`minimal_go`，真 `go build`） | **BLOCKED**（缺 go） | **真跑** |
+| E2E-2 Browser -> **TS** WebUI -> TS 插件 -> **Java** 插件 -> 回 Browser | `examples/multilang-sdk/typescript`（communication 页已补齐） | `examples/multilang-sdk/java` | **BLOCKED**（node 被环境白名单挡 + 缺 javac/java） | **真跑** |
+| E2E-3 Browser -> **Go** WebUI -> Go 插件 -> **Rust** 插件 -> 回 Browser | `examples/multilang-sdk/go`（communication 页已补齐） | `examples/multilang-sdk/rust` | **BLOCKED**（缺 go/rustc） | **真跑** |
+
+CI（commit `c56bbc1`）：`webui-e2e` 作业 **21 passed**，三条链路都在真 Chromium 里跑通（§6）。
 
 链路断言（每一层都真）：`#communication-response` 必须含请求原样回显（`"hello"/"world"`）、
 `#communication-trace-id` 必须出现在回包里（**证明回包真的来自目标进程**）、
@@ -115,67 +116,28 @@ drill 里真跑出来的东西（都是真服务器 + 真插件进程，只有 p
 
 > 入口插件要满足的**页面契约**写在 `tests/e2e/README.md` §3：`#communication-panel` +
 > `#communication-{target,method,request,route,submit,response,target-runtime,request-id,trace-id,message}`。
-> 只要 `examples/multilang-sdk/{typescript,go}` 补上 `webui/pages/communication.html`（或 `render: "plugin"` 的对应页面），
-> E2E-2 / E2E-3 会自动从 skip 转为真跑，**不需要改测试**。也可用
+> 五语言 manifest 现已全部声明 `index` + `communication` 两页（`examples/multilang-sdk/*/manifest.json`），
+> E2E-2 / E2E-3 不再缺入口页、不需要改测试；也可用
 > `E2E_CHAIN2_ENTRY` / `E2E_CHAIN2_TARGET`（同理 CHAIN1/CHAIN3）指到别的插件包。
 
-## 6. 建议的 CI 步骤片段（本报告只给片段，未改 `.github/workflows`）
+## 6. CI 落地情况（本报告原「建议片段」已实现）
 
-现有 `test` 作业会自动收集 `tests/e2e`：**没装 Playwright 时全部 skip（BLOCKED）**，`-rs` 把理由打进日志 ——
-「没装浏览器」不会让流水线变红，但会如实报 BLOCKED。要让浏览器 E2E 真跑，加一个独立阶段：
+| 项 | 现状（`.github/workflows/ci.yml`）|
+| :--- | :--- |
+| 主 `test` 作业 | `pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e`（ci.yml:78）—— **不再收集 `tests/e2e`**，浏览器用例不会把主流水线变红 |
+| `webui-e2e` 作业 | ci.yml:82 起（`continue-on-error: true`）：node 20 / go 1.22 / java 17 / rust stable + `pip install playwright` + `python -m playwright install --with-deps chromium`，跑 `pytest -q -rs -s tests/e2e/`（ci.yml:110）|
+| 真跑结果 | **21 passed**（115.23s，commit `c56bbc1`）：§8 DOM 断言 + §28 三条链路（见 `docs/plugin-webui-report.md` §6.2）|
 
-```yaml
-  webui-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt pytest pytest-asyncio ruff
-          pip install playwright
-          playwright install --with-deps chromium
-      - name: Plugin WebUI browser E2E (real Chromium + real plugins)
-        run: pytest -q -rs tests/e2e
-        env:
-          E2E_SCREENSHOT_DIR: $${{ github.workspace }}/e2e-screenshots
-      - name: Upload E2E screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: webui-e2e-screenshots
-          path: e2e-screenshots
-          if-no-files-found: ignore
-```
+没装 Playwright / 工具链缺失时，用例照旧 `BLOCKED BY ENVIRONMENT` skip 并由 `-rs` 把理由打进日志（绝不写 PASS）。
+`E2E_SCREENSHOT_DIR` 仍被链路用例支持（给了就存截图），但 CI 目前未设置该变量、也没有上传 artifact 的步骤。
 
-如果一起跑全量，现有步骤只需加两行：
-
-```yaml
-      - run: pip install playwright && playwright install --with-deps chromium
-      # 全量测试里已经包含 tests/e2e（pytest -q -rs --ignore=tests/sdk）
-```
-
-## 7. 已知缺口（本机实测发现，建议排期修）
+## 7. 已知缺口（本机实测发现；第 4 条已补齐）
 
 1. **插件页面没有 `<title>`**：路由返回的是面板壳片段（无 `<html>/<head>`），`document.title` 只能是空串；
    插件文件里的 `<title>` 被净化器丢掉，**标题文本还会漏进正文**。建议壳里补 `<title>`，
    补完把 `E2E_EXPECT_DOCUMENT_TITLE` 设进 CI，断言立刻变成严格相等。
 2. **模板变量不能出现在属性位置**：`<input … {{ notify_checked }}>` 被 HTMLParser 解析成名为 `{{` 的属性后丢弃（`drop_attr`），
-   "按状态回显 checked/selected"目前**静默失效** —— `examples/plugins/html_webui_demo/webui/pages/index.html` 的复选框就有这个坑。
+   "按状态回显 checked/selected"目前**静默失效** —— 仓库自带的 `examples/plugins/html_webui_demo` 原先就有这个坑（现已改成文本状态回显）。
    建议：需要条件属性时由插件返回整页 HTML（`render: "plugin"`），或给模板引擎加受控条件语法。
 3. **调用方插件拿不到引擎侧 request_id / trace_id（除非被调方回传）**：`api.plugin.call()` 只把 `result` 交给调用方
    （失败抛结构化错误）；引擎把整条 forward 请求交给**被调方** handler，里面有 `request_id` / `trace_id` / `route` / `source`。
@@ -185,8 +147,9 @@ drill 里真跑出来的东西（都是真服务器 + 真插件进程，只有 p
    对端不回传时页面如实显示"对端未回传"/"插件侧 call id"，**绝不编造**；夹具自身的链路证据（`_e2e_trace` 原样往返）
    与引擎统计（`comm_snapshot()` 的 `calls_ok` / `by_route["core"]`）由 `test_plugin_chain_engine.py` 断言。
    若要在协议层直接给出这些字段（不依赖对端自觉），需要 SDK/协议扩展（例如 `call_with_meta()` 或在响应里保留 `request_id`）。
-4. **入口插件缺 `communication` 页面**：`examples/multilang-sdk/{typescript,go}` 目前只有 `index`，
-   这是 E2E-2 / E2E-3 现在 skip 的**唯一非工具链原因**（契约见 README §3）。
+4. **入口插件缺 `communication` 页面（已补齐）**：曾导致 E2E-2 / E2E-3 skip（唯一的非工具链原因，契约见 README §3）；
+   五语言 `examples/multilang-sdk/*/manifest.json` 现均声明 `index` + `communication`，
+   CI `webui-e2e` 的 21 passed 已包含三条链路（`c56bbc1`）。
 
 ## 8. 复现命令
 

@@ -29,7 +29,8 @@ def main():
                             (ROOT / "src/plugins/permissions.py").read_text(encoding="utf-8")))
     lines = ["# Flowerie API 总索引（自动生成·唯一事实来源）", "",
              "> 由 scripts/gen_api_md.py 生成（AST from PluginApi）；端点名（OneBot）不出现在此。",
-             "> 语义方法若网关无对应端点，运行时返回 `not supported in v1`（绝不静默）。", "", ""]
+             "> 语义方法若网关无对应端点，运行时返回 `not supported in v1`（绝不静默）。",
+             "> 插件间通信（PluginCommApi：`plugin.call/emit/on/expose/cancel`）不在本索引，见 [plugin-developer-guide.md](plugin-developer-guide.md) §8。", "", ""]
     used = set()
     for group, prefixes in GROUPS.items():
         members = [m for m in sorted(api) if m not in used and m.startswith(prefixes)]

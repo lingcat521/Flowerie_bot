@@ -285,7 +285,7 @@ function normalizeWebuiResult(result: unknown): Record<string, unknown> {
   return { ok: false, error: "WebUI 处理器没有返回内容" };
 }
 
-export interface Action { type: string; params?: Record<string, unknown> }
+export interface Action { type: string; payload?: Record<string, unknown> }
 export interface PluginInfo {
   plugin_id?: string; name?: string; version?: string; runtime?: string;
   protocol_version?: string; permissions?: string[]; declared_permissions?: string[];

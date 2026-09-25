@@ -1,5 +1,7 @@
 # qwq1 审计（Web UI / 花语记忆）
 
+> 归档文档（历史快照，内容不再更新）。撰写时的版本与结论不代表当前状态，当前事实以 docs/ 现行文档为准。
+
 > **命名注**：本文为 qwq 任务审计实录，按 qwq 原文使用示例名 LivingMemory；
 > 最终落地命名为 **花语记忆 BlossomMemory**（见 configuration/memory/qwq-final-report）。
 

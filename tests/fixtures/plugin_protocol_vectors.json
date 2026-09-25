@@ -30,8 +30,8 @@
     }
   },
   "expected_action": {
-    "type": "send_group_msg",
-    "params": {
+    "type": "send_message",
+    "payload": {
       "group_id": 123456,
       "message": "pong"
     }
@@ -45,8 +45,8 @@
     }
   },
   "expected_command_action": {
-    "type": "send_group_msg",
-    "params": {
+    "type": "send_message",
+    "payload": {
       "group_id": 123456,
       "message": "pong"
     }

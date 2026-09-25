@@ -1,5 +1,7 @@
 # Phase 6 审计：message_assembler 的 OneBot 字段消费（只审计）
 
+> 归档文档（历史快照，内容不再更新）。撰写时的版本与结论不代表当前状态，当前事实以 docs/ 现行文档为准。
+
 ## 1. 4 方法消费的 OneBot 段字段
 
 | 方法 | 消费的 OneBot 内容 | 对应 InternalEvent 语义字段 | 行为风险 |

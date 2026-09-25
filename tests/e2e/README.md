@@ -87,16 +87,21 @@ pytest -q -rs tests/e2e/test_plugin_chain_engine.py
    插件页面文件里的 `<title>` 会被净化器丢弃（`drop_tag:title`），**标题文本会作为正文显示出来**。
    建议面板壳补 `<title>`；补上后设置 `E2E_EXPECT_DOCUMENT_TITLE` 即可切到严格断言。
 2. **模板变量不能出现在标签属性位置**：`<input ... {{ notify_checked }}>` 会被 HTMLParser 当成名为 `{{` 的属性丢掉
-   （`drop_attr`），所以"根据状态回显 checked/selected"的写法目前**静默失效**（`examples/plugins/html_webui_demo` 的复选框就有这个坑）。
+   （`drop_attr`），所以"根据状态回显 checked/selected"的写法目前**静默失效**（仓库自带的 `examples/plugins/html_webui_demo` 原先就这么写，现已改成「静态 checkbox + 文本状态回显」）。
    需要条件属性时，要么让插件返回整页 HTML（`render: "plugin"`），要么给模板引擎加受控的条件语法。
 3. **插件看不到引擎侧的 `request_id` / `trace_id`**：SDK 的 `plugin.call()` 只把 `result` 交给插件（失败抛结构化错误），
    所以页面上显示的 `request_id` 是**插件侧 call id**（页面上如实标注），`trace_id` 是随请求往返的关联 id。
    引擎侧的 request_id / trace_id / route 由 `test_plugin_chain_engine.py` 通过 `comm_snapshot()` 断言（真实数字）。
-4. **`examples/multilang-sdk/{typescript,go}` 目前只有 `index` 页面**（`render: "plugin"`），
-   所以 §28 的 E2E-2 / E2E-3 目前以 `BLOCKED BY ENVIRONMENT`（"入口插件没有声明 communication 页面"）skip；
-   入口插件补上 `communication` 页面后这两条链路自动开始真跑，不需要改测试。
+4. **`examples/multilang-sdk/{python,typescript,go,rust,java}` 都有 `index` 与 `communication` 两个
+   `render: "plugin"` 页面** —— §28 的三条链路（Python→Go / TS→Java / Go→Rust）在 CI 上**真跑**：
+   `CI / webui-e2e` 装真 Chromium 后 21 passed（含三条链路），日志见
+   [plugin-webui-report.md](../../docs/plugin-webui-report.md) §3/§6。
 
-## 6. 建议的 CI 阶段（本文件不改 `.github/workflows`，只给片段）
+## 6. CI 阶段（已落地）
+
+`.github/workflows/ci.yml` 里已有独立 job **`webui-e2e`**：装 Chromium（`playwright install --with-deps chromium`）
+并跑 `pytest -q -rs -s tests/e2e/`；`test` 作业则跑 `tests/webui/`（真服务器黑盒）与全量 pytest。
+下面保留一份等价片段，便于迁移到其它 CI。
 
 现有 `test` 作业已经会收集 `tests/e2e`：没装 Playwright 时这些用例全部 **skip（BLOCKED）**，
 `-rs` 会把理由打进日志 —— 也就是说"没装浏览器"不会让流水线变红，但会**如实报 BLOCKED**。

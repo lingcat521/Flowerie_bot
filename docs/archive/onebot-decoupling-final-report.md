@@ -1,5 +1,7 @@
 # OneBot 解耦最终验收报告（Phase 1-7）
 
+> 归档文档（历史快照，内容不再更新）。撰写时的版本与结论不代表当前状态，当前事实以 docs/ 现行文档为准。
+
 > 结论：**目标达成**。Flowerie 核心业务与 OneBot 协议层已通过**新增抽象边界 + 渐进迁移**
 > 完成解耦（零重写、零删除、行为等价）；所有剩余 OneBot 依赖均在允许的
 > adapter / sender / sdk 边界内。Legacy Compatibility Layer 常驻保留。

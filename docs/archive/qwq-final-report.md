@@ -1,5 +1,7 @@
 # Flowerie_bot 1.6.0 交付报告（Web UI 功能开关 + 花语记忆 + 存储后端）
 
+> 归档文档（历史快照，内容不再更新）。撰写时的版本与结论不代表当前状态，当前事实以 docs/ 现行文档为准。
+
 > 验收：CI（Python 3.9/3.12，754+ 测试含 PG service 真跑）✅ success；黑盒 Acceptance（39 项）✅ success；ruff 0。
 
 ## 1. 修改前架构审计

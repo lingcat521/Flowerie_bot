@@ -4,7 +4,10 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
-## [未发布]
+## [2.3.0] - 2026-09-26
+
+> 本版为**功能版本（MINOR bump）**：插件平台第二阶段（多语言 SDK 实测 + 插件间通信 + Plugin WebUI）、
+> 版本号规范化与文档体系整理。兼容性：只做加法 —— 既有插件、既有 action/权限语义、既有协议方法全部保持可用。
 
 ### 新增 —— 多语言 SDK 最小化插件实测（任务书《插件测试》）
 
@@ -51,36 +54,30 @@
 - 兼容性：协议只做加法（新增可选能力组 `plugin`，未声明的能力引擎不会调用）；
   旧的 `plugin_call` / `plugin_event` action 路径与 `plugin_admin` 粗粒度授权行为不变。
 
-### 新增 —— Native Reply Tool（AI 自主决定拆不拆、拆几条）
+### 新增 —— Plugin WebUI 第二阶段验收（真服务器 + 真浏览器 E2E）
 
-- 开启 `MULTI_REPLY_ENABLED` 后，模型额外获得内部工具 `reply({"messages": [...]})`：
-  由 AI 自主决定消息边界，**不新增配置开关**（与 Multi-Reply 同一开关，Phase 12）
-- 工具调用**不直接发送**：只捕获 `messages[]`，再以 `List[str]` 回到既有链路
-  （`plan_from_config` 开关门控 + `clamped` 上限 → `ReplySender` → OneBot/Milky），
-  因此条数上限、间隔、连续回复计数、冷却、失败策略、协议能力检查全部照旧生效
-- provider 不支持 tool calling（带工具请求 4xx）时**同一次请求内**降级为纯文本，不影响正常回复；
-  仅当本次只带内部工具时触发，MCP 工具语义不变
-- 顺手修掉旧式 JSON 多条在准入层的崩溃：`reply.strip()` / `extract_sticker()` / `is_duplicate_reply()`
-  此前把 `list` 当 `str` 用（AttributeError / TypeError）→ 新增 `reply_plan.first_text()` 统一取首条，
-  查重、表情包标记、兜底与日志都改用它
-- 测试：`tests/test_native_reply_tool.py`（18 条，覆盖任务书 Phase 10 的 12 类断言）；CI 测试数 1121 → **1140**
-- 文档：`web-ui.md` 补花语记忆新门控与分类导航/模块清单、`development.md` 结构/CI/计数同步
+- 专用三页测试插件 `examples/plugin-webui-test/`（index / settings / communication，零 JavaScript）与
+  五语言最小 WebUI 页面（同一套 `webui.page/action/asset` API）
+- `tests/webui/`（102 条）：真 WebUIServer + 真 PluginManager + 真插件进程黑盒 HTTP —— 页面/静态资源、
+  结构化错误（PLUGIN_NOT_FOUND / METHOD_NOT_FOUND / TIMEOUT / PLUGIN_ERROR / PERMISSION_DENIED）、
+  Config round-trip、WebUI → plugin.call → 另一个插件 → 回页面、事件往返、路径穿越/跨插件隔离/Secret/XSS
+- `tests/e2e/`（真 Chromium，CI 21 条）：§8 DOM 断言（document.title / plugin-name / plugin-status /
+  settings-form / communication-panel）与三条跨语言链路（Python→Go、TS→Java、Go→Rust）
+- 文档：`docs/plugin-webui-test.md`、`docs/plugin-webui-report.md`（Gate A–R 逐条 + QQ/P2P=BLOCKED 单列）
 
-### 修复 —— CI（子进程 transport 泄漏 + 夜间静默时序用例）
+### 变更 —— 版本号规范化（SemVer）
 
-- PluginManager._stop_runtime() 是即发即忘（无运行中事件循环时协程根本不执行），子进程
-  transport 因此只能等循环 GC，而 GC 可能落在事件循环关闭之后 →BaseSubprocessTransport
-  .__del__ 抛 RuntimeError: Event loop is closed（unraisable；CI 里被 GitHub 标成一行 error）。
-  修复：PluginRuntime.close_transport_now()（同步、幂等）+ _stop_runtime() 先同步关再调度
-  异步 shutdown + asyncio_create_task() 无循环时 coro.close()；回归测试 2 条（均验证过
-  「移除修复就变红」）
-- test_active_chat_probability_config 每晚必红：用例把「概率=1.0 就该发言」当断言，但
-  should_active_chat 先判夜间静默（NIGHT_SILENCE_START=0 / END=8），真实时钟落在
-  00:00~08:00 时必然返回 False。修复：用固定时钟把该模块的 time.time()/localtime() 钉死在
-  白天 12 点，断言与运行时刻无关
-- CI 实测：3.12 日志里 Event loop is closed 从 1 次 → 0 次，警告 5 条 → 2 条，用例数 1140 → 1142
+- 2.2.2 之后的历史版本号（2.2.22 / 2.2.222 / 2.2.2222 / 2.2.22222）不符合语义化版本，已重编号为
+  **2.2.3 / 2.2.4 / 2.2.5 / 2.2.6**；GitHub Release 的 tag 与标题同步更名（资产内容不变）
+- 本版（插件平台第二阶段 + 文档整理）为 **2.3.0**（新功能 → MINOR）
 
-**版本速览**：2.2.6 · 2.2.5 · 2.2.4 · 2.2.3 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
+### 变更 —— 文档体系整理
+
+- 全部 `docs/**.md` 重新校对：过时徽章 / 测试数 / 版本号 / 功能清单改对，删除重复与失效内容，保留最大信息量
+- **插件开发部分重写为"不看源码即可写插件"**：manifest 全字段、五语言 API 对照、权限全表、存储与配置、
+  Plugin WebUI、插件间通信、错误与调试、打包与安装、13 种语言最小实现清单
+
+**版本速览**：2.3.0 · 2.2.6 · 2.2.5 · 2.2.4 · 2.2.3 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
 
 ---
 
@@ -143,6 +140,35 @@
 - CI：Python 3.9 / 3.12 + PostgreSQL；`ruff check` + `pytest` + 验收脚本；当前 **1121 个测试**
 
 ---
+### 新增 —— Native Reply Tool（AI 自主决定拆不拆、拆几条）
+
+- 开启 `MULTI_REPLY_ENABLED` 后，模型额外获得内部工具 `reply({"messages": [...]})`：
+  由 AI 自主决定消息边界，**不新增配置开关**（与 Multi-Reply 同一开关，Phase 12）
+- 工具调用**不直接发送**：只捕获 `messages[]`，再以 `List[str]` 回到既有链路
+  （`plan_from_config` 开关门控 + `clamped` 上限 → `ReplySender` → OneBot/Milky），
+  因此条数上限、间隔、连续回复计数、冷却、失败策略、协议能力检查全部照旧生效
+- provider 不支持 tool calling（带工具请求 4xx）时**同一次请求内**降级为纯文本，不影响正常回复；
+  仅当本次只带内部工具时触发，MCP 工具语义不变
+- 顺手修掉旧式 JSON 多条在准入层的崩溃：`reply.strip()` / `extract_sticker()` / `is_duplicate_reply()`
+  此前把 `list` 当 `str` 用（AttributeError / TypeError）→ 新增 `reply_plan.first_text()` 统一取首条，
+  查重、表情包标记、兜底与日志都改用它
+- 测试：`tests/test_native_reply_tool.py`（18 条，覆盖任务书 Phase 10 的 12 类断言）；CI 测试数 1121 → **1140**
+- 文档：`web-ui.md` 补花语记忆新门控与分类导航/模块清单、`development.md` 结构/CI/计数同步
+
+### 修复 —— CI（子进程 transport 泄漏 + 夜间静默时序用例）
+
+- PluginManager._stop_runtime() 是即发即忘（无运行中事件循环时协程根本不执行），子进程
+  transport 因此只能等循环 GC，而 GC 可能落在事件循环关闭之后 →BaseSubprocessTransport
+  .__del__ 抛 RuntimeError: Event loop is closed（unraisable；CI 里被 GitHub 标成一行 error）。
+  修复：PluginRuntime.close_transport_now()（同步、幂等）+ _stop_runtime() 先同步关再调度
+  异步 shutdown + asyncio_create_task() 无循环时 coro.close()；回归测试 2 条（均验证过
+  「移除修复就变红」）
+- test_active_chat_probability_config 每晚必红：用例把「概率=1.0 就该发言」当断言，但
+  should_active_chat 先判夜间静默（NIGHT_SILENCE_START=0 / END=8），真实时钟落在
+  00:00~08:00 时必然返回 False。修复：用固定时钟把该模块的 time.time()/localtime() 钉死在
+  白天 12 点，断言与运行时刻无关
+- CI 实测：3.12 日志里 Event loop is closed 从 1 次 → 0 次，警告 5 条 → 2 条，用例数 1140 → 1142
+
 ## [2.2.5] - 2026-09-17
 
 ### 新增

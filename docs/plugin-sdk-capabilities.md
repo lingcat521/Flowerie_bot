@@ -1,116 +1,74 @@
 # Plugin SDK 能力矩阵（Capability Matrix）
 
-> 任务书第 2 份 §九 / §十四 要求：逐能力列出各语言 SDK 的状态，
-> **禁止为了让表格"全绿"而虚假声明**。状态只用四个词：
-> `SUPPORTED`（有自动化证据）/ `PARTIAL`（部分实现或证据不足）/ `UNSUPPORTED`（明确不支持）/ `UNKNOWN`（未验证）。
+> 状态词只有四个：**SUPPORTED**（有自动化证据）/ **PARTIAL**（部分实现或证据不足）/
+> **UNSUPPORTED**（明确不支持）/ **UNKNOWN**（未验证）。**禁止为了让表格「全绿」而虚假声明**：
+> 每一格 SUPPORTED 都必须能指到下面某条绿色输出或 CI 记录，指不到就降级。
 >
-> 证据来源：`tests/test_plugin_protocol.py`（协议本身，真子进程）、
-> `tests/test_plugin_sdk_contract.py`（五语言同一批向量，真子进程 + 真管道）。
+> 核对基线：Flowerie **2.3.0** · 协议 `PROTOCOL_VERSION = "1"`：必需 4 方法 + 可选 **14** 方法
+> （8 核心 + 3 WebUI + 3 插件间，`src/plugins/protocol.py` 的 `REQUIRED_METHODS` /
+> `OPTIONAL_METHODS`）。SDK 语言：Python（内置 runner）/ TypeScript / Go / Rust / Java。
 
-## 1. 逐能力对照
+## 1. 逐能力对照（当前事实）
 
-| Capability（协议方法） | Python | TypeScript | Go | Rust | Java |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| Lifecycle（`initialize` / `shutdown`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Event（`event`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Health（`health`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Action（`method:"action"` 反向）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Context（`context.get`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Config（`config.get/set`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Permission（`permission.check`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Storage（`storage.get/set/delete/list`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Logging（stderr 约定）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| Shutdown（干净退出）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| WebUI（`webui.page/action/asset`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
+证据列：**A** = `tests/sdk/`（46 条）+ `tests/test_plugin_sdk_contract.py`（78 条）；
+**B** = `tests/test_plugin_webui_multilang.py`（31 条）；**C** = `tests/test_plugin_comm_model.py`（62）/
+`tests/test_plugin_comm_bus.py`（17）/ `tests/test_plugin_comm_paths.py`（7）+ 上面 A 的 Call/Error 行。
 
-## 2. Go / Rust / Java 的证据（**CI 实测，不是推断**）
+| 能力（协议方法 / API） | Python | TypeScript | Go | Rust | Java | 证据 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `initialize` / `shutdown`（生命周期） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `event`（事件接收 + 动作产出） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `health`（心跳） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `hook`（引擎内部数据钩子，如 WebUI vars） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `method:"action"` 反向副作用通道 | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `context.get` | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `config.get` / `config.set`（覆盖层） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `permission.check` | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `storage.get/set/delete/list` | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A |
+| `webui.page`（页面声明 + HTML/vars） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | B |
+| `webui.action`（表单动作 → vars/config_set/storage_set） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | B |
+| `webui.asset`（插件生成资源） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | B |
+| `plugin.call`（入站：expose + 分派 handler） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | C |
+| `plugin.event`（入站：on + 通配订阅） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | C |
+| `plugin.cancel`（入站：记录 + 可查询） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | C |
+| 出站 `plugin.call` / `plugin.emit` / `plugin.cancel`（反向 op） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | C |
+| 12 个结构化错误码映射成本语言异常/Result | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | A/C |
+| `trace_id` / `hop_count` 自动传播 | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | C |
+| 嵌套调用（等待响应时仍处理入站消息） | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | C |
 
-CI run [36129069164](https://github.com/lingcat521/Flowerie_bot/actions/runs/36129069164)
-（workflow `CI`，job `test (3.12)`，commit `cf283fe`，结论 **success**），整仓
-**1755 passed / 22 skipped**（22 条全是实机集成用例：没有协议端环境，按任务书要求 skip 并打印原因）。
+**五语言能力集合完全相等**：`tests/sdk/test_minimal_plugins.py::test_minimal_plugin_starts_standalone`
+在每种语言真进程里断言 `len(capabilities) == 14`；`tests/test_plugin_sdk_contract.py`
+的 `test_capability_parity_is_declared_in_every_sdk_source` 逐份源码比对常量，防「文档一套、实现一套」。
 
-| 语言 | 状态 | 依据（可复核）|
-| :--- | :--- | :--- |
-| Go | **SUPPORTED** | CI 真装 go → `tests/test_plugin_sdk_contract.py` 里 10 条用例**真编译、真起进程、真走管道**（本机无 go 工具链 → skip 并打印原因）|
-| Rust | **SUPPORTED** | 同上（rustc 直接编译 SDK 与示例，零 crate 依赖）|
-| Java | **SUPPORTED** | 同上（javac 编译 SDK + 示例到临时 classes，java 运行）|
+## 2. 证据（本机可复核的真实数字）
 
-CI 绿跑里没有任何 `SKIP(本机缺工具链 …)` —— 五种语言全部 RUNNABLE 并全绿。
-
-### 2.1 CI 一次抓出的三个真问题（都已修，记录在此，避免"全绿"变成无根之谈）
-
-| # | 现象 | 根因 | 修复 |
+| 测试文件 | 收集数 | 本机（Termux：只有 python + node） | 说明 |
 | :--- | :--- | :--- | :--- |
-| 1 | Go：`permission.check` 一发起就 `fatal error: all goroutines are asleep - deadlock!` | 读循环与请求处理挤在同一个 goroutine，反向 engine op 等不到应答 | 读/处理分离：读循环独立 goroutine，应答立即投递、请求排队顺序处理 |
-| 2 | Rust：`hook status` 返回 `{"counter": null}` | `register_hook` 的闭包签名只有 args，拿不到上下文，示例只能写死 null | `HookFn = Fn(&Context, &[Json]) -> Json`，示例真读 storage |
-| 3 | TypeScript：CI 的 tsc 报 `TS2307` ×3 + `TS2580` ×6 | CI 环境没有 `@types/node`，而 SDK 刻意零 npm 依赖 | 新增 `sdk/typescript/shims/node.d.ts`（最小宿主声明）+ run.sh 自动探测；静态用例守住覆盖 |
+| `tests/sdk/` | **46** | 9 passed / 37 skipped | 五语言最小插件：Build/Load/Ready/Ping/Info/Echo/Event/Call/Error/Permission/Shutdown + 7 条跨语言链路；缺工具链 skip 并打印原因 |
+| `tests/test_plugin_sdk_contract.py` | **78** | 33 passed / 45 skipped | 五语言 × 15 类向量（握手/事件/storage/hook/permission/未知方法/shutdown/health/plugin.call 入站/结构化错误/plugin.event/plugin.cancel/反向 op）+ 3 条静态一致性 |
+| `tests/test_plugin_webui_multilang.py` | **31** | 13 passed / 18 skipped | 五语言 × 6 类 WebUI 请求（能力声明/页面 context/action 保存/未知动作错误/asset/文件页数据钩子）+ 矩阵汇总 |
+| `tests/test_plugin_multilang.py` | 14 | 未在本机全跑 | `tests/plugins/multilang/` **13 种语言**最小插件真编译真运行 + 夹具一致性 |
+| `tests/test_plugin_comm_model.py` / `_bus.py` / `_paths.py` | 62 / 17 / 7 | 62 passed / 17 passed / 1 passed + 6 skipped | 模型层 / 真子进程总线 / 跨语言路径 |
 
-本机装不了 go/rustc/javac，所以这三个问题**只有 CI 能抓** —— 这正是"skip 不等于 pass"的意义。
+**CI 才是五语言全跑的采信来源**：`.github/workflows/ci.yml` 有独立步骤
+`SDK minimal plugin matrix (build/load/ping/echo/event/call/error/permission/shutdown)`
+→ `pytest -q -s tests/sdk/`，并由 runner 提供 node / go / rustc / javac。本机缺工具链时
+打印 `SKIP(本机缺工具链 …)`，**绝不当作通过**。
 
-## 3. WebUI 能力（第 3 份任务书的范围）
+## 3. 历史 CI 记录（保留，按 commit 标注 —— 均为当时基线的数字，本次未重跑）
 
-WebUI Protocol（`webui.page` / `webui.action` / `webui.asset`）落地后，
-五种语言的 WebUI 能力**完全对齐**（不是"Python 有、别人没有"）：
+| CI run | commit | 结果 | 内容 |
+| :--- | :--- | :--- | :--- |
+| [36129069164](https://github.com/lingcat521/Flowerie_bot/actions/runs/36129069164) | `cf283fe` | success（workflow `CI`，job `test (3.12)`） | 整仓 1755 passed / 22 skipped（22 条为缺协议端环境的实机用例）；Go/Rust/Java 首次真编译真跑 |
+| [36132261166](https://github.com/lingcat521/Flowerie_bot/actions/runs/36132261166) | `42427a0` | `CI` / `Acceptance` / `Push on main` 三项全绿 | 整仓 1829 passed / 22 skipped；五语言 WebUI 能力全绿（当时 `test_plugin_webui_multilang` 31 条） |
 
-| 语言 | 页面声明 | 模板 Context | Action | Asset | 状态 |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| Python | manifest `pages[].file` / `render="plugin"` / 旧 DSL 兼容页 | `{{ var }}`（受控；先净化后替换）| POST → `webui.action` | `webui.asset` + `webui/static` | **SUPPORTED** |
-| TypeScript | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
-| Go | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
-| Rust | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
-| Java | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
+> 这两行是**历史**记录（数字属于对应 commit 的 CI 快照）：CI 一次抓出过 Go 反向 op 死锁、Rust hook
+> 上下文缺失、TS 缺 `@types/node` 三个本机抓不到的真 bug；当前代码状态以 §1 + §2 的本机实测为准。
 
-**证据**（CI run [36132261166](https://github.com/lingcat521/Flowerie_bot/actions/runs/36132261166)，
-commit `42427a0`，`CI` / `Acceptance` / `Push on main` 三项全绿；整仓 **1829 passed / 22 skipped**）：
-
-- `tests/test_plugin_webui_multilang.py` **31 条**：同一套 WebUI 请求跑五种语言真进程
-  （Register Page / Load HTML / Load Asset / Receive Context / Submit Action / Receive Result / Handle Error）；
-- `tests/test_plugin_webui_protocol.py` **43 条**：真 Manager + 真插件进程，覆盖 20 类安全问题；
-- `tests/test_plugin_webui_html.py` **68 条**：Phase 1 真实 HTML 迁移与安全矩阵（回归）。
-
-本机（只有 python + node）能跑到的部分：`test_plugin_webui_multilang.py` 13 passed / 18 skipped
-（缺 go/rustc/javac → skip 并打印原因，**不当作通过**）。
-
-权限强制点（六项 `webui.*`）见 [plugin-webui-protocol.md](plugin-webui-protocol.md) §7。
 ## 4. 怎么复核这张表
 
 ```bash
-python3 -m pytest tests/test_plugin_protocol.py -q          # 协议本身（含真子进程）
-python3 -m pytest tests/test_plugin_sdk_contract.py -q -rs  # 五语言向量（skip 会打印原因）
-# 本机：23 passed / 30 skipped（无 go/rustc/javac）；CI：同文件 50 条全绿
-
-# TypeScript 的 tsc 分支（无 @types/node 时靠 SDK 自带 shim 编译）：
-PATH="$HOME/tscheck/bin:$PATH" FLOWERIE_FORCE_TSC=1 \
-  python3 -m pytest tests/test_plugin_sdk_contract.py -k typescript -q   # 10 passed
+python3 -m pytest tests/sdk tests/test_plugin_sdk_contract.py tests/test_plugin_webui_multilang.py -q -rs
+python3 -m pytest tests/test_plugin_comm_model.py tests/test_plugin_comm_bus.py -q
+# 收集数核对：期望 169 tests collected（tests/sdk 46 + contract 78 + webui_multilang 31 + multilang 14）
 ```
-
-> 表格里任何 `SUPPORTED` 都必须能指到上面某条绿色输出或 §2 的 CI run；指不到就改成 `PARTIAL`/`UNKNOWN`。
-
-## 4. 插件间通信（第 4 份任务书《通信》）
-
-协议与语义见 `docs/plugin-communication.md`；这里只列**逐语言能力与证据**。
-
-| Capability（协议方法 / API） | Python | TypeScript | Go | Rust | Java |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `plugin.call`（被调用：expose + 分派 handler）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| `plugin.event`（收事件：on + 通配）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| `plugin.cancel`（收 CANCEL：记录 + 可查询）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| 出站 `plugin.call`（反向 op → Core）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| 出站 `plugin.emit`（广播）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| 出站 `plugin.cancel` | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| 结构化错误码映射（12 个码）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| trace_id / hop_count 自动传播 | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| 嵌套调用（等待响应时仍处理入站消息）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-
-**证据（本地可复核）**：
-
-- 模型层：`tests/test_plugin_comm_model.py`（62 passed）—— 五类消息、请求/响应/错误模型、
-  语言无关类型、Normalized DTO、环保护、权限串、超时归一，并与 Python runner 内联常量逐项比对。
-- 总线层：`tests/test_plugin_comm_bus.py`（16 passed）—— **真子进程**跑真 Core Router：
-  投递、权限拒绝不投递、超时 + CANCEL、事件广播、A↔B 环保护（PLUGIN_CALL_LOOP）、
-  实例寻址（`plugin.b#instance1` 与"任意健康实例"）、生命周期（PLUGIN_UNAVAILABLE）。
-- 跨语言层：`tests/test_plugin_comm_paths.py` —— Python→Go / TS→Java / TS→TS 三条路径，
-  真编译真启动（本机只有 node + python，缺工具链的路径 skip 并打印原因；CI 全跑）。
-  Go / Rust / Java 的编译与运行证据**只能来自 CI**，本轮 CI 记录见最终报告
-  `docs/plugin-communication-report.md`。
-

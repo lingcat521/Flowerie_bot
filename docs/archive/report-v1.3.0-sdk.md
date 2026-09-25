@@ -1,5 +1,7 @@
 # Bot SDK 第一阶段交付报告（v1.3.0）
 
+> 归档文档（历史快照，内容不再更新）。撰写时的版本与结论不代表当前状态，当前事实以 docs/ 现行文档为准。
+
 ## 1. 审计结果
 
 - 事件流：NapCat WS（双向）→ `message_router.process_event` → 插件投递（权限门 read_message）

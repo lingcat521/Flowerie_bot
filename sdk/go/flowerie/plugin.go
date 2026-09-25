@@ -7,7 +7,7 @@
 //
 //	plugin := flowerie.New()
 //	plugin.OnMessage(func(ctx *flowerie.Context, ev map[string]any) any {
-//	    return flowerie.Action{"type": "send_group_msg", "params": map[string]any{"group_id": 1, "message": "pong"}}
+//	    return flowerie.Action{"type": "send_message", "payload": map[string]any{"group_id": 1, "message": "pong"}}
 //	})
 //	if err := plugin.Run(); err != nil { panic(err) }
 package flowerie

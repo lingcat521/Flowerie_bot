@@ -1,5 +1,7 @@
 # Code Scanning 告警审计与修复 · 最终报告
 
+> 归档文档（历史快照，内容不再更新）。撰写时的版本与结论不代表当前状态，当前事实以 docs/ 现行文档为准。
+
 > 对应任务书 §18。数据源：Code Scanning API（`state=open`）+ 逐条 alert 详情（含 taint 消息）。
 > 口径：**不以清零为目标**，逐条给判定与证据；操作细节与残余风险见 [`../security.md`](../security.md)。
 

@@ -1,23 +1,18 @@
 # 插件间通信（Plugin-to-Plugin）最终验收报告
 
-> 任务书：`/storage/emulated/0/通信.txt`《Flowerie_bot 多语言 Plugin SDK + Plugin-to-Plugin 通信》
-> 协议说明：`docs/plugin-communication.md`　·　能力矩阵：`docs/plugin-sdk-capabilities.md` §4
-> 一句话结论：**跨语言插件通信默认经 Flowerie Core Router；同语言保留 Local Runtime 通道但对外
-> 暴露同一套 `plugin.call()` / `plugin.emit()` / `plugin.on()` 抽象 —— 插件用什么语言写，不改变
-> Plugin API 的语义。**
+> 任务书：`/storage/emulated/0/通信.txt`《Flowerie_bot 多语言 Plugin SDK + Plugin-to-Plugin 通信》 · 协议说明：`docs/plugin-communication.md` · 能力矩阵：`docs/plugin-sdk-capabilities.md` §4
+> 一句话结论：**跨语言插件通信默认经 Flowerie Core Router；同语言保留 Local Runtime 通道但对外暴露同一套 `plugin.call()` / `plugin.emit()` / `plugin.on()` 抽象 —— 插件用什么语言写，不改变 Plugin API 的语义。**
+> **当前状态（v2.3.0）**：整仓 **2288 passed / 39 skipped**、`tests/webui` 102、`tests/e2e` 21（真浏览器）；下文 §3 的本地与 CI 数字是各自提交当时的历史记录。
 
 ## 1. 交付物
 
 | 层 | 文件 | 说明 |
 | :--- | :--- | :--- |
-| 协议模型 | `src/plugins/comm.py`（新增，616 行）| 五类消息、请求/响应/错误模型、12 个错误码、语言无关数据类型、Normalized DTO、trace/hop 环保护、路由策略 —— 引擎与五语言 SDK 的**单一事实来源** |
-| Core Router / Bus | `src/plugins/router.py`（新增，452 行）| 身份注册表、实例寻址、生命周期结构化错误、权限门、投递、超时/取消、事件广播、真实统计 |
+| 协议模型 | `src/plugins/comm.py`（新增，618 行）| 五类消息、请求/响应/错误模型、12 个错误码、语言无关数据类型、Normalized DTO、trace/hop 环保护、路由策略 —— 引擎与五语言 SDK 的**单一事实来源** |
+| Core Router / Bus | `src/plugins/router.py`（新增，458 行）| 身份注册表、实例寻址、生命周期结构化错误、权限门、投递、超时/取消、事件广播、真实统计 |
 | 引擎接线 | `src/plugins/{protocol,permissions,manifest,runtime,manager}.py` | 能力组 `plugin`、动态权限键 `plugin.call.<target>[.<method>]`、`comm_request`（插件间投递可并发 -> 插件可重入）、反向 op 三条、实例登记 |
 | Python SDK | `src/plugins/runner/python_runner.py` | `api.plugin.call/emit/on/expose/cancel`、入站三方法、嵌套 pump、错误码保真 |
-| TypeScript SDK | `sdk/typescript/flowerie_sdk.ts` | `plugin.call/emit/on/expose/cancel`、`PluginCommError`、wireCopy 线格式校验 |
-| Go SDK | `sdk/go/flowerie/plugin.go` | `Call/Emit/On/Expose/Cancel`、`*CommError`、反射白名单序列化 |
-| Rust SDK | `sdk/rust/src/lib.rs` | `call/emit/on/expose/cancel`、`PluginCommError`、`CommState` 注册表 |
-| Java SDK | `sdk/java/.../FloweriePlugin.java` + `Json.java` | `call/callAsync/emit/on/expose/cancel`、`PluginCommException`、`Json.checkJsonValue` |
+| 四语言 SDK | `sdk/typescript/flowerie_sdk.ts` · `sdk/go/flowerie/plugin.go` · `sdk/rust/src/lib.rs` · `sdk/java/src/main/java/dev/flowerie/sdk/{FloweriePlugin,Json}.java` | TS `plugin.call/emit/on/expose/cancel` + `PluginCommError` + wireCopy 线格式校验 · Go `Call/Emit/On/Expose/Cancel` + `*CommError` + 反射白名单序列化 · Rust `call/emit/on/expose/cancel` + `PluginCommError` + `CommState` 注册表 · Java `call/callAsync/emit/on/expose/cancel` + `PluginCommException` + `Json.checkJsonValue` |
 | 示例插件 | `examples/{python,typescript,go,rust,java}-plugin` | 五语言同一契约：expose(get_status) + hook comm_call / comm_emit |
 | 测试 | `tests/test_plugin_comm_model.py` / `_bus.py` / `_paths.py`、`test_plugin_sdk_contract.py`、`test_plugin_protocol.py` | 模型 62 / 总线 17 / 五条跨语言验收路径 / 五语言同一批向量 |
 | 文档 | `docs/plugin-communication.md`（新增）| 协议、路由、权限、错误、DTO、五语言 API 对照、禁止事项对照 |
@@ -46,7 +41,7 @@
 
 ## 3. 真实验证（本地 + CI）
 
-### 3.1 本地（本机：Python 3.14 + node v24；缺 go/javac/rustc）
+### 3.1 本地（提交 `47c9862` 当时；本机：Python 3.14 + node v24，缺 go/javac/rustc）
 
 | 用例 | 结果 |
 | :--- | :--- |
@@ -54,28 +49,20 @@
 | `tests/test_plugin_comm_bus.py` | **17 passed**（真子进程 + 真 Core Router）：投递、身份不可伪造、权限拒绝不投递、细粒度权限、`plugin.emit` 权限、`PLUGIN_NOT_FOUND` / `METHOD_NOT_FOUND` / `PLUGIN_UNAVAILABLE` / `PLUGIN_ERROR` / `SERIALIZATION_ERROR`、实例寻址与"任意健康实例"、超时 + CANCEL、事件广播、A<->B 环保护、WebUI Action 驱动插件间调用 |
 | `tests/test_plugin_sdk_contract.py` | **33 passed / 45 skipped**（Python 与 TypeScript 真跑；go/rust/java 因缺工具链 skip 并打印原因）|
 | `tests/test_plugin_protocol.py` | 全绿（协议方法集 8 + 3 + 3 = 14、`ENGINE_OPS` 六条、真 runner 端到端）|
-| `tests/test_plugin_comm_paths.py` | 本机 skip 三条路径（缺工具链 / Termux 沙箱执行限制），声明用例如实打印可用性 |
-
-> 本机沙箱的两条**环境**限制（与代码无关，已如实标注、不当作 pass）：
-> 1. 无 go / javac / rustc 工具链；
-> 2. Termux 沙箱里 `PluginRuntime` 的环境变量白名单裁剪后，前缀内的 node/go 等二进制无法 exec
->    （缺 `libtermux-exec` 的 `LD_PRELOAD`）—— 白名单是安全不变式，不为测试放宽。
+| `tests/test_plugin_comm_paths.py` | 本机 skip 三条路径（缺工具链 / Termux 沙箱执行限制），声明用例如实打印可用性；**当前复核（v2.3.0）：前四行数字与本机一致，本文件现为本机 1 passed / 6 skipped** |
+> 本机沙箱的两条**环境**限制（与代码无关，已如实标注、不当作 pass）：① 无 go / javac / rustc 工具链；② Termux 沙箱里 `PluginRuntime` 的环境变量白名单裁剪后，前缀内的 node/go 等二进制无法 exec（缺 `libtermux-exec` 的 `LD_PRELOAD`）—— 白名单是安全不变式，不为测试放宽。
 > 另外本沙箱**禁止硬链接**（已实测 `ln` 失败），因此 udocker 容器（Ubuntu 镜像层含硬链接）无法落地。
 
 ### 3.2 CI（真数字，不是估计；最终提交 `47c9862`）
 
 | workflow | 结果 | 关键数字 |
 | :--- | :--- | :--- |
-| `CI`（Python 3.12）| **success** | `ruff check .` -> All checks passed!；pytest **2136 passed / 22 skipped** |
-| `CI`（Python 3.9）| **success** | `ruff check .` -> All checks passed!；pytest **2136 passed / 22 skipped** |
+| `CI`（Python 3.9 与 3.12 两个 job）| **success** | `ruff check .` -> All checks passed!；pytest **2136 passed / 22 skipped** |
 | `Acceptance`（accept）| **success** | 验收汇总 **37/37 通过**（含 pytest 2132 passed / 26 skipped 与 ruff）|
 | `Push on main` | **success** | CodeQL：actions / javascript-typescript / python 三份分析全过 |
 
-- 22 skipped 全部是**实机集成**用例（没有协议端环境，按任务书要求 skip 并打印缺失条件），
-  与上一版基线（1755 passed / 22 skipped）**skip 数完全相同** —— 说明本轮新增的
-  Python->Go / TS->Java / TS->TS 与五语言 SDK 契约用例在 CI 上**全部真跑，没有一条被跳过**。
-- 测试规模 1755 -> **2136 passed（+381）**（最终提交）；中间提交 9814b93 绿跑为 2133 passed，
-  差异来自随后补的 trace 整合用例与两条扩展验收路径。
+- 22 skipped 全部是**实机集成**用例（没有协议端环境，按任务书要求 skip 并打印缺失条件），与上一版基线（1755 passed / 22 skipped）**skip 数完全相同** —— 说明本轮新增的 Python->Go / TS->Java / TS->TS 与五语言 SDK 契约用例在 CI 上**全部真跑，没有一条被跳过**。
+- 测试规模 1755 -> **2136 passed（+381）**（最终提交）；中间提交 9814b93 绿跑为 2133 passed，差异来自随后补的 trace 整合用例与两条扩展验收路径。
 
 ### 3.3 一次真实的红 -> 绿（如实记录）
 
@@ -84,8 +71,7 @@
 | `1731884` | **红**（CI + Acceptance）| 1) Ruff 8 条（I001 x6 + F401 x2）；2) Python->Go 的 `get_status` 回 `plugin_id="unknown"` | 见 `9814b93` |
 | `9814b93` / `139f955` / `47c9862` | **绿**（三项 workflow 全过）| —— | 1) 按 CI 给出的 Organize imports 逐条修正；2) 引擎在 `initialize` 上下文补上 `plugin_id`/`instance_id`（§四 身份：任意语言的可执行入口没有别的途径知道自己的身份），Go 示例改为优先读请求模型的 `target.plugin_id`（与 Java/Rust 一致），`ctx.PluginID` 兜底 |
 
-> 这条记录的意义：**本机没有 go/javac/rustc、也没有 ruff、容器方案被沙箱禁硬链接挡住**，
-> 所以 `1731884` 的红只有 CI 能抓 —— 与"skip 不等于 pass"是同一条纪律：真实数字优先于好看。
+> 这条记录的意义：**本机没有 go/javac/rustc、也没有 ruff、容器方案被沙箱禁硬链接挡住**，所以 `1731884` 的红只有 CI 能抓 —— 与"skip 不等于 pass"是同一条纪律：真实数字优先于好看。
 
 ## 4. §二十六 禁止事项自查
 
@@ -104,21 +90,14 @@
 
 ## 5. 与既有系统的整合
 
-- **权限**：沿用 `src/plugins/permissions.py`（manifest 声明 -> 管理员批准 -> 运行时检查），新增的只是
-  `plugin.call.<target>[.<method>]` 这一族动态键与 `plugin.emit`；旧的 `plugin_admin` 粗粒度授权保持原语义。
+- **权限**：沿用 `src/plugins/permissions.py`（manifest 声明 -> 管理员批准 -> 运行时检查），新增的只是 `plugin.call.<target>[.<method>]` 这一族动态键与 `plugin.emit`；旧的 `plugin_admin` 粗粒度授权保持原语义。
 - **Trace**：`comm.new_trace_id()` 优先取 `src/utils/trace.py` 的上下文，插件链路日志逐跳带 `trace=`。
-- **WebUI**（§二十五）：WebUI Action 的 handler 在同一个插件进程、同一个 SDK 上执行，调用另一个插件
-  走的就是 `plugin.call`；`tests/test_plugin_comm_bus.py::test_webui_action_drives_plugin_to_plugin_call`
-  用真插件 + 真引擎验证了这条链路，没有第二套机制。
+- **WebUI**（§二十五）：WebUI Action 的 handler 在同一个插件进程、同一个 SDK 上执行，调用另一个插件走的就是 `plugin.call`；`tests/test_plugin_comm_bus.py::test_webui_action_drives_plugin_to_plugin_call` 用真插件 + 真引擎验证了这条链路，没有第二套机制。
 
 ## 6. 诚实边界（PARTIAL / 未验证）
 
-1. **同语言 Local Runtime 优化**：SDK 侧保留了 Local 通道与 `route` 策略（`auto/core/local`），
-   但 Flowerie 当前"一个插件一个进程"，两个插件不在同一个语言 Runtime 进程内，因此引擎侧实际路径
-   总是 `core`（`PluginRouter.route_for` 只有确实同进程才可能返回 local，绝不假装）。
+1. **同语言 Local Runtime 优化**：SDK 侧保留了 Local 通道与 `route` 策略（`auto/core/local`），但 Flowerie 当前"一个插件一个进程"，两个插件不在同一个语言 Runtime 进程内，因此引擎侧实际路径总是 `core`（`PluginRouter.route_for` 只有确实同进程才可能返回 local，绝不假装）。
 2. **取消**：见 §2 —— "尽可能停止"，同步阻塞中的 handler 不能被打断。
 3. **5x5 全矩阵**：测试框架按语言对（caller, callee）参数化，本阶段只落地 §二十四 要求的三条核心路径。
-4. **`runtime=node` 的 `node_runner.js`**：未接插件间通信（非 SDK 运行时；用 `runtime=exec`
-   + 任一语言 SDK 都有完整支持）。
+4. **`runtime=node` 的 `node_runner.js`**：未接插件间通信（非 SDK 运行时；用 `runtime=exec` + 任一语言 SDK 都有完整支持）。
 5. **本机无法验证 Go/Rust/Java 编译**：本沙箱无工具链、禁硬链接（容器方案受阻），证据来自 CI。
-

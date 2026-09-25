@@ -157,7 +157,7 @@ cd <repo> && python3 -c "from src.plugins.webui_security import sanitize_plugin_
 # 实际输出: <input type="checkbox" name="x" value="1">     <- checked 与占位符都没了
 ```
 
-同一问题也影响仓库自带的 `examples/plugins/html_webui_demo`（它的 `notify_checked` 变量同样不生效）。
+仓库自带的 `examples/plugins/html_webui_demo` 原先也这么写（`notify_checked` 变量同样不生效），现已改成「静态 checkbox + 文本状态回显」。
 
 **本插件的处理**（不改 Core）：用 class + 显式文本表达状态，四类状态都有机器可读的锚点：
 

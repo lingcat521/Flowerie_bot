@@ -1,5 +1,7 @@
 # Phase 2 设计：InternalEvent / EventParser / MessageSender（只设计，不改业务代码）
 
+> 归档文档（历史快照，内容不再更新）。撰写时的版本与结论不代表当前状态，当前事实以 docs/ 现行文档为准。
+
 > 依据：解耦.txt Phase 2 要求 + 实际源码审计（Phase 1 报告 + 本轮消费方逐点核实）。
 > 方案基调：**新增抽象 + Compatibility Adapter 的渐进式路线**，不替换现有模型。
 
