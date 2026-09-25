@@ -15,10 +15,14 @@
 | [ADR-008 插件 WebUI：DSL → 真实 HTML](plugin-webui-html.md) | 两种页面形态并存（HTML 推荐 / DSL deprecated 兼容层）；URL 只带 page id；白名单净化 + 先净化后替换 + CSP + 零 JS；静态资源独立通道 | 任务书 1 §1–§24 | 已实施 |
 | [ADR-007 资源抽象](resource-model.md) | `ResourceRef`（三种来源归一）+ `ResourceFetcher`（协议差异只在 Adapter）+ `decode_bytes`（纯解码）；**Core 不再依赖 `file_id`/`resource_id`**；顺手修掉"Milky 文件走 OneBot 端点"的串协议缺陷 | R | 已实施 |
 
+| [ADR-009 Plugin Protocol v1 与五语言 SDK](plugin-sdk-protocol.md) | 通信方式选型（JSON-Lines over stdio vs gRPC/HTTP）；能力握手；五语言零依赖 SDK 与能力对齐 | 任务书 2 §三–§十五 | 已实施 |
+| [ADR-010 Plugin WebUI Protocol](plugin-webui-protocol.md) | WebUI 是协议的一部分：webui.page/action/asset + 六项 webui.* 权限 + 受控 context；HTTP 由 Runtime 托管；No-JS 不放宽 | 任务书 3 §三–§十九 | 已实施 |
+
 ## 配套文档
 
 | 文档 | 内容 |
 | :--- | :--- |
+| [../plugin-final-report.md](../plugin-final-report.md) | **三份（插件 WebUI / 多语言 SDK / 统一 WebUI SDK）任务书的最终报告**：逐条回答各任务书"必答清单"+ 真实数字 + 复核命令 |
 | [final-acceptance-report.md](final-acceptance-report.md) | **最终验收报告**（任务书 §36）：真实数字块 + 八项绝对门槛 + BLOCKED 项与证据 + 复现命令 |
 | [acceptance-metrics.md](acceptance-metrics.md) | **验收 Dashboard**：八项绝对门槛 + Gate A–Z 实测值 + 逐提交 CI 真实记录（红色提交也如实保留）|
 | [transport-contract.md](transport-contract.md) | Gate Q 的 8 项契约与两个参考实现的逐项实测（含 N/A 理由）|

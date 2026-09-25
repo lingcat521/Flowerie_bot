@@ -199,6 +199,10 @@ Receive Result / Handle Error（未知动作 → 操作级错误）
 Shutdown（契约测试已有）
 ```
 
+**CI 证据**（run [36132261166](https://github.com/lingcat521/Flowerie_bot/actions/runs/36132261166) · commit `42427a0` · 三项工作流全绿）：
+五种语言**全部 RUNNABLE 并全绿**，整仓 **1829 passed / 22 skipped**（22 条是缺协议端环境的实机用例）。
+本机（仅 python + node）：13 passed / 18 skipped，skip 会打印缺哪个工具链。
+
 CI 装了 go / rustc / javac，所以这五列在 CI 上是**真跑**的；本机缺工具链时打印
 `SKIP(本机缺工具链 …)`，绝不当作通过。
 

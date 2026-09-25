@@ -21,7 +21,7 @@
 | Storage（`storage.get/set/delete/list`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
 | Logging（stderr 约定）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
 | Shutdown（干净退出）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
-| WebUI（页面/动作/资源）| 见 [plugin-webui.md](plugin-webui.md)（DSL + HTML）| 见 §3 | 见 §3 | 见 §3 | 见 §3 |
+| WebUI（`webui.page/action/asset`）| SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED | SUPPORTED |
 
 ## 2. Go / Rust / Java 的证据（**CI 实测，不是推断**）
 
@@ -49,14 +49,29 @@ CI 绿跑里没有任何 `SKIP(本机缺工具链 …)` —— 五种语言全�
 
 ## 3. WebUI 能力（第 3 份任务书的范围）
 
+WebUI Protocol（`webui.page` / `webui.action` / `webui.asset`）落地后，
+五种语言的 WebUI 能力**完全对齐**（不是"Python 有、别人没有"）：
+
 | 语言 | 页面声明 | 模板 Context | Action | Asset | 状态 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| Python | manifest `web_ui.pages[].file` 或旧 DSL | `{{ var }}`（受控）| POST → `webui_page` hook | `webui/static` | SUPPORTED（Phase 1 已落地，68 用例）|
-| TypeScript / Go / Rust / Java | 同上（协议层统一）| 同上 | 同上（同一 hook 方法）| 同上 | **未开始（Phase 3）** |
+| Python | manifest `pages[].file` / `render="plugin"` / 旧 DSL 兼容页 | `{{ var }}`（受控；先净化后替换）| POST → `webui.action` | `webui.asset` + `webui/static` | **SUPPORTED** |
+| TypeScript | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
+| Go | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
+| Rust | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
+| Java | 同上 | 同上 | 同上 | 同上 | **SUPPORTED** |
 
-任务书第 3 份的核心要求是"WebUI 是 Plugin Protocol 的一部分，而不是 Python SDK 的附属"；
-Phase 3 会让五种语言用**同一套** `webui.*` 能力声明与 Action 语义，届时更新本表。
+**证据**（CI run [36132261166](https://github.com/lingcat521/Flowerie_bot/actions/runs/36132261166)，
+commit `42427a0`，`CI` / `Acceptance` / `Push on main` 三项全绿；整仓 **1829 passed / 22 skipped**）：
 
+- `tests/test_plugin_webui_multilang.py` **31 条**：同一套 WebUI 请求跑五种语言真进程
+  （Register Page / Load HTML / Load Asset / Receive Context / Submit Action / Receive Result / Handle Error）；
+- `tests/test_plugin_webui_protocol.py` **43 条**：真 Manager + 真插件进程，覆盖 20 类安全问题；
+- `tests/test_plugin_webui_html.py` **68 条**：Phase 1 真实 HTML 迁移与安全矩阵（回归）。
+
+本机（只有 python + node）能跑到的部分：`test_plugin_webui_multilang.py` 13 passed / 18 skipped
+（缺 go/rustc/javac → skip 并打印原因，**不当作通过**）。
+
+权限强制点（六项 `webui.*`）见 [plugin-webui-protocol.md](plugin-webui-protocol.md) §7。
 ## 4. 怎么复核这张表
 
 ```bash
