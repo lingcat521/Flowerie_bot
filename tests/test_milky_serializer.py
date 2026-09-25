@@ -17,8 +17,8 @@ from src.adapters.milky_serializer import (
     NOTE_DROPPED_FIELD,
     NOTE_DROPPED_SEGMENT,
     NOTE_INVALID,
-    NOTE_UNSUPPORTED_SEGMENT,
     NOTE_UNKNOWN_SEGMENT,
+    NOTE_UNSUPPORTED_SEGMENT,
     serialize_milky_segments,
 )
 from src.transport.milky_response import parse_milky_response

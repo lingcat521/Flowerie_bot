@@ -19,7 +19,7 @@
 """
 from typing import Any, Dict, List, Tuple
 
-from src.adapters.client_profile import ClientProfile, MILKY_SPEC
+from src.adapters.client_profile import MILKY_SPEC, ClientProfile
 
 NOTE_INVALID = "invalid_segment"
 NOTE_UNKNOWN_SEGMENT = "unknown_segment_passthrough"
