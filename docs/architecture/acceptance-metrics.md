@@ -14,7 +14,7 @@
 | 3 | Adapter Contract 合规率（ACC）| **100%**（48/48；onebot11、milky、onebot12、testproto 各 12 项）| 100% | ✅ PASS | 契约夹具 src/adapters/contract.py（新增协议只需登记一行即自动获得 12 项）|
 | 4 | Unknown Data Safety（段 + 事件）| **20/20** | 100% | ✅ PASS | `tests/test_unknown_tolerance.py`（10 段 × 双解析器 + 10 事件 × 双协议）|
 | 4b | Real Integration Coverage（实机验证覆盖率）| **0%** | ≥90% | 🚫 BLOCKED BY EXTERNAL DEPENDENCY | 设备控制未授权（无障碍/ADB 两路均 denied），且无运行中的协议端；详见 docs/protocol-gap-closure.md §6 |
-| 5 | Existing Regression | **1156 passed / 19 failed（全为本地缺依赖，与本轮改动无关）/ 15 skipped / 32 collection errors（同样缺依赖）**；新增失败 0 | 100% | ✅ PASS（就"零新增失败"而言）| 本地全量 pytest；待 Gate U 的 15 项能力矩阵补全 |
+| 5 | Existing Regression | **1203 passed / 19 failed（全为本地缺依赖，与本轮改动无关）/ 15 skipped / 32 collection errors（同样缺依赖）**；新增失败 0 | 100% | ✅ PASS（就"零新增失败"而言）| 本地全量 pytest；待 Gate U 的 15 项能力矩阵补全 |
 | 6 | CI | 见下方"CI 记录" | 100% success | ⏳ 进行中 | GitHub Actions: Push on main / Acceptance / CI |
 | 7 | Plugin Protocol Imports | **0** | 0 | ✅ PASS | `src/plugins/manager.py` 移除 `OneBotAdapter` 导入，改组合根注入；`plugin_sdk/` 无协议 import |
 | 8 | TestProtocol 不修改 Core | **0 处修改**：虚拟协议接入的 6 个改动文件全部在 Adapter 层与 tests/，并有一条测试直接扫 Core/Services/SDK/插件源码钉住 | 必须 | ✅ PASS | ADR-004；实验 8 用陌生协议事件直接驱动 `src/core/message_assembler.py` 零改动运行 |
@@ -35,16 +35,16 @@
 | J | Unknown Segment 容错 | **10/10**（OneBot + Milky 各 10）| 10/10 | ✅ PASS |
 | K | Unknown Event 容错 | **10/10**（OneBot + Milky 各 10）| 10/10 | ✅ PASS |
 | L | Raw Preservation | `raw_data` 与输入**逐字段相等**（20 个样本断言）| 100% | ✅ PASS |
-| M | 跨协议等价 | 部分：NapCat≡LLBot、Milky temp≡OneBot temp、戳一戳/文件上传双形态等价；**未按 7 类 × 3 协议建矩阵** | 7/7 | ⚠️ PARTIAL |
-| N | Round-trip | 现有：fixture 语料 20 个 × message/notice/request 全量重解析稳定（0 skip）；**未按 7 类 × 2 协议建矩阵** | 14/14 | ⚠️ PARTIAL |
+| M | 跨协议等价 | **7/7**：text / at / reply / image / face / file / forward 各有 OneBot 11、Milky、TestProtocol 三份协议原生样本，归一化投影**逐字段相等**（`tests/test_cross_protocol_equivalence.py`）| 7/7 | ✅ PASS |
+| N | Round-trip | **14/14**：7 类 × 2 协议（OneBot 11 / Milky）Normalized → 线格式 → Normalized 逐字段回等；编码器**丢弃字段必须显式声明**（否则红灯）；另有 3 项**显式标注** partial/lossy（OneBot reply 无内联被引段、Milky file 无 url、forward 内联需额外 API），不计入 PASS | 14/14 | ✅ PASS |
 | O | Action 映射 | `src/services` 无协议 action 名与分支（撤回/发送差异在 `src/transport/action_channels.py`）| Core 无协议 action | ✅ PASS |
 | P | Transport 解耦 | `src/core` 传输库 import = **0**；`websockets` 仅出现在 `src/transport/` | 0 | ✅ PASS |
 | Q | Transport Contract | **8/8**：`WebSocketTransport` 8 implemented；`HTTPTransport` 6 implemented + 2 N/A（附理由）= 8 covered | 8 项 | ✅ PASS |
 | R | Resource 抽象 | **3/3**：local path / URL / protocol_id 全部进统一 `ResourceRef`；OneBot `/get_file`（base64 或本地路径）与 Milky `get_resource_temp_url`（两步，[CODE] 证据）按 `origin` 分派；Core 里 `file_id`/`resource_id` = **0**（AST 扫描，含反向对照）| 3/3 | ✅ PASS |
 | S | 多实例 | **3/3**：OneBot11 #1 + OneBot11 #2 + Milky #1 并存；并发 20 轮 × 3 实例串台 = **0**；独立生命周期/配置/发送；源码里禁止单例出现 0 次（AST 扫描）| 3/3 | ✅ PASS |
 | T | 插件协议隔离 | `src/plugins/manager.py` = 0；`plugin_sdk/` = 0 | 0 | ✅ PASS |
-| U | 真实现有功能零回归 | 能力矩阵未建；本地全量 pytest 零新增失败 | 15/15 | ⚠️ PARTIAL |
-| V | 现有测试不退化 | 新增测试 205 个（G1–G4/G8 = 56、Gate JKL = 43、Gate D 契约 +12、Gate E/F = 11、Gate Q = 19、Gate S = 7、Gate R = 16、Gate I = 44）；删除 0；失败集合与基线一致（19 failed / 15 skipped，全为本地缺依赖）。**2 个既有用例按 ADR-007 的新边界契约更新**（`notice_file` 新增 `resource`；原字段断言逐字保留，强度不变）| 新增失败 = 0 | ✅ PASS |
+| U | 真实现有功能零回归 | **18/18**：任务书 §22 列举的 14 项（text/at/reply/image/face/market_face/file/group_upload/forward/JSON-Ark/poke/markdown/light_app/recall）+ temp/record/video/xml；每项两个协议原生样本喂真解析器 + raw_data 保真 + 标注重构前覆盖它的既有测试（`tests/test_regression_matrix.py`）| 15/15 | ✅ PASS |
+| V | 现有测试不退化 | 新增测试 249 个（G1–G4/G8 = 56、Gate JKL = 43、Gate D 契约 +12、Gate E/F = 11、Gate Q = 19、Gate S = 7、Gate R = 16、Gate I = 44、Gate M = 8、Gate N = 16、Gate U = 20）；删除 0；失败集合与基线一致（19 failed / 15 skipped，全为本地缺依赖）。**2 个既有用例按 ADR-007 的新边界契约更新**（`notice_file` 新增 `resource`；原字段断言逐字保留，强度不变）| 新增失败 = 0 | ✅ PASS |
 | W | CI | 见 CI 记录 | 100% | ⏳ |
 | X | Lint | ruff（CI）：0 违规；本地 flake8 F 规则 0、import 顺序自检 0 | 新增违规 = 0 | ✅ PASS |
 | Y | 源码证据覆盖 | 新结论均有 `[CODE]/[DOC]/[FIXTURE]` 标注；无证据的支持声明 = 0 | 0 | ✅ PASS |
@@ -54,9 +54,9 @@
 
 | 指标 | 值 |
 | :--- | :--- |
-| 测试文件 | 140（新增 4：`test_temp_scene`、`test_request_events`、`test_media_segments`、`test_reply_inline`、`test_onebot12_adapter`、`test_fixtures_corpus`、`test_protocol_roundtrip`、`test_unknown_tolerance`、`test_architecture_gates` 等）|
+| 测试文件 | 143（新增 4：`test_temp_scene`、`test_request_events`、`test_media_segments`、`test_reply_inline`、`test_onebot12_adapter`、`test_fixtures_corpus`、`test_protocol_roundtrip`、`test_unknown_tolerance`、`test_architecture_gates` 等）|
 | fixture 语料 | 20 个（含 `onebot12/message_group.json`；全部带 `_provenance`）|
-| 本地全量 | 1156 passed / 19 failed（缺依赖）/ 15 skipped / 32 collection errors（同样缺依赖）|
+| 本地全量 | 1203 passed / 19 failed（缺依赖）/ 15 skipped / 32 collection errors（同样缺依赖）|
 | 迁移/新增模块 | `src/transport/`（3 迁移 + 通道）、`src/adapters/onebot12_parser.py`、`src/adapters/testkit/`（Gate E/F 虚拟协议）、`docs/architecture/`（ADR-001 ~ 004）|
 
 ## 四、CI 记录
@@ -97,7 +97,8 @@
 | `96bc7b6` | feat(gate-q) TransportContract 8 项 + WS/HTTP 参考实现 | failure | failure | success |
 | `8769d52` | fix(gate-q) B024 + Gate S 多实例 + ADR-006 | failure | failure | success |
 | `06375fd` | feat(gate-r) Resource 抽象 + ADR-007 | failure | failure | success |
-| 本轮 | feat(gate-i) 覆盖率 86.8% + 4 个新类型化段 + B025 修复 | 待记录 | 待记录 | 待记录 |
+| `3467a50` | feat(gate-i) 覆盖率 86.8% + B025 修复 | failure（Py3.9）| **success** | success |
+| 本轮 | feat(gate-mnu) 跨协议等价 7/7 + Round-trip 14/14 + 回归矩阵 18/18 | 待记录 | 待记录 | 待记录 |
 
 > **记录规则**：只写实际查到的结论（逐提交从 GitHub API 读取），未查到就写 `待记录`，**不写成 success**。
 > **红提交如实保留**：上表 8 个 failure 的原因分别是 ① ruff I001（import 顺序，跨 6 个提交，
@@ -119,3 +120,8 @@
 > （第二个是死代码，且第一个分支漏了 `return`，会让函数隐式返回 `None`）——
 > 这是真实缺陷，不是风格问题；本地 flake8 代理只跑 `--select=F` 抓不到 B025，
 > 现已补"重复 except 扫描"（AST）作为本地代理。
+> `3467a50`（Gate I）在 **Python 3.9 上**红了 2 个用例：`RuntimeError: There is no current event loop` ——
+> 3.9 的 `asyncio.Queue()` **在构造时**就要求有运行中的事件循环，而 Gate Q 的假连接对象也会在
+> **同步**用例里被构造（只做契约核对）。修法：队列改为**惰性创建**（首次真正收发时才建）。
+> 3.12/3.14 因为不再要求循环，本地与 3.12 作业都照不出这个问题 —— 教训：**新增 asyncio 原语时，
+> 要问"这行会不会在同步上下文里被执行"**，并记住 CI 跑 3.9 + 3.12 两个版本。

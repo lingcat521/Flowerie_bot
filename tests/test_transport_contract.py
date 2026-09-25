@@ -44,8 +44,16 @@ class FakeConnection:
         self.fail_on_send = fail_on_send
         self.replies = list(replies or [])
         self.close_after_recv = close_after_recv
-        self._queue = asyncio.Queue()
+        # 惰性创建：Python 3.9 的 asyncio.Queue() 在构造时就要求有运行中的事件循环，
+        # 而本类也会在**同步**用例里被构造（只做契约核对、不发消息）→ 首次用到时才建。
+        self._queue = None
         self._recv_calls = 0
+
+    @property
+    def _inbox(self):
+        if self._queue is None:
+            self._queue = asyncio.Queue()
+        return self._queue
 
     async def send(self, text):
         if self.fail_on_send:
@@ -56,19 +64,19 @@ class FakeConnection:
             body = dict(self.replies.pop(0)) if self.replies else {
                 "status": "ok", "retcode": 0, "data": {"echoed": frame["action"]}}
             body.setdefault("echo", frame.get("echo"))
-            self._queue.put_nowait(json.dumps(body))
+            self._inbox.put_nowait(json.dumps(body))
 
     async def recv(self):
         self._recv_calls += 1
         if self.close_after_recv is not None and self._recv_calls > self.close_after_recv:
             return None
-        return await self._queue.get()
+        return await self._inbox.get()
 
     async def close(self):
         self.closed = True
 
     def push(self, frame):
-        self._queue.put_nowait(json.dumps(frame) if not isinstance(frame, str) else frame)
+        self._inbox.put_nowait(json.dumps(frame) if not isinstance(frame, str) else frame)
 
 
 class FakePoster:

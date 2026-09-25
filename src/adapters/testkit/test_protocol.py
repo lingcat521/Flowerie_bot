@@ -106,6 +106,25 @@ class TestProtocolEventParser:
                 name = str(part.get("name") or "")
                 if name:
                     ev.image_files.append(name)
+            elif ptype == "face":
+                # 表情段：与 OneBot/Milky 同形（kind/face_id/...），Gate M 的等价类需要它
+                ev.faces.append({"kind": "face", "face_id": str(part.get("v") or ""),
+                                 "result_id": "", "chain_count": None})
+            elif ptype == "market_face":
+                ev.faces.append({"kind": "market_face", "emoji_id": str(part.get("v") or ""),
+                                 "summary": str(part.get("name") or "")})
+            elif ptype == "file":
+                payload = part.get("v") if isinstance(part.get("v"), dict) else {}
+                ev.files.append({"file_id": str(payload.get("id") or ""),
+                                 "name": str(payload.get("name") or part.get("name") or ""),
+                                 "size": to_int(payload.get("size")), "url": "", "path": ""})
+            elif ptype == "reply":
+                seq = to_int(part.get("v"))
+                ev.reply_id = seq
+                ev.reply_ref = {"id": seq}
+            elif ptype == "forward":
+                ev.forwards.append({"id": str(part.get("v") or ""),
+                                    "inline": bool(part.get("inline"))})
             else:
                 # 与真实解析器同一约定：segments_summary 存 (段类型, 载荷值)，
                 # 载荷不是 dict 时统一包成 {"value": ...}，保证结构一致
