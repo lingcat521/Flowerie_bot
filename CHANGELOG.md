@@ -22,6 +22,20 @@
 - 测试：`tests/test_native_reply_tool.py`（18 条，覆盖任务书 Phase 10 的 12 类断言）；CI 测试数 1121 → **1140**
 - 文档：`web-ui.md` 补花语记忆新门控与分类导航/模块清单、`development.md` 结构/CI/计数同步
 
+### 修复 —— CI（子进程 transport 泄漏 + 夜间静默时序用例）
+
+- PluginManager._stop_runtime() 是即发即忘（无运行中事件循环时协程根本不执行），子进程
+  transport 因此只能等循环 GC，而 GC 可能落在事件循环关闭之后 →BaseSubprocessTransport
+  .__del__ 抛 RuntimeError: Event loop is closed（unraisable；CI 里被 GitHub 标成一行 error）。
+  修复：PluginRuntime.close_transport_now()（同步、幂等）+ _stop_runtime() 先同步关再调度
+  异步 shutdown + asyncio_create_task() 无循环时 coro.close()；回归测试 2 条（均验证过
+  「移除修复就变红」）
+- test_active_chat_probability_config 每晚必红：用例把「概率=1.0 就该发言」当断言，但
+  should_active_chat 先判夜间静默（NIGHT_SILENCE_START=0 / END=8），真实时钟落在
+  00:00~08:00 时必然返回 False。修复：用固定时钟把该模块的 time.time()/localtime() 钉死在
+  白天 12 点，断言与运行时刻无关
+- CI 实测：3.12 日志里 Event loop is closed 从 1 次 → 0 次，警告 5 条 → 2 条，用例数 1140 → 1142
+
 **版本速览**：2.2.22222 · 2.2.2222 · 2.2.222 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
 
 ---

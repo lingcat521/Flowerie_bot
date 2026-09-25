@@ -14,7 +14,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-1140%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1142%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -191,7 +191,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/memor
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 1140 个测试（CI：Python 3.9/3.12 + PostgreSQL）
+pytest              # 1142 个测试（CI：Python 3.9/3.12 + PostgreSQL）
 acceptance          # 37 项黑盒验收（tests/acceptance_check.py）
 ruff check .        # 代码检查
 ```
