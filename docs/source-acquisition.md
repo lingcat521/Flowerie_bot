@@ -14,7 +14,7 @@
 | SnowLuma | SnowLuma/SnowLuma | `fe245d8` | 46M | 1103 | **SOURCE_OBTAINED** |
 | Lagrange.Core | LagrangeDev/Lagrange.Core | `20c2ba0` | 4.9M | 730 | **SOURCE_OBTAINED** |
 | LagrangeV2 | LagrangeDev/LagrangeV2 | `7011cdf` | 4.7M | 672 | **SOURCE_OBTAINED** |
-| Lagrange.Milky（实现） | LagrangeDev/Lagrange.Milky | — | — | — | **AUTH_REQUIRED / 仓库不存在**（见下） |
+| Lagrange.Milky（实现） | **内嵌于 Lagrange.Core / LagrangeV2 的 `Lagrange.Milky/`** | 同左 | 119 .cs | — | **SOURCE_OBTAINED（实现内嵌，非独立仓库）** |
 | Lagrange.Milky（文档） | LagrangeDev/Lagrange.Milky.Document | `98e96e5` | 318K | 18 | **DOCUMENTATION_ONLY** |
 | LLBot | LLOneBot/LuckyLilliaBot | `9f374f6` | 129M | 1086 | **SOURCE_OBTAINED** |
 | NoneBot2 | nonebot/nonebot2 | `4510ce2` | 8.9M | 657 | **SOURCE_OBTAINED** |
@@ -61,3 +61,12 @@ fatal: unable to access https://github.com/SaltifyDev/milky.git/: Recv failure: 
 - 没有执行任何下载来的二进制；
 - 没有为获取源码修改系统权限，没有读取任何凭据或 SSH key；
 - 没有使用第三方镜像（官方仓库均可用）。
+
+## 状态更正（第二轮）
+
+LagrangeDev/Lagrange.Milky 这个**独立仓库**确实不存在（ls-remote exit 128），但 **Milky 的实现源码并非不可得**：
+它内嵌在 Lagrange.Core 与 LagrangeV2 的 Lagrange.Milky/ 目录（119 个 .cs 文件，含 Api/Handler、Entity/Segment、Entity/Event）。
+
+- 更正前：AUTH_REQUIRED / 仓库不存在 → 会让人误以为 Milky 实现层没有源码；
+- 更正后：**SOURCE_OBTAINED（内嵌）**，证据已记入 protocol-reverse-engineering.md §6；
+- 教训：找不到同名独立仓库 ≠ 没有实现源码；应在同名组织的主仓库里搜关键词（本次 git ls-files | grep -i milky 命中 128 个文件）。

@@ -220,6 +220,60 @@
 | 图片形式表情 | `image{sub_type}`（FileBase 扩展） | `image{subType}` | `image{sub_type: sticker}` |
 
 → 归一化层至少要能区分这三类，并把 `id`/`face_id`/`faceIndex`、`sub_type`/`subType`、`summary`/`faceName` 收敛成统一字段 `[CODE]`。
+## 6. Lagrange.Milky 实现（协议作者本人实现）[CODE]
+
+**重要更正**：Milky 的**实现**并非不可得 —— 它内嵌在 `Lagrange.Core` 与 `LagrangeV2` 仓库的
+`Lagrange.Milky/` 目录里（119 个 .cs 文件），无需单独仓库。`LagrangeDev/Lagrange.Milky` 这个独立
+仓库确实不存在（`ls-remote` exit 128），但结论不是「没有实现源码」，而是「实现源码在别处且已获得」。
+
+路径：`~/proto_src/LagrangeV2/Lagrange.Milky/`（`Lagrange.Core` 里同名目录内容一致）。
+
+### 6.1 段类型（`Entity/Segment/`，作者实现，共 15 个文件）
+
+`TextSegment` `MentionSegment` `MentionAllSegment` `FaceSegment` `ImageSegment` `RecordSegment`
+`VideoSegment` `FileSegment` `MarketFaceSegment` **`LightAppSegment`** `ForwardSegment` `ReplySegment`
+`XmlSegment` + 基类 `SegmentBase` / 接口 `ISegment`
+
+**关键结论**：
+
+1. **没有 poke / nudge 段** —— 戳一戳在 Milky 里**只有事件**（见 6.2），不是消息段；
+2. **有 `LightAppSegment`** —— 与 LLBot 的 `light_app` 对应，说明「Ark/轻应用」在 Milky 里是**独立段类型**，
+   与 `ForwardSegment` 并列（而不是靠 `app` 字段在同一个 json 段里分流）；
+3. **有 `XmlSegment`** —— OneBot 的 `xml` 段在 Milky 里也有对应；
+4. 消息实体分 `FriendMessage` / `GroupMessage` / **`TempMessage`**（临时会话，与 LLBot 的 `temp` 场景一致）。
+
+### 6.2 戳一戳事件（`Entity/Event/GroupNudgeEvent.cs`，全文 26 行）
+
+```csharp
+public class GroupNudgeEvent(long time, long selfId, GroupNudgeEventData data)
+    : EventBase<GroupNudgeEventData>(time, selfId, "group_nudge", data) { }
+
+public class GroupNudgeEventData(long groupID, long senderId, long receiverId,
+    string displayAction, string displaySuffix, string displayActionImgUrl)
+{
+    [JsonPropertyName("group_id")]               public long GroupID { get; }
+    [JsonPropertyName("sender_id")]              public long SenderID { get; }
+    [JsonPropertyName("receiver_id")]            public long ReceiverID { get; }
+    [JsonPropertyName("display_action")]         public string DisplayAction { get; }
+    [JsonPropertyName("display_suffix")]         public string DisplaySuffix { get; }
+    [JsonPropertyName("display_action_img_url")] public string DisplayActionImgUrl { get; }
+}
+```
+
+→ 与 LLBot 的 `transformGroupNudgeEvent` **逐字段一致**（`group_id/sender_id/receiver_id/display_action/
+`display_suffix/display_action_img_url`）→ 两条独立来源互证 Milky 规范 `[CODE]×2`。
+
+### 6.3 与另外两家的对照（归一化输入）
+
+| 维度 | Milky（作者实现） | NapCat（OneBot） | LLBot（OneBot） |
+| :--- | :--- | :--- | :--- |
+| 戳一戳 | **事件** `group_nudge{group_id,sender_id,receiver_id,display_*}` | `poke{type,id}` 段 + notice | `shake{}` 段（**无目标**） |
+| 轻应用/卡片 | **独立段** `LightAppSegment` | `json{data,config?}`（靠 app 分流） | `json{data}` / `miniapp{data}` |
+| 合并转发 | **独立段** `ForwardSegment` | ARK 元素（app=com.tencent.multimsg） | `forward` / `light_app` |
+| 临时会话 | `TempMessage` 实体 | — | `message_scene=temp` |
+
+→ 归一化层不应以「段类型名」为准，而应以**语义**为准：同一个 `LightAppSegment` 在 OneBot 侧可能表现为
+  `json`、`miniapp`，甚至是「合并转发」（取决于 `app`）`[CODE]`。
 ## 5. 待调查清单（含第一步命令）
 
 | 目标 | 第一步 |
