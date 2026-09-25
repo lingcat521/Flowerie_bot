@@ -166,7 +166,7 @@ tests/test_plugin_protocol.py            25 passed（本文件描述的全部规
   · 真子进程端到端：真起 python_runner，走 initialize→storage→config→permission→context→event→hook→未知方法→shutdown
     （反向 engine op 通道由测试实现，走**真管道**，不是 mock 协议）
   · 引擎侧 op 安全：未知 op 拒绝 / 未启用拒绝 / permission 只读 / config 只读
-tests/test_plugin_comm_model.py        86 passed（模型层：五类消息 / 请求响应错误模型 /
+tests/test_plugin_comm_model.py        62 passed（模型层：五类消息 / 请求响应错误模型 /
   语言无关类型与 Normalized DTO / 环保护 / 权限串 / 超时归一；并与 runner 内联常量逐项比对）
 tests/test_plugin_comm_bus.py          16 passed（真子进程：真 Core Router 投递、权限拒绝不投递、
   超时 + CANCEL、事件广播、A<->B 环保护 PLUGIN_CALL_LOOP、实例寻址、生命周期 PLUGIN_UNAVAILABLE）

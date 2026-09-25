@@ -19,7 +19,7 @@
 | Rust SDK | `sdk/rust/src/lib.rs` | `call/emit/on/expose/cancel`、`PluginCommError`、`CommState` 注册表 |
 | Java SDK | `sdk/java/.../FloweriePlugin.java` + `Json.java` | `call/callAsync/emit/on/expose/cancel`、`PluginCommException`、`Json.checkJsonValue` |
 | 示例插件 | `examples/{python,typescript,go,rust,java}-plugin` | 五语言同一契约：expose(get_status) + hook comm_call / comm_emit |
-| 测试 | `tests/test_plugin_comm_model.py` / `_bus.py` / `_paths.py`、`test_plugin_sdk_contract.py`、`test_plugin_protocol.py` | 模型 86 / 总线 17 / 三条验收路径 / 五语言同一批向量 |
+| 测试 | `tests/test_plugin_comm_model.py` / `_bus.py` / `_paths.py`、`test_plugin_sdk_contract.py`、`test_plugin_protocol.py` | 模型 62 / 总线 17 / 五条跨语言验收路径 / 五语言同一批向量 |
 | 文档 | `docs/plugin-communication.md`（新增）| 协议、路由、权限、错误、DTO、五语言 API 对照、禁止事项对照 |
 
 ## 2. §二十八 验收标准
@@ -50,7 +50,7 @@
 
 | 用例 | 结果 |
 | :--- | :--- |
-| `tests/test_plugin_comm_model.py` | **86 passed**（五类消息 / 请求响应错误模型 / 数据类型与 DTO / 环保护 / 权限串 / 超时归一 / runner 常量同源）|
+| `tests/test_plugin_comm_model.py` | **62 passed**（五类消息 / 请求响应错误模型 / 数据类型与 DTO / 环保护 / 权限串 / 超时归一 / runner 常量同源）|
 | `tests/test_plugin_comm_bus.py` | **17 passed**（真子进程 + 真 Core Router）：投递、身份不可伪造、权限拒绝不投递、细粒度权限、`plugin.emit` 权限、`PLUGIN_NOT_FOUND` / `METHOD_NOT_FOUND` / `PLUGIN_UNAVAILABLE` / `PLUGIN_ERROR` / `SERIALIZATION_ERROR`、实例寻址与"任意健康实例"、超时 + CANCEL、事件广播、A<->B 环保护、WebUI Action 驱动插件间调用 |
 | `tests/test_plugin_sdk_contract.py` | **33 passed / 45 skipped**（Python 与 TypeScript 真跑；go/rust/java 因缺工具链 skip 并打印原因）|
 | `tests/test_plugin_protocol.py` | 全绿（协议方法集 8 + 3 + 3 = 14、`ENGINE_OPS` 六条、真 runner 端到端）|

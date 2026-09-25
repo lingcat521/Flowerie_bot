@@ -169,6 +169,14 @@ async def _cross_language_path(tmp_path, caller_lang, callee_lang):
         assert isinstance(result["trace_id"], str) and result["trace_id"]
         stats = rig.mgr.comm_snapshot()
         assert stats["by_route"] == {"core": 1}, "跨语言必须经 Core Router（§十二）"
+        # §二十三 Trace：给一次跨语言调用显式 trace_id，目标必须原样回显（链路逐跳可追）
+        marker = "trace-%s-%s" % (caller_lang, callee_lang)
+        resp = await rig.mgr._comm_bus.call(
+            caller, comm.make_request(callee, "get_status", {"traced": True}, trace_id=marker),
+            approved=rig.approved[caller])
+        assert resp["ok"] is True, resp
+        assert resp["result"]["trace_id"] == marker, resp["result"]
+        assert resp["result"]["hop_count"] == 1
         return result
 
 

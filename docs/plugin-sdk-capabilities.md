@@ -104,7 +104,7 @@ PATH="$HOME/tscheck/bin:$PATH" FLOWERIE_FORCE_TSC=1 \
 
 **证据（本地可复核）**：
 
-- 模型层：`tests/test_plugin_comm_model.py`（86 passed）—— 五类消息、请求/响应/错误模型、
+- 模型层：`tests/test_plugin_comm_model.py`（62 passed）—— 五类消息、请求/响应/错误模型、
   语言无关类型、Normalized DTO、环保护、权限串、超时归一，并与 Python runner 内联常量逐项比对。
 - 总线层：`tests/test_plugin_comm_bus.py`（16 passed）—— **真子进程**跑真 Core Router：
   投递、权限拒绝不投递、超时 + CANCEL、事件广播、A↔B 环保护（PLUGIN_CALL_LOOP）、

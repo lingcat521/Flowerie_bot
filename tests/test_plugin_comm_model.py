@@ -214,6 +214,20 @@ def test_trace_id_falls_back_to_fresh_id_without_engine_context():
     assert comm.new_call_id() != tid
 
 
+def test_trace_id_reuses_engine_trace_context():
+    """§二十三：与既有 Flowerie Trace 系统整合 —— 复用当前 trace，不另造一套 id 空间。"""
+    from src.utils.trace import get_trace_id, set_trace_id
+
+    before = get_trace_id()
+    try:
+        set_trace_id("engine-trace-42")
+        assert comm.new_trace_id() == "engine-trace-42"
+    finally:
+        set_trace_id(before)
+    if not before:
+        assert comm.new_trace_id() != "engine-trace-42"
+
+
 def test_timeout_is_always_bounded():
     assert comm.normalize_timeout_ms(None) == comm.DEFAULT_TIMEOUT_MS
     assert comm.normalize_timeout_ms(0) == comm.DEFAULT_TIMEOUT_MS
