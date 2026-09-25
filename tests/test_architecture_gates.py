@@ -11,9 +11,9 @@ SCAN_DIRS = ("src/core", "src/services", "src/sdk", "src/plugins")
 PROTOCOL_WORDS = r"(onebot|milky|napcat|lagrange|snowluma|llbot|koishi|nonebot|shamrock)"
 
 # ---- Gate A：Core/Services/SDK/Plugins 里的具体协议/客户端 import（基线，只许减少）----
-# 剩余项都是已知待拆：src/sdk/onebot/ 子树（Gate T/§34）与 plugins/manager 对它的引用。
+# 剩余项都位于 src/sdk/onebot/ 子树内部 —— 该子树**就是** OneBot 适配器实现本身（Gate T 允许）；
+# plugins/manager 的协议依赖已移除（改为组合根注入 bot_factory）。
 KNOWN_PROTOCOL_IMPORTS = {
-    "src/plugins/manager.py|from src.sdk.onebot.adapter import OneBotAdapter",
     "src/sdk/onebot/adapter.py|from src.sdk.onebot.transformer import to_bot_message_payload",
     "src/sdk/onebot/transformer.py|from src.sdk.onebot.dto import EventDTO",
 }

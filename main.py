@@ -25,6 +25,7 @@ from src.services.memory_manager import MemoryManager
 from src.services.persona_manager import PersonaManager
 from src.services.prompt_manager import PromptManager
 from src.services.sender import Sender
+from src.sdk.onebot.adapter import OneBotAdapter
 from src.services.sticker_manager import StickerManager
 from src.services.web_ui import WebUIServer
 from src.transport.ws_server import WebSocketServer
@@ -176,6 +177,7 @@ async def main():
         plugin_manager = PluginManager(
             config, settings_repo, sender=sender, memory_manager=memory_manager,
             state_provider=_plugin_state_provider, context_manager=policy_engine.context,
+            bot_factory=OneBotAdapter,
             ai_client=ai_client,
         )
         from src.services.group_nicknames import GroupNicknameStore

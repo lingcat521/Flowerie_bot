@@ -42,7 +42,21 @@
 | A：`src/core/` 客户端命名模块 | **0** ✅ | 硬性 0 |
 | P：`websockets` 使用者 | 仅 `src/transport/` ✅ | 硬性限 `src/transport/` |
 
-## 未完成的耦合（下一步）
+## 后续落地（2026-08-09 更新）
+
+1. **协议分支下沉（Gate B/O）已完成**：`src/services/sender.py` 的 3 处分支（`if self._milky` ×2、`if self._use_ws` ×1）
+   与两张 Milky 表已移入动作通道 `src/transport/action_channels.py`；`make_action_channel()` 是**唯一**读取协议开关的位置。
+2. **通道为什么放在 transport 而不是 adapters**：仓库自带的冻结层规则
+   （`tests/test_bootstrap.py::test_no_backward_dependency`）禁止 `src/services/` 出现 `from src.adapters`；
+   放到 `src/adapters/` 会被这条既有守护测试判失败（曾据此改成组合根注入，导致 6 个直接 `Sender(config)` 的测试报
+   `RuntimeError`）。最终落点：`src/transport/action_channels.py` + `channel_factory` 默认值，既满足冻结层规则，
+   也保留注入替换能力。**教训：新模块的落点要先看既有守护测试，再谈理想分层。**
+3. **Gate T（插件协议隔离）已完成**：`src/plugins/manager.py` 不再 import `OneBotAdapter`，改为构造参数
+   `bot_factory` 由组合根（`main.py`）注入 `OneBotAdapter`。`src/sdk/onebot/` 子树保留 —— 它就是 OneBot 适配器实现本身。
+4. 仍未做：Adapter Contract 测试、Capability 模型、Unknown 段/事件容错、Resource 抽象、多实例、
+   TestProtocolAdapter（PEC/PCI=0）与 acceptance Dashboard。
+
+## 原始待办（历史记录，部分已完成）
 
 1. `services/sender.py` 的 `if self._milky` 分支 → 下沉为 Adapter 的发送策略（Gate B/O）；
 2. `src/sdk/onebot/` 子树 → SDK 不得依赖具体协议（Gate T/§34）；

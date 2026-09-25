@@ -36,7 +36,6 @@ from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
 from src.sdk.event import BotEvent
 from src.sdk.matcher import Matcher
-from src.sdk.onebot.adapter import OneBotAdapter
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -60,6 +59,7 @@ class PluginManager:
                  sender: Optional[Any] = None, memory_manager: Optional[Any] = None,
                  state_provider: Optional[Callable[[str, Any], Optional[dict]]] = None,
                  installer: Optional[PluginInstaller] = None, context_manager: Optional[Any] = None,
+                 bot_factory: Optional[Any] = None,
                  ai_client: Optional[Any] = None):
         self.config = config
         self.repository = repository
@@ -79,6 +79,9 @@ class PluginManager:
         self._ai_client = ai_client               # ai_chat 调用注入
         self._matchers: Dict[str, list] = {}      # plugin_id -> [Matcher]（SDK 注册）
         self._bot = None                          # SDK 匹配用 Bot（惰性构建）
+        # bot_factory: (sender, context_manager) -> BotAdapter；由组合根注入具体协议实现，
+        # 插件管理器自身不认识任何协议（Gate T / 任务书 §34）。
+        self._bot_factory = bot_factory
         self._schedules: Dict[str, dict] = {}     # schedule_id -> {plugin_id,name,kind,...}
         self._schedule_tasks: Dict[str, Any] = {} # schedule_id -> asyncio.Task
 
@@ -644,8 +647,8 @@ class PluginManager:
     async def _match_plugin_payload(self, plugin_id, matchers, event_type, payload):
         """SDK Matcher 匹配：返回命中的 [{name, kind, args, block}]（priority 降序）。"""
         try:
-            if self._bot is None and self.sender is not None:
-                self._bot = Bot(OneBotAdapter(self.sender, self._context_manager))
+            if self._bot is None and self.sender is not None and self._bot_factory is not None:
+                self._bot = Bot(self._bot_factory(self.sender, self._context_manager))
             if self._bot is None:
                 return []  # 无 sender：匹配不可用 → 不投递（保守）
             event = BotEvent.from_dict(payload)
