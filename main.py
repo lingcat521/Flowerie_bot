@@ -11,7 +11,6 @@ from src.adapters import make_adapters
 from src.config import load_config, validate_config
 from src.core.message_router import MessageRouter
 from src.core.policy_engine import PolicyEngine
-from src.transport.ws_server import WebSocketServer
 from src.repositories.meme_knowledge_repository import MemeKnowledgeRepository
 from src.repositories.settings_repository import SettingsRepository
 from src.repositories.sticker_repository import StickerRepository
@@ -28,6 +27,7 @@ from src.services.prompt_manager import PromptManager
 from src.services.sender import Sender
 from src.services.sticker_manager import StickerManager
 from src.services.web_ui import WebUIServer
+from src.transport.ws_server import WebSocketServer
 from src.utils.logging_setup import get_logger, init_logging
 from src.utils.metrics import registry
 
