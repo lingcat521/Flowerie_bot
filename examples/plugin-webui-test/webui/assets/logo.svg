@@ -1,0 +1,9 @@
+<!-- 设计源文件：No-JS / SVG 政策下引擎的静态与动态资源白名单都不含 .svg（见 README「资源通道」）。
+     页面与测试请使用同一目录下的 logo.txt（webui.asset 通道）或 static/ 里的位图。 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="plugin_webui_test">
+  <rect x="4" y="4" width="88" height="88" rx="18" fill="#eef3ff" stroke="#5b8def" stroke-width="3"/>
+  <rect x="18" y="22" width="60" height="12" rx="4" fill="#5b8def"/>
+  <rect x="18" y="42" width="44" height="8" rx="4" fill="#9db8f5"/>
+  <rect x="18" y="56" width="52" height="8" rx="4" fill="#9db8f5"/>
+  <rect x="18" y="70" width="30" height="8" rx="4" fill="#2f9e44"/>
+</svg>

@@ -3,6 +3,7 @@
 import { FloweriePlugin } from "../../../sdk/typescript/flowerie_sdk.ts";
 
 const SDK_VERSION = "1.0.0";
+const RUNTIME = "typescript";      // ping / get_info / WebUI 页面上的 runtime
 const plugin = new FloweriePlugin({ pluginId: "minimal_ts" });
 const state: { events: any[]; logs: string[] } = { events: [], logs: [] };
 
@@ -11,7 +12,7 @@ function label(): string {
 }
 
 function getInfo(): Record<string, unknown> {
-  return { plugin_id: plugin.ctx.pluginId, runtime: "typescript", sdk_version: SDK_VERSION,
+  return { plugin_id: plugin.ctx.pluginId, runtime: RUNTIME, sdk_version: SDK_VERSION,
            protocol_version: "1" };
 }
 
@@ -85,7 +86,7 @@ function addressedToMe(text: string): string | null {
 }
 
 plugin.onStartup(() => {
-  plugin.expose("ping", () => ({ ok: true, plugin: label(), runtime: "typescript" }));
+  plugin.expose("ping", () => ({ ok: true, plugin: label(), runtime: RUNTIME }));
   plugin.expose("get_info", () => getInfo());
   plugin.expose("echo", (request: any) => echo(request && request.params));
   plugin.expose("seen", () => ({ events: state.events.slice(), logs: state.logs.slice() }));
@@ -121,6 +122,57 @@ plugin.onMessage(async (_ctx: any, event: any) => {
                                message: String((e && e.message) || e) });
   }
   return { type: "send_message", payload: { group_id: event && event.group_id, message } };
+});
+
+// ---------------- WebUI 最小页面（任务书《plugin_to_webui》§23） ----------------
+// 五种语言共用**同一套** WebUI API：页面由插件经 webui.page 返回 HTML（No-JS：只有 HTML + CSS）。
+// 路由 / 权限 / 校验 / 净化 / 隔离全部由引擎负责，插件只负责内容。
+// Plugin 与 Runtime 取自受控 context 与 SDK 值，不写死在 HTML 里（部署方改名后页面自动跟随）。
+
+const LANGUAGE = "TypeScript";
+const SDK_NAME = "@flowerie/sdk";   // SDK 包名（sdk/typescript/package.json）
+
+/** 本语言原生的 HTML 转义（插件不假设引擎一定会替自己转义动态数据）。 */
+function escapeHtml(value: unknown): string {
+  const table: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;",
+                                          '"': "&quot;", "'": "&#39;" };
+  return String(value).replace(/[&<>"']/g, (ch) => table[ch] || ch);
+}
+
+/** 受控 context 里的 plugin id（引擎按连接识别身份；拿不到才退回 SDK 的 pluginId）。 */
+function ctxPluginId(args: Record<string, any>, fallback: string): string {
+  const context = (args && args.context) || {};
+  const pluginInfo = context.plugin || {};
+  return String(pluginInfo.id || fallback);
+}
+
+/** WebUI 模板变量（HTML 文件页的数据钩子与插件渲染页共用一份）。 */
+function webuiVars(pluginId: string): Record<string, string> {
+  return { language: LANGUAGE, sdk: SDK_NAME + " " + SDK_VERSION,
+           plugin_id: pluginId, runtime: RUNTIME };
+}
+
+/** 最小 WebUI 页面：<h2>插件页</h2> + Language / SDK / Plugin / Runtime 四项。 */
+function webuiHtml(pluginId: string): string {
+  const style = "/panel/plugins/webui/" + pluginId + "/static/style.css";
+  return '<link rel="stylesheet" href="' + escapeHtml(style) + '">'
+    + '<h2>插件页</h2>'
+    + '<dl class="flowerie-webui lang-' + RUNTIME + '" id="plugin-info">'
+    + '<dt>Language</dt><dd class="language">' + escapeHtml(LANGUAGE) + '</dd>'
+    + '<dt>SDK</dt><dd class="sdk">' + escapeHtml(SDK_NAME + " " + SDK_VERSION) + '</dd>'
+    + '<dt>Plugin</dt><dd class="plugin">' + escapeHtml(pluginId) + '</dd>'
+    + '<dt>Runtime</dt><dd class="runtime">' + escapeHtml(RUNTIME) + '</dd>'
+    + '</dl>';
+}
+
+// HTML 文件页的模板变量（manifest 的 web_ui.entry，与其它四种语言同名同义）
+plugin.registerHook("webui_page", () =>
+  ({ vars: webuiVars(String(plugin.ctx.pluginId || "")) }));
+
+// webui.page：引擎要 HTML，插件返回 HTML + 受控模板变量
+plugin.webui.page((args) => {
+  const pluginId = ctxPluginId(args, String(plugin.ctx.pluginId || ""));
+  return { html: webuiHtml(pluginId), vars: webuiVars(pluginId) };
 });
 
 plugin.onShutdown(() => {

@@ -1,0 +1,6 @@
+/* tests/e2e 夹具插件的样式表：只写 .flowerie-plugin-webui 作用域（插件 CSS 隔离约定）。 */
+.flowerie-plugin-webui .status { font-weight: 600; }
+.flowerie-plugin-webui .card { border: 1px solid #ccc; padding: 8px; margin: 8px 0; }
+.flowerie-plugin-webui table { border-collapse: collapse; }
+.flowerie-plugin-webui th, .flowerie-plugin-webui td { border: 1px solid #ddd; padding: 4px 8px; }
+.flowerie-plugin-webui #plugin-status { color: #1a7f37; }

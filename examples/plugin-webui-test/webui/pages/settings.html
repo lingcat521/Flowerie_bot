@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Plugin WebUI 测试插件 · 设置</title>
+  <link rel="stylesheet" href="/panel/plugins/webui/plugin_webui_test/static/style.css">
+</head>
+<body>
+<div class="flowerie-plugin-webui" id="plugin-settings">
+  <h1>设置</h1>
+  <p class="lead">提交 → webui.action → api.config_set() + api.storage_set() 落盘；重新打开本页读回同样的值（§11 config round-trip）。</p>
+
+  <nav class="tabs">
+    <a class="tab" href="{{ index_url }}">总览</a>
+    <a class="tab active" href="{{ settings_url }}">设置</a>
+    <a class="tab" href="{{ communication_url }}">跨插件调用</a>
+  </nav>
+
+  <section class="card">
+    <h2>当前值（读回，§11 round-trip 的证据）</h2>
+    <table class="kv">
+      <tr><th>name</th><td id="setting-name">{{ name }}</td></tr>
+      <tr><th>number</th><td id="setting-number">{{ number }}</td></tr>
+      <tr><th>enabled</th><td id="setting-enabled">{{ enabled_text }}</td></tr>
+      <tr><th>mode</th><td id="setting-mode">{{ mode }}</td></tr>
+    </table>
+    <p class="ok" id="settings-message">{{ message }}</p>
+  </section>
+
+  <section class="card">
+    <h2>settings-form（text / number / checkbox / select / submit）</h2>
+    <form id="settings-form" method="post" action="{{ settings_url }}">
+      <label>name（text input）
+        <input type="text" name="name" value="{{ name }}" maxlength="64" placeholder="Flowerie">
+      </label>
+      <label>number（number input）
+        <input type="number" name="number" value="{{ number }}" min="-1000000" max="1000000" step="1">
+      </label>
+      <label class="inline">
+        <input type="checkbox" name="enabled" value="1" class="{{ enabled_state }}"> enabled（checkbox，当前 {{ enabled_text }}）
+      </label>
+      <label>mode（select）
+        <select name="mode">
+          <option value="auto" class="{{ mode_auto_state }}">auto</option>
+          <option value="manual" class="{{ mode_manual_state }}">manual</option>
+          <option value="debug" class="{{ mode_debug_state }}">debug</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button type="submit" name="plugin_action" value="save">保存</button>
+      </div>
+    </form>
+    <p class="hint" id="settings-engine-note">
+      勾选/选中状态用 class 标记（is-on / is-off / is-selected / is-unselected）：引擎的模板替换只发生在
+      文本与属性值里，裸属性占位符会被净化器丢弃，详见 README「已知引擎限制」。
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>落盘证据</h2>
+    <h3>api.config_get()（data/config.json 覆盖层）</h3>
+    <pre class="json" id="config-json">{{ config_json }}</pre>
+    <h3>api.storage_get("settings")（data/storage/settings.json）</h3>
+    <pre class="json" id="storage-json">{{ stored_json }}</pre>
+    <h3>归一化后的四个值</h3>
+    <pre class="json" id="settings-json">{{ settings_json }}</pre>
+    <p class="hint">读值优先级：config_get() 的插件覆盖层 → storage 快照 → 内置默认值。</p>
+  </section>
+</div>
+</body>
+</html>

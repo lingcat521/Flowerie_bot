@@ -1,0 +1,41 @@
+{
+  "id": "plugin_webui_test",
+  "name": "Plugin WebUI 测试插件",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "任务书《plugin_to_webui》§4/§5 专用 WebUI 测试插件：三页（总览 / 设置 / 跨插件调用），零 JavaScript；覆盖 Plugin Action、config round-trip、plugin.call / plugin.emit、结构化错误与 webui.asset。",
+  "runtime": "python",
+  "entry": "main.py",
+  "api_version": "1",
+  "permissions": [
+    "web_ui",
+    "web_ui.files",
+    "read_message",
+    "plugin.call.*",
+    "plugin.emit"
+  ],
+  "web_ui": {
+    "static": "static",
+    "entry": "webui_page",
+    "pages": [
+      {
+        "id": "index",
+        "title": "总览",
+        "description": "插件名/版本/runtime/status/SDK 版本 + WebUI→插件能力自检",
+        "file": "pages/index.html"
+      },
+      {
+        "id": "settings",
+        "title": "设置",
+        "description": "text / number / checkbox / select 表单；config_set + storage_set 落盘与回读",
+        "file": "pages/settings.html"
+      },
+      {
+        "id": "communication",
+        "title": "跨插件调用",
+        "description": "plugin.call / plugin.emit：target/method/params/route，显示 source/target/request_id/trace_id/response 或结构化错误",
+        "render": "plugin"
+      }
+    ]
+  }
+}

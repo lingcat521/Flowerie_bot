@@ -11,7 +11,15 @@
     "read_message",
     "send_message",
     "plugin.call.*",
-    "plugin.emit"
-  ]
+    "plugin.emit",
+    "web_ui"
+  ],
+  "web_ui": {
+    "static": "static",
+    "entry": "webui_page",
+    "pages": [
+      { "id": "index", "title": "Index", "render": "plugin" }
+    ]
+  }
 }
 

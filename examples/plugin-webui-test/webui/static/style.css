@@ -1,0 +1,59 @@
+/* Plugin WebUI 测试插件样式（No-JS；禁止 @import / 外链 url / expression —— 引擎会净化并记录）。
+   所有选择器都限定在 .flowerie-plugin-webui 作用域内，避免污染面板其它区域。 */
+.flowerie-plugin-webui { color: #3a4456; line-height: 1.6; }
+.flowerie-plugin-webui h1 { font-size: 20px; margin: 0 0 8px; }
+.flowerie-plugin-webui h2 { font-size: 16px; margin: 0 0 10px; }
+.flowerie-plugin-webui h3 { font-size: 14px; margin: 12px 0 6px; color: #7a869a; }
+.flowerie-plugin-webui .lead { font-size: 14px; color: #5b8def; margin: 0 0 14px; }
+
+.flowerie-plugin-webui .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.flowerie-plugin-webui .tab {
+  border: 1px solid #e3e7ef; border-radius: 999px; padding: 4px 14px;
+  color: #5b8def; text-decoration: none; font-size: 13px;
+}
+.flowerie-plugin-webui .tab.active { background: #eef3ff; border-color: #b9ccff; color: #2b5cd9; }
+
+.flowerie-plugin-webui .card {
+  background: #fff; border: 1px solid #e3e7ef; border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.flowerie-plugin-webui table.kv { border-collapse: collapse; width: 100%; }
+.flowerie-plugin-webui table.kv th {
+  text-align: left; width: 190px; color: #7a869a; font-weight: 500; vertical-align: top;
+}
+.flowerie-plugin-webui table.kv td, .flowerie-plugin-webui table.kv th {
+  padding: 6px 4px; border-bottom: 1px solid #f0f2f7; word-break: break-all;
+}
+.flowerie-plugin-webui label { display: block; margin: 10px 0; font-size: 13px; color: #5c6b82; }
+.flowerie-plugin-webui label.inline { display: flex; align-items: center; gap: 6px; }
+.flowerie-plugin-webui input[type="text"], .flowerie-plugin-webui input[type="number"],
+.flowerie-plugin-webui select, .flowerie-plugin-webui textarea {
+  width: 100%; padding: 8px 10px; margin-top: 4px; border: 1px solid #d8dee9;
+  border-radius: 8px; font-size: 14px; box-sizing: border-box; background: #fbfcfe;
+}
+.flowerie-plugin-webui textarea { font-family: monospace; resize: vertical; }
+.flowerie-plugin-webui .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.flowerie-plugin-webui button {
+  background: #5b8def; color: #fff; border: none; border-radius: 9px;
+  padding: 8px 18px; cursor: pointer; font-size: 14px;
+}
+.flowerie-plugin-webui pre.json {
+  background: #f7f9fc; border: 1px solid #eceff5; border-radius: 8px;
+  padding: 10px 12px; margin: 0 0 8px; font-size: 12px; overflow-x: auto; white-space: pre-wrap;
+}
+.flowerie-plugin-webui .status { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+.flowerie-plugin-webui .status.ok { color: #2f9e44; }
+.flowerie-plugin-webui .status.failed { color: #c92a2a; }
+.flowerie-plugin-webui .status.idle { color: #868e96; }
+.flowerie-plugin-webui .code { font-family: monospace; color: #c92a2a; margin: 0 0 6px; }
+.flowerie-plugin-webui .msg { color: #3a4456; margin: 0 0 10px; }
+.flowerie-plugin-webui .ok { color: #2f9e44; }
+.flowerie-plugin-webui .hint { color: #8a94a6; font-size: 12.5px; }
+.flowerie-plugin-webui .hint a { color: #5b8def; }
+
+/* 表单状态标记：裸属性占位符（checked/selected）会被 HTML 净化器丢弃（见 README「已知引擎限制」），
+   所以插件用 class 表达「当前选中/勾选」状态。 */
+.flowerie-plugin-webui .is-selected { font-weight: 600; color: #2b5cd9; }
+.flowerie-plugin-webui .is-unselected { color: #8a94a6; }
+.flowerie-plugin-webui .is-on { outline: 2px solid #2f9e44; }
+.flowerie-plugin-webui .is-off { outline: 2px solid #ced4da; }

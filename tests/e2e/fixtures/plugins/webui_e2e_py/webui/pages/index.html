@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>WebUI E2E 插件 · 总览</title>
+  <link rel="stylesheet" href="/panel/plugins/webui/webui_e2e_py/static/style.css">
+</head>
+<body>
+<div class="flowerie-plugin-webui">
+  <h1 id="plugin-name">{{ plugin_name }}</h1>
+  <p id="plugin-status" class="status">状态：{{ status }}</p>
+
+  <section class="card">
+    <h2>插件信息</h2>
+    <table id="plugin-info">
+      <tr><th>插件 ID</th><td id="plugin-id">{{ plugin_id }}</td></tr>
+      <tr><th>版本</th><td id="plugin-version">{{ plugin_version }}</td></tr>
+      <tr><th>运行时</th><td id="plugin-runtime">{{ runtime }}</td></tr>
+      <tr><th>SDK 版本</th><td id="plugin-sdk-version">{{ sdk_version }}</td></tr>
+      <tr><th>协议版本</th><td id="plugin-protocol-version">{{ protocol_version }}</td></tr>
+      <tr><th>已批准权限</th><td id="plugin-permissions">{{ permissions }}</td></tr>
+      <tr><th>运行时长（秒）</th><td id="plugin-uptime">{{ uptime_seconds }}</td></tr>
+    </table>
+  </section>
+
+  <nav id="plugin-nav">
+    <a id="nav-index" href="/panel/plugins/webui/webui_e2e_py/index">总览</a>
+    <a id="nav-settings" href="/panel/plugins/webui/webui_e2e_py/settings">设置</a>
+    <a id="nav-communication" href="/panel/plugins/webui/webui_e2e_py/communication">通信</a>
+  </nav>
+
+  <p id="plugin-message">{{ message }}</p>
+</div>
+</body>
+</html>

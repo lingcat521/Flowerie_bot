@@ -68,7 +68,43 @@ jobs:
       - name: SDK minimal plugin matrix (build/load/ping/echo/event/call/error/permission/shutdown)
         run: pytest -q -s tests/sdk/
 
+      # Plugin WebUI 阶段（任务书《plugin_to_webui》§26/§31）：真 WebUIServer + 真 PluginManager + 真插件进程
+      - name: Plugin WebUI (http / static / security / isolation / action / communication)
+        run: pytest -q -s tests/webui/
+
       - name: Run tests (pytest)
         env:
           TEST_POSTGRES_URL: postgresql://flowerie:flowerie@127.0.0.1:5432/flowerie_test
-        run: pytest -q -rs --ignore=tests/sdk
+        run: pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e
+
+  # 真浏览器 E2E（§8/§28）：Chromium + 真 WebUI 服务器 + 真插件进程。
+  # 没有浏览器/工具链时必须 BLOCKED BY ENVIRONMENT（skip 并打印原因），绝不写 PASS。
+  webui-e2e:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-asyncio
+      - name: Install Playwright Chromium
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Plugin WebUI browser E2E (§8 DOM + §28 chains)
+        run: pytest -q -rs -s tests/e2e/

@@ -1,0 +1,20 @@
+{
+  "id": "webui_e2e_py",
+  "name": "WebUI E2E Python 插件",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "浏览器 E2E 的入口插件（tests/e2e）：index / settings / communication 三页，页面元素 id 是 E2E 断言契约，跨插件调用经 Core Router 到达其它语言的真插件进程。",
+  "runtime": "python",
+  "entry": "main.py",
+  "api_version": "1",
+  "permissions": ["web_ui", "plugin.call.*", "plugin.emit", "read_message", "send_message"],
+  "web_ui": {
+    "static": "static",
+    "entry": "webui_page",
+    "pages": [
+      { "id": "index", "title": "总览", "file": "pages/index.html" },
+      { "id": "settings", "title": "设置", "file": "pages/settings.html" },
+      { "id": "communication", "title": "通信", "file": "pages/communication.html" }
+    ]
+  }
+}

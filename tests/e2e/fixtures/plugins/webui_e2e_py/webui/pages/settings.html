@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>WebUI E2E 插件 · 设置</title>
+  <link rel="stylesheet" href="/panel/plugins/webui/webui_e2e_py/static/style.css">
+</head>
+<body>
+<div class="flowerie-plugin-webui">
+  <h1 id="plugin-name">{{ plugin_name }}</h1>
+  <p id="plugin-status" class="status">状态：{{ status }}</p>
+
+  <form id="settings-form" method="post" action="/panel/plugins/webui/webui_e2e_py/settings">
+    <fieldset>
+      <legend>插件设置（零 JS：提交 = 表单 POST + 服务端重渲染）</legend>
+      <label for="setting-greeting">问候语（text）</label>
+      <input type="text" id="setting-greeting" name="greeting" value="{{ greeting }}" maxlength="80">
+
+      <label for="setting-count">次数（number）</label>
+      <input type="number" id="setting-count" name="count" value="{{ count }}" min="0" max="999">
+
+      <label for="setting-mode">模式（select）</label>
+      <select id="setting-mode" name="mode">
+        <option value="a">模式 A</option>
+        <option value="b">模式 B</option>
+        <option value="c">模式 C</option>
+      </select>
+
+      <label for="setting-notify"><input type="checkbox" id="setting-notify" name="notify" value="1"> 开启通知（checkbox）</label>
+
+      <button type="submit" id="settings-submit" name="plugin_action" value="save">保存</button>
+    </fieldset>
+  </form>
+
+  <p id="settings-message">{{ message }}</p>
+
+  <section class="card">
+    <h2>插件进程里真实保存的状态</h2>
+    <table id="settings-state">
+      <tr><th>greeting</th><td id="state-greeting">{{ greeting }}</td></tr>
+      <tr><th>count</th><td id="state-count">{{ count }}</td></tr>
+      <tr><th>mode</th><td id="state-mode">{{ mode }}</td></tr>
+      <tr><th>notify</th><td id="state-notify">{{ notify_text }}</td></tr>
+      <tr><th>保存时间</th><td id="state-saved-at">{{ saved_at }}</td></tr>
+    </table>
+  </section>
+
+  <nav id="plugin-nav">
+    <a id="nav-index" href="/panel/plugins/webui/webui_e2e_py/index">总览</a>
+    <a id="nav-settings" href="/panel/plugins/webui/webui_e2e_py/settings">设置</a>
+    <a id="nav-communication" href="/panel/plugins/webui/webui_e2e_py/communication">通信</a>
+  </nav>
+</div>
+</body>
+</html>

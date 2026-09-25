@@ -34,6 +34,10 @@ public final class MinimalPlugin {
     private static final String FALLBACK_PLUGIN_ID = "minimal_java";
     /** slow 探针的睡眠时长（毫秒）：调用方 200ms 超时应观察到 TIMEOUT。 */
     private static final long SLOW_MS = 1500L;
+    /** WebUI 页面上的 Language 一行。 */
+    private static final String LANGUAGE = "Java";
+    /** WebUI 页面上的 SDK 一行（编译时 import 的那份 SDK 的包名）。 */
+    private static final String SDK_NAME = "dev.flowerie.sdk";
     /** 收到过的 test.event payload（seen 用；SDK 是单线程 stdio 循环，不需要加锁）。 */
     private static final List<Object> EVENTS = new ArrayList<Object>();
     /** 收到过的 test.event 日志行（seen 用）："[test.event] <payload.message>"。 */
@@ -67,7 +71,74 @@ public final class MinimalPlugin {
 
         plugin.onShutdown(ctx -> ctx.log("minimal java 插件退出"));
 
+        // ---------- §23 WebUI：与其它四种语言**同一套** API（plugin.webUI().page(...)） ----------
+        // HTML 文件页的模板变量（manifest 的 web_ui.entry，与其它语言同名同义）。
+        plugin.registerHook("webui_page", hookArgs ->
+                Json.obj("vars", webuiVars(pluginId(plugin))));
+        // 插件渲染页：Plugin 取受控 context 的 plugin id，Runtime 取 SDK 值。
+        plugin.webUI().page(webuiArgs -> {
+            String target = ctxPluginId(webuiArgs, pluginId(plugin));
+            return Json.obj("html", webuiHtml(target), "vars", webuiVars(target));
+        });
+
         plugin.run();
+    }
+
+    // ================= WebUI 最小页面（任务书《plugin_to_webui》§23） =================
+    // 五种语言共用**同一套** WebUI API：页面由插件经 webui.page 返回 HTML（No-JS：HTML + CSS）。
+    // 路由 / 权限 / 校验 / 净化 / 隔离全部由引擎负责，插件只负责内容。
+    // Plugin 与 Runtime 取自受控 context 与 SDK 值，不写死在 HTML 里（部署方改名后页面自动跟随）。
+
+    /** 受控 context 里的 plugin id（引擎按连接识别身份；拿不到才退回 SDK 的 plugin id）。 */
+    private static String ctxPluginId(Map<String, Object> args, String fallback) {
+        Object context = args == null ? null : args.get("context");
+        if (context instanceof Map) {
+            Object pluginInfo = ((Map<?, ?>) context).get("plugin");
+            if (pluginInfo instanceof Map) {
+                Object id = ((Map<?, ?>) pluginInfo).get("id");
+                if (id instanceof String && !((String) id).isEmpty()) {
+                    return (String) id;
+                }
+            }
+        }
+        return fallback;
+    }
+
+    /** 本语言原生的 HTML 转义（插件不假设引擎一定会替自己转义动态数据）。 */
+    private static String escapeHtml(String value) {
+        StringBuilder out = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            switch (ch) {
+                case '&': out.append("&amp;"); break;
+                case '<': out.append("&lt;"); break;
+                case '>': out.append("&gt;"); break;
+                case '"': out.append("&quot;"); break;
+                case '\'': out.append("&#39;"); break;
+                default: out.append(ch);
+            }
+        }
+        return out.toString();
+    }
+
+    /** WebUI 模板变量（HTML 文件页的数据钩子与插件渲染页共用一份）。 */
+    private static Map<String, Object> webuiVars(String pluginId) {
+        return Json.obj("language", LANGUAGE, "sdk", SDK_NAME + " " + SDK_VERSION,
+                "plugin_id", pluginId, "runtime", RUNTIME);
+    }
+
+    /** 最小 WebUI 页面：<h2>插件页</h2> + Language / SDK / Plugin / Runtime 四项。 */
+    private static String webuiHtml(String pluginId) {
+        String style = "/panel/plugins/webui/" + pluginId + "/static/style.css";
+        return "<link rel=\"stylesheet\" href=\"" + escapeHtml(style) + "\">"
+                + "<h2>插件页</h2>"
+                + "<dl class=\"flowerie-webui lang-" + RUNTIME + "\" id=\"plugin-info\">"
+                + "<dt>Language</dt><dd class=\"language\">" + escapeHtml(LANGUAGE) + "</dd>"
+                + "<dt>SDK</dt><dd class=\"sdk\">"
+                + escapeHtml(SDK_NAME + " " + SDK_VERSION) + "</dd>"
+                + "<dt>Plugin</dt><dd class=\"plugin\">" + escapeHtml(pluginId) + "</dd>"
+                + "<dt>Runtime</dt><dd class=\"runtime\">" + escapeHtml(RUNTIME) + "</dd>"
+                + "</dl>";
     }
 
     // ================= 暴露的方法（§二 契约） =================

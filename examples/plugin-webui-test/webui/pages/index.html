@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Plugin WebUI 测试插件 · 总览</title>
+  <!-- 引擎只放行本插件 static 前缀下的样式表；选择器统一限定在 .flowerie-plugin-webui 之下 -->
+  <link rel="stylesheet" href="/panel/plugins/webui/plugin_webui_test/static/style.css">
+</head>
+<body>
+<div class="flowerie-plugin-webui" id="plugin-overview">
+  <h1>总览 · Plugin WebUI 测试插件</h1>
+  <p class="lead">三页测试插件（总览 / 设置 / 跨插件调用）：真实 HTML 文件 + 受控模板变量 + 表单 POST，零 JavaScript。</p>
+
+  <nav class="tabs">
+    <a class="tab active" href="{{ index_url }}">总览</a>
+    <a class="tab" href="{{ settings_url }}">设置</a>
+    <a class="tab" href="{{ communication_url }}">跨插件调用</a>
+  </nav>
+
+  <section class="card">
+    <h2>插件信息</h2>
+    <table class="kv">
+      <tr><th>Plugin Name</th><td id="plugin-name">{{ plugin_name }}</td></tr>
+      <tr><th>Plugin Version</th><td id="plugin-version">{{ plugin_version }}</td></tr>
+      <tr><th>Runtime</th><td id="plugin-runtime">{{ runtime }}</td></tr>
+      <tr><th>Status</th><td id="plugin-status">{{ status }}</td></tr>
+      <tr><th>SDK Version</th><td id="plugin-sdk-version">{{ sdk_version }}</td></tr>
+      <tr><th>Plugin ID</th><td id="plugin-id">{{ plugin_id }}</td></tr>
+      <tr><th>API / 协议版本</th><td id="plugin-api-version">{{ api_version }}</td></tr>
+      <tr><th>已批准权限</th><td id="plugin-permissions">{{ permissions }}</td></tr>
+      <tr><th>当前页面</th><td id="page-title">{{ page_title }}</td></tr>
+      <tr><th>服务器时间</th><td id="server-time">{{ server_time }}</td></tr>
+    </table>
+    <p class="ok" id="index-message">{{ message }}</p>
+  </section>
+
+  <section class="card">
+    <h2>WebUI → 插件能力（§10）</h2>
+    <p class="hint">按钮把表单 POST 回本页，由插件进程（webui.action）真实执行 get_info() / echo() / set_config()。</p>
+    <form id="self-test-form" method="post" action="{{ index_url }}">
+      <label>echo 输入
+        <input type="text" name="echo_text" value="{{ echo_text }}" maxlength="200" placeholder="hello">
+      </label>
+      <div class="actions">
+        <button type="submit" name="plugin_action" value="get_info">get_info()</button>
+        <button type="submit" name="plugin_action" value="echo">echo()</button>
+        <button type="submit" name="plugin_action" value="set_config">set_config()</button>
+      </div>
+    </form>
+    <pre class="json" id="self-test-result">{{ self_test_json }}</pre>
+  </section>
+
+  <section class="card">
+    <h2>跨插件与事件</h2>
+    <table class="kv">
+      <tr><th>最近一次调用</th><td id="call-summary">{{ call_summary }}</td></tr>
+      <tr><th>已收到事件</th><td id="event-count">{{ event_count }}</td></tr>
+    </table>
+    <p class="hint">
+      下一步：<a href="{{ communication_url }}">跨插件调用</a> ·
+      动态资源：<a href="{{ asset_theme_url }}">asset/theme.css</a> ·
+      <a href="{{ asset_info_url }}">asset/info.json</a> ·
+      <a href="{{ asset_logo_url }}">asset/logo.txt</a>
+    </p>
+  </section>
+</div>
+</body>
+</html>

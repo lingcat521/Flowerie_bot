@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Plugin WebUI 测试插件 · 跨插件调用</title>
+  <link rel="stylesheet" href="/panel/plugins/webui/plugin_webui_test/static/style.css">
+</head>
+<body>
+<div class="flowerie-plugin-webui" id="communication-panel">
+  <h1>跨插件调用</h1>
+  <p class="lead">Browser → 本页表单 → webui.action → api.plugin.call / api.plugin.emit → Core Router → 目标插件 → 回显（零 JavaScript）。</p>
+
+  <nav class="tabs">
+    <a class="tab" href="{{ index_url }}">总览</a>
+    <a class="tab" href="{{ settings_url }}">设置</a>
+    <a class="tab active" href="{{ communication_url }}">跨插件调用</a>
+  </nav>
+
+  <section class="card">
+    <h2>最近一次调用</h2>
+    <p class="status {{ call_status_class }}" id="call-status">Status: {{ call_status }}</p>
+    <p class="code" id="call-code">Code: {{ error_code }}</p>
+    <p class="msg" id="call-message">{{ message }}</p>
+    <table class="kv">
+      <tr><th>source</th><td id="call-source">{{ source }}</td></tr>
+      <tr><th>target</th><td id="call-target">{{ target }}</td></tr>
+      <tr><th>method</th><td id="call-method">{{ method }}</td></tr>
+      <tr><th>route</th><td id="call-route">{{ route }}</td></tr>
+      <tr><th>request_id</th><td id="call-request-id">{{ request_id }}</td></tr>
+      <tr><th>trace_id</th><td id="call-trace-id">{{ trace_id }}</td></tr>
+      <tr><th>kind</th><td id="call-kind">{{ kind }}</td></tr>
+      <tr><th>delivered / failed</th><td id="call-delivery">{{ delivery }}</td></tr>
+      <tr><th>time</th><td id="call-time">{{ called_at }}</td></tr>
+    </table>
+    <p class="hint" id="call-error-message">{{ error_message }}</p>
+    <p class="hint" id="call-route-state">route 选中态用 class 标记：auto={{ route_auto_state }} / local={{ route_local_state }} / core={{ route_core_state }}</p>
+    <h3>Request</h3>
+    <pre class="json" id="call-request">{{ request_json }}</pre>
+    <h3>Response</h3>
+    <pre class="json" id="call-response">{{ response_json }}</pre>
+  </section>
+
+  <section class="card">
+    <h2>发起调用</h2>
+    <form id="call-form" method="post" action="{{ form_action }}">
+      <label>target（目标插件 ID）
+        <input type="text" name="target" value="{{ form_target }}" maxlength="96" placeholder="plugin_webui_test">
+      </label>
+      <label>method（RPC 方法；emit 时是事件名）
+        <input type="text" name="method" value="{{ form_method }}" maxlength="96" placeholder="echo">
+      </label>
+      <label>params（JSON）
+        <textarea name="params" rows="4" maxlength="4000">{{ form_params }}</textarea>
+      </label>
+      <label>route（路由策略）
+        <select name="route">
+          <option value="auto" class="{{ route_auto_state }}">auto</option>
+          <option value="local" class="{{ route_local_state }}">local</option>
+          <option value="core" class="{{ route_core_state }}">core</option>
+        </select>
+      </label>
+      <label>timeout_ms（100 ~ 30000）
+        <input type="number" name="timeout_ms" value="{{ form_timeout }}" min="100" max="30000" step="100">
+      </label>
+      <div class="actions">
+        <button type="submit" name="plugin_action" value="call">调用（plugin.call）</button>
+        <button type="submit" name="plugin_action" value="emit">广播（plugin.emit）</button>
+      </div>
+    </form>
+    <p class="hint">
+      target 填本插件 id 可自调用（<strong>echo</strong> 会把引擎给的 request_id / trace_id / route 一起回传）；
+      对端不回传这几个字段时页面如实显示「对端未回传」，不编造。
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>最近收到的事件（§14）</h2>
+    <p class="hint">本插件用 api.plugin.on("*") 订阅全部事件：上方 emit 广播后由 Core 投递，最多保留 10 条。
+      已收到：<span id="event-count">{{ event_count }}</span></p>
+    <pre class="json" id="event-log">{{ events_json }}</pre>
+  </section>
+
+  <p class="hint">
+    动态资源：<a href="{{ asset_theme_url }}">asset/theme.css</a> ·
+    <a href="{{ asset_info_url }}">asset/info.json</a> ·
+    <a href="{{ asset_logo_url }}">asset/logo.txt</a> ·
+    静态资源：<a href="{{ static_url }}">static/style.css</a>
+  </p>
+</div>
+</body>
+</html>

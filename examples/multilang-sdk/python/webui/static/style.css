@@ -1,0 +1,25 @@
+/* 最小插件 WebUI 的样式（任务书《plugin_to_webui》§23 / §7 CSS 加载测试）。
+   No-JS：这里只有样式，页面里没有任何 <script>。
+   插件：minimal_py（Python）—— 每种语言一份自己的 CSS（§22 CSS 不串）。 */
+.flowerie-webui {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  line-height: 1.6;
+}
+
+.flowerie-webui dt {
+  font-weight: 600;
+  color: #57606a;
+}
+
+.flowerie-webui dd {
+  margin: 0 0 0.25rem 0;
+}
+
+/* 每种语言一个自己的强调色：CSS 串页时一眼就能看出来。 */
+.flowerie-webui.lang-python {
+  border-left: 4px solid #3572a5;
+}

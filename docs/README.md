@@ -32,6 +32,7 @@
 | [plugin-communication.md](plugin-communication.md) | **插件间通信协议**：五类消息 / 请求·响应·错误模型 / 12 个错误码 / 语言无关类型与 DTO / 十四节权限 / LOCAL·CORE·AUTO 路由 / 五语言 API 对照 | 插件开发者 |
 | [plugin-sdk-minimal-test.md](plugin-sdk-minimal-test.md) | **多语言 SDK 最小化插件实测契约**：五种语言的 ping/get_info/echo、/sdk 命令表、动作形状、错误探针、Build/Load 分离 | 插件开发者 + 评审 |
 | [plugin-sdk-minimal-report.md](plugin-sdk-minimal-report.md) | **最小化插件实测报告**：§十七 验收表（11 行 × 5 语言）+ 七条跨语言链路 + §十八 17 问 + 五轮红→绿 | 评审 |
+| [plugin-webui-e2e-report.md](plugin-webui-e2e-report.md) | **Plugin WebUI 真浏览器 E2E 报告**（任务书 §8/§26/§28/§31）：真 Chromium（Playwright）+ 真 WebUI 服务器 + 真插件进程；本机 BLOCKED 逐项理由 + §28 三条链路状态 + CI 片段 | 评审 |
 | [plugin-communication-report.md](plugin-communication-report.md) | **插件间通信最终验收报告**：§二十八 逐项结论 + 三条核心路径 + 禁止事项自查 + 诚实边界 | 评审 |
 | [plugin-sdk.md](plugin-sdk.md) | **多语言 SDK 指南**：五语言 API 对照 / 能力对齐 / 新语言接入清单；单语言参考见 [typescript](plugin-sdk-typescript.md) · [go](plugin-sdk-go.md) · [rust](plugin-sdk-rust.md) · [java](plugin-sdk-java.md) | 插件开发者（非 Python）|
 | [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) | **Capability Matrix**：逐能力四态（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN）+ CI 证据 | 插件开发者 + 评审 |

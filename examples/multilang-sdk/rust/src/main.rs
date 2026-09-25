@@ -22,6 +22,10 @@ use flowerie::{CallOptions, Context, Json, Plugin, PluginCommError, PROTOCOL_VER
 
 /// SDK 版本（SDK 本身没导出这个常量；与其它四种语言的最小插件取同一个值）。
 const SDK_VERSION: &str = "1.0.0";
+/// WebUI 页面上的 Language 一行。
+const LANGUAGE_NAME: &str = "Rust";
+/// WebUI 页面上的 SDK 一行（SDK 源码位置，与其它四种语言的写法同形）。
+const SDK_NAME: &str = "sdk/rust";
 /// 协议里的语言标识（ping 的 runtime 字段）。
 const RUNTIME: &str = "rust";
 /// plugin_id 兜底：正常路径下 initialize 一定会把真实 id 告诉插件。
@@ -91,6 +95,20 @@ fn main() {
         ctx.log("minimal rust 插件退出");
     });
 
+    // ---------- §23 WebUI：与其它四种语言**同一套** API（plugin.webui().page(...)） ----------
+    // HTML 文件页的模板变量（manifest 的 web_ui.entry，与其它语言同名同义）。
+    plugin.register_hook("webui_page", |ctx: &Context, _args: &[Json]| {
+        Json::obj(vec![("vars", webui_vars(&plugin_id(ctx)))])
+    });
+    // 插件渲染页：Plugin 取受控 context 的 plugin id，Runtime 取 SDK 值。
+    plugin.webui().page(|ctx: &Context, args: &Json| {
+        let id = ctx_plugin_id(args, &plugin_id(ctx));
+        Json::obj(vec![
+            ("html", Json::str(&webui_html(&id))),
+            ("vars", webui_vars(&id)),
+        ])
+    });
+
     if let Err(err) = plugin.run() {
         eprintln!("[flowerie] 运行失败: {}", err);
         std::process::exit(1);
@@ -112,6 +130,70 @@ fn plugin_id(ctx: &Context) -> String {
 /// label = plugin_id 把下划线换成短横线（例如 minimal_rust -> minimal-rust）。
 fn label(ctx: &Context) -> String {
     plugin_id(ctx).replace('_', "-")
+}
+
+// ---------------- WebUI 最小页面（任务书《plugin_to_webui》§23） ----------------
+// 五种语言共用**同一套** WebUI API：页面由插件经 webui.page 返回 HTML（No-JS：只有 HTML + CSS）。
+// 路由 / 权限 / 校验 / 净化 / 隔离全部由引擎负责，插件只负责内容。
+// Plugin 与 Runtime 取自受控 context 与 SDK 值，不写死在 HTML 里（部署方改名后页面自动跟随）。
+
+/// 受控 context 里的 plugin id（引擎按连接识别身份；拿不到才退回 SDK 的 plugin id）。
+fn ctx_plugin_id(args: &Json, fallback: &str) -> String {
+    args.get("context")
+        .and_then(|context| context.get("plugin"))
+        .and_then(|plugin| plugin.get("id"))
+        .and_then(|id| id.as_str())
+        .filter(|id| !id.is_empty())
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+/// 本语言原生的 HTML 转义（插件不假设引擎一定会替自己转义动态数据）。
+fn escape_html(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for ch in value.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&#39;"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+/// WebUI 模板变量（HTML 文件页的数据钩子与插件渲染页共用一份）。
+fn webui_vars(plugin_id: &str) -> Json {
+    Json::obj(vec![
+        ("language", Json::str(LANGUAGE_NAME)),
+        ("sdk", Json::str(&format!("{} {}", SDK_NAME, SDK_VERSION))),
+        ("plugin_id", Json::str(plugin_id)),
+        ("runtime", Json::str(RUNTIME)),
+    ])
+}
+
+/// 最小 WebUI 页面：<h2>插件页</h2> + Language / SDK / Plugin / Runtime 四项。
+fn webui_html(plugin_id: &str) -> String {
+    let style = format!("/panel/plugins/webui/{}/static/style.css", plugin_id);
+    format!(
+        "<link rel=\"stylesheet\" href=\"{}\">\
+         <h2>插件页</h2>\
+         <dl class=\"flowerie-webui lang-{}\" id=\"plugin-info\">\
+         <dt>Language</dt><dd class=\"language\">{}</dd>\
+         <dt>SDK</dt><dd class=\"sdk\">{} {}</dd>\
+         <dt>Plugin</dt><dd class=\"plugin\">{}</dd>\
+         <dt>Runtime</dt><dd class=\"runtime\">{}</dd>\
+         </dl>",
+        escape_html(&style),
+        RUNTIME,
+        escape_html(LANGUAGE_NAME),
+        escape_html(SDK_NAME),
+        SDK_VERSION,
+        escape_html(plugin_id),
+        escape_html(RUNTIME)
+    )
 }
 
 /// 空参数（协议要求 params 是对象）。

@@ -38,3 +38,7 @@ examples/*/.gocache/
 
 # 多语言最小插件的构建产物（build.sh 生成）
 examples/multilang-sdk/*/.build/
+
+# 浏览器 E2E（tests/e2e）：兜底工作目录（工作目录不支持执行位时使用）与插件运行期数据
+.e2e-work/
+tests/e2e/fixtures/plugins/*/data/

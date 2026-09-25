@@ -7,6 +7,7 @@ import json
 import time
 
 SDK_VERSION = "1.0.0"
+RUNTIME = "python"          # ping / get_info / WebUI 页面上的 runtime
 API = {"api": None}
 STATE = {"events": [], "logs": []}
 
@@ -42,11 +43,11 @@ def on_startup(context, api=None):
 # ---------------- §三 Plugin API ----------------
 
 def _ping(request):
-    return {"ok": True, "plugin": _label(), "runtime": "python"}
+    return {"ok": True, "plugin": _label(), "runtime": RUNTIME}
 
 
 def _get_info(request):
-    return {"plugin_id": _plugin_id(), "runtime": "python", "sdk_version": SDK_VERSION,
+    return {"plugin_id": _plugin_id(), "runtime": RUNTIME, "sdk_version": SDK_VERSION,
             "protocol_version": "1"}
 
 
@@ -84,6 +85,60 @@ def on_test_event(event, api=None):
         except Exception:  # noqa: BLE001 - 日志失败不影响事件处理
             pass
     return None
+
+
+# ---------------- WebUI 最小页面（任务书《plugin_to_webui》§23） ----------------
+# 五种语言共用**同一套** WebUI API：页面由插件经 webui.page 返回 HTML（No-JS：只有 HTML + CSS）。
+# 路由 / 权限 / 校验 / 净化 / 隔离全部由引擎负责，插件只负责内容。
+# Plugin 与 Runtime 取自受控 context 与 SDK 值，不写死在 HTML 里（部署方改名后页面自动跟随）。
+
+LANGUAGE = "Python"          # 页面上的 Language
+SDK_NAME = "python_runner"   # 页面上的 SDK（python 插件的 API 由仓库内置 runner 提供）
+
+
+def _context_plugin_id(context):
+    """受控 context 里的 plugin id（引擎按连接识别身份；拿不到才退回 SDK 的 plugin_id）。"""
+    plugin = context.get("plugin") if isinstance(context, dict) else None
+    plugin_id = plugin.get("id") if isinstance(plugin, dict) else None
+    return str(plugin_id or _plugin_id())
+
+
+def _escape(value):
+    """本语言原生的 HTML 转义（插件不假设引擎一定会替自己转义动态数据）。"""
+    import html as _html
+    return _html.escape(str(value), quote=True)
+
+
+def _webui_html(context):
+    """最小 WebUI 页面：<h2>插件页</h2> + Language / SDK / Plugin / Runtime 四项。"""
+    plugin_id = _context_plugin_id(context)
+    style = "/panel/plugins/webui/%s/static/style.css" % plugin_id
+    return (
+        '<link rel="stylesheet" href="%s">'
+        '<h2>插件页</h2>'
+        '<dl class="flowerie-webui lang-%s" id="plugin-info">'
+        '<dt>Language</dt><dd class="language">%s</dd>'
+        '<dt>SDK</dt><dd class="sdk">%s</dd>'
+        '<dt>Plugin</dt><dd class="plugin">%s</dd>'
+        '<dt>Runtime</dt><dd class="runtime">%s</dd>'
+        '</dl>' % (_escape(style), _escape(RUNTIME), _escape(LANGUAGE),
+                   _escape("%s %s" % (SDK_NAME, SDK_VERSION)), _escape(plugin_id),
+                   _escape(RUNTIME))
+    )
+
+
+def webui_page(page_id, action, params, values):
+    """HTML 文件页的模板变量（manifest 的 web_ui.entry；与其它四种语言同名同义）。"""
+    return {"vars": {"language": LANGUAGE, "sdk": "%s %s" % (SDK_NAME, SDK_VERSION),
+                     "plugin_id": _plugin_id(), "runtime": RUNTIME}}
+
+
+def webui_render(page, context):
+    """webui.page：插件渲染页（引擎要 HTML，插件返回 HTML + 受控模板变量）。"""
+    plugin_id = _context_plugin_id(context)
+    return {"html": _webui_html(context),
+            "vars": {"language": LANGUAGE, "sdk": "%s %s" % (SDK_NAME, SDK_VERSION),
+                     "plugin_id": plugin_id, "runtime": RUNTIME}}
 
 
 # ---------------- §五/§六 Plugin-to-Plugin（经 SDK 的统一抽象） ----------------

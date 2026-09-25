@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"os"
 	"strings"
 	"sync"
@@ -103,6 +104,17 @@ func main() {
 	// test.event 是引擎事件（dispatch_event），走 On 的「引擎事件钩子」分支。
 	app.plugin.On("test.event", app.onTestEvent)
 	app.plugin.OnMessage(app.onMessage)
+
+	// §23 WebUI：与其它四种语言**同一套** API（plugin.WebUI().Page）。
+	// HTML 文件页的模板变量（manifest 的 web_ui.entry，与其它语言同名同义）。
+	app.plugin.RegisterHook("webui_page", func(args ...any) any {
+		return map[string]any{"vars": app.webuiVars(app.pluginID())}
+	})
+	// 插件渲染页：Plugin 取受控 context 的 plugin id，Runtime 取 SDK 值。
+	app.plugin.WebUI().Page(func(args map[string]any) any {
+		pluginID := ctxPluginID(args, app.pluginID())
+		return map[string]any{"html": webuiHTML(pluginID), "vars": app.webuiVars(pluginID)}
+	})
 
 	if err := app.plugin.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "[minimal_go] 协议主循环退出: %v\n", err)
@@ -196,6 +208,49 @@ func (m *minimal) onTestEvent(ctx *flowerie.Context, event map[string]any) any {
 		ctx.Logf("log 动作失败（不影响 test.event 记录）: %v", err)
 	}
 	return nil
+}
+
+// ---------------- WebUI 最小页面（任务书《plugin_to_webui》§23） ----------------
+// 五种语言共用**同一套** WebUI API：页面由插件经 webui.page 返回 HTML（No-JS：只有 HTML + CSS）。
+// 路由 / 权限 / 校验 / 净化 / 隔离全部由引擎负责，插件只负责内容。
+// Plugin 与 Runtime 取自受控 context 与 SDK 值，不写死在 HTML 里（部署方改名后页面自动跟随）。
+
+const (
+	languageName = "Go"              // 页面上的 Language
+	sdkName      = "sdk/go/flowerie" // 页面上的 SDK（import 的那份 SDK 源码）
+)
+
+// webuiVars WebUI 模板变量（HTML 文件页的数据钩子与插件渲染页共用一份）。
+func (m *minimal) webuiVars(pluginID string) map[string]any {
+	return map[string]any{
+		"language":  languageName,
+		"sdk":       sdkName + " " + sdkVersion,
+		"plugin_id": pluginID,
+		"runtime":   runtimeName,
+	}
+}
+
+// ctxPluginID 受控 context 里的 plugin id（引擎按连接识别身份；拿不到才退回 SDK 的 plugin id）。
+func ctxPluginID(args map[string]any, fallback string) string {
+	context, _ := args["context"].(map[string]any)
+	pluginInfo, _ := context["plugin"].(map[string]any)
+	if id, ok := pluginInfo["id"].(string); ok && id != "" {
+		return id
+	}
+	return fallback
+}
+
+// webuiHTML 最小 WebUI 页面：<h2>插件页</h2> + Language / SDK / Plugin / Runtime 四项。
+func webuiHTML(pluginID string) string {
+	style := "/panel/plugins/webui/" + pluginID + "/static/style.css"
+	return "<link rel=\"stylesheet\" href=\"" + html.EscapeString(style) + "\">" +
+		"<h2>插件页</h2>" +
+		"<dl class=\"flowerie-webui lang-" + runtimeName + "\" id=\"plugin-info\">" +
+		"<dt>Language</dt><dd class=\"language\">" + html.EscapeString(languageName) + "</dd>" +
+		"<dt>SDK</dt><dd class=\"sdk\">" + html.EscapeString(sdkName+" "+sdkVersion) + "</dd>" +
+		"<dt>Plugin</dt><dd class=\"plugin\">" + html.EscapeString(pluginID) + "</dd>" +
+		"<dt>Runtime</dt><dd class=\"runtime\">" + html.EscapeString(runtimeName) + "</dd>" +
+		"</dl>"
 }
 
 // ---------------- §五/§六 命令 ----------------
