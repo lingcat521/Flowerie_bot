@@ -29,7 +29,7 @@ class WebSocketServer:
     - 每条事件进入时建立独立 trace_id（contextvars），贯穿处理链路
     """
 
-    def __init__(self, config: Settings, message_router: MessageRouter):
+    def __init__(self, config: Settings, message_router: "MessageRouter"):
         self.config = config
         self.message_router = message_router
         self.ws: Optional[websockets.WebSocketServerProtocol] = None
