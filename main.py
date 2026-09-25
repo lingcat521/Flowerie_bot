@@ -8,13 +8,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.adapters import make_adapters
+from src.adapters.onebot.adapter import OneBotAdapter
 from src.config import load_config, validate_config
 from src.core.message_router import MessageRouter
 from src.core.policy_engine import PolicyEngine
 from src.repositories.meme_knowledge_repository import MemeKnowledgeRepository
 from src.repositories.settings_repository import SettingsRepository
 from src.repositories.sticker_repository import StickerRepository
-from src.adapters.onebot.adapter import OneBotAdapter
 from src.services.ai_client import AIClient
 from src.services.blossom_memory import BlossomMemoryManager
 from src.services.config_service import ConfigService

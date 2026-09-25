@@ -8,9 +8,9 @@
 import re
 from typing import Any, Dict, List
 
+from src.adapters.onebot.dto import EventDTO
 from src.sdk.event import BotEvent
 from src.sdk.message import BotMessage
-from src.adapters.onebot.dto import EventDTO
 
 # [CQ:at,qq=123] / [CQ:at,qq=123,name=x]（qq 可能为 all）
 # 正则只做「单一字符集重复」：嵌套量词（(?:,[^\[\]]*)*）或相邻重叠量词

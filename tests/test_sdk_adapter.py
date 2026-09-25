@@ -3,9 +3,9 @@ import asyncio
 
 import pytest
 
+from src.adapters.onebot.adapter import OneBotAdapter
 from src.sdk.errors import BotAPIError, BotTimeoutError, MessageNotFoundError
 from src.sdk.message import BotMessage
-from src.adapters.onebot.adapter import OneBotAdapter
 
 
 class FakeSender:

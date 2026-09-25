@@ -1,8 +1,8 @@
 """v1.7.0 拉格朗日补齐：语义方法→端点（OneBot 只在 Sender/适配层）+ 网关回退。"""
 import pytest
 
-from src.plugins.manager import _SENDER_ACTIONS
 from src.adapters.onebot.adapter import make_onebot_adapter
+from src.plugins.manager import _SENDER_ACTIONS
 
 
 class RecordingSender:

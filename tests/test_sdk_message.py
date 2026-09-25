@@ -1,6 +1,5 @@
 """SDK 中层/下层测试：BotMessage · Transformer（CQ 阉割 · 出站段转换）。"""
 
-from src.sdk.message import BotMessage
 from src.adapters.onebot.transformer import (
     extract_at_list,
     extract_images,
@@ -9,6 +8,7 @@ from src.adapters.onebot.transformer import (
     to_bot_event,
     to_bot_message_payload,
 )
+from src.sdk.message import BotMessage
 
 
 # ---------- BotMessage（中层） ----------

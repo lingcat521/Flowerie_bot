@@ -6,6 +6,7 @@ sender 返回结果 → 统一 BotError 体系（retcode/超时/消息不存在/
 import asyncio
 from typing import Any, Dict, List, Optional
 
+from src.adapters.onebot.transformer import to_bot_message_payload
 from src.sdk.adapter import BotAdapter
 from src.sdk.errors import (
     BotAPIError,
@@ -14,7 +15,6 @@ from src.sdk.errors import (
     UnsupportedOperationError,
 )
 from src.sdk.message import BotMessage
-from src.adapters.onebot.transformer import to_bot_message_payload
 
 
 class OneBotAdapter(BotAdapter):
