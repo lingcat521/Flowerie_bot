@@ -194,16 +194,21 @@ class OneBotEventParser:
                 faces.append({"kind": "face", "face_id": str(data.get("id") or ""),
                               "result_id": str(data.get("resultId") or ""),
                               "chain_count": data.get("chainCount")})
+                summary.append((seg_type, dict(data)))  # 旧通道保持：只做增量，不删信息
             elif seg_type == "mface":
                 faces.append(_normalize_market_face(data))
+                summary.append((seg_type, dict(data)))
             elif seg_type == "poke":
                 pokes.append({"poke_type": str(data.get("type") or ""),
                               "poke_id": str(data.get("id") or ""), "target": None})
+                summary.append((seg_type, dict(data)))
             elif seg_type == "shake":
                 # LLBot 的 OneBot 实现把 face(faceType=Poke) 报成 shake{}，**不带目标**
                 pokes.append({"poke_type": "shake", "poke_id": "", "target": None})
+                summary.append((seg_type, dict(data)))
             elif seg_type == "file":
                 files.append(_normalize_file_segment(data))
+                summary.append((seg_type, dict(data)))
             elif seg_type:
                 summary.append((seg_type, dict(data)))
         event.message_segments = [dict(seg) for seg in arr]  # 段浅拷贝（兼容组装）
