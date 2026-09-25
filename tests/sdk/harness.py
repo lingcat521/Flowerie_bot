@@ -105,8 +105,8 @@ def build_minimal(lang):
     if proc.returncode != 0:
         # 失败**不进缓存**：否则后续用例会拿着半成品目录继续跑，把"编译失败"伪装成"启动超时"
         _BUILD_CACHE.pop(lang, None)
-        assert False, "%s 最小插件构建失败（exit=%s）：%s%s" % (
-            lang, proc.returncode, proc.stdout[-2000:], proc.stderr[-2000:])
+        raise AssertionError("%s 最小插件构建失败（exit=%s）：%s%s" % (
+            lang, proc.returncode, proc.stdout[-2000:], proc.stderr[-2000:]))
     _BUILD_CACHE[lang] = {"ok": True, "returncode": 0, "stdout": proc.stdout[-4000:],
                           "stderr": proc.stderr[-4000:], "dir": work}
     return _BUILD_CACHE[lang]
