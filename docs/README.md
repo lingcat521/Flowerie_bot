@@ -24,6 +24,7 @@
 | **[plugin-developer-guide.md](plugin-developer-guide.md) §31** | **任意语言插件**：exec 协议三分钟说明 + **13 种语言完整最小实现**（C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R）+ 构建入口速查 + 排查清单 | 非 Python/Node 的插件作者 |
 | [plugin-webui.md](plugin-webui.md) | **Plugin WebUI**（DSL 组件全集 / hook / 权限 / 文件 / 安全边界） | 插件开发者 |
 | [protocol-implementation.md](protocol-implementation.md) | **协议实现说明**：分层与依赖方向、一次往返经过谁、未知数据安全、档案如何进运行时、语料/契约测试组织、明确还没做的 | 协议/适配层开发者 |
+| [client-compatibility-report.md](client-compatibility-report.md) | **客户端兼容扩展最终报告**：§二十四 全部量化指标 + 证据等级分层 + BLOCKED 清单 + §二十二 禁令自查 | 评审 |
 | [client-profiles.md](client-profiles.md) | **客户端档案**：一个协议基线 + 多个客户端实现的已验证差异（四态 + quirks）、出站序列化怎么用、新客户端接入清单 | 协议/适配层开发者 |
 | [client-compatibility.md](client-compatibility.md) | **Client Compatibility Matrix**：逐能力 × 逐客户端（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN + 证据）| 协议/适配层开发者 |
 | [plugin-webui-protocol.md](plugin-webui-protocol.md) | **统一 Plugin WebUI 协议**：`webui.page/action/asset` 三个协议方法 + 六项 `webui.*` 权限 + 受控 context + 20 类安全用例落点（五种语言同一套） | 插件开发者 |

@@ -66,7 +66,9 @@ def _parse(path: str):
 # ---------- A. round-trip：归一化结果 → 重建原始负载 → 再解析 ----------
 
 def _rebuild_onebot(ev) -> dict:
-    return {"post_type": "message",
+    # message_sent（机器人自己发的消息）也用同一套字段重建；post_type 必须原样带回，
+    # 否则重解析会得到不同的 kind（NapCat api/msg.ts L1136 / go-cqhttp event.go L84-87 都发它）
+    return {"post_type": ev.kind if ev.kind in ("message", "message_sent") else "message",
             "message_type": "group" if ev.scope == "group" else "private",
             "group_id": ev.group_id, "user_id": ev.actor_id, "self_id": BOT_QQ,
             "message_id": ev.message_id, "time": ev.timestamp,
@@ -159,7 +161,7 @@ def test_roundtrip_reparse_is_stable(path):
     milky = client == "milky"
     if client == "onebot12" and ev1.kind == "message":
         rebuilt = _rebuild_onebot12(ev1)          # G8：v12 语料单独走 v12 重建
-    elif ev1.kind == "message":
+    elif ev1.kind in ("message", "message_sent"):
         rebuilt = _rebuild_milky(ev1) if milky else _rebuild_onebot(ev1)
     elif ev1.kind == "notice":
         rebuilt = _rebuild_milky_notice(ev1) if milky else _rebuild_onebot_notice(ev1)
@@ -177,7 +179,7 @@ def test_roundtrip_reparse_is_stable(path):
     assert _core(ev1) == _core(ev2), "%s：重解析后归一化结果不一致" % path
     assert ev1.notice_kind == ev2.notice_kind
     assert ev1.notice_file == ev2.notice_file
-    if ev1.kind == "message":
+    if ev1.kind in ("message", "message_sent"):
         # G4：内联引用（Milky 有 / OneBot 为空）也必须 round-trip 稳定
         assert ev1.reply_ref == ev2.reply_ref and ev1.reply_text == ev2.reply_text
         assert ev1.reply_segments == ev2.reply_segments
