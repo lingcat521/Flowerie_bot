@@ -1,6 +1,7 @@
 # 客户端档案（Client Profiles）
 
 > 任务书 `/storage/emulated/0/协议.txt` §九/§十/§十二/§十一/§二十三。
+> 实现分层与「差异停在哪一层」见 [protocol-implementation.md](protocol-implementation.md)。
 > 实现：`src/adapters/client_profile.py`（档案）+ `src/adapters/onebot_serializer.py`（出站序列化）。
 > 逐客户端逆向记录：[reverse-engineering/](reverse-engineering/)；矩阵：[client-compatibility.md](client-compatibility.md)。
 

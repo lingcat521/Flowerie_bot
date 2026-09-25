@@ -1,6 +1,7 @@
 # 客户端兼容矩阵（Client Compatibility Matrix）
 
 > 任务书 §五/§八/§十四 要求：逐客户端逐能力填表，**不为了填表而编造**。
+> 实现分层与「差异停在哪一层」见 [protocol-implementation.md](protocol-implementation.md)。
 > 证据等级：`[CODE]` 源码 / `[DOC]` 文档 / `[FIXTURE]` 真实事件 / `[MVP]` 本地 MVP / `[INFERENCE]` 推断 / `[UNKNOWN]` 无证据。
 >
 > **当前进度**：NapCat 已完成源码级调查（本轮）；其余客户端源码已就位（见 source-acquisition.md），
