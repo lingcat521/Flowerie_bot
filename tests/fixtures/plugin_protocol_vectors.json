@@ -1,0 +1,61 @@
+{
+  "_provenance": {
+    "purpose": "跨语言一致性向量：各语言示例插件必须对同一批输入给出等价结果（任务书第 2 份 §十二 / 第 3 份 §十三）",
+    "used_by": "tests/test_plugin_sdk_contract.py",
+    "note": "新增语言 SDK 时先跑通本文件，再谈 Capability Matrix"
+  },
+  "protocol_version": "1",
+  "required_capabilities": [
+    "config.get",
+    "config.set",
+    "context.get",
+    "permission.check",
+    "storage.delete",
+    "storage.get",
+    "storage.list",
+    "storage.set"
+  ],
+  "event": {
+    "event": "message",
+    "payload": {
+      "text": "ping",
+      "group_id": 123456,
+      "user_id": 456789
+    }
+  },
+  "expected_action": {
+    "type": "send_group_msg",
+    "params": {
+      "group_id": 123456,
+      "message": "pong"
+    }
+  },
+  "non_matching_event": {
+    "event": "message",
+    "payload": {
+      "text": "hello",
+      "group_id": 123456
+    }
+  },
+  "storage": {
+    "key": "counter",
+    "value": {
+      "n": 1
+    },
+    "bad_key": "../evil"
+  },
+  "permission": {
+    "granted": "send_message",
+    "denied": "web_ui"
+  },
+  "hook": {
+    "name": "status",
+    "args": [],
+    "expected_result": {
+      "counter": 1
+    }
+  },
+  "engine_values": {
+    "operator_key": "from_engine"
+  }
+}

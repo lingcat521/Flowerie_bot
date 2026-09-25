@@ -97,7 +97,11 @@ class PluginRuntime:
         self._reader_task = asyncio.create_task(self._reader_loop())
         try:
             reply = await asyncio.wait_for(
-                self.request("initialize", {"context": {"plugin_dir": self.plugin_dir}}),
+                self.request("initialize", {"context": {
+                    "plugin_dir": self.plugin_dir,
+                    "data_dir": os.path.join(self.plugin_dir, "data"),
+                    "protocol_version": "1",
+                }}),
                 timeout=self._limits["startup_timeout"],
             )
         except asyncio.TimeoutError:

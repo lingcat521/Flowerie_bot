@@ -57,7 +57,7 @@ Flowerie（引擎）                        插件进程（任意语言）
 
 | 方法 | params | result | 说明 |
 | :--- | :--- | :--- | :--- |
-| `initialize` | `{"context":{...}}` | `{"ok":true,"api_version":"1","protocol_version":"1","capabilities":[...]}` | 握手；返回非 ok 或主版本不兼容 → 引擎拒绝启动该插件 |
+| `initialize` | `{"context":{"plugin_dir","data_dir","protocol_version"}}` | `{"ok":true,"api_version":"1","protocol_version":"1","capabilities":[...]}` | 握手；返回非 ok 或主版本不兼容 → 引擎拒绝启动该插件 |
 | `event` | `{"event":"message","payload":{...}}` | `{"actions":[{...}]}` | 事件投递；返回的动作清单由引擎执行（**动作才是副作用出口**） |
 | `health` | `{}` | `{"ok":true}` | 心跳探活 |
 | `shutdown` | `{}` | `{"ok":true}` | 退出前；回完再退（引擎随后会强杀兜底） |

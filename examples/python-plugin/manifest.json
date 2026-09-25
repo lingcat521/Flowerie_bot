@@ -1,0 +1,11 @@
+{
+  "id": "python_demo",
+  "name": "Python 示例插件",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "跨语言契约测试的 Python 参照实现（语义与 TS/Go/Rust/Java 示例一致）",
+  "runtime": "python",
+  "entry": "plugin.py",
+  "api_version": "1",
+  "permissions": ["send_message", "read_message"]
+}

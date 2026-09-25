@@ -1,0 +1,25 @@
+{
+  "name": "@flowerie/sdk",
+  "version": "1.0.0",
+  "description": "Flowerie Plugin Protocol v1 的 TypeScript / Node.js SDK（零 npm 依赖）",
+  "license": "MIT",
+  "type": "module",
+  "main": "flowerie_sdk.ts",
+  "types": "flowerie_sdk.ts",
+  "files": [
+    "flowerie_sdk.ts",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "check": "node --experimental-strip-types --check flowerie_sdk.ts"
+  },
+  "keywords": [
+    "flowerie",
+    "plugin",
+    "protocol",
+    "bot"
+  ]
+}

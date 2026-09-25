@@ -1,0 +1,11 @@
+{
+  "id": "typescript_demo",
+  "name": "TypeScript 示例插件",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "Plugin Protocol v1 的 TypeScript 实现示例（跨语言契约测试的参与者）",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": "1",
+  "permissions": ["send_message", "read_message"]
+}
