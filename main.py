@@ -14,7 +14,7 @@ from src.core.policy_engine import PolicyEngine
 from src.repositories.meme_knowledge_repository import MemeKnowledgeRepository
 from src.repositories.settings_repository import SettingsRepository
 from src.repositories.sticker_repository import StickerRepository
-from src.sdk.onebot.adapter import OneBotAdapter
+from src.adapters.onebot.adapter import OneBotAdapter
 from src.services.ai_client import AIClient
 from src.services.blossom_memory import BlossomMemoryManager
 from src.services.config_service import ConfigService

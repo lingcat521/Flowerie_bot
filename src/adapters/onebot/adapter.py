@@ -14,7 +14,7 @@ from src.sdk.errors import (
     UnsupportedOperationError,
 )
 from src.sdk.message import BotMessage
-from src.sdk.onebot.transformer import to_bot_message_payload
+from src.adapters.onebot.transformer import to_bot_message_payload
 
 
 class OneBotAdapter(BotAdapter):

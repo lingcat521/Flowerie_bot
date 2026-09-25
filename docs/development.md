@@ -73,7 +73,7 @@ docs/               # 文档
 
 ## Bot SDK 开发（v1.3.0+）
 
-- 分层：上层 `plugin_sdk/` → 中层 `src/sdk/`（零 OneBot）→ 下层 `src/sdk/onebot/`
+- 分层：上层 `plugin_sdk/` → 中层 `src/sdk/`（零 OneBot）→ 下层 `src/adapters/onebot/`
 - 新增平台能力：只改下层 `onebot/`（dto/transformer/adapter），中层上层不动
 - 测试：`tests/test_sdk_*.py`（matcher/listener/adapter/permission/message）
 - 文档：[sdk.md](sdk.md) / [api.md](api.md) / [plugin-developer-guide.md](plugin-developer-guide.md)（导航 [README.md](README.md)）

@@ -451,7 +451,7 @@
     Matcher（priority 大者先 + block + 可扩展 Rule）/ EventDispatcher（优先级 / 异常隔离 /
     stop / shutdown）/ PermissionChecker（user / group_member / group_admin / group_owner /
     bot_admin / bot_owner，复用 ADMIN_QQ_IDS）/ BotAdapter 抽象
-  - 下层 `src/sdk/onebot/`：DTO 瘦身 + Transformer（OneBot raw → BotEvent，CQ 码阉割为
+  - 下层 `src/adapters/onebot/`：DTO 瘦身 + Transformer（OneBot raw → BotEvent，CQ 码阉割为
     at_list / images / reply_id；BotMessage → 段数组出站）+ OneBotAdapter（复用 Sender；
     错误统一 BotError 体系：BotAPIError / BotTimeoutError / BotPermissionError /
     MessageNotFoundError / UnsupportedOperationError）

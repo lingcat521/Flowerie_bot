@@ -3,7 +3,7 @@
 只做「机械转换」，组合现有已有实现，**不复制** WS/HTTP/Token 逻辑：
 - 文本/at/图片/回复提取：与 `src/core/file_parser.extract_mention_and_text` /
   `src/core/message_assembler._scan_reply_and_at` 逻辑逐行等价（同一判定规则）
-- 图片取值：url 优先、file 兜底（等价于 src/sdk/onebot/transformer.extract_images；
+- 图片取值：url 优先、file 兜底（等价于 src/adapters/onebot/transformer.extract_images；
   与 assembler._describe_images 的差异 = 仅 file 路径图不描述——不影响当前行为）
 - 不含任何网络调用；不 import 冻结业务层
 """

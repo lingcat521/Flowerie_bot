@@ -1,7 +1,7 @@
 """中层消息模型：BotMessage（领域语义，无 OneBot 命名）。
 
 插件（上层）看到的永远是干净的结构：text / at_list / images / reply_id。
-OneBot 段/CQ 的处理只发生在下层 src/sdk/onebot/。
+OneBot 段/CQ 的处理只发生在下层 src/adapters/onebot/。
 提供 Builder（链式构造）：msg = BotMessage().text("hi").at(123).image(url)
 """
 from typing import Any, Dict, Iterator, List, Optional

@@ -48,7 +48,7 @@
 | 文件 | `src/services/file_parser.py`（416 行） | `fetch_and_parse_file(file_id,file_name)` → `GET {HTTP_API_BASE}/get_file` → `decode_napcat_file_response`（base64 → txt/pdf/docx/xlsx/csv，带流式上限）；`extract_forward_messages`（**强于 MVP**：嵌套展开 + `MAX_FORWARD_DEPTH/NODES/MESSAGES/FETCHES` 预算 + 同 id 缓存 + 收集转发内图片 URL）；`extract_json_card_content` |
 | 组装 | `src/core/message_assembler.py` | `_assemble_forward`（转发文本 + 转发内图片走 Vision）、`_assemble_card`、`_assemble_pending_file`（notice 配对取文件）、`_describe_images`（**本地 `image_files` 优先，URL 兜底**） |
 | poke 下游 | `src/core/message_router.py` L532-560 | `target_id → actor_id` 回退 + 白名单 + 每人冷却；与 MVP 语义一致 |
-| SDK | `src/sdk/onebot/{dto,transformer,adapter}.py` | `dto.raw_message` 截断 4000；`transformer` 有 `extract_text/extract_at_list/extract_images/extract_reply_id` |
+| SDK | `src/adapters/onebot/{dto,transformer,adapter}.py` | `dto.raw_message` 截断 4000；`transformer` 有 `extract_text/extract_at_list/extract_images/extract_reply_id` |
 
 ### Flowerie 明确缺口（待按证据修）
 

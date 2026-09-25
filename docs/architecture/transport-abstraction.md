@@ -52,14 +52,14 @@
    `RuntimeError`）。最终落点：`src/transport/action_channels.py` + `channel_factory` 默认值，既满足冻结层规则，
    也保留注入替换能力。**教训：新模块的落点要先看既有守护测试，再谈理想分层。**
 3. **Gate T（插件协议隔离）已完成**：`src/plugins/manager.py` 不再 import `OneBotAdapter`，改为构造参数
-   `bot_factory` 由组合根（`main.py`）注入 `OneBotAdapter`。`src/sdk/onebot/` 子树保留 —— 它就是 OneBot 适配器实现本身。
+   `bot_factory` 由组合根（`main.py`）注入 `OneBotAdapter`。`src/adapters/onebot/` 子树保留 —— 它就是 OneBot 适配器实现本身。
 4. 仍未做：Adapter Contract 测试、Capability 模型、Unknown 段/事件容错、Resource 抽象、多实例、
    TestProtocolAdapter（PEC/PCI=0）与 acceptance Dashboard。
 
 ## 原始待办（历史记录，部分已完成）
 
 1. `services/sender.py` 的 `if self._milky` 分支 → 下沉为 Adapter 的发送策略（Gate B/O）；
-2. `src/sdk/onebot/` 子树 → SDK 不得依赖具体协议（Gate T/§34）；
+2. `src/adapters/onebot/` 子树 → SDK 不得依赖具体协议（Gate T/§34）；
 3. `ws_server.py` 的 OneBot 信封 → 拆到 Adapter；
 4. `src/services/` 的 aiohttp：Web UI 部分**不是**协议传输（属应用服务器），已在 ADR 中显式区分，
    基线冻结，允许后续把 Web UI 独立成 app 层（不属本阶段硬门槛）。

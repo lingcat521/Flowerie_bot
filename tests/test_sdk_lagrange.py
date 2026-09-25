@@ -2,7 +2,7 @@
 import pytest
 
 from src.plugins.manager import _SENDER_ACTIONS
-from src.sdk.onebot.adapter import make_onebot_adapter
+from src.adapters.onebot.adapter import make_onebot_adapter
 
 
 class RecordingSender:
@@ -155,7 +155,7 @@ def test_onebot_endpoints_stay_in_sender_layer():
     import re
 
     bad = []
-    for f in sorted(glob.glob("src/sdk/*.py") + glob.glob("src/sdk/onebot/*.py")):
+    for f in sorted(glob.glob("src/sdk/*.py") + glob.glob("src/adapters/onebot/*.py")):
         body = open(f, encoding="utf-8").read()
         hits = re.findall(r'"(/[a-z_]+)"', body)
         real = [h for h in hits if h.startswith(("/send_", "/get_", "/set_"))]

@@ -7,7 +7,7 @@ import pytest
 
 from src.plugins.manager import PluginManager
 from src.repositories.settings_repository import SettingsRepository
-from src.sdk.onebot.adapter import OneBotAdapter
+from src.adapters.onebot.adapter import OneBotAdapter
 from tests.test_plugin_manager import FakeConfig, FakeSender, _deploy  # noqa: F401
 
 

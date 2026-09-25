@@ -556,7 +556,7 @@ SDK 与插件 API **完全协议无关** —— 同一份 `event.reply()` / `bot
 ## 16. 三层架构与扩展
 
 ```text
-插件（plugin_sdk/） → 中层 src/sdk/（零 OneBot） ← 下层 src/sdk/onebot/ → NapCat/OneBot
+插件（plugin_sdk/） → 中层 src/sdk/（零 OneBot） ← 下层 src/adapters/onebot/ → NapCat/OneBot
 ```
 
 - 新增平台能力 → 只改下层 `onebot/`（dto / transformer / adapter）

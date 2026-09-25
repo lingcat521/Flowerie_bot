@@ -9,7 +9,7 @@ import pytest
 
 from src.plugins.manager import PluginManager
 from src.repositories.settings_repository import SettingsRepository
-from src.sdk.onebot.adapter import OneBotAdapter
+from src.adapters.onebot.adapter import OneBotAdapter
 
 TESTS_PLUGINS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
 

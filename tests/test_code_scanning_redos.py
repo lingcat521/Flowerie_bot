@@ -30,9 +30,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from src.sdk.onebot.transformer import _CQ, _cq_parts, _parse_params, extract_at_list, extract_images  # noqa: E402
+from src.adapters.onebot.transformer import _CQ, _cq_parts, _parse_params, extract_at_list, extract_images  # noqa: E402
 
-TRANSFORMER = os.path.join("src", "sdk", "onebot", "transformer.py")
+TRANSFORMER = os.path.join("src", "adapters", "onebot", "transformer.py")
 
 # 历史实现的解析结果（人工固化，替代「跑一遍旧正则」的差分基准）。
 # 键 = 输入文本，值 = (动作名, 参数串)；参数串保留前导逗号，与 _parse_params 的输入格式一致。

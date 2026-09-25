@@ -1,6 +1,6 @@
 """中层：BotAdapter 平台无关接口（领域语义，无 OneBot 依赖）。
 
-SDK 只依赖本接口；下层（src/sdk/onebot/）提供 OneBot 实现。
+SDK 只依赖本接口；下层（src/adapters/onebot/）提供 OneBot 实现。
 换平台 = 新增一个 Adapter 实现，中层/上层零改动。
 """
 from abc import ABC, abstractmethod

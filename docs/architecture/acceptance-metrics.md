@@ -3,13 +3,13 @@
 > 任务书 B 部分 Gate 34 要求：最终必须生成一张验收 Dashboard，**数字必须来自真实测试/命令输出**，
 > 禁止手填"看起来合理"的值。本文件按提交逐步更新；未测项目如实标 `TODO` / `PARTIAL`，不虚报 `PASS`。
 >
-> 测量时间：2026-08-09 ｜ 基线提交：`f53bc87` ｜ 仓库：Flowerie_bot
+> 测量时间：2026-08-09（随每轮更新）｜ 最近基线提交见文末 CI 记录 ｜ 仓库：Flowerie_bot
 
 ## 一、八项绝对门槛（任务书 §35）
 
 | # | 门槛 | 实测 | 阈值 | 状态 | 证据 |
 | --- | :--- | :--- | :--- | :--- | :--- |
-| 1 | **PCI**（Core/Services/SDK 协议专用引用数）| **2** | 0 | ⚠️ PARTIAL | 2 处均在 `src/sdk/onebot/` 子树内部（该子树即 OneBot 适配器实现）；`src/core`、`src/services`、`src/plugins` 均为 0 |
+| 1 | **PCI**（Core/Services/SDK 协议专用引用数）| **0** | 0 | ✅ PASS | `src/core`、`src/services`、`src/sdk`、`src/plugins` 全为 0；OneBot 实现子树已迁到 `src/adapters/onebot/`（Gate A 同项）|
 | 2 | **PEC**（新增协议需改 Core/Services/SDK/插件文件数）| 未测 | 0 | ⬜ TODO | 需 Gate E/F 的 TestProtocolAdapter 实验 |
 | 3 | Adapter Contract 合规率 | 未建立 | 100% | ⬜ TODO | Gate D：12 项 × OneBot11/Milky |
 | 4 | Unknown Data Safety（段 + 事件）| **20/20** | 100% | ✅ PASS | `tests/test_unknown_tolerance.py`（10 段 × 双解析器 + 10 事件 × 双协议）|
@@ -22,7 +22,7 @@
 
 | Gate | 内容 | 实测 | 阈值 | 状态 |
 | :--- | :--- | :--- | :--- | :--- |
-| A | Core 协议零依赖 | `src/core`=0、`src/services`=0、`src/plugins`=0；`src/sdk/onebot/` 内部 2 处 | 0 | ⚠️ PARTIAL |
+| A | Core 协议零依赖 | `src/core`=0、`src/services`=0、`src/sdk`=0、`src/plugins`=0（扫描含 `^(import|from)` 与协议词）| 0 | ✅ PASS |
 | B | 协议分支污染率 | `src/core|services|sdk|plugins` 中 `if protocol ==` / `if self._milky` / `if self._use_ws` = **0** | 0 | ✅ PASS |
 | C | Adapter 独立性 | `src/transport/` 可独立 import（不含 Core 业务依赖，`MessageRouter` 仅 TYPE_CHECKING）| 可分别加载 | ✅ PASS |
 | D | Adapter Contract Tests | 未建立 | 12 项 × 2 Adapter | ⬜ TODO |

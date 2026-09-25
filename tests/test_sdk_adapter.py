@@ -5,7 +5,7 @@ import pytest
 
 from src.sdk.errors import BotAPIError, BotTimeoutError, MessageNotFoundError
 from src.sdk.message import BotMessage
-from src.sdk.onebot.adapter import OneBotAdapter
+from src.adapters.onebot.adapter import OneBotAdapter
 
 
 class FakeSender:

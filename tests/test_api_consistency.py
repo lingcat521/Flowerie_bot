@@ -59,7 +59,7 @@ def test_sender_actions_consistent():
 
 def test_adapter_refs_exist():
     """OneBotAdapter 引用的 sender 方法必须存在。"""
-    src = (ROOT / "src/sdk/onebot/adapter.py").read_text(encoding="utf-8")
+    src = (ROOT / "src/adapters/onebot/adapter.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
     senders = _sender_methods()
     attrs = set()

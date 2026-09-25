@@ -170,8 +170,8 @@ def test_legacy_paths_intact():
     # Legacy sender 桩依旧可直接使用（组合根之外的旧路径不受影响）
     sender = FakeSender()
     assert sender is not None
-    # 旧解析路径（src/sdk/onebot/transformer）仍工作
-    from src.sdk.onebot.transformer import to_bot_event
+    # 旧解析路径（src/adapters/onebot/transformer）仍工作
+    from src.adapters.onebot.transformer import to_bot_event
     ev = to_bot_event({"post_type": "message", "message_type": "group", "group_id": 1,
                        "user_id": 2, "message_id": 3, "time": 4,
                        "message": [{"type": "text", "data": {"text": "旧路径"}}]})
