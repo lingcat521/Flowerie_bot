@@ -3,6 +3,7 @@ import json
 
 import aiohttp
 
+from src.adapters.action_channels import make_action_channel
 from src.config import Settings
 from src.utils.logging_setup import get_logger
 from src.utils.metrics import registry
@@ -13,85 +14,17 @@ _M_SEND_FAIL = registry.counter("message_send_failure_total", "消息发送失�
 
 
 class Sender:
-    _MILKY_ACTIONS = {
-        "_del_group_notice": "delete_group_announcement",
-        "create_group_file_folder": "create_group_folder",
-        "delete_group_file": "delete_group_file",
-        "delete_group_folder": "delete_group_folder",
-        "friend_poke": "send_friend_nudge",
-        "get_essence_msg_list": "get_group_essence_messages",
-        "get_friend_list": "get_friend_list",
-        "get_friend_msg_history": "get_history_messages",
-        "get_group_config": "get_group_info",
-        "get_group_file_url": "get_group_file_download_url",
-        "get_group_files_by_folder": "get_group_files",
-        "get_group_info": "get_group_info",
-        "get_group_list": "get_group_list",
-        "get_group_notice": "get_group_announcements",
-        "get_group_res": "get_resource_temp_url",
-        "get_group_root_files": "get_group_files",
-        "get_login_info": "get_login_info",
-        "get_status": "get_impl_info",
-        "move_group_file": "move_group_file",
-        "rename_group_file_folder": "rename_group_folder",
-        "send_group_msg": "send_group_message",
-        "send_group_notice": "send_group_announcement",
-        "send_poke": "send_group_nudge",
-        "send_private_msg": "send_private_message",
-        "set_essence_msg": "set_group_essence_message",
-        "set_friend_profile_like": "send_profile_like",
-        "set_group_card": "set_group_member_card",
-        "set_group_ban": "set_group_member_mute",
-        "set_group_kick": "kick_group_member",
-        "set_group_admin": "set_group_member_admin",
-        "set_group_name": "set_group_name",
-        "set_group_portrait": "set_group_avatar",
-        "set_group_reaction": "send_group_message_reaction",
-        "set_group_special_title": "set_group_member_special_title",
-        "set_group_whole_ban": "set_group_whole_mute",
-        "set_react": "send_group_message_reaction",
-    }
-
-    # 已确认 Milky 无对应能力的端点：调用时给出明确错误，而不是让协议端回 404
-    _MILKY_UNSUPPORTED = frozenset({
-        "delete_essence_msg",
-        "get_group_honor_info",
-        "get_online_clients",
-        "send_group_forward_msg",
-        "send_private_forward_msg",
-        "set_friend_add_request",
-        "set_group_add_request",
-        "set_group_config",
-        "set_self_profile",
-    })
-
     def __init__(self, config: Settings, ws_sender=None):
         self.config = config
         self.session: aiohttp.ClientSession = None
         # WS 发送通道（SEND_VIA_WS=true 时生效）：async (action, params) -> dict
         self._ws_sender = ws_sender
-
-    @property
-    def _milky(self) -> bool:
-        """Milky 协议模式（QQ_PROTOCOL=milky）：/api/<action> + Bearer。"""
-        return str(getattr(self.config, "QQ_PROTOCOL", "onebot")).lower() == "milky"
-
-    @property
-    def _use_ws(self) -> bool:
-        raw = getattr(self.config, "SEND_VIA_WS", "auto")
-        # False/None 显式关闭（旧布尔配置兼容）；str/True → 三值 auto/true/false
-        if raw is False or raw is None or raw is True:
-            mode = "true" if raw is True else "false"
-        else:
-            mode = str(raw).strip().lower()
-        if mode == "false":
-            return False
-        if mode == "true":
-            return bool(self._ws_sender)
-        return bool(self._ws_sender)  # auto：WS 优先（不可用时 _post 内部回退 HTTP）
+        # 动作通道（Adapter 层）：协议开关只在那一边读取（Gate B/O）
+        self._channel = None
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
+        self._ensure_channel()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -106,66 +39,14 @@ class Sender:
         """OneBot HTTP API 无鉴权头（token 在 URL/底座层）；图片发送与 _post 同策略。"""
         return {}
 
-    async def _post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
-        """通用 OneBot/Lagrange 端点调用（薄封装；统一返回 {ok, data|error}）。
+    def _ensure_channel(self):
+        if self._channel is None:
+            self._channel = make_action_channel(self.config, self.session, self._ws_sender)
+        return self._channel
 
-        SEND_VIA_WS=true 时经 WS 通道（NapCat 只需开 WebSocket，不必开 HTTP）。
-        QQ_PROTOCOL=milky 时走 Milky /api/<action>（Bearer 鉴权；action 名映射）。
-        """
-        if self._milky:
-            ep = endpoint.lstrip("/")
-            if ep in self._MILKY_UNSUPPORTED:
-                logger.warning("milky_unsupported endpoint=%s", ep,
-                               extra={"event": "milky_unsupported"})
-                return {"ok": False, "error": "Milky 协议不支持该能力：%s" % ep}
-            action = self._MILKY_ACTIONS.get(ep, ep)
-            url = f"{str(getattr(self.config, 'MILKY_API_BASE', '')).rstrip('/')}/api/{action}"
-            # Milky 消息必须是段数组（OutgoingSegment）；字符串自动转 text 段
-            _m = payload.get("message")
-            if isinstance(_m, str):
-                payload = dict(payload)
-                payload["message"] = [{"type": "text", "data": {"text": _m}}]
-            headers = {"Content-Type": "application/json"}
-            tok = str(getattr(self.config, "MILKY_ACCESS_TOKEN", "") or "")
-            if tok:
-                headers["Authorization"] = f"Bearer {tok}"
-            try:
-                async with self.session.post(url, json=payload, headers=headers,
-                                             timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
-                    body = await resp.text()
-                    try:
-                        j = json.loads(body) if body else {}
-                    except ValueError:
-                        j = {}
-                    retcode = (j.get("retcode") if isinstance(j, dict) else None)
-                    if resp.status == 200 and (retcode in (0, None)):
-                        return {"ok": True, "data": j.get("data")}
-                    return {"ok": False, "error": f"HTTP {resp.status} retcode={retcode} {body[:160]}"}
-            except Exception as e:  # noqa: BLE001
-                logger.error("milky_action_failed action=%s err=%s", action, e,
-                             extra={"event": "message_send_failed", "action": action})
-                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
-        if self._use_ws:
-            try:
-                resp = await self._ws_sender(endpoint.lstrip("/"), payload)
-                if isinstance(resp, dict) and resp.get("status") in ("ok", None):
-                    return {"ok": True, "data": resp.get("data")}
-                return {"ok": False, "error": f"WS retcode={resp.get('retcode') if isinstance(resp, dict) else resp}"}
-            except Exception as e:  # noqa: BLE001
-                logger.error("message_send_action_failed action=%s err=%s", endpoint, e,
-                             extra={"event": "message_send_failed", "action": endpoint})
-                return {"ok": False, "error": f"{type(e).__name__}: {e}"}
-        try:
-            async with self.session.post(
-                    "%s/%s" % (str(self.config.HTTP_API_BASE).rstrip("/"), endpoint.lstrip("/")),
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=timeout)) as resp:
-                if resp.status != 200:
-                    return {"ok": False, "error": f"HTTP {resp.status}"}
-                body = await resp.json(content_type=None)
-                return {"ok": body.get("status", "ok") == "ok", "data": body.get("data")}
-        except Exception as e:  # noqa: BLE001
-            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    async def _post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
+        """统一出口：协议差异（OneBot HTTP / OneBot WS / Milky）全部在 Adapter 通道内（Gate B/O）。"""
+        return await self._ensure_channel().post(endpoint, payload, timeout)
 
     async def send_group_message_with_image(self, group_id: int, text: str, image_path: str,
                                             retries: int = 2) -> bool:
@@ -275,37 +156,8 @@ class Sender:
         return {"ok": False, "message_id": None}
 
     async def delete_msg(self, message_id: int, scope: str = "group") -> bool:
-        """撤回消息。
-
-        - OneBot11：`/delete_msg {message_id}`；
-        - Milky（QQ_PROTOCOL=milky）：`recall_group_message` / `recall_private_message`，
-          入参字段是 **`message_seq`**（没有 message_id）。证据（均为 [CODE]）：
-          `Lagrange.Milky/Api/Handlers/Message/RecallGroupMessageHandler.cs` L36 与
-          `RecallPrivateMessageHandler.cs` L36 的 Request 只有 `MessageSeq`；
-          `SendGroupMessageHandler.cs` L41 的 Result 也只有 `message_seq`。
-          群/私聊是两个不同 action，故用 `scope` 选择（默认 group）。
-        """
-        if self._milky:
-            action = "recall_private_message" if scope == "private" else "recall_group_message"
-            res = await self._post(action, {"message_seq": int(message_id)}, timeout=10.0)
-            if not res.get("ok"):
-                logger.error("message_delete_failed id=%s err=%s", message_id, res.get("error"),
-                             extra={"event": "message_delete_failed"})
-            return bool(res.get("ok"))
-        try:
-            async with self.session.post(
-                    f"{self.config.HTTP_API_BASE}/delete_msg",
-                    json={"message_id": int(message_id)},
-                    timeout=aiohttp.ClientTimeout(total=10)) as resp:
-                ok = resp.status == 200
-                if not ok:
-                    logger.error("message_delete_failed id=%s http=%s", message_id, resp.status,
-                                 extra={"event": "message_delete_failed"})
-                return ok
-        except Exception as e:
-            logger.error("message_delete_failed id=%s err=%s", message_id, e,
-                         extra={"event": "message_delete_failed"})
-            return False
+        """撤回消息：OneBot /delete_msg 与 Milky recall_* 的差异在 Adapter 通道内处理。"""
+        return await self._ensure_channel().recall(message_id, scope)
 
     async def get_msg(self, message_id: int) -> dict:
         """消息详情（OneBot11 /get_msg）。裁剪为最小字段：text/user/time/segments 摘要。"""

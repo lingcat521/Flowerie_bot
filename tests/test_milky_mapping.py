@@ -7,6 +7,9 @@ import io
 import re
 
 SENDER = "src/services/sender.py"
+# OneBot→Milky 映射表与"不支持清单"已下沉到 Adapter 层（Gate B/O）；端点扫描两个文件，
+# 避免搬迁后覆盖范围缩水（任务书 §22：不能用搬迁代替检查）。
+CHANNELS = "src/adapters/action_channels.py"
 
 # 仍然绕过统一入口 _post 的端点（Milky 下会打到 OneBot 地址，属已知缺口）。
 # 约定：这个集合**只允许缩小**；新增端点必须走 _post，否则本测试失败。
@@ -19,7 +22,7 @@ KNOWN_BYPASS = {
 
 
 def _sender_module():
-    return ast.parse(io.open(SENDER, encoding="utf-8").read())
+    return ast.parse(io.open(CHANNELS, encoding="utf-8").read())
 
 
 def _milky_actions() -> dict:
@@ -27,7 +30,7 @@ def _milky_actions() -> dict:
         if isinstance(node, ast.Assign) and any(
                 getattr(t, "id", "") == "_MILKY_ACTIONS" for t in node.targets):
             return {k.value: v.value for k, v in zip(node.value.keys, node.value.values)}
-    raise AssertionError("sender.py 里找不到 _MILKY_ACTIONS")
+    raise AssertionError("action_channels.py 里找不到 _MILKY_ACTIONS")
 
 
 def _milky_unsupported() -> set:
@@ -36,16 +39,18 @@ def _milky_unsupported() -> set:
                 getattr(t, "id", "") == "_MILKY_UNSUPPORTED" for t in node.targets):
             elts = node.value.args[0].elts if node.value.args else []
             return {e.value for e in elts}
-    raise AssertionError("sender.py 里找不到 _MILKY_UNSUPPORTED")
+    raise AssertionError("action_channels.py 里找不到 _MILKY_UNSUPPORTED")
 
 
 def _literal_endpoints() -> set:
-    src = io.open(SENDER, encoding="utf-8").read()
+    src = (io.open(SENDER, encoding="utf-8").read()
+           + io.open(CHANNELS, encoding="utf-8").read())
     return set(re.findall(r'["\']/([a-z_]+)["\']', src))
 
 
 def _bypass_endpoints() -> set:
-    src = io.open(SENDER, encoding="utf-8").read()
+    src = (io.open(SENDER, encoding="utf-8").read()
+           + io.open(CHANNELS, encoding="utf-8").read())
     return set(re.findall(r'HTTP_API_BASE\}/([a-z_]+)"', src))
 
 
@@ -99,6 +104,6 @@ def test_multi_reply_shares_the_same_send_path():
 
 
 def test_unsupported_returns_clear_error_not_silent_404():
-    src = io.open(SENDER, encoding="utf-8").read()
+    src = io.open(CHANNELS, encoding="utf-8").read()
     assert "_MILKY_UNSUPPORTED" in src
     assert "Milky 协议不支持该能力" in src

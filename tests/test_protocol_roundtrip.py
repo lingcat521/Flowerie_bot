@@ -24,6 +24,7 @@ from src.adapters.onebot_parser import OneBotEventParser
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 BOT_QQ = 10001
 SENDER = "src/services/sender.py"
+CHANNELS = "src/adapters/action_channels.py"   # Gate B/O：协议细节已下沉到 Adapter 通道
 
 # 归一化核心字段（跨客户端比较用；不含客户端专属附加信息）
 CORE_FIELDS = ("kind", "scope", "group_id", "actor_id", "message_id", "text", "mentions",
@@ -311,10 +312,12 @@ def _func_src(name: str) -> str:
 
 
 def test_milky_post_converts_string_message_to_segment_array():
-    body = _func_src("_post")
-    assert '"type": "text"' in body and '"data": {"text": _m}' in body
-    assert "MILKY_ACCESS_TOKEN" in body          # Bearer 鉴权
-    assert "_MILKY_ACTIONS.get" in body          # action 名统一映射
+    # Gate B/O：sender._post 只委托；Milky 的段数组转换/Bearer/action 映射在 Adapter 通道里
+    assert "self._ensure_channel().post" in _func_src("_post")
+    ch = io.open(CHANNELS, encoding="utf-8").read()
+    assert '"type": "text"' in ch and '"data": {"text": _m}' in ch
+    assert "MILKY_ACCESS_TOKEN" in ch            # Bearer 鉴权
+    assert "_MILKY_ACTIONS.get" in ch            # action 名统一映射
 
 
 def test_send_msg_raw_accepts_segment_array_and_reply_segment():

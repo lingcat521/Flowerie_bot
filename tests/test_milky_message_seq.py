@@ -17,8 +17,15 @@ from src.adapters.milky_parser import MilkyEventParser
 SENDER = "src/services/sender.py"
 
 
+CHANNELS = "src/adapters/action_channels.py"
+
+
 def _sender_src() -> str:
     return io.open(SENDER, encoding="utf-8").read()
+
+
+def _channels_src() -> str:
+    return io.open(CHANNELS, encoding="utf-8").read()
 
 
 def _func_src(name: str) -> str:
@@ -52,10 +59,12 @@ def test_send_response_reads_message_seq():
 
 
 def test_delete_msg_routes_milky_recall_actions():
+    # Gate B/O：协议分支已下沉到 Adapter 通道 —— sender 只委托，Milky 撤回路由在通道里
     body = _func_src("delete_msg")
-    assert "recall_group_message" in body and "recall_private_message" in body
-    assert "message_seq" in body
-    assert "self._post" in body
+    assert "self._ensure_channel().recall" in body
+    ch = _channels_src()
+    assert "recall_group_message" in ch and "recall_private_message" in ch
+    assert "message_seq" in ch
 
 
 def test_delete_msg_default_scope_is_group():

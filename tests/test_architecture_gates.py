@@ -19,11 +19,9 @@ KNOWN_PROTOCOL_IMPORTS = {
 }
 
 # ---- Gate B：协议分支（Core 应为 0；sender.py 是待下沉到 Adapter 的出口）----
-KNOWN_PROTOCOL_BRANCHES = {
-    "src/services/sender.py:115|if self._milky:",
-    "src/services/sender.py:148|if self._use_ws:",
-    "src/services/sender.py:288|if self._milky:",
-}
+# 2026-08-09：sender.py 的 3 处协议分支已下沉到 src/adapters/action_channels.py
+# （make_action_channel 是唯一读取协议开关的位置，属 Adapter 层，不在扫描范围内）→ 基线归零。
+KNOWN_PROTOCOL_BRANCHES = set()
 
 # ---- Gate P：services 层的 aiohttp 使用（Web UI 应用服务器 + 消息发送出口；core 必须为 0）----
 KNOWN_SERVICES_AIOHTTP = {
