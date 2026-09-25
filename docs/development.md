@@ -13,11 +13,27 @@ pip install -r requirements-dev.txt
 ## 测试
 
 ```bash
-pytest              # 全部测试
-pytest tests/xxx    # 单文件
+pytest                            # 全部（含默认 skip 的实机用例）
+pytest tests/xxx                  # 单文件
+pytest -m "not real_device"       # 排除实机用例（CI 就是这种语义：无环境即 skip）
 ```
 
-当前 **1142** 个测试（随版本增长）：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归与 Code Scanning 整改回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、Persona 系统、群聊 Meme Knowledge、多条回复与 Native Reply Tool、任意语言插件（13 种语言黑盒端到端）等，详见 `tests/`。
+**三层测试必须分清**（任务书 §13，详见 [tests/integration/README.md](../tests/integration/README.md)）：
+
+| 层 | 位置 | 运行条件 |
+| :--- | :--- | :--- |
+| unit / 静态 | `tests/test_*.py` | 无外部依赖，CI 每次跑 |
+| integration（可自动判定）| `tests/integration/`（22 例）| 需真实协议端 + 测试群（环境变量），否则 skip |
+| manual real-device | 该目录 README 的手工步骤 | 人工触发 |
+
+当前 **1259** 个测试（随版本增长）：并发安全、故障隔离、熔断、状态治理、Prompt/Sticker/MCP/Web UI、SSRF/注入回归与 Code Scanning 整改回归、MCP 额度/安全、配置持久化/校验、Web UI 注册/无 JS 面板、Persona 系统、群聊 Meme Knowledge、多条回复与 Native Reply Tool、任意语言插件（13 种语言黑盒端到端）、**架构 Gate 专项 12 个文件**（契约 / 能力 / 未知容错 / PEC / 传输契约 / 多实例 / 资源 / 覆盖率 / 跨协议等价 / Round-trip / 回归矩阵）等，详见 `tests/`。
+
+本机缺依赖（aiohttp / pydantic / httpx）时的跑法：
+
+```bash
+PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/ -q            # 最小 stub（与 CI 同一基线）
+PYTHONPATH=$HOME python3 -m pytest -p stubplug -p stubio tests/ -q  # 追加 aiohttp/websockets stub（跑更宽的导入链）
+```
 
 ## 代码检查
 

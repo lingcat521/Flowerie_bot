@@ -80,8 +80,9 @@
 
 | 指标 | 定义 | 当前 | 目标 |
 | :--- | :--- | :--- | :--- |
-| Gap Closure Rate | CLOSED / 8 | **5/8 CLOSED**（G1/G2/G3/G4/G8，均有 CI 全绿记录）；G5/G6/G7 依赖实机 | 8/8 或明确 BLOCKED |
-| Real Integration Coverage | 实机验证能力 / 要求验证能力 | 0%（无实机）| ≥90% 或 BLOCKED |
+| Gap Closure Rate | CLOSED / 8 | **6/8 = 75% CLOSED**（G1/G2/G3/G4/G8 有 CI 全绿记录；**G7 按任务书允许的 `SOURCE_UNAVAILABLE + 真实原因 + 文档研究` 分支结案**）；G5/G6 = BLOCKED（不是 CLOSED）| 8/8 或明确 BLOCKED |
+| Real Integration Coverage | 实机验证能力 / 要求验证能力 | **0% —— BLOCKED BY EXTERNAL DEPENDENCY**（§20 允许的例外分支）；harness 已就绪：`tests/integration/` 22 个用例（§8.1 的 10 + §8.2 的 12），默认 skip 并打印缺失条件 | ≥90% 或 BLOCKED |
+| 实机 harness 状态 | §13 / §14 | 目录、用例、证据记录器、manual 流程全部就位；**用例从未在真实客户端执行过** → 标 `[UNVERIFIED]` | 拿到设备后跑 `pytest tests/integration -q -rs` |
 | 新增测试（G1–G5）| 任务书 §17 | G1 = 11、G2 = 12、G3 = 10、G4 = 9（要求 G4 ≥4）—— 已 42；G8 另加 14 | ≥19 累计 |
 
 ## 4b. G2 封口记录（Milky 请求类事件字段级映射）
