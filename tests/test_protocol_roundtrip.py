@@ -101,6 +101,41 @@ def _rebuild_milky_notice(ev) -> dict:
                      "display_action_img_url": ""}}
 
 
+def _rebuild_onebot_request(ev) -> dict:
+    """请求类：只用归一化字段重建 OneBot 请求负载。"""
+    raw = {"post_type": "request", "request_type": ev.request_kind, "user_id": ev.actor_id,
+           "comment": ev.comment, "flag": ev.request_id, "time": ev.timestamp, "self_id": BOT_QQ}
+    if ev.request_kind == "group":
+        raw["sub_type"] = "invite" if ev.request_scene == "group_invitation" else "add"
+        raw["group_id"] = ev.group_id
+    return raw
+
+
+def _rebuild_milky_request(ev) -> dict:
+    """请求类：只用归一化字段重建 Milky 请求负载（scene → event_type）。"""
+    event_type = _MILKY_EVENT_OF.get(ev.request_scene, "")
+    data = {}
+    if ev.request_scene == "friend":
+        data = {"initiator_id": ev.actor_id, "initiator_uid": ev.request_uid,
+                "comment": ev.comment}
+    elif ev.request_scene == "group_join":
+        data = {"group_id": ev.group_id, "notification_seq": int(ev.request_id or 0),
+                "is_filtered": ev.request_filtered, "initiator_id": ev.actor_id,
+                "comment": ev.comment}
+    elif ev.request_scene == "group_invited_join":
+        data = {"group_id": ev.group_id, "notification_seq": int(ev.request_id or 0),
+                "initiator_id": ev.actor_id, "target_user_id": ev.target_id}
+    elif ev.request_scene == "group_invitation":
+        data = {"group_id": ev.group_id, "invitation_seq": int(ev.request_id or 0),
+                "initiator_id": ev.actor_id}
+    return {"time": ev.timestamp, "self_id": BOT_QQ, "event_type": event_type, "data": data}
+
+
+_MILKY_EVENT_OF = {"friend": "friend_request", "group_join": "group_join_request",
+                   "group_invited_join": "group_invited_join_request",
+                   "group_invitation": "group_invitation"}
+
+
 @pytest.mark.parametrize("path", _fixture_paths(), ids=[os.path.basename(p) for p in _fixture_paths()])
 def test_roundtrip_reparse_is_stable(path):
     client = os.path.basename(os.path.dirname(path))
@@ -110,13 +145,19 @@ def test_roundtrip_reparse_is_stable(path):
         rebuilt = _rebuild_milky(ev1) if milky else _rebuild_onebot(ev1)
     elif ev1.kind == "notice":
         rebuilt = _rebuild_milky_notice(ev1) if milky else _rebuild_onebot_notice(ev1)
+    elif ev1.kind == "request":
+        rebuilt = _rebuild_milky_request(ev1) if milky else _rebuild_onebot_request(ev1)
     else:
-        pytest.skip("round-trip 只覆盖 message / notice：%s" % ev1.kind)
+        pytest.skip("round-trip 只覆盖 message / notice / request：%s" % ev1.kind)
     parser = (MilkyEventParser(bot_qq=BOT_QQ) if milky else OneBotEventParser(bot_qq=BOT_QQ))
     ev2 = parser.parse(rebuilt)
     assert _core(ev1) == _core(ev2), "%s：重解析后归一化结果不一致" % path
     assert ev1.notice_kind == ev2.notice_kind
     assert ev1.notice_file == ev2.notice_file
+    if ev1.kind == "request":
+        for field in ("request_kind", "request_scene", "request_id", "request_uid",
+                      "request_filtered", "comment", "actor_id", "target_id", "group_id"):
+            assert getattr(ev1, field) == getattr(ev2, field), (path, field)
     # 段级通道同样必须稳定（含新增的 faces/pokes/files/json_cards/forwards）
     for field in ("faces", "pokes", "files", "json_cards", "forwards"):
         assert getattr(ev1, field) == getattr(ev2, field), field

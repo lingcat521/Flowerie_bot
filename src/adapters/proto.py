@@ -33,7 +33,12 @@ class InternalEvent:
     image_files: List[str] = field(default_factory=list)  # 图片本地 file 路径（OneBot 标准字段，识别优先）
     reply_id: Optional[int] = None     # 引用消息 id
     notice_kind: str = ""              # poke / group_increase / group_upload / ...
-    request_kind: str = ""             # friend / group（申请类事件）
+    request_kind: str = ""             # friend / group（申请类事件，粗粒度；插件/SDK 既有契约）
+    request_scene: str = ""            # 细粒度：friend | group_join | group_invited_join | group_invitation
+    request_id: str = ""               # 处理请求的标识（OneBot flag / Milky notification_seq；无则空）
+    request_uid: str = ""              # Milky initiator_uid（同意好友请求所需）；OneBot 规范无此字段
+    request_filtered: bool = False     # Milky is_filtered（风险账户过滤）；OneBot 无
+    comment: str = ""                  # 验证信息 / 申请附言
     lifecycle_kind: str = ""           # enable / disable / connect（生命周期事件）
     operator_id: Optional[int] = None  # 操作者（群管变动等）；缺省=actor_id
     target_id: Optional[int] = None    # 目标（poke 的被戳者等在边界提取）

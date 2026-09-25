@@ -22,12 +22,14 @@ def test_all_spec_notice_events_map_to_notice():
                "group_admin_change", "group_mute", "group_whole_mute", "group_name_change",
                "group_disband", "group_essence_message_change", "group_message_reaction",
                "peer_pin_change", "friend_file_upload", "group_file_upload",
-               "group_invitation", "group_nudge", "friend_nudge"):
+               "group_nudge", "friend_nudge"):
         assert _event_kind(et) == "notice", et
 
 
 def test_request_events_map_to_request():
-    for et in ("friend_request", "group_join_request", "group_invited_join_request"):
+    # group_invitation 亦属请求类：Milky api/group.ts L104 accept_group_invitation 可对其操作
+    for et in ("friend_request", "group_join_request", "group_invited_join_request",
+               "group_invitation"):
         assert _event_kind(et) == "request", et
 
 

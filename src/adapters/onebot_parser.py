@@ -150,14 +150,33 @@ class OneBotEventParser:
         elif kind == "notice":
             self._fill_notice(event, raw)
         elif kind == "request":
-            event.request_kind = str(raw.get("request_type") or "")
-            event.notice_kind = event.request_kind
-            event.text = str(raw.get("comment") or "")[:500]
+            self._fill_request(event, raw)
         elif kind == "lifecycle":
             event.lifecycle_kind = str(raw.get("meta_event_type") or "")
             event.notice_kind = event.lifecycle_kind
         return event
 
+    def _fill_request(self, event: InternalEvent, raw: Dict[str, Any]) -> None:
+        """请求类事件（[DOC] OneBot 11 `event/request.md`）。
+
+        - 好友请求（L10-18）：`request_type=friend`，字段 user_id / comment / flag；
+        - 群请求（L31-41）：`request_type=group`，`sub_type ∈ add|invite`
+          （add=加群请求，**invite=邀请登录号入群**），字段 group_id / user_id / comment / flag；
+        - 规范**没有** initiator_uid / is_filtered / target_user_id（那是 Milky 的字段）→ 保持空值，
+          绝不从别处挪用。
+        """
+        request_type = str(raw.get("request_type") or "")
+        sub = str(raw.get("sub_type") or "")
+        event.request_kind = request_type
+        event.notice_kind = request_type          # 兼容旧行为：notice_kind 曾复用 request_kind
+        event.comment = str(raw.get("comment") or "")
+        event.text = event.comment[:500]
+        event.request_id = str(raw.get("flag") or "")
+        if request_type == "friend":
+            event.request_scene = "friend"
+        elif request_type == "group":
+            # invite = 邀请登录号入群 ≡ Milky group_invitation（他人邀请自身入群）
+            event.request_scene = "group_invitation" if sub == "invite" else "group_join"
     # ---------- 各类型 ----------
     def _fill_message(self, event: InternalEvent, raw: Dict[str, Any]) -> None:
         arr = _normalize_array(raw.get("message"))

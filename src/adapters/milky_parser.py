@@ -42,14 +42,17 @@ _NOTICE_EVENTS = frozenset({
     "message_recall", "peer_pin_change", "friend_file_upload", "group_admin_change",
     "group_essence_message_change", "group_member_increase", "group_member_decrease",
     "group_disband", "group_name_change", "group_message_reaction", "group_mute",
-    "group_whole_mute", "group_invitation", "group_nudge", "friend_nudge", "group_file_upload",
+    "group_whole_mute", "group_nudge", "friend_nudge", "group_file_upload",
 })
-# 请求类：OneBot 是 post_type=request + request_type=friend/group（规范 Field 见 common.ts L35-40/L44-）
-_REQUEST_EVENTS = {
-    "friend_request": "friend",
-    "group_join_request": "group",
-    "group_invited_join_request": "group",
+# 请求类（规范 common.ts L35-58）：event_type → (粗粒度 request_kind, 细粒度 request_scene)
+_REQUEST_SCENES = {
+    "friend_request": ("friend", "friend"),
+    "group_join_request": ("group", "group_join"),
+    "group_invited_join_request": ("group", "group_invited_join"),
+    # group_invitation 属**请求类**（api/group.ts L104 accept_group_invitation）—— 旧实现归 notice 是错的
+    "group_invitation": ("group", "group_invitation"),
 }
+_REQUEST_EVENTS = frozenset(_REQUEST_SCENES)
 _NUDGE_EVENTS = ("group_nudge", "friend_nudge")
 
 
@@ -120,9 +123,7 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
         # Milky 段容器字段：segments（SDK 标准）；兼容 message（旧样例）
         _scan_segments(ev, data.get("segments", data.get("message")), bot_qq)
     elif ev.kind == "request":
-        # 请求类：只做 kind 归一化（字段级映射尚未核对，见 docs/message-model.md §5）
-        ev.request_kind = _REQUEST_EVENTS.get(event_type, "")
-        ev.actor_id = int(sender_id) if sender_id else None
+        _fill_request(ev, event_type, data)
     elif ev.kind == "notice":
         if event_type in _NUDGE_EVENTS:
             # —— 戳一戳：Milky 是**独立事件**（不是消息段）→ 归一化成 OneBot notify/poke 语义 ——
@@ -166,6 +167,41 @@ def parse_milky_event(raw: Dict[str, Any], bot_qq: Optional[int] = None) -> Inte
     # 稳定标识（与 OneBot 解析器同规）
     ev.event_id = _event_id(ev)
     return ev
+
+
+def _fill_request(ev: InternalEvent, event_type: str, data: Dict[str, Any]) -> None:
+    """请求类事件字段级映射（G2）。证据均来自 Milky 规范 [DOC]：
+
+    - `friend_request`{initiator_id, initiator_uid, comment, via} —— 规范**没有请求标识**，
+      同意/拒绝用 `initiator_uid`（api/friend.ts L22-29）→ `request_id` 保持空，**不伪造 flag**；
+    - `group_join_request`{group_id, notification_seq, is_filtered, initiator_id, comment}；
+    - `group_invited_join_request`{group_id, notification_seq, initiator_id, target_user_id}
+      —— 群成员邀请**他人**入群（需管理员审批），与下面的 group_invitation 不同；
+    - `group_invitation`{group_id, invitation_seq, initiator_id, source_group_id?}
+      —— 他人邀请**自身**入群；属**请求类**（api/group.ts L104 `accept_group_invitation`），
+      旧实现归入 notice 是错的（本 Gap 纠正）。
+    """
+    coarse, scene = _REQUEST_SCENES.get(event_type, ("", ""))
+    ev.request_kind = coarse
+    ev.request_scene = scene
+    _init = data.get("initiator_id")
+    ev.actor_id = int(_init) if _init is not None and str(_init) != "" else None
+    _target = data.get("target_user_id")
+    ev.target_id = int(_target) if _target is not None and str(_target) != "" else None
+    ev.comment = str(data.get("comment") or "")
+    ev.text = ev.comment[:500]          # 兼容既有行为：comment 曾放在 text
+    ev.request_uid = str(data.get("initiator_uid") or "")
+    ev.request_filtered = bool(data.get("is_filtered"))
+    if data.get("group_id") is not None and str(data.get("group_id")) != "":
+        ev.group_id = int(data["group_id"])
+        ev.scope = "group"
+    else:
+        # [INFERENCE] 好友请求与群无关，归一化为私聊范围（规范未定义 scene 字段）
+        ev.scope = "private" if scene == "friend" else ev.scope
+    _rid = data.get("notification_seq")
+    if _rid is None:
+        _rid = data.get("invitation_seq")
+    ev.request_id = str(int(_rid)) if _rid is not None and str(_rid) != "" else ""
 
 
 def _scan_segments(ev: InternalEvent, segments: Any, bot_qq: Optional[int]) -> None:

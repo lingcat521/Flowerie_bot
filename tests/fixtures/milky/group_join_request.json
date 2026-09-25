@@ -1,0 +1,19 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[DOC]",
+    "captured": false,
+    "evidence": "Milky 规范 common.ts L41-47（group_join_request{group_id,notification_seq,is_filtered,initiator_id,comment}）+ api/group.ts L91-96",
+    "note": "入群请求：标识是 notification_seq"
+  },
+  "time": 1756000201,
+  "self_id": 10001,
+  "event_type": "group_join_request",
+  "data": {
+    "group_id": 123456,
+    "notification_seq": 555001,
+    "is_filtered": false,
+    "initiator_id": 456789,
+    "comment": "求入群"
+  }
+}

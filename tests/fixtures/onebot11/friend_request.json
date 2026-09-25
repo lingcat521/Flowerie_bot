@@ -1,0 +1,16 @@
+{
+  "_provenance": {
+    "client": "onebot11",
+    "status": "[DOC]",
+    "captured": false,
+    "evidence": "OneBot 11 规范 event/request.md L10-18（request_type=friend：user_id/comment/flag）",
+    "note": "好友请求：标识是 flag（字符串）"
+  },
+  "time": 1756000203,
+  "self_id": 10001,
+  "post_type": "request",
+  "request_type": "friend",
+  "user_id": 456789,
+  "comment": "加个好友",
+  "flag": "flag-friend-1"
+}

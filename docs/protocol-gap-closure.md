@@ -23,8 +23,8 @@
 
 | ID | 缺口 | 初始状态 | 目标 | 证据要求 | 当前状态 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **G1** | Milky `message_scene=temp` | incomplete（`scope=""`）| complete | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（Docs 已更新，待 CI 绿 → CLOSED）|
-| **G2** | Milky 请求类事件字段级映射 | incomplete（只有 kind/request_kind）| complete | source + fixture + test | OPEN |
+| **G1** | Milky `message_scene=temp` | incomplete（`scope=""`）| complete | source + fixture + test | **CLOSED**（CI `9e4a9fc` 三项全绿，2026-08-09）|
+| **G2** | Milky 请求类事件字段级映射 | incomplete（只有 kind/request_kind）| complete | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（Docs 已更新，待 CI 绿 → CLOSED）|
 | **G3** | Milky `record` / `video` / `xml` | incomplete（仅 `segments_summary`）| complete/explicit | source + fixture + test | OPEN |
 | **G4** | Milky `reply.segments` | incomplete（只消费 message_seq）| complete | source + fixture + test | OPEN |
 | **G5** | Milky 多媒体发送（upload→resource_id→send）| no real validation | complete | source + real device | OPEN（依赖实机）|
@@ -37,7 +37,7 @@
 | Gap | Source | Model | Fixture | Unit | Roundtrip | Real | Docs | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | G1 temp | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
-| G2 request | | | | | | | | OPEN |
+| G2 request | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
 | G3 media/XML | | | | | | | | OPEN |
 | G4 reply.segments | | | | | | | | OPEN |
 | G5 media send | | | | | | | | OPEN |
@@ -80,8 +80,38 @@
 
 | 指标 | 定义 | 当前 | 目标 |
 | :--- | :--- | :--- | :--- |
-| Gap Closure Rate | CLOSED / 8 | 0/8（G1 待 CI 转 CLOSED）| 8/8 或明确 BLOCKED |
+| Gap Closure Rate | CLOSED / 8 | **1/8**（G1 CLOSED；G2 待 CI）| 8/8 或明确 BLOCKED |
 | Real Integration Coverage | 实机验证能力 / 要求验证能力 | 0%（无实机）| ≥90% 或 BLOCKED |
-| 新增测试（G1–G5）| 任务书 §17 | G1 = 11（要求 ≥3）| ≥19 累计 |
+| 新增测试（G1–G5）| 任务书 §17 | G1 = 11、G2 = 12（要求 G1≥3、G2≥3）| ≥19 累计 |
+
+## 4b. G2 封口记录（Milky 请求类事件字段级映射）
+
+**证据（Source Verified）**
+- `[DOC]` Milky 规范 `common.ts` L35-58：
+  `friend_request{initiator_id, initiator_uid, comment, via}`、
+  `group_join_request{group_id, notification_seq, is_filtered, initiator_id, comment}`、
+  `group_invited_join_request{group_id, notification_seq, initiator_id, target_user_id}`、
+  `group_invitation{group_id, invitation_seq, initiator_id, source_group_id?}`。
+- `[DOC]` **规范里没有 `request_id` / `flag`**：群请求的标识是 `notification_seq`/`invitation_seq`，
+  好友请求**没有标识**（`api/friend.ts` L22-29 的 accept/reject 用 `initiator_uid`）→ 不给它编 flag。
+- `[DOC]` `api/group.ts` L104 `accept_group_invitation` → **`group_invitation` 属请求类**，
+  旧实现归入 notice 是错的（本 Gap 纠正，`test_milky_event_kinds.py` 同步更新）。
+- `[DOC]` OneBot 11 `event/request.md` L10-18（friend：user_id/comment/flag）、L31-41
+  （group：sub_type ∈ add|invite，invite = **邀请登录号入群**）→ 与 Milky `group_invitation` 同义。
+
+**Model（Implemented）** — `InternalEvent` 新增 5 个字段：
+`request_scene`（friend / group_join / group_invited_join / group_invitation）、`request_id`（字符串，
+OneBot=`flag`、Milky=`notification_seq`/`invitation_seq`）、`request_uid`（Milky `initiator_uid`）、
+`request_filtered`（Milky `is_filtered`）、`comment`。粗细两档并存：`request_kind` 保持 friend/group
+（插件/SDK 既有契约不破坏），`request_scene` 表达协议真实语义。
+两协议都不存在的字段一律留空（测试 `test_absent_fields_are_not_fabricated` 钉住）。
+
+**Fixture / Test（Fixture Verified）**
+- 5 个新 fixture：`milky/friend_request.json`、`milky/group_join_request.json`、
+  `milky/group_invited_join_request.json`、`onebot11/friend_request.json`、`onebot11/group_request_invite.json`（均带 `_provenance`）。
+- `tests/test_request_events.py`：**12 个用例**（Milky 四类 / OneBot 三类 / 跨协议等价 / 不伪造 / 夹具 / round-trip）。
+- `tests/test_protocol_roundtrip.py` 扩展请求类重建路径 → 语料 round-trip **0 skip**。
+
+**DoD**：Source ✓ Model ✓ Fixture ✓ Unit ✓ Roundtrip ✓ Real（不适用，请求事件无实机语义验证项）Docs ✓ CI（待本提交 CI 结果）
 
 > 本文件随每个 Gap 的推进更新；**没有真实测试输出支撑的数字一律不写**。

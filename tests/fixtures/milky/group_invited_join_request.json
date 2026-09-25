@@ -1,0 +1,18 @@
+{
+  "_provenance": {
+    "client": "milky",
+    "status": "[DOC]",
+    "captured": false,
+    "evidence": "Milky 规范 common.ts L48-53（group_invited_join_request{group_id,notification_seq,initiator_id,target_user_id}）",
+    "note": "群成员邀请**他人**入群（需管理员审批）；与 group_invitation 语义不同"
+  },
+  "time": 1756000202,
+  "self_id": 10001,
+  "event_type": "group_invited_join_request",
+  "data": {
+    "group_id": 123456,
+    "notification_seq": 555002,
+    "initiator_id": 456789,
+    "target_user_id": 456790
+  }
+}

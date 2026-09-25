@@ -114,7 +114,7 @@ Authorization: Bearer <access_token>
 | `friend_nudge` | `notice`（kind=`poke`）| 好友戳一戳：`user_id` + is_self_send/is_self_receive → 私聊 poke |
 | `group_file_upload` | `notice`（kind=`group_upload`）| 群文件上传 → `notice_file{id,name,size}` → 走 `_handle_group_upload` |
 | `message_recall` / `group_*` / `friend_file_upload` / `peer_pin_change` 等 | `notice` | `notice_kind` 取具体 event_type；业务侧暂未消费，插件可见 |
-| `friend_request` / `group_join_request` / `group_invited_join_request` | `request` | `request_kind` = friend/group（字段级映射待补）|
+| `friend_request` / `group_join_request` / `group_invited_join_request` | `request` | `request_kind` = friend/group（字段级映射**已完成**：`request_scene`/`request_id`/`request_uid`/`request_filtered`/`comment`）|
 | `bot_offline` | `lifecycle` | 生命周期 |
 | 未识别的 | 原样保留 | 按 unknown 忽略（不阻塞主流程）|
 
@@ -304,7 +304,7 @@ Authorization: Bearer <access_token>
 - **发送图片/语音段**：Milky 发送段 data（resource_id 需先上传）——Flowerie 当前 text 发送完整可用；多媒体发送待联调
 - **消息号（已修）**：Milky 只有 `message_seq`（事件 / 发送响应 / 撤回入参都是它）——现已映射到 `message_id`，撤回按群/私聊分流；OneBot 行为不变
 - **段字段宽度**：规范与两份实现不完全一致（`market_face` 实现只有 `url`、`face` 无 `is_large`）——按可选字段解析，缺失时不报错只降级描述
-- ~~notice 的 event_type 完整命名~~ **已修（2026-08-09）**：21 种事件类型已按 kind 归一化（见上表）；请求类事件（friend_request / group_join_request / group_invited_join_request）**字段级映射仍待补**
+- ~~notice 的 event_type 完整命名~~ **已修（2026-08-09）**：21 种事件类型已按 kind 归一化（见上表）；请求类事件字段级映射**已完成（G2）**：四类（含 `group_invitation`）字段与标识（`notification_seq`）均已归一化
 - 响应 retcode 语义（200 + retcode 0/None = 成功）
 
 > 使用问题可提 Issue（不保证修复——项目停更中）。

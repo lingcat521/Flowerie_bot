@@ -85,8 +85,9 @@ NormalizedSegment（kind 为语义类型，attrs 为已归一字段）
 ## 5. 尚未确定的维度（显式列出，避免以后被当成"已支持"）
 
 - `[UNKNOWN]` SnowLuma / LLBot 的 `markdown` 完整字段与是否短路；
-- `[UNKNOWN]` Milky 请求类事件（`friend_request` / `group_join_request` / `group_invited_join_request`）
-  **字段级映射未做** —— 现在只归一化出 `kind=request` + `request_kind`，`initiator_id` 等字段未进入 `InternalEvent`；
+- ~~Milky 请求类事件字段级映射~~ **已解决（G2）**：`request_scene` / `request_id` / `request_uid` /
+  `request_filtered` / `comment` 已进入 `InternalEvent`；`group_invitation` 由 notice 纠正为 request；
+  两协议都不存在的字段保持空（`tests/test_request_events.py`）；
 - `[UNKNOWN]` Milky 其余通知类事件（撤回 / 管理变动 / 禁言 / 精华 / 群名 …）同样只做了 kind 归一化，业务侧未消费（`notice_kind` 保留具体 event_type）；
 - `[UNKNOWN]` Lagrange.Core 原生（非 Milky）元素模型（本轮只深入了它内嵌的 Milky 实现）；
 - `[UNKNOWN]` 各家对 `reply` 的定位能力（Milky 内联被引段；OneBot 只给 id → 需要额外 API 拉取）；

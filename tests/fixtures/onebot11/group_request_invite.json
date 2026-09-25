@@ -1,0 +1,18 @@
+{
+  "_provenance": {
+    "client": "onebot11",
+    "status": "[DOC]",
+    "captured": false,
+    "evidence": "OneBot 11 规范 event/request.md L31-41（request_type=group，sub_type ∈ add|invite，invite=邀请登录号入群）",
+    "note": "邀请登录号入群 ≡ Milky group_invitation（他人邀请自身入群）"
+  },
+  "time": 1756000204,
+  "self_id": 10001,
+  "post_type": "request",
+  "request_type": "group",
+  "sub_type": "invite",
+  "group_id": 123456,
+  "user_id": 456789,
+  "comment": "一起来",
+  "flag": "flag-group-invite-1"
+}
