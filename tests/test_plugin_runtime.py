@@ -10,7 +10,6 @@ import gc
 import json
 import os
 import shutil
-import sys
 import time
 
 import pytest
@@ -287,4 +286,3 @@ async def test_exec_build_command_points_at_entry(tmp_path):
     cmd, env = rt._build_command()
     assert cmd == [os.path.join(dir_path, "plugin.sh")]
     assert "PATH" in env or env == {}
-
