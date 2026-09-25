@@ -6,8 +6,7 @@ import pytest
 
 from src.adapters.milky_parser import MilkyEventParser
 
-from ._realenv import (ENV_FILE, ENV_IMAGE, ENV_RECORD, client_config, media_path, record_evidence,
-                       skip_message)
+from ._realenv import ENV_FILE, ENV_IMAGE, ENV_RECORD, client_config, media_path, record_evidence, skip_message
 
 pytestmark = pytest.mark.real_device
 

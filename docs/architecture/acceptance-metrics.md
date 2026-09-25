@@ -103,7 +103,9 @@
 | `3467a50` | feat(gate-i) 覆盖率 86.8% + B025 修复 | failure（Py3.9）| **success** | success |
 | `7bf3e24` | feat(gate-mnu) 跨协议等价 + Round-trip + 回归矩阵 + fix Py3.9 | **success** | **success** | success |
 | `b5ef621` | docs(arch) 最终验收报告（§36 数字块）| **success** | **success** | success |
-| 本轮 | test(integration) 实机 harness（§13/§14）+ §19/§20/§21 口径 | 待记录 | 待记录 | 待记录 |
+| `be84d1d` | test(integration) 实机 harness（§13/§14）| failure | failure | success |
+| `1455f22` | docs: 缺口台账指标 + development 三层测试 | failure | failure | success |
+| 本轮 | fix(test): 集成用例 import 折叠（ruff I001）+ 本地合并检查器 | 待记录 | 待记录 | 待记录 |
 
 > **记录规则**：只写实际查到的结论（逐提交从 GitHub API 读取），未查到就写 `待记录`，**不写成 success**。
 > **红提交如实保留**：上表 8 个 failure 的原因分别是 ① ruff I001（import 顺序，跨 6 个提交，
@@ -130,3 +132,9 @@
 > **同步**用例里被构造（只做契约核对）。修法：队列改为**惰性创建**（首次真正收发时才建）。
 > 3.12/3.14 因为不再要求循环，本地与 3.12 作业都照不出这个问题 —— 教训：**新增 asyncio 原语时，
 > 要问"这行会不会在同步上下文里被执行"**，并记住 CI 跑 3.9 + 3.12 两个版本。
+> `be84d1d` / `1455f22` 又红在 **I001**，但这次既不是排序也不是注释间距，而是**可折叠 import**：
+> `from ._realenv import (A, B,\n    C)` 这种**没有尾逗号**的括号 import，只要折叠后 ≤120 列，
+> isort 就会压成一行 → ruff 判 un-formatted。
+> **关键区别**：带**尾逗号**的多行 import 是 isort 的标准多行形态，**不会**被折叠
+> （仓库里 `src/adapters/onebot12_parser.py` 等就是这种，一直合法）。
+> 现在本地新增合并检查器 `~/check_imports.py`（顺序 + 可折叠 + 注释间距），推送前跑一次。

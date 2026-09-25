@@ -12,8 +12,7 @@ import pytest
 
 from src.adapters.onebot_parser import OneBotEventParser
 
-from ._realenv import (ENV_FILE, ENV_IMAGE, client_config, media_path, record_evidence,
-                       skip_message)
+from ._realenv import ENV_FILE, ENV_IMAGE, client_config, media_path, record_evidence, skip_message
 
 pytestmark = pytest.mark.real_device
 
