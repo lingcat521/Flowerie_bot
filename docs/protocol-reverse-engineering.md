@@ -157,6 +157,27 @@
 一个映射成 `forward`、一个映射成 ARK 元素 —— 说明「JSON/Ark 必须按 `app` 分流」是**客户端共识**，
 不是某一家的私有行为 → Flowerie 的归一化层必须保留 `app` 这一维。
 
+### 4.3 Milky 出站映射（`src/milky/transform/message/outgoing.ts`，131 行）[CODE]
+
+| Milky 出站段 | 客户端处理 |
+| :--- | :--- |
+| `text{text}` | `SendElement.text(text)` |
+| `mention{user_id}`（**仅群**） | 先 `getGroupMemberByUin` 取名 → `SendElement.at(uin, AtType.One, @名字)` |
+| `mention_all`（**仅群**） | `SendElement.at(0, AtType.All, @全体成员)` |
+| `face{face_id,is_large}` | `SendElement.face(+face_id, is_large ? 3 : undefined)` |
+| `reply{message_seq}` | 按 seq 先查本地 store，miss 则 `getSingleMsg` 拉服务器；需要 senderUin/senderUid/msgTime/clientSeq；**若在转发内还要 rawPb** |
+| `image{uri, sub_type, summary}` | `resolveMilkyUri(uri)` 下载 buffer → 写临时文件 → `SendElement.pic(...)`；`sub_type=sticker` → picSubType=1；**发送后删除临时文件** |
+| `record{uri}` | 同上下载 → `SendElement.ptt` |
+| `video{uri, thumb_uri}` | 下载视频（+可选缩略图）→ `SendElement.video` |
+| `forward{messages[], title, preview, summary, prompt}` | 递归转换每个节点（`isInsideForward=true`）→ `SendElement.forward(nodes, ...)`；节点带 `senderUin/senderName/elements/msgSeq(自增)/msgTime` |
+| `light_app{json_payload}` | `SendElement.ark(json_payload)` |
+
+**对 Flowerie 发送侧的直接约束（P4 要用）**：
+
+1. **媒体不是"给个 URL 就行"**：Milky 的 `uri` 必须由应用侧先下载成字节再交给客户端上传，且要写临时文件、发完即删；
+2. **@ 需要群成员名片**（多一次 API 调用），且**仅在群聊可用**；
+3. **逐段容错**：单个段转换失败只记日志、继续处理后面的段（不整条消息失败）；
+4. `forward` 的节点需要自造 msgSeq，且**转发内的 reply 需要 rawPb**（内层引用与顶层不同）。
 ### 4.2 待办（LLBot 剩余部分）
 
 - `src/milky/transform/message/outgoing.ts`（131 行）：Milky → NTQQ 的发送映射；
