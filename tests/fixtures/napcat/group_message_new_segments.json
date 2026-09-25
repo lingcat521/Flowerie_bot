@@ -1,0 +1,60 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "packages/napcat-onebot/types/message.ts L231-300（markdown{content} / miniapp{data} / contact{type,id} / location{lat,lon,title?,content?}）+ L3-27 段类型枚举",
+    "version": "NapCatQQ 0b4cfe6",
+    "note": "字段/取值逐字取自源码；值为示例（未实机抓包）"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000202,
+  "self_id": 10001,
+  "message_id": 77003,
+  "message_seq": 77003,
+  "real_id": 77003,
+  "real_seq": "77003",
+  "user_id": 456789,
+  "group_id": 123456,
+  "group_name": "测试群",
+  "message": [
+    {
+      "type": "markdown",
+      "data": {
+        "content": "**加粗**"
+      }
+    },
+    {
+      "type": "miniapp",
+      "data": {
+        "data": "{\"app\":\"x\"}"
+      }
+    },
+    {
+      "type": "contact",
+      "data": {
+        "type": "qq",
+        "id": "10001"
+      }
+    },
+    {
+      "type": "location",
+      "data": {
+        "lat": "39.9",
+        "lon": "116.4",
+        "title": "北京"
+      }
+    }
+  ],
+  "raw_message": "[CQ:markdown,content=...]",
+  "font": 14,
+  "message_format": "array",
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "card": "",
+    "role": "member"
+  }
+}

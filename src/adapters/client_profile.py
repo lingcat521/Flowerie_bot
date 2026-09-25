@@ -106,8 +106,11 @@ GO_CQHTTP = ClientProfile(
         "poke_segment_fields": ["qq"],
         "xml_fields": ["data", "resid"],            # resid 会被 ParseInt
         "json_fields": ["data", "resid"],
+        "dice_value_fields": ["value"],
+        "rps_value_fields": ["value"],
         "dice_value_range": [0, 6],
         "rps_value_range": [0, 2],
+        "face_extra_fields": ["type"],
         "unknown_segment_fallback": "literal_cq_text",   # IgnoreInvalidCQCode=false 时
         "text_url_split": True,                     # base.SplitURL 打开时 URL 会被拆成单独 text 段
         "message_accepts": ["string_cq", "array"],
@@ -129,13 +132,23 @@ NAPCAT = ClientProfile(
         "file": SUPPORTED,                             # 文件段（file_id 命名空间）
         "poke": SUPPORTED,                             # poke{type,id}（另见 GreyTip=8）
         "forward_segment": SUPPORTED,
-        "dice": UNKNOWN, "rps": UNKNOWN, "share": UNKNOWN, "music": UNKNOWN,
-        "markdown": UNKNOWN,
+        # 以下由 types/message.ts 的段枚举 + schema 逐条核对（[CODE] L3-27 / L30-340）
+        "dice": SUPPORTED, "rps": SUPPORTED,           # data 字段是 result（不是 value）
+        "music": SUPPORTED,
+        "markdown": SUPPORTED, "miniapp": SUPPORTED,
+        "contact": SUPPORTED, "location": SUPPORTED,
+        "share": UNSUPPORTED,                          # 段枚举里没有 share
+        "onlinefile": UNKNOWN, "flashtransfer": UNKNOWN,
     },
     quirks={
         "poke_segment_fields": ["type", "id"],
         "has_mface_segment": True,
         "file_id_namespace": "client_file_id",
+        # 取值字段名与 go-cqhttp 不同（[CODE] types/message.ts L186-207）
+        "dice_value_fields": ["result"],
+        "rps_value_fields": ["result"],
+        # 没有范围证据 → **不登记** range（序列化器因此原样传递，不做校验）
+        "face_extra_fields": ["resultId", "chainCount"],
     },
 )
 

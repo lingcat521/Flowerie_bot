@@ -1,0 +1,40 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "packages/napcat-onebot/api/msg.ts L1136：post_type = (self_id==sender) ? message_sent : message；types/message.ts L381 message_sent_type 字段",
+    "version": "NapCatQQ 0b4cfe6",
+    "note": "字段/取值逐字取自源码；值为示例（未实机抓包）"
+  },
+  "post_type": "message_sent",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000203,
+  "self_id": 10001,
+  "message_sent_type": "self",
+  "message_id": 77004,
+  "message_seq": 77004,
+  "real_id": 77004,
+  "real_seq": "77004",
+  "user_id": 10001,
+  "group_id": 123456,
+  "group_name": "测试群",
+  "message": [
+    {
+      "type": "text",
+      "data": {
+        "text": "我发的"
+      }
+    }
+  ],
+  "raw_message": "我发的",
+  "font": 14,
+  "message_format": "array",
+  "sender": {
+    "user_id": 10001,
+    "nickname": "机器人",
+    "card": "",
+    "role": "owner"
+  }
+}

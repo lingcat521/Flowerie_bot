@@ -180,3 +180,47 @@ def test_doc_matrix_matches_code():
     assert block, "文档里缺少生成矩阵标记（<!-- BEGIN GENERATED: client-matrix -->）"
     assert block.group(1).strip() == render_matrix().strip(), \
         "文档矩阵与 client_profile.PROFILES 不一致：请重跑生成命令"
+
+
+# ---------------------------------------------------------------- 自发送消息（跨客户端）
+
+def test_self_sent_message_content_is_parsed_for_both_clients():
+    """`message_sent` = 机器人自己发的消息：NapCat 与 go-cqhttp 都用它 [CODE]。
+
+    kind 必须原样保留（上层按 kind 分派：`message_router` 只把 `"message"` 送进回复链路，
+    所以不会造成自问自答），但**内容要照常解析** —— 否则机器人自己说的话在归一化层消失。
+    """
+    napcat = _parse("napcat", _load(os.path.join(FIXTURES, "napcat", "message_sent_self.json")))
+    assert napcat.kind == "message_sent" and napcat.scope == "group"
+    assert napcat.text == "我发的", napcat.text
+
+    gocq = _parse("go-cqhttp", {
+        "post_type": "message_sent", "message_type": "group", "sub_type": "normal",
+        "time": 1, "self_id": BOT_QQ, "message_id": 1, "group_id": 2, "user_id": BOT_QQ,
+        "message": [{"type": "text", "data": {"text": "我说"}}],
+        "sender": {"user_id": BOT_QQ, "nickname": "bot"}})
+    assert gocq.kind == "message_sent" and gocq.text == "我说", gocq.text
+
+
+def test_napcat_temp_session_uses_top_level_group_id():
+    """NapCat 把临时会话来源群放**顶层 group_id**（api/msg.ts L1163-1176）[CODE]，
+
+    与 go-cqhttp 的 `sender.group_id` 形态归一化结果必须一致。
+    """
+    napcat = _parse("napcat", _load(os.path.join(FIXTURES, "napcat", "private_temp_message.json")))
+    gocq = _parse("go-cqhttp", _load(os.path.join(FIXTURES, "go-cqhttp", "private_temp_message.json")))
+    assert (napcat.scope, napcat.scene, napcat.context_group_id) == ("private", "temp", 123456)
+    assert (napcat.scope, napcat.scene, napcat.context_group_id) == \
+           (gocq.scope, gocq.scene, gocq.context_group_id)
+
+
+def test_napcat_dice_rps_use_result_field():
+    """同一段不同客户端不同字段名：NapCat `dice/rps{result}` vs go-cqhttp `{value}`。
+
+    归一化层不做字段重命名（原样保留 segments），但**必须两种都收下、都不丢**。
+    """
+    ev = _parse("napcat", _load(os.path.join(FIXTURES, "napcat",
+                                             "group_message_dice_rps_mface.json")))
+    data = [s["data"] for s in ev.message_segments if s.get("type") in ("dice", "rps")]
+    assert data and all("result" in d for d in data), data
+    assert [f["kind"] for f in ev.faces] == ["face", "market_face"]

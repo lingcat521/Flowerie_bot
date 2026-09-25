@@ -1,0 +1,38 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "packages/napcat-onebot/api/msg.ts L1163-1176 handleTempGroupMessage()：sub_type='group'、**顶层 group_id = 来源群**、temp_source=0、nickname 兜底『临时会话』；initializeMessage() L1115-1140：font=14、message_id=message_seq=real_id=msg.id、real_seq=msg.msgSeq",
+    "version": "NapCatQQ 0b4cfe6",
+    "note": "字段/取值逐字取自源码；值为示例（未实机抓包）"
+  },
+  "post_type": "message",
+  "message_type": "private",
+  "sub_type": "group",
+  "time": 1756000200,
+  "self_id": 10001,
+  "message_id": 77001,
+  "message_seq": 77001,
+  "real_id": 77001,
+  "real_seq": "77001",
+  "user_id": 456789,
+  "group_id": 123456,
+  "temp_source": 0,
+  "message": [
+    {
+      "type": "text",
+      "data": {
+        "text": "临时会话"
+      }
+    }
+  ],
+  "raw_message": "临时会话",
+  "font": 14,
+  "message_format": "array",
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "card": ""
+  }
+}

@@ -19,6 +19,10 @@
 | `napcat/notice_group_upload.json` | NapCat | 群文件上传通知 | `notice_kind=group_upload` + `notice_file` |
 | `napcat/notice_poke.json` | NapCat | 戳一戳通知（`notify/poke`）| `notice_kind=poke` + `target_id` |
 | `llbot/onebot_message_file_and_shake.json` | LLBot | 文件段（带 file_id/path）+ `shake`（LLBot 的戳一戳段）| `files` / `pokes` |
+| `napcat/private_temp_message.json` | NapCat | 群临时会话：**顶层 group_id** + temp_source + font=14 | `scene=temp` + `context_group_id`（与 go-cqhttp 的 sender.group_id 形态等价）|
+| `napcat/group_message_dice_rps_mface.json` | NapCat | dice/rps 用 **result** 字段 + face 扩展 + mface | `faces`（face + market_face）；dice/rps 原样保留 |
+| `napcat/group_message_new_segments.json` | NapCat | markdown / miniapp / contact / location（go-cqhttp 没有的段）| markdown 内容并入 `text`；其余原样保留 |
+| `napcat/message_sent_self.json` | NapCat | 自发送消息 `post_type=message_sent` | kind 保留 + **内容照常解析**（本轮修复）|
 | `milky/group_message_segments.json` | Milky | 八种段混合（text/mention/face/market_face/light_app/forward/file/markdown）| 六个归一化字段全命中 |
 | `milky/group_nudge_event.json` | Milky | 戳一戳**事件**（`group_nudge`）| `kind=notice` + `notice_kind=poke` |
 | `go-cqhttp/group_message_media_array.json` | go-cqhttp | 群消息：record/video/image(含闪照)/face/dice/rps | `records` / `videos` / `images` / `image_files`（url、subType、type 原样保留）|

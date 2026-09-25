@@ -1,0 +1,62 @@
+{
+  "_provenance": {
+    "client": "napcat",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "packages/napcat-onebot/types/message.ts L186-207（dice/rps data.result）、L37-58（face{id,resultId?,chainCount?} / mface{emoji_package_id,emoji_id,key,summary}）",
+    "version": "NapCatQQ 0b4cfe6",
+    "note": "字段/取值逐字取自源码；值为示例（未实机抓包）"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000201,
+  "self_id": 10001,
+  "message_id": 77002,
+  "message_seq": 77002,
+  "real_id": 77002,
+  "real_seq": "77002",
+  "user_id": 456789,
+  "group_id": 123456,
+  "group_name": "测试群",
+  "message": [
+    {
+      "type": "dice",
+      "data": {
+        "result": 3
+      }
+    },
+    {
+      "type": "rps",
+      "data": {
+        "result": 2
+      }
+    },
+    {
+      "type": "face",
+      "data": {
+        "id": "14",
+        "resultId": "14",
+        "chainCount": 1
+      }
+    },
+    {
+      "type": "mface",
+      "data": {
+        "emoji_package_id": 1,
+        "emoji_id": "5",
+        "key": "key-1",
+        "summary": "[表情]"
+      }
+    }
+  ],
+  "raw_message": "[CQ:dice,result=3][CQ:rps,result=2]",
+  "font": 14,
+  "message_format": "array",
+  "sender": {
+    "user_id": 456789,
+    "nickname": "群友",
+    "card": "",
+    "role": "member"
+  }
+}

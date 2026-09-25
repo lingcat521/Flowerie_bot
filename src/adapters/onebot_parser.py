@@ -179,7 +179,11 @@ class OneBotEventParser:
                 "request": "request", "meta_event": "lifecycle"}.get(post_type, post_type or "unknown")
         message_type = raw.get("message_type")
         group_id = raw.get("group_id")
-        if kind == "message":
+        # message_sent = 机器人自己发出的消息：NapCat（api/msg.ts L1136）与 go-cqhttp
+        # （coolq/event.go L84-87 / converter.go L70-73）都用这个 post_type [CODE]。
+        # kind 原样保留（上层按 kind 分派：message_router 只把 "message" 送进回复链路），
+        # 但**内容照常解析** —— 否则"自己说了什么"在归一化层直接消失。
+        if kind in ("message", "message_sent"):
             scope = "group" if message_type == "group" else ("private" if message_type == "private" else "")
         else:
             scope = "group" if group_id is not None else ""
@@ -216,7 +220,7 @@ class OneBotEventParser:
             event.notice_file = _notice_file(raw.get("file"), "onebot11")
         elif kind == "notice" and raw.get("file") is not None:
             event.notice_file = _notice_file(raw.get("file"), "onebot11")
-        if kind == "message":
+        if kind in ("message", "message_sent"):
             self._fill_message(event, raw)
         elif kind == "notice":
             self._fill_notice(event, raw)

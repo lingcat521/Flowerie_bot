@@ -183,22 +183,38 @@ def serialize_segments(segments: Any, *, profile: ClientProfile = ONEBOT11_SPEC
                 notes.append(_note("face", NOTE_INVALID, detail="face 需要数字 id"))
                 continue
             out = {"id": str(fid)}
-            if data.get("type") and profile.quirk("face_type_values"):
-                out["type"] = data["type"]
-            elif data.get("type"):
-                notes.append(_note("face", NOTE_DROPPED_FIELD, field="type",
-                                   detail="该客户端未验证 face.type"))
+            extras = profile.quirk("face_extra_fields") or []
+            for key in ("type", "resultId", "chainCount"):
+                if key not in data:
+                    continue
+                if key in extras:
+                    out[key] = data[key]
+                else:
+                    notes.append(_note("face", NOTE_DROPPED_FIELD, field=key,
+                                       detail="该客户端未验证此扩展字段"))
             wire.append({"type": "face", "data": out})
             continue
 
         if seg_type in ("dice", "rps"):
-            value = _as_int(data.get("value"))
+            # 取值字段名各客户端不同（go-cqhttp: value；NapCat: result）→ 由档案给出；
+            # 档案没写 = 没证据 → **不校验、不改写**，原样传递 + note。
+            fields = profile.quirk(seg_type + "_value_fields")
             lo_hi = profile.quirk(seg_type + "_value_range")
-            if value is None or not isinstance(lo_hi, (list, tuple)) or not (lo_hi[0] <= value <= lo_hi[1]):
-                notes.append(_note(seg_type, NOTE_VALUE_OUT_OF_RANGE,
-                                   detail="客户端会拒绝该取值", value=data.get("value")))
+            value_field = None
+            if isinstance(fields, (list, tuple)):
+                value_field = next((f for f in fields if f in data), None)
+            if value_field is None or not isinstance(lo_hi, (list, tuple)):
+                wire.append({"type": seg_type, "data": data})
+                notes.append(_note(seg_type, NOTE_UNSUPPORTED_SEGMENT,
+                                   profile_state=profile.state(seg_type),
+                                   detail="该客户端未验证取值字段/范围，原样传递"))
                 continue
-            wire.append({"type": seg_type, "data": {"value": str(value)}})
+            value = _as_int(data.get(value_field))
+            if value is None or not (lo_hi[0] <= value <= lo_hi[1]):
+                notes.append(_note(seg_type, NOTE_VALUE_OUT_OF_RANGE, field=value_field,
+                                   detail="客户端会拒绝该取值", value=data.get(value_field)))
+                continue
+            wire.append({"type": seg_type, "data": {value_field: str(value)}})
             continue
 
         if seg_type == "poke":
