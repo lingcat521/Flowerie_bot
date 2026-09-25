@@ -8,6 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.adapters import make_adapters
+from src.adapters.action_channels import make_action_channel
 from src.config import load_config, validate_config
 from src.core.message_router import MessageRouter
 from src.core.policy_engine import PolicyEngine
@@ -117,7 +118,7 @@ async def main():
     prompt_manager = PromptManager(settings_repo, max_length=config.MAX_CUSTOM_PROMPT_LENGTH)
 
     # 优雅管理异步资源（HTTP session / AI 客户端）
-    async with AIClient(config, memory_manager) as ai_client, Sender(config) as sender:
+    async with AIClient(config, memory_manager) as ai_client, Sender(config, channel_factory=make_action_channel) as sender:
         # ---- 消息边界组合根（Phase 4）：解析器 + 现有 Sender（共享实例，不重复构造）----
         # 依赖链: Settings(config) → Sender(config) → make_adapters(BOT_QQ, sender)
         #         → OneBotEventParser + Adapters{parser, sender}

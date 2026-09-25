@@ -2,7 +2,6 @@ import asyncio
 
 import aiohttp
 
-from src.adapters.action_channels import make_action_channel
 from src.config import Settings
 from src.utils.logging_setup import get_logger
 from src.utils.metrics import registry
@@ -13,11 +12,14 @@ _M_SEND_FAIL = registry.counter("message_send_failure_total", "消息发送失�
 
 
 class Sender:
-    def __init__(self, config: Settings, ws_sender=None):
+    def __init__(self, config: Settings, ws_sender=None, channel_factory=None):
+        # channel_factory: (config, session, ws_sender) -> 动作通道（组合根注入，见 main.py）。
+        # 冻结层规则（tests/test_bootstrap.py）：服务层不得反向依赖消息边界模块 —— 由装配层注入。
         self.config = config
         self.session: aiohttp.ClientSession = None
         # WS 发送通道（SEND_VIA_WS=true 时生效）：async (action, params) -> dict
         self._ws_sender = ws_sender
+        self._channel_factory = channel_factory
         # 动作通道（Adapter 层）：协议开关只在那一边读取（Gate B/O）
         self._channel = None
 
@@ -39,8 +41,12 @@ class Sender:
         return {}
 
     def _ensure_channel(self):
+        """懒建动作通道；工厂由组合根注入（缺失即报错，不静默降级）。"""
         if self._channel is None:
-            self._channel = make_action_channel(self.config, self.session, self._ws_sender)
+            if self._channel_factory is None:
+                raise RuntimeError(
+                    "Sender 需要注入 channel_factory（见 main.py 组合根）")
+            self._channel = self._channel_factory(self.config, self.session, self._ws_sender)
         return self._channel
 
     async def _post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
