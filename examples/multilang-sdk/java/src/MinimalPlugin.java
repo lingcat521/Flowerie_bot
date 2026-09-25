@@ -773,6 +773,14 @@ public final class MinimalPlugin {
     }
 
     /** 任意值 -> 字符串（null 变空串）。 */
+    /** hook 的 args 是协议数组解出来的 List&lt;Object&gt;：取第 index 个并转成字符串（缺失给空串）。 */
+    private static String hookArg(List<Object> args, int index) {
+        if (args == null || index < 0 || index >= args.size() || args.get(index) == null) {
+            return "";
+        }
+        return text(args.get(index));
+    }
+
     private static String text(Object value) {
         if (value == null) {
             return "";

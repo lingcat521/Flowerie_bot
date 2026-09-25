@@ -123,13 +123,28 @@ def test_config_does_not_leak_between_plugins(web):
 
 
 def test_page_id_isolation(web):
-    """用 B 的 pid 请求 A 独有的页面 id / 反过来，都不能串内容。"""
-    resp = web.get(web.page_url(web.plugin_b, "communication"))
-    assert "communication-panel" not in resp.text, "B 竟然渲染出 A 的 communication 页面"
-    assert web.plugin_b in resp.text or "页面不存在" in resp.text or "不存在" in resp.text
-    page_a = web.get(web.page_url(web.plugin_a, "communication")).text
-    assert "communication-panel" in page_a
+    """页面 id 与插件身份都不能串：同名页面各渲染各的，专属页面不跨插件出现。
+
+    注：§12/§28 之后 A（plugin_webui_test）与 B（minimal_py）**都有** communication 页，
+    所以不能再拿 "communication-panel" 当 A 的专属标记 —— 改用两条更直接的证据：
+    ① A 独有的 settings 页，用 B 的 pid 请求时不得渲染出 A 的表单；
+    ② 同名 communication 页里，表单 action 必须指向**请求方自己的 plugin id**。
+    """
+    resp = web.get(web.page_url(web.plugin_b, "settings"))
+    assert "settings-form" not in resp.text, "B 竟然渲染出 A 的 settings 页面"
+    assert web.plugin_b in resp.text or "不存在" in resp.text or "页面不存在" in resp.text
+
+    page_a = web.get(web.page_url(web.plugin_a, "settings")).text
+    assert "settings-form" in page_a, "A 自己的 settings 页丢了"
     assert "flowerie-webui lang-python" not in page_a, "A 的页面串了 B 的最小页面内容"
+
+    comm_b = web.get(web.page_url(web.plugin_b, "communication")).text
+    assert ("/panel/plugins/webui/%s/communication" % web.plugin_b) in comm_b, \
+        "B 的 communication 页 action 没指向 B 自己"
+    assert ("/panel/plugins/webui/%s/" % web.plugin_a) not in comm_b, "B 的页面串了 A 的 plugin id"
+    comm_a = web.get(web.page_url(web.plugin_a, "communication")).text
+    assert "communication-panel" in comm_a, "A 自己的 communication 页丢了"
+    assert ("/panel/plugins/webui/%s/" % web.plugin_b) not in comm_a, "A 的页面串了 B 的 plugin id"
 
 
 def test_session_token_is_not_leaked_to_pages(web):
