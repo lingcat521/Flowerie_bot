@@ -67,7 +67,21 @@
 
 ## 6. CI
 
-（待填：e23e52c 的真实结果）
+### 6.1 本轮红 -> 绿（如实记录每一轮根因）
+
+| commit | 结果 | 根因 | 修复 |
+| :--- | :--- | :--- | :--- |
+| `d317617` | 红 | ① Ruff I001（新测试的一行超长导入）；② `tests/e2e` 把 manifest runtime（`exec`）当成语言名断言 | 按 CI 建议换行；加 `MANIFEST_RUNTIME` 映射 |
+| `adbec21` | 红 | 我在子代理仍在编辑时 `git add -A`，把中间态 `examples/multilang-sdk/go/main.go` 提交了 → Go 最小插件编译失败 | 改为"等子代理收工 + 只 add 明确文件" |
+| `5279fef` | 红 | ① Java 最小插件引用了未定义的 `hookArg`（子代理中途失败留下的悬空引用）；② 隔离用例的专属标记 `communication-panel` 因新增 communication 页而不再专属 | 补 `hookArg` helper；隔离用例改用 `settings` 页 + 同名页的 form action 必须指向请求方自己的 id（更强的证据）|
+| `e23e52c` | 红 | WebUI/E2E 夹具构造 `Settings` 时缺必填字段（`DEEPSEEK_API_KEY`/`BOT_QQ`）——本机 pydantic 是桩，CI 才是真闸门 | 夹具显式传测试哑值 |
+| `21f0131` | 红 | ① 仓库 ReDoS 扫描拦下新示例里的绝对路径正则；② CSP 用例把"Playwright 因 CSP 抛错"当成失败；③ fixture 的 trace 单元格混入说明文字 | 改成线性字符串扫描；CSP 用例改为显式断言"必须因 CSP 失败"；说明移到兄弟单元格 |
+| `0fcb6bf` | 红 | 五语言 communication 页的 `trace_id`/`request_id` 单元格里嵌了 `<small>` 说明 → `inner_text()` 带出说明，E2E"裸 id 随请求往返"断言误判；另有未使用的 `re` 导入 | 五语言统一把说明移出 id 单元格；删导入 |
+| `792dc1e` | 见 6.2 | —— | —— |
+
+### 6.2 最终结果
+
+（待填：792dc1e 的 CI / Acceptance / webui-e2e 真实数字）
 
 ## 7. 环境阻塞（§33.6，单列，不与 WebUI 结论混写）
 

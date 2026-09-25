@@ -441,7 +441,9 @@ async def main():
 
     # ---------- I. pytest + ruff ----------
     pt = subprocess.run([sys.executable, "-m", "pytest", "-q"], capture_output=True, text=True)
-    rec(pt.returncode == 0, "pytest", (pt.stdout or pt.stderr).strip()[-160:])
+    # 失败时多留一点输出：只留 160 字符会把真正的 traceback 截掉（本轮就吃过这个亏）
+    tail = (pt.stdout or pt.stderr).strip()
+    rec(pt.returncode == 0, "pytest", tail[-160:] if pt.returncode == 0 else tail[-4000:])
     rf = subprocess.run([sys.executable, "-m", "ruff", "check", "."], capture_output=True, text=True)
     rec(rf.returncode == 0, "ruff check", (rf.stdout or rf.stderr).strip()[-160:] or "通过")
 
