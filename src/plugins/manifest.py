@@ -219,10 +219,12 @@ class PluginManifest:
     def _validate_web_ui(raw: Any) -> Optional[Dict[str, Any]]:
         """Plugin WebUI 声明（**只做加法**，旧字段语义不变）。
 
-        两种页面形态：
+        三种页面形态（**只做加法**）：
         - **HTML 页面**（新，推荐）：`pages[].file` 指向插件 webui 根内的 `.html` 文件，
           由 `webui_loader` + `webui_security` 加载与净化；
-        - **DSL 页面**（旧，compat）：不写 `file`，仍由插件 `web_ui.entry` hook 返回 DSL dict。
+        - **插件渲染页**（WebUI Protocol）：`pages[].render = "plugin"`，HTML 由插件经
+          `webui.page` 提供（同样先净化再替换受控变量）；
+        - **DSL 页面**（旧，compat）：不写 `file` / `render`，仍由 `web_ui.entry` hook 返回 DSL dict。
 
         未知字段一律拒绝；页面路径在此处就做**静态校验**（绝对路径 / `..` / 反斜杠 / 非法扩展名
         在加载前就被拒，而不是等到 HTTP 请求时）。
@@ -254,7 +256,7 @@ class PluginManifest:
         for i, pg in enumerate(pages_raw):
             if not isinstance(pg, dict):
                 raise PluginManifestError(f"web_ui.pages[{i}] 必须是对象")
-            pk = set(pg.keys()) - {"id", "title", "description", "file"}
+            pk = set(pg.keys()) - {"id", "title", "description", "file", "render"}
             if pk:
                 raise PluginManifestError(f"web_ui.pages[{i}] 含未知字段: {sorted(pk)}")
             pid = str(pg.get("id", "")).strip()
@@ -266,7 +268,16 @@ class PluginManifest:
             desc = str(pg.get("description", "")).strip()[:300]
             record = {"id": pid, "title": title, "description": desc}
             file_rel = pg.get("file")
-            if file_rel is not None:
+            render = str(pg.get("render") or "").strip()
+            if render and render not in ("file", "plugin"):
+                raise PluginManifestError(
+                    f"web_ui.pages[{i}].render 只支持 'file' / 'plugin'（收到 {render!r}）")
+            if render == "plugin":
+                if file_rel is not None:
+                    raise PluginManifestError(
+                        f"web_ui.pages[{i}] 不能同时声明 file 与 render=plugin（二选一）")
+                record["render"] = "plugin"
+            elif file_rel is not None:
                 try:
                     record["file"] = validate_relative(file_rel, PAGE_EXTS,
                                                        field=f"web_ui.pages[{i}].file")

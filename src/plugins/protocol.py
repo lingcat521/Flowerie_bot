@@ -15,9 +15,12 @@
 
 方法分两类：
 - **必需**（`REQUIRED_METHODS`）：initialize / event / health / shutdown —— 任何插件都要实现；
-- **可选**（`OPTIONAL_METHODS`）：context.get / config.get / config.set / permission.check /
-  storage.get / storage.set / storage.delete / storage.list —— 由插件在 initialize 的
-  `capabilities` 里声明；**引擎不会调用未声明的方法**（能力矩阵因此不会撒谎）。
+- **可选**（`OPTIONAL_METHODS` = 核心 + WebUI）：由插件在 initialize 的 `capabilities`
+  里声明；**引擎不会调用未声明的方法**（能力矩阵因此不会撒谎）：
+  * 核心：context.get / config.get / config.set / permission.check /
+    storage.get / storage.set / storage.delete / storage.list；
+  * WebUI Protocol（任务书第 3 份 §三）：webui.page / webui.action / webui.asset —— 页面、
+    动作、资源三条通道，插件只声明内容，路由/权限/隔离/净化全部由引擎负责。
 
 错误模型（两条通道，别混）：
 - 协议级：`{"id":N,"error":"..."}` —— 未知方法、参数类型错、名字非法；
@@ -38,7 +41,8 @@ PROTOCOL_VERSION = "1"
 API_VERSION = "1"
 
 REQUIRED_METHODS = ("initialize", "event", "health", "shutdown")
-OPTIONAL_METHODS = (
+#: 核心可选能力（任务书第 2 份 §三）
+CORE_OPTIONAL_METHODS = (
     "context.get",
     "config.get",
     "config.set",
@@ -48,6 +52,10 @@ OPTIONAL_METHODS = (
     "storage.delete",
     "storage.list",
 )
+#: WebUI Protocol（任务书第 3 份 §三）：插件声明能力后引擎才会调用
+WEBUI_METHODS = ("webui.page", "webui.action", "webui.asset")
+#: 全部可选方法 = 核心 + WebUI（能力握手比对的就是这个集合）
+OPTIONAL_METHODS = CORE_OPTIONAL_METHODS + WEBUI_METHODS
 #: 引擎内部方法（插件不实现，由引擎发起）：hook 供控制面调用插件函数
 ENGINE_INTERNAL_METHODS = ("hook",)
 #: 能力分组：SDK 与文档按组表述，协议按方法名表述（两者在此对齐，避免各写一份）
@@ -56,6 +64,7 @@ CAPABILITY_GROUPS = {
     "config": ("config.get", "config.set"),
     "permission": ("permission.check",),
     "storage": ("storage.get", "storage.set", "storage.delete", "storage.list"),
+    "webui": WEBUI_METHODS,
 }
 
 #: 插件 → 引擎 的反向 op（引擎按 op 分派；未知 op 一律拒绝）

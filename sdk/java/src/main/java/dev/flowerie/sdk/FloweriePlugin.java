@@ -65,6 +65,7 @@ public class FloweriePlugin {
     private final List<MessageHandler> messageHooks = new ArrayList<>();
     private final Map<String, List<MessageHandler>> eventHooks = new HashMap<>();
     private final Map<String, HookHandler> namedHooks = new HashMap<>();
+    private final Map<String, WebuiHandler> webuiHandlers = new HashMap<>();
     private final List<HealthHandler> healthHooks = new ArrayList<>();
 
     /** 插件上下文：storage / config / permission / action / log。 */
@@ -306,6 +307,40 @@ public class FloweriePlugin {
         return this;
     }
 
+    /** Plugin WebUI Protocol 处理器（任务书第 3 份 §六）：参数是引擎给的受控对象。 */
+    public interface WebuiHandler {
+        Object handle(Map<String, Object> args) throws IOException;
+    }
+
+    /** WebUI 注册入口：`plugin.webUI().page(args -> ...).action(args -> ...)`。 */
+    public WebUI webUI() {
+        return new WebUI();
+    }
+
+    /** WebUI 注册器（语义与 TypeScript 的 plugin.webui / Rust 的 plugin.webui() 一致）。 */
+    public final class WebUI {
+        /** 页面处理器（webui.page）。 */
+        public WebUI page(WebuiHandler handler) {
+            return register("webui.page", handler);
+        }
+
+        /** 动作处理器（webui.action）。 */
+        public WebUI action(WebuiHandler handler) {
+            return register("webui.action", handler);
+        }
+
+        /** 资源处理器（webui.asset）。 */
+        public WebUI asset(WebuiHandler handler) {
+            return register("webui.asset", handler);
+        }
+
+        private WebUI register(String method, WebuiHandler handler) {
+            webuiHandlers.put(method, handler);
+            return this;
+        }
+    }
+
+
     /** 暴露上下文（测试 / 嵌入场景）。 */
     public Context context() {
         return ctx;
@@ -338,6 +373,32 @@ public class FloweriePlugin {
                 return;
             }
         }
+    }
+
+    private static final List<String> WEBUI_PAYLOAD_KEYS = List.of("html", "vars", "context",
+            "message", "content_type", "body", "base64", "config_set", "storage_set");
+
+    /** 把 WebUI 处理器返回值归一成协议应答（String = html 简写，白名单字段透传）。 */
+    static Map<String, Object> normalizeWebuiResult(Object result) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        if (result instanceof String) {
+            out.put("ok", Boolean.TRUE);
+            out.put("html", result);
+            return out;
+        }
+        if (result instanceof Map) {
+            Map<?, ?> src = (Map<?, ?>) result;
+            out.put("ok", Boolean.TRUE);
+            for (String key : WEBUI_PAYLOAD_KEYS) {
+                if (src.containsKey(key)) {
+                    out.put(key, src.get(key));
+                }
+            }
+            return out;
+        }
+        out.put("ok", Boolean.FALSE);
+        out.put("error", "WebUI 处理器没有返回内容");
+        return out;
     }
 
     private void reply(int id, Object result) {
@@ -373,7 +434,8 @@ public class FloweriePlugin {
                     }
                     List<Object> caps = new ArrayList<>(List.of(
                             "config.get", "config.set", "context.get", "permission.check",
-                            "storage.delete", "storage.get", "storage.list", "storage.set"));
+                            "storage.delete", "storage.get", "storage.list", "storage.set",
+                            "webui.action", "webui.asset", "webui.page"));
                     reply(id, Json.obj("ok", true, "api_version", API_VERSION,
                             "protocol_version", PROTOCOL_VERSION, "capabilities", caps));
                     return false;
@@ -433,6 +495,21 @@ public class FloweriePlugin {
                         result = handler.handle(args instanceof List ? (List<Object>) args : List.of());
                     }
                     reply(id, Json.obj("ok", true, "result", result));
+                    return false;
+                }
+                case "webui.page":
+                case "webui.action":
+                case "webui.asset": {
+                    WebuiHandler webuiHandler = webuiHandlers.get(method);
+                    if (webuiHandler == null) {
+                        reply(id, Json.obj("ok", false, "error", "插件未注册 " + method + " 处理器"));
+                        return false;
+                    }
+                    try {
+                        reply(id, normalizeWebuiResult(webuiHandler.handle(paramsMap)));
+                    } catch (IOException | RuntimeException e) {
+                        reply(id, Json.obj("ok", false, "error", String.valueOf(e.getMessage())));
+                    }
                     return false;
                 }
                 case "storage.get": {

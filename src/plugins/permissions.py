@@ -48,6 +48,13 @@ ALL_PERMISSIONS = frozenset({
     "plugin_admin",          # 插件运行时管理（调用/事件/服务/重载/发现/健康/配置）
     "web_ui",                # Plugin WebUI：插件自有管理页面（管理员批准后才能访问）
     "web_ui.files",          # Plugin WebUI 文件能力（上传/下载，仅插件自身空间）
+    # Plugin WebUI Protocol（任务书第 3 份 §十五）：页面/动作/配置/存储四条通道各自的闸门
+    "webui.view",            # 打开插件页面与静态/动态资源（只读）
+    "webui.action",          # 提交 WebUI 动作（POST 表单 → webui.action）
+    "webui.config.read",     # WebUI 上下文可带操作员配置（只读）
+    "webui.config.write",    # 动作可把配置写回插件自己的覆盖层
+    "webui.storage.read",    # WebUI 上下文可带插件存储快照
+    "webui.storage.write",   # 动作可写插件存储
 })
 
 # Action 类型 → 所需权限（None = 无需权限：log / test 等无害动作）
@@ -240,6 +247,31 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
 _UNIMPLEMENTED = frozenset({"execute_process", "webhook"})
 # 内建无副作用动作：任何权限组合下都允许（仅日志/测试探针，无外部副作用）
 _BUILTIN_ACTIONS = frozenset({"log", "test"})
+
+
+#: Plugin WebUI 权限（任务书第 3 份 §十五）
+WEBUI_PERMISSIONS = frozenset({
+    "webui.view",
+    "webui.action",
+    "webui.config.read",
+    "webui.config.write",
+    "webui.storage.read",
+    "webui.storage.write",
+})
+#: 向后兼容映射：老清单里的 `web_ui` 等价于 view + action（**行为不变**，不是放宽 —— 之前 web_ui
+#: 本来就同时管着页面访问与表单提交；新插件可以只批准其中一项）
+WEBUI_PERMISSION_ALIASES = {
+    "webui.view": ("web_ui",),
+    "webui.action": ("web_ui",),
+}
+
+
+def webui_permission_granted(approved, permission: str) -> bool:
+    """WebUI 权限判定（单一实现：manager 与本模块的测试共用同一口径）。"""
+    approved = {str(p).strip().lower() for p in (approved or []) if p}
+    if permission in approved:
+        return True
+    return any(alias in approved for alias in WEBUI_PERMISSION_ALIASES.get(permission, ()))
 
 
 class PermissionDeniedError(Exception):

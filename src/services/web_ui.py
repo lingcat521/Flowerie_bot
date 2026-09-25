@@ -169,6 +169,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         # 静态资源与页面是两条独立通道：静态路由必须**先**注册（否则会被 {page} 吃掉）
         app.router.add_get("/panel/plugins/webui/{pid}/static/{path:.*}",
                            self._handle_panel_plugin_webui_static)
+        app.router.add_get("/panel/plugins/webui/{pid}/asset/{path:.*}",
+                           self._handle_panel_plugin_webui_asset)
         app.router.add_get("/panel/plugins/webui/{pid}/{page}", self._handle_panel_plugin_webui)
         app.router.add_post("/panel/plugins/webui/{pid}/{page}", self._handle_panel_plugin_webui)
         app.router.add_post("/panel/plugins/webui/upload/{pid}/{page}", self._handle_panel_webui_upload)

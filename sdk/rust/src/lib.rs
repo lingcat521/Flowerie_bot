@@ -25,9 +25,10 @@ const MAX_STORAGE_KEYS: usize = 200;
 const MAX_STORAGE_VALUE: usize = 64 * 1024;
 const MAX_CONFIG_KEYS: usize = 64;
 const MAX_CONFIG_VALUE: usize = 8 * 1024;
-const OPTIONAL_METHODS: [&str; 8] = [
+const OPTIONAL_METHODS: [&str; 11] = [
     "config.get", "config.set", "context.get", "permission.check",
     "storage.delete", "storage.get", "storage.list", "storage.set",
+    "webui.action", "webui.asset", "webui.page",
 ];
 
 /// 插件返回给引擎的动作（唯一副作用出口）。
@@ -42,6 +43,7 @@ type Shared = Rc<RefCell<Io>>;
 type StartupFn = Box<dyn Fn(&Context)>;
 type MessageFn = Box<dyn Fn(&Context, &Json) -> Option<Json>>;
 type HookFn = Box<dyn Fn(&Context, &[Json]) -> Json>;
+type WebuiFn = Box<dyn Fn(&Context, &Json) -> Json>;
 
 /// 传给插件的上下文：storage / config / permission / action。
 pub struct Context {
@@ -262,6 +264,7 @@ pub struct Plugin {
     health: Vec<Box<dyn Fn(&Context) -> bool>>,
     events: HashMap<String, Vec<MessageFn>>,
     hooks: HashMap<String, HookFn>,
+    webui_handlers: HashMap<String, WebuiFn>,
     shared: Shared,
     ctx: Context,
 }
@@ -286,6 +289,7 @@ impl Plugin {
             health: Vec::new(),
             events: HashMap::new(),
             hooks: HashMap::new(),
+            webui_handlers: HashMap::new(),
             shared: shared.clone(),
             ctx: Context {
                 plugin_id: "unknown".to_string(),
@@ -356,6 +360,41 @@ impl Plugin {
         self.hooks.insert(name.to_string(), Box::new(f));
         self
     }
+
+/// Plugin WebUI Protocol 注册器（任务书第 3 份 §六）：
+///
+/// ```ignore
+/// plugin.webui().page(|_ctx, _args| Json::str("<h1>hi</h1>")).action(|_ctx, _args| Json::Null);
+/// ```
+///
+/// 处理器拿到引擎给的受控参数（page/context，action 时还有 action/form），
+/// 返回 `Json::Str`（= html 简写）或 `Json::Obj`（白名单字段）。
+/// 路由、权限、校验、净化、隔离全部由引擎负责，插件只负责内容。
+pub struct Webui<'a> {
+    plugin: &'a mut Plugin,
+}
+
+impl<'a> Webui<'a> {
+    fn register<F: Fn(&Context, &Json) -> Json + 'static>(self, method: &str, f: F) -> Self {
+        self.plugin.webui_handlers.insert(method.to_string(), Box::new(f));
+        self
+    }
+
+    /// 页面处理器（webui.page）。
+    pub fn page<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
+        self.register("webui.page", f)
+    }
+
+    /// 动作处理器（webui.action）。
+    pub fn action<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
+        self.register("webui.action", f)
+    }
+
+    /// 资源处理器（webui.asset）。
+    pub fn asset<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
+        self.register("webui.asset", f)
+    }
+}
 
     /// 上下文（测试/嵌入场景）。
     pub fn context(&self) -> &Context {
@@ -470,6 +509,16 @@ impl Plugin {
                 };
                 self.reply(id, Json::obj(vec![("ok", Json::Bool(true)), ("result", result)]))?;
             }
+            "webui.page" | "webui.action" | "webui.asset" => {
+                let payload = match self.webui_handlers.get(method) {
+                    Some(handler) => normalize_webui(handler(&self.ctx, params)),
+                    None => Json::obj(vec![
+                        ("ok", Json::Bool(false)),
+                        ("error", Json::str(&format!("插件未注册 {} 处理器", method))),
+                    ]),
+                };
+                self.reply(id, payload)?;
+            }
             "storage.get" => {
                 let key = params.get("key").and_then(|v| v.as_str()).unwrap_or("");
                 if !valid_key(key) {
@@ -571,6 +620,27 @@ impl Plugin {
             }
         }
         actions
+    }
+}
+
+/// 把 WebUI 处理器返回值归一成协议应答（`Json::Str` = html 简写）。
+fn normalize_webui(result: Json) -> Json {
+    match result {
+        Json::Str(html) => Json::obj(vec![("ok", Json::Bool(true)), ("html", Json::Str(html))]),
+        Json::Obj(map) => {
+            let mut pairs: Vec<(&str, Json)> = vec![("ok", Json::Bool(true))];
+            for key in ["html", "vars", "context", "message", "content_type", "body",
+                        "base64", "config_set", "storage_set"] {
+                if let Some(value) = map.get(key) {
+                    pairs.push((key, value.clone()));
+                }
+            }
+            Json::obj(pairs)
+        }
+        _ => Json::obj(vec![
+            ("ok", Json::Bool(false)),
+            ("error", Json::str("WebUI 处理器返回了非法类型")),
+        ]),
     }
 }
 

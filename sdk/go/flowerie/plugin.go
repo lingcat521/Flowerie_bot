@@ -78,6 +78,7 @@ type Plugin struct {
 	messageHooks  []func(*Context, map[string]any) any
 	eventHooks    map[string][]func(*Context, map[string]any) any
 	namedHooks    map[string]func(args ...any) any
+	webuiHooks    map[string]func(args map[string]any) any
 	statusHook    func(*Context) any
 }
 
@@ -95,10 +96,12 @@ func New() *Plugin {
 		capabilities: []string{
 			"config.get", "config.set", "context.get", "permission.check",
 			"storage.delete", "storage.get", "storage.list", "storage.set",
+			"webui.action", "webui.asset", "webui.page",
 		},
 		pending:    map[int]chan reply{},
 		eventHooks: map[string][]func(*Context, map[string]any) any{},
 		namedHooks: map[string]func(args ...any) any{},
+		webuiHooks: map[string]func(args map[string]any) any{},
 		out:        bufio.NewWriter(os.Stdout),
 	}
 	p.ctx = &Context{PluginID: "unknown", PluginDir: mustGetwd(), DataDir: filepath.Join(mustGetwd(), "data"), plugin: p}
@@ -171,6 +174,39 @@ func (p *Plugin) On(event string, fn func(*Context, map[string]any) any) *Plugin
 func (p *Plugin) RegisterHook(name string, fn func(args ...any) any) *Plugin {
 	p.namedHooks[name] = fn
 	return p
+}
+
+
+// WebUI 是 Plugin WebUI Protocol 的注册入口（任务书第 3 份 §六）：
+//
+//	plugin.WebUI().Page(func(args map[string]any) any { return "<h1>hi</h1>" })
+//
+// 处理器拿到引擎给的受控参数（page/context，action 时还有 action/form），
+// 返回 string（= html 简写）或 map[string]any（html/vars/message/... 白名单字段）。
+// 路由、权限、校验、净化、隔离全部由引擎负责，插件只负责内容。
+type WebUI struct {
+	p *Plugin
+}
+
+// WebUI 返回 WebUI 注册器。
+func (p *Plugin) WebUI() *WebUI { return &WebUI{p: p} }
+
+// Page 注册页面处理器（webui.page）。
+func (w *WebUI) Page(fn func(args map[string]any) any) *WebUI {
+	w.p.webuiHooks["webui.page"] = fn
+	return w
+}
+
+// Action 注册动作处理器（webui.action）。
+func (w *WebUI) Action(fn func(args map[string]any) any) *WebUI {
+	w.p.webuiHooks["webui.action"] = fn
+	return w
+}
+
+// Asset 注册资源处理器（webui.asset）。
+func (w *WebUI) Asset(fn func(args map[string]any) any) *WebUI {
+	w.p.webuiHooks["webui.asset"] = fn
+	return w
 }
 
 // Context 暴露上下文（测试与嵌入场景）。
@@ -319,6 +355,21 @@ func (p *Plugin) handle(msg message) bool {
 			}()
 			p.replyResult(msg.ID, map[string]any{"ok": true, "result": fn(args...)})
 		}()
+	case "webui.page", "webui.action", "webui.asset":
+		fn, ok := p.webuiHooks[msg.Method]
+		if !ok {
+			p.replyResult(msg.ID, map[string]any{"ok": false,
+				"error": "插件未注册 " + msg.Method + " 处理器"})
+			return false
+		}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					p.replyResult(msg.ID, map[string]any{"ok": false, "error": fmt.Sprintf("%v", r)})
+				}
+			}()
+			p.replyResult(msg.ID, normalizeWebuiResult(fn(params)))
+		}()
 	case "storage.get":
 		key, _ := params["key"].(string)
 		value, found := p.ctx.StorageGet(key)
@@ -405,6 +456,27 @@ func validHookName(name string) bool {
 		}
 	}
 	return true
+}
+
+// normalizeWebuiResult 把 WebUI 处理器返回值归一成协议应答（字符串 = html 简写）。
+func normalizeWebuiResult(res any) map[string]any {
+	switch typed := res.(type) {
+	case string:
+		return map[string]any{"ok": true, "html": typed}
+	case map[string]any:
+		out := map[string]any{"ok": true}
+		for _, key := range []string{"html", "vars", "context", "message", "content_type",
+			"body", "base64", "config_set", "storage_set"} {
+			if value, ok := typed[key]; ok {
+				out[key] = value
+			}
+		}
+		return out
+	case nil:
+		return map[string]any{"ok": false, "error": "WebUI 处理器没有返回内容"}
+	default:
+		return map[string]any{"ok": false, "error": "WebUI 处理器返回了非法类型"}
+	}
 }
 
 func (p *Plugin) dispatch(event string, payload map[string]any) []Action {

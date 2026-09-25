@@ -44,3 +44,27 @@ class PluginWebUIStaticMixin:
         # CSS 净化收口在 PluginManager.plugin_webui_static_file（单一实现，此处不重复）
         return web.Response(body=blob, content_type=mime.split(";")[0], charset="utf-8",
                             headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"})
+
+    async def _handle_panel_plugin_webui_asset(self, request: web.Request) -> web.Response:
+        """GET /panel/plugins/webui/{pid}/asset/{path} —— 插件经 webui.asset 提供的资源。
+
+        与静态文件是**两条通道**：静态文件来自磁盘（webui/static），这里来自插件进程
+        （动态生成的 CSS/图片）。两条通道共用同一套路径校验、MIME 白名单与 CSS 净化。
+        """
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        pid = str(request.match_info.get("pid", ""))[:64]
+        rel = str(request.match_info.get("path", ""))[:200]
+        if not _PID_RE.fullmatch(pid):
+            return web.Response(status=404, text="not found")
+        if self._plugin_manager is None:
+            return web.Response(status=404, text="not found")
+        try:
+            blob, mime = await self._plugin_manager.plugin_webui_asset(pid, rel)
+        except PluginWebuiPathError:
+            return web.Response(status=404, text="not found")   # 不泄露存在性/原因
+        except OSError:
+            return web.Response(status=404, text="not found")
+        return web.Response(body=blob, content_type=mime.split(";")[0], charset="utf-8",
+                            headers={"X-Content-Type-Options": "nosniff",
+                                     "Cache-Control": "no-store"})

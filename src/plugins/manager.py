@@ -15,6 +15,7 @@
 manifest 校验、进程隔离、日志、崩溃保护、资源限制、权限强制。
 """
 import asyncio
+import base64
 import json
 import os
 import random
@@ -194,8 +195,8 @@ class PluginManager:
         if row is None or not row.get("enabled"):
             return None, "插件未启用或不存在"
         approved = set(row.get("approved_permissions") or [])
-        if "web_ui" not in approved:
-            return None, "插件未批准 web_ui 权限（管理员批准后才能访问）"
+        if not self._webui_granted(approved, "webui.view"):
+            return None, "插件未批准 webui.view 权限（管理员批准后才能访问）"
         try:
             manifest = self._manifest_of(row)
         except Exception:  # noqa: BLE001
@@ -235,8 +236,8 @@ class PluginManager:
         if row is None or not row.get("enabled"):
             return None, None, None, "插件未启用或不存在"
         approved = set(row.get("approved_permissions") or [])
-        if "web_ui" not in approved:
-            return None, None, None, "插件未批准 web_ui 权限（管理员批准后才能访问）"
+        if not self._webui_granted(approved, "webui.view"):
+            return None, None, None, "插件未批准 webui.view 权限（管理员批准后才能访问）"
         try:
             manifest = self._manifest_of(row)
         except Exception:  # noqa: BLE001
@@ -299,39 +300,103 @@ class PluginManager:
 
     async def plugin_webui_render(self, plugin_id: str, page_id: str, action: str = "get",
                                   params: Optional[dict] = None, values: Optional[dict] = None):
-        """Plugin WebUI 渲染入口（新）：返回 (result, error)。
+        """Plugin WebUI 渲染入口：返回 (result, error)。
 
-        - HTML 页面（manifest 声明了 `file`）：
-              result = {"mode": "html", "html": ..., "page": {...}, "vars": {...},
-                        "dropped": [...], "unresolved": [...], "hook_error": str}
-          顺序是**先净化、后替换变量**：变量值由模板渲染器 escape，无法借替换注入标记。
-        - DSL 页面（兼容层，无 `file`）：result = {"mode": "dsl", "dsl": {...}, "page": {...}}
+        三种页面形态（任务书第 1 份 §4-§8 + 第 3 份 §三）：
+        - **文件页面**（manifest `pages[].file`）：引擎读文件 → 净化 → 受控变量替换；
+        - **插件页面**（manifest `pages[].render = "plugin"`）：引擎经 `webui.page` 取 HTML，
+          同样先净化再替换变量；
+        - **DSL 页面**（无 file / render，旧 compat）：走 `web_ui.entry` hook 返回组件树。
+
+        顺序是**先净化、后替换变量**：变量值由模板渲染器 escape，无法借替换注入标记。
+        POST（action != "get"）必须先过 `webui.action` 权限再交给插件 `webui.action`；
+        老插件未声明该能力时回退到数据钩子（与 Phase 1 行为一致）。
         """
         row, manifest, page, err = self._plugin_webui_page_context(plugin_id, page_id)
         if err:
             return None, err
-        rel = page.get("file")
-        if not rel:
-            legacy, legacy_err = await self.plugin_webui_page(plugin_id, page_id, action, params, values)
+        approved = self._webui_approved(plugin_id)
+        if not self._webui_granted(approved, "webui.view"):
+            return None, "插件未批准 webui.view 权限（管理员批准后才能访问）"
+        action_name = str(action or "get")
+        is_action = action_name != "get"
+        if is_action and not self._webui_granted(approved, "webui.action"):
+            return None, "插件未批准 webui.action 权限（无法提交表单）"
+        render_kind = ("plugin" if page.get("render") == "plugin"
+                       else ("file" if page.get("file") else "dsl"))
+        if render_kind == "dsl":
+            legacy, legacy_err = await self.plugin_webui_page(plugin_id, page_id, action,
+                                                              params, values)
             if legacy_err:
                 return None, legacy_err
-            return {"mode": "dsl", "dsl": legacy.get("dsl"), "page": legacy.get("page")}, ""
-        root = self.plugin_webui_dir(plugin_id)
-        try:
-            raw_html, _path = read_page(root, rel)
-        except PluginWebuiPathError as e:
-            return None, "页面不可用：%s" % e
-        extra_vars, hook_error = await self._webui_html_hook_vars(plugin_id, manifest, page_id,
-                                                                  action, params, values)
-        context = self._webui_template_context(plugin_id, row, page)
-        context.update(extra_vars)
+            return {"mode": "dsl", "render": "dsl", "dsl": legacy.get("dsl"),
+                    "page": legacy.get("page")}, ""
+
+        rt = self._runtimes.get(plugin_id)
+        page_meta = {"id": str(page.get("id") or ""), "title": str(page.get("title") or ""),
+                     "description": str(page.get("description") or "")}
+        context = await self._webui_engine_context(plugin_id, row, page, approved,
+                                                   method=("POST" if is_action else "GET"),
+                                                   action=action_name)
+        extra_vars: Dict[str, Any] = {}
+        warnings: List[str] = []
+        hook_error = ""
+        raw_html: Optional[str] = None
+        if render_kind == "plugin":
+            if not self._webui_supports(rt, "webui.page"):
+                return None, "该页面由插件渲染，但插件未声明 webui.page 能力"
+            payload, perr = await self._webui_call(plugin_id, "webui.page",
+                                                   {"page": page_meta, "context": context})
+            if perr:
+                return None, perr
+            raw_html, extra_vars, hook_error = self._webui_read_payload(payload)
+            if raw_html is None:
+                return None, "插件未返回页面内容（webui.page 需要 html 字段）"
+        if is_action:
+            if self._webui_supports(rt, "webui.action"):
+                payload, perr = await self._webui_call(plugin_id, "webui.action", {
+                    "page": page_meta, "action": action_name,
+                    "form": {str(k): str(v) for k, v in dict(values or {}).items()},
+                    "context": context})
+                if perr:
+                    return None, perr
+                html2, vars2, note = self._webui_read_payload(payload)
+                if html2 is not None:
+                    raw_html = html2
+                extra_vars.update(vars2)
+                if note:
+                    hook_error = note
+                warnings.extend(await self._webui_apply_writes(plugin_id, payload, approved))
+            elif render_kind == "plugin":
+                return None, "插件未声明 webui.action 能力（无法提交表单）"
+            else:
+                hook_vars, herr = await self._webui_html_hook_vars(plugin_id, manifest, page_id,
+                                                                   action, params, values)
+                extra_vars.update(hook_vars)
+                if herr:
+                    hook_error = herr
+        elif render_kind == "file":
+            hook_vars, herr = await self._webui_html_hook_vars(plugin_id, manifest, page_id,
+                                                               action, params, values)
+            extra_vars.update(hook_vars)
+            if herr:
+                hook_error = herr
+        if raw_html is None:
+            root = self.plugin_webui_dir(plugin_id)
+            try:
+                raw_html, _path = read_page(root, page.get("file"))
+            except PluginWebuiPathError as e:
+                return None, "页面不可用：%s" % e
+        context_vars = self._webui_template_context(plugin_id, row, page)
+        context_vars.update(extra_vars)
         from src.plugins.webui_security import render_plugin_template, sanitize_plugin_html
 
         style_prefix = "/panel/plugins/webui/%s/static/" % plugin_id
         safe_html, dropped = sanitize_plugin_html(raw_html, style_prefix=style_prefix)
-        html, unresolved = render_plugin_template(safe_html, context)
-        return {"mode": "html", "html": html, "page": page, "vars": context,
-                "dropped": dropped, "unresolved": unresolved, "hook_error": hook_error}, ""
+        html, unresolved = render_plugin_template(safe_html, context_vars)
+        return {"mode": "html", "render": render_kind, "html": html, "page": page,
+                "vars": context_vars, "dropped": dropped, "unresolved": unresolved,
+                "hook_error": hook_error, "warnings": warnings}, ""
 
     def plugin_webui_page_file(self, plugin_id: str, page_id: str) -> Optional[str]:
         """页面声明的相对路径（没有 = DSL 页面）。给面板/测试做模式判定用。"""
@@ -365,16 +430,231 @@ class PluginManager:
             blob = css.encode("utf-8")
         return blob, mime
 
+    # ================= WebUI Protocol（任务书第 3 份 §三/§七/§八/§十五） =================
+    #: 插件资源 MIME 白名单（No-JS：没有 javascript，也没有可执行 SVG / text/html）
+    WEBUI_ASSET_MIME = {
+        ".css": "text/css; charset=utf-8",
+        ".txt": "text/plain; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+        ".csv": "text/csv; charset=utf-8",
+        ".md": "text/plain; charset=utf-8",
+        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+        ".gif": "image/gif", ".webp": "image/webp", ".ico": "image/x-icon",
+    }
+    #: 插件资源大小上限（比静态文件更严：内容是插件临时生成的）
+    WEBUI_ASSET_MAX_BYTES = 256 * 1024
+    #: 传给 WebUI 页面的上下文里**永远**只有这些顶层键（新增键必须同步进安全测试）
+    WEBUI_CONTEXT_KEYS = ("plugin", "page", "request", "user", "config", "data")
+
+    @staticmethod
+    def _webui_supports(rt, method: str) -> bool:
+        """插件是否声明了某 WebUI 能力（未声明的运行时/测试桩一律不调用）。"""
+        supports = getattr(rt, "supports", None)
+        return bool(callable(supports) and supports(method))
+
+    def _webui_approved(self, plugin_id: str) -> set:
+        """该插件已批准的权限集合（唯一入口：WebUI 各处都从这里取，避免口径不一）。"""
+        row = self.get_plugin(plugin_id) or {}
+        return {str(p) for p in (row.get("approved_permissions") or []) if p}
+
+    @staticmethod
+    def _webui_granted(approved, permission: str) -> bool:
+        from src.plugins.permissions import webui_permission_granted
+        return webui_permission_granted(approved, permission)
+
+    async def _webui_call(self, plugin_id: str, method: str, params: Dict[str, Any],
+                          timeout: float = 4.0):
+        """调插件的 WebUI 协议方法（真子进程 + 真管道）。返回 (payload, error)。"""
+        rt = self._runtimes.get(plugin_id)
+        if rt is None:
+            return None, "插件运行中未加载（重启后重试）"
+        if not self._webui_supports(rt, method):
+            return None, "插件未声明能力 %s" % method
+        try:
+            payload = await asyncio.wait_for(rt.request(method, params), timeout=timeout)
+        except asyncio.TimeoutError:
+            return None, "插件响应超时（%ss 上限）" % timeout
+        except Exception as e:  # noqa: BLE001
+            return None, "插件调用失败: %s: %s" % (type(e).__name__, e)
+        if not isinstance(payload, dict):
+            return None, "插件返回了非法响应（应为对象）"
+        if payload.get("ok") is False:
+            return None, str(payload.get("error") or "插件返回 ok=false")
+        return payload, ""
+
+    def _webui_operator_config(self, plugin_id: str) -> Dict[str, Any]:
+        """操作员配置（manifest 的 config 段，只读）——与 engine op 的 config.get 同一来源。"""
+        row = self.get_plugin(plugin_id)
+        try:
+            manifest = self._manifest_of(row) if row else None
+        except Exception:  # noqa: BLE001
+            manifest = None
+        cfg = (manifest.config if manifest else None) or {}
+        if isinstance(cfg, dict) and isinstance(cfg.get("values"), dict):
+            cfg = cfg["values"]
+        return dict(cfg) if isinstance(cfg, dict) else {}
+
+    async def _webui_storage_snapshot(self, plugin_id: str) -> Dict[str, Any]:
+        """插件存储快照：经协议 storage.list + storage.get 取（插件未声明能力则为空）。"""
+        rt = self._runtimes.get(plugin_id)
+        if not self._webui_supports(rt, "storage.list"):
+            return {}
+        listed, err = await self._webui_call(plugin_id, "storage.list", {"prefix": ""}, timeout=2.0)
+        if err or not isinstance(listed, dict):
+            return {}
+        keys = listed.get("keys")
+        out: Dict[str, Any] = {}
+        for key in list(keys or [])[:200]:
+            got, gerr = await self._webui_call(plugin_id, "storage.get", {"key": str(key)},
+                                               timeout=2.0)
+            if gerr or not isinstance(got, dict):
+                continue
+            out[str(key)] = got.get("value")
+        return out
+
+    async def _webui_engine_context(self, plugin_id: str, row: dict, page: dict, approved,
+                                    *, method: str, action: str) -> Dict[str, Any]:
+        """受控 WebUI Context（任务书第 3 份 §七）——只有这 6 个顶层键。
+
+        - `config` / `data` 分别需要 webui.config.read / webui.storage.read，未批准就是空对象；
+        - **绝不**放入面板令牌、会话、环境变量、宿主路径（安全用例逐项断言：Context 泄露 / Token 泄露）；
+        - 页面模板变量是另一条通道（`_webui_template_context` + 插件显式返回的 vars），同样会被 escape。
+        """
+        ctx: Dict[str, Any] = {
+            "plugin": {"id": str(plugin_id), "name": str(row.get("name") or plugin_id)},
+            "page": {"id": str(page.get("id") or ""), "title": str(page.get("title") or "")},
+            "request": {"method": str(method), "action": str(action or "get")},
+            "user": {"authenticated": True, "role": "admin"},
+            "config": {},
+            "data": {},
+        }
+        if self._webui_granted(approved, "webui.config.read"):
+            ctx["config"] = self._webui_operator_config(plugin_id)
+        if self._webui_granted(approved, "webui.storage.read"):
+            ctx["data"] = await self._webui_storage_snapshot(plugin_id)
+        return ctx
+
+    @staticmethod
+    def _webui_read_payload(payload: Dict[str, Any]):
+        """解析插件 WebUI 应答：返回 (html|None, vars, error)。
+
+        `vars` / `context` 是插件**显式**给模板的变量（其余上下文不外泄）；
+        `message` 归一成模板变量（面板壳会显示）。
+        """
+        html = payload.get("html")
+        html = str(html) if isinstance(html, str) else None
+        out: Dict[str, Any] = {}
+        for key in ("vars", "context"):
+            extra = payload.get(key)
+            if isinstance(extra, dict):
+                out.update({str(k): extra[k] for k in extra})
+        if payload.get("message") is not None:
+            out["message"] = str(payload.get("message"))
+        return html, out, str(payload.get("error") or "")
+
+    async def _webui_apply_writes(self, plugin_id: str, payload: Dict[str, Any],
+                                  approved) -> List[str]:
+        """动作返回的 `config_set` / `storage_set`：**先过权限**，再经协议写回。
+
+        拒绝或失败都如实返回告警（不静默吞掉），页面壳会把告警显示给管理员。
+        """
+        warnings: List[str] = []
+        cfg_set = payload.get("config_set")
+        if isinstance(cfg_set, dict) and cfg_set:
+            if not self._webui_granted(approved, "webui.config.write"):
+                warnings.append("配置写入被拒绝：未批准 webui.config.write")
+            else:
+                _res, err = await self._webui_call(plugin_id, "config.set", {"values": cfg_set})
+                if err:
+                    warnings.append("配置写入失败：%s" % err)
+        store_set = payload.get("storage_set")
+        if isinstance(store_set, dict) and store_set:
+            if not self._webui_granted(approved, "webui.storage.write"):
+                warnings.append("存储写入被拒绝：未批准 webui.storage.write")
+            else:
+                for key, value in list(store_set.items())[:64]:
+                    _res, err = await self._webui_call(plugin_id, "storage.set",
+                                                       {"key": str(key), "value": value})
+                    if err:
+                        warnings.append("存储写入失败(%s)：%s" % (key, err))
+        return warnings
+
+    async def plugin_webui_asset(self, plugin_id: str, rel_path: str) -> Tuple[bytes, str]:
+        """插件提供的 WebUI 资源（`webui.asset`）：返回 (bytes, mime)。
+
+        越界 / 未批准 / 未声明能力 / MIME 不在白名单 / 超限一律抛 PluginWebuiPathError
+        （HTTP 层统一转 404，不泄露插件是否存在）。No-JS 政策落在三处：
+        路径扩展名白名单没有 .js；MIME 白名单没有 javascript / text/html / svg；
+        `.css` 过 sanitize_plugin_css（与静态文件同一收口）。
+        """
+        from src.plugins.webui_loader import STATIC_EXTS, validate_relative
+
+        rel = validate_relative(rel_path, STATIC_EXTS, field="插件资源")
+        row = self.get_plugin(plugin_id)
+        if row is None or not row.get("enabled"):
+            raise PluginWebuiPathError("插件未启用或不存在")
+        approved = self._webui_approved(plugin_id)
+        if not self._webui_granted(approved, "webui.view"):
+            raise PluginWebuiPathError("插件未批准 webui.view 权限")
+        rt = self._runtimes.get(plugin_id)
+        if not self._webui_supports(rt, "webui.asset"):
+            raise PluginWebuiPathError("插件未声明 webui.asset 能力")
+        payload, err = await self._webui_call(plugin_id, "webui.asset", {"path": rel})
+        if err:
+            raise PluginWebuiPathError(err)
+        ext = os.path.splitext(rel)[1].lower()
+        expect = self.WEBUI_ASSET_MIME.get(ext)
+        if not expect:
+            raise PluginWebuiPathError("插件资源类型不允许：%s" % (ext or "(无)"))
+        declared = str(payload.get("content_type") or "").split(";")[0].strip().lower()
+        if declared and declared != expect.split(";")[0].strip().lower():
+            raise PluginWebuiPathError("content_type 与扩展名不符：%s" % declared)
+        if expect.startswith("text/"):
+            body = payload.get("body")
+            if not isinstance(body, str):
+                raise PluginWebuiPathError("文本资源需要 body 字符串字段")
+            blob = body.encode("utf-8")
+        else:
+            encoded = payload.get("base64")
+            if not isinstance(encoded, str):
+                raise PluginWebuiPathError("二进制资源需要 base64 字段")
+            try:
+                blob = base64.b64decode(encoded, validate=True)
+            except (ValueError, TypeError):
+                raise PluginWebuiPathError("base64 解码失败") from None
+        if len(blob) > self.WEBUI_ASSET_MAX_BYTES:
+            raise PluginWebuiPathError("插件资源超过大小上限")
+        if expect.startswith("text/css"):
+            from src.plugins.webui_security import sanitize_plugin_css
+            css, _report = sanitize_plugin_css(blob.decode("utf-8", errors="replace"))
+            blob = css.encode("utf-8")
+        return blob, expect
+
     # ================= 注册表 =================
     def _manifest_of(self, record: dict) -> Optional[PluginManifest]:
-        """从注册行解析 manifest（带进程内缓存，manifest 变更时失效）。"""
-        m = self._manifest_cache.get(record["id"], "missing")
-        if m == "missing" or (isinstance(m, PluginManifest) and m.to_json() != record.get("manifest_json")):
+        """从注册行解析 manifest（带进程内缓存，manifest 变更时失效）。
+
+        入参既可能是**注册表原始行**（含 manifest_json），也可能是 `list_plugins()` 的
+        **视图行**（只有解析后的摘要，没有 manifest_json）。视图行在这里回查一次注册表 ——
+        否则 WebUI 渲染/静态资源这类"先 get_plugin 再解析 manifest"的调用会静默失败
+        （实测：真实 PluginManager + 真实插件进程时 page 渲染报「manifest 不可解析」，
+        而单测因为 monkeypatch 掉了 _manifest_of 一直没暴露）。
+        """
+        pid = str(record.get("id") or "")
+        raw = record.get("manifest_json")
+        if not raw and pid:
+            stored = self.repository.get_plugin(pid)
+            if stored is not None:
+                record = stored
+                raw = stored.get("manifest_json")
+        m = self._manifest_cache.get(pid, "missing")
+        if m == "missing" or (isinstance(m, PluginManifest) and m.to_json() != raw):
             try:
-                m = PluginManifest.from_dict(json.loads(record["manifest_json"]))
-            except (PluginManifestError, ValueError):
+                m = PluginManifest.from_dict(json.loads(raw))
+            except (PluginManifestError, ValueError, TypeError):
                 m = None
-            self._manifest_cache[record["id"]] = m
+            if pid:
+                self._manifest_cache[pid] = m
         return m
 
     def list_plugins(self) -> List[dict]:

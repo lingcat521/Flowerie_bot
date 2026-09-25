@@ -13,7 +13,10 @@
     "storage.delete",
     "storage.get",
     "storage.list",
-    "storage.set"
+    "storage.set",
+    "webui.page",
+    "webui.action",
+    "webui.asset"
   ],
   "event": {
     "event": "message",

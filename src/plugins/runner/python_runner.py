@@ -44,15 +44,22 @@ from typing import Any, Dict, List, Optional
 # runner 由 PluginRuntime 以 `python -I`（隔离模式）启动，sys.path 里没有仓库代码，
 # 因此这里内联一份最小副本；tests/test_plugin_protocol.py 会逐项比对两份常量，防止悄悄漂移。
 PROTOCOL_VERSION = "1"
+#: 全部可选方法（**字面量**：tests/test_plugin_protocol.py 会用 ast 逐项比对引擎侧常量）
 OPTIONAL_METHODS = (
     "context.get", "config.get", "config.set", "permission.check",
     "storage.get", "storage.set", "storage.delete", "storage.list",
+    "webui.page", "webui.action", "webui.asset",
 )
+#: 核心可选能力（前 8 项，任务书第 2 份）
+CORE_OPTIONAL_METHODS = OPTIONAL_METHODS[:8]
+#: WebUI Protocol 方法（后 3 项，任务书第 3 份 §三）：与其它语言 SDK 同名同义
+WEBUI_METHODS = OPTIONAL_METHODS[8:]
 CAPABILITY_GROUPS = {
     "context": ("context.get",),
     "config": ("config.get", "config.set"),
     "permission": ("permission.check",),
     "storage": ("storage.get", "storage.set", "storage.delete", "storage.list"),
+    "webui": ("webui.page", "webui.action", "webui.asset"),
 }
 STORAGE_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 MAX_STORAGE_KEYS = 200
@@ -1004,7 +1011,53 @@ class PluginRunner:
         if method == "storage.list":
             self._emit({"id": req_id, "result": self._storage_list(params.get("prefix"))})
             return
+        if method == "webui.page":
+            page = params.get("page") if isinstance(params.get("page"), dict) else {}
+            context = params.get("context") if isinstance(params.get("context"), dict) else {}
+            self._emit_webui(req_id, self._call_hook("webui_render", page, context))
+            return
+        if method == "webui.action":
+            page = params.get("page") if isinstance(params.get("page"), dict) else {}
+            form = params.get("form") if isinstance(params.get("form"), dict) else {}
+            context = params.get("context") if isinstance(params.get("context"), dict) else {}
+            self._emit_webui(req_id, self._call_hook("webui_action", page,
+                                                     str(params.get("action") or ""), form, context))
+            return
+        if method == "webui.asset":
+            self._emit_webui(req_id, self._call_hook("webui_asset", str(params.get("path") or "")))
+            return
         self._error(req_id, "未知方法: %r" % method)
+
+    def _emit_webui(self, req_id, res) -> None:
+        """把插件的 WebUI 钩子返回值归一成协议应答。
+
+        三种合法返回（与其它语言 SDK 语义一致）：
+        - 字符串 → 直接当页面 HTML（`{"ok": true, "html": ...}` 的简写）；
+        - 对象 → 透传受支持字段（html / vars / message / content_type / body / base64 /
+          config_set / storage_set），其余字段一律丢弃（不把插件内部对象塞进协议）；
+        - `{"__error__": ...}`（钩子缺失或抛异常）→ 操作级错误，不是协议级错误。
+        """
+        if isinstance(res, dict) and "__error__" in res:
+            self._emit({"id": req_id, "result": {"ok": False, "error": str(res["__error__"])}})
+            return
+        if isinstance(res, str):
+            self._emit({"id": req_id, "result": {"ok": True, "html": res}})
+            return
+        if isinstance(res, dict):
+            payload = {"ok": True}
+            for key in ("html", "vars", "context", "message", "content_type", "body", "base64",
+                        "config_set", "storage_set"):
+                if key in res:
+                    payload[key] = res[key]
+            self._emit({"id": req_id, "result": payload})
+            return
+        if res is None:
+            self._emit({"id": req_id, "result": {"ok": False,
+                                                 "error": "插件未实现该 WebUI 钩子（返回 None）"}})
+            return
+        self._emit({"id": req_id, "result": {"ok": False,
+                                             "error": "WebUI 钩子返回了非法类型: %s"
+                                                      % type(res).__name__}})
 
     # ---------- 请求处理 ----------
     def handle(self, msg: Dict[str, Any]) -> None:
@@ -1027,7 +1080,7 @@ class PluginRunner:
                 caps = []
                 declared = getattr(self.module, "PLUGIN_CAPABILITIES", None)
                 for group in (declared if isinstance(declared, (list, tuple)) else
-                              ("context", "config", "permission", "storage")):
+                              ("context", "config", "permission", "storage", "webui")):
                     caps.extend(CAPABILITY_GROUPS.get(str(group), ()))
                 self._emit({"id": req_id, "result": {
                     "ok": True, "api_version": "1", "protocol_version": PROTOCOL_VERSION,

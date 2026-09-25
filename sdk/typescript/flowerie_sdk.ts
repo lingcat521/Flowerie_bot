@@ -19,18 +19,38 @@ export const ACTION_ID_BASE = 1000000;
 export const OPTIONAL_METHODS = [
   "context.get", "config.get", "config.set", "permission.check",
   "storage.get", "storage.set", "storage.delete", "storage.list",
+  "webui.page", "webui.action", "webui.asset",
 ] as const;
+/** WebUI Protocol 方法（任务书第 3 份 §三）：与其它语言 SDK 同名同义。 */
+export const WEBUI_METHODS = ["webui.page", "webui.action", "webui.asset"] as const;
 export const CAPABILITY_GROUPS: Record<string, string[]> = {
   context: ["context.get"],
   config: ["config.get", "config.set"],
   permission: ["permission.check"],
   storage: ["storage.get", "storage.set", "storage.delete", "storage.list"],
+  webui: ["webui.page", "webui.action", "webui.asset"],
 };
 const STORAGE_KEY_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_STORAGE_KEYS = 200;
 const MAX_STORAGE_VALUE_BYTES = 64 * 1024;
 const MAX_CONFIG_KEYS = 64;
 const MAX_CONFIG_VALUE_BYTES = 8 * 1024;
+
+
+/** WebUI 应答允许透传的字段（其余字段一律丢弃，不把插件内部对象塞进协议）。 */
+const WEBUI_PAYLOAD_KEYS = ["html", "vars", "context", "message", "content_type", "body",
+  "base64", "config_set", "storage_set"];
+
+function normalizeWebuiResult(result: unknown): Record<string, unknown> {
+  if (typeof result === "string") return { ok: true, html: result };
+  if (result && typeof result === "object") {
+    const out: Record<string, unknown> = { ok: true };
+    const src = result as Record<string, unknown>;
+    for (const key of WEBUI_PAYLOAD_KEYS) if (key in src) out[key] = src[key];
+    return out;
+  }
+  return { ok: false, error: "WebUI 处理器没有返回内容" };
+}
 
 export interface Action { type: string; params?: Record<string, unknown> }
 export interface PluginInfo {
@@ -199,6 +219,7 @@ export class ProtocolClient {
 
 type MessageHook = (ctx: PluginContext, event: any) => unknown | Promise<unknown>;
 type LifecycleHook = (ctx: PluginContext) => void | Promise<void>;
+type WebuiHandler = (args: Record<string, any>) => unknown;
 
 /** 插件主体：注册钩子 → run() 进入协议主循环。 */
 export class FloweriePlugin {
@@ -211,6 +232,7 @@ export class FloweriePlugin {
   private shutdownHooks: LifecycleHook[] = [];
   private healthHooks: Array<() => boolean | void> = [];
   private hooks = new Map<string, (...args: unknown[]) => unknown>();
+  private webuiHandlers = new Map<string, WebuiHandler>();
 
   constructor(opts: { capabilities?: string[]; pluginId?: string; pluginDir?: string } = {}) {
     const groups = opts.capabilities && opts.capabilities.length
@@ -243,6 +265,28 @@ export class FloweriePlugin {
   /** 注册一个可被控制面调用的 hook（插件 WebUI 的数据钩子等）。 */
   registerHook(name: string, fn: (...args: unknown[]) => unknown): this {
     this.hooks.set(name, fn);
+    return this;
+  }
+
+  /** Plugin WebUI Protocol（任务书第 3 份 §六）：注册页面/动作/资源处理器。
+   *
+   * 处理器拿到的是**引擎给的受控参数**（page / context，action 时还有 action / form），
+   * 返回字符串（= `{html: ...}` 简写）或对象（html / vars / message /
+   * content_type / body / base64 / config_set / storage_set）。
+   * 路由、权限、校验、净化、隔离全部由引擎负责，插件只负责内容。
+   */
+  readonly webui = {
+    page: (fn: WebuiHandler): this => this.registerWebui("webui.page", fn),
+    action: (fn: WebuiHandler): this => this.registerWebui("webui.action", fn),
+    asset: (fn: WebuiHandler): this => this.registerWebui("webui.asset", fn),
+  };
+
+  /** 按协议方法名注册 WebUI 处理器（`plugin.webui.page(...)` 是它的语义化包装）。 */
+  registerWebui(method: string, fn: WebuiHandler): this {
+    if (!(WEBUI_METHODS as readonly string[]).includes(method)) {
+      throw new Error("未知 WebUI 方法: " + method);
+    }
+    this.webuiHandlers.set(method, fn);
     return this;
   }
   get ctx(): PluginContext { return this.context; }
@@ -302,6 +346,23 @@ export class FloweriePlugin {
           try {
             const result = await fn(...(params.args || []));
             this.client.reply(id, { ok: true, result: result === undefined ? null : result });
+          } catch (err: any) {
+            this.client.reply(id, { ok: false, error: String(err && err.message || err) });
+          }
+          return;
+        }
+
+        // ---- WebUI Protocol（任务书第 3 份 §三）：引擎 → 插件的页面/动作/资源请求 ----
+        case "webui.page":
+        case "webui.action":
+        case "webui.asset": {
+          const fn = this.webuiHandlers.get(method);
+          if (!fn) {
+            this.client.reply(id, { ok: false, error: "插件未注册 " + method + " 处理器" });
+            return;
+          }
+          try {
+            this.client.reply(id, normalizeWebuiResult(await fn(params as Record<string, unknown>)));
           } catch (err: any) {
             this.client.reply(id, { ok: false, error: String(err && err.message || err) });
           }

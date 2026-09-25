@@ -139,6 +139,10 @@ class PluginPanelMixin:
         page_meta = result.get("page", {"title": page, "description": ""}) if isinstance(result, dict) else {}
         mode = str(result.get("mode") or "dsl") if isinstance(result, dict) else "dsl"
         hook_error = str(result.get("hook_error") or "") if isinstance(result, dict) else ""
+        if isinstance(result, dict) and result.get("warnings"):
+            # webui.config.write / webui.storage.write 被拒或写失败 —— 如实显示给管理员
+            warned = " | ".join(str(w) for w in result["warnings"])
+            hook_error = ("%s | %s" % (hook_error, warned)) if hook_error else warned
         content_html = ""
         if not err and isinstance(result, dict):
             if mode == "html":

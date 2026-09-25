@@ -20,10 +20,12 @@ import pytest
 
 from src.plugins.protocol import (
     CAPABILITY_GROUPS,
+    CORE_OPTIONAL_METHODS,
     ENGINE_OPS,
     OPTIONAL_METHODS,
     PROTOCOL_VERSION,
     REQUIRED_METHODS,
+    WEBUI_METHODS,
     negotiate_initialize,
     normalize_capabilities,
     valid_storage_key,
@@ -110,7 +112,9 @@ def test_version_negotiation_rules():
 
 def test_method_sets_are_disjoint_and_complete():
     assert set(REQUIRED_METHODS) & set(OPTIONAL_METHODS) == set()
-    assert len(OPTIONAL_METHODS) == 8 and ENGINE_OPS == ("context.get", "config.get", "permission.check")
+    assert len(CORE_OPTIONAL_METHODS) == 8 and len(WEBUI_METHODS) == 3
+    assert len(OPTIONAL_METHODS) == 11, "可选方法 = 8 核心 + 3 WebUI（第 3 份任务书 §三）"
+    assert ENGINE_OPS == ("context.get", "config.get", "permission.check")
 
 
 # ---------------------------------------------------------------- 3. 真子进程端到端
