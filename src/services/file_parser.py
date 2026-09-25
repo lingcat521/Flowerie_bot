@@ -191,12 +191,6 @@ class FileParser:
                     return extracted_text, True
                 except Exception:
                     return "", False
-        except json.JSONDecodeError:
-            # 非 JSON 响应（如 NapCat 返回错误页）一律视为失败，绝不把原始响应当文件内容
-            logger.error("NapCat get_file 响应不是合法 JSON，已拒绝")
-            return "", False
-        except Exception as e:
-            logger.error(f"File decode error: {e}")
         except Exception as e:
             logger.error(f"File decode error: {e}")
             return "", False

@@ -360,3 +360,54 @@ async def test_unwired_or_failing_fetcher_never_fakes_content():
         "resource": ResourceRef.from_protocol_id("f1", origin="onebot11")}
     unwired = MessageAssembler(_Cfg(), None, _FileParser(), group_state)   # resource_fetcher=None
     assert await unwired._assemble_pending_file(2, 1) == ""
+
+
+# ---------------------------------------------------------------- 纯解码（decode_bytes）
+
+class _CfgDecode:
+    MAX_FILE_TEXT_CHARS = 64
+    MAX_FILE_DOWNLOAD_BYTES = 4096
+    MAX_PDF_PAGES = 2
+    MAX_EXCEL_CELLS = 50
+    MAX_CSV_ROWS = 3
+
+
+def _decoder():
+    from src.services.file_parser import FileParser
+
+    return FileParser(_CfgDecode())
+
+
+def test_decode_bytes_handles_text_csv_and_unknown_extensions():
+    fp = _decoder()
+    assert fp.decode_bytes(b"hello", "a.txt") == ("hello", True)
+    assert fp.decode_bytes("中文".encode("utf-8"), "a.txt") == ("中文", True)
+    assert fp.decode_bytes(b"a,b\n1,2", "a.csv") == ("a,b\n1,2", True)
+    assert fp.decode_bytes(b"plain-bytes", "a.bin") == ("plain-bytes", True)     # 未知扩展名按文本尝试
+    # 文本上限（MAX_FILE_TEXT_CHARS=64）由 _cap 截断并标注
+    capped, ok = fp.decode_bytes(b"x" * 200, "big.txt")
+    assert ok is True and "内容过长已截断" in capped and len(capped) < 200
+
+
+def test_decode_bytes_rejects_oversize_and_broken_payloads():
+    fp = _decoder()
+    too_big, ok = fp.decode_bytes(b"y" * 5000, "a.txt")      # MAX_FILE_DOWNLOAD_BYTES=4096
+    assert (too_big, ok) == ("", False)
+    # 坏 zip 冒充 xlsx：必须失败而不是抛异常（zip 炸弹/伪造文件名的防护）
+    bad_zip, ok2 = fp.decode_bytes(b"not-a-zip", "a.xlsx")
+    assert (bad_zip, ok2) == ("", False)
+    # 坏 PDF：同样失败不抛
+    bad_pdf, ok3 = fp.decode_bytes(b"not-a-pdf", "a.pdf")
+    assert ok3 is False
+
+
+def test_decode_napcat_file_response_stays_strict():
+    """兼容入口：非 JSON 一律拒绝，绝不把错误页当文件内容。"""
+    fp = _decoder()
+    assert fp.decode_napcat_file_response("<html>login</html>", "a.txt") == ("", False)
+    assert fp.decode_napcat_file_response('{"retcode":1}', "a.txt") == ("", False)
+    assert fp.decode_napcat_file_response('{"retcode":0,"data":{}}', "a.txt") == ("", False)
+    import base64 as _b64
+
+    body = '{"retcode":0,"data":{"base64":"%s"}}' % _b64.b64encode(b"ok-content").decode()
+    assert fp.decode_napcat_file_response(body, "a.txt") == ("ok-content", True)

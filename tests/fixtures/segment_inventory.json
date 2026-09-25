@@ -1,0 +1,281 @@
+{
+  "_provenance": {
+    "gate": "Gate I（Normalized Message 覆盖率）",
+    "generated": "2026-08-09",
+    "scope": "两个生产协议的段类型全集（OneBot 11 家族 + Milky）；OneBot v12 目前只是 skeleton，其段清单见 docs/onebot12-research.md，不计入本台账",
+    "sources": [
+      "[CODE] proto_src/NapCatQQ/packages/napcat-onebot/types/message.ts L3-26（OB11MessageDataType 枚举，23 个段类型）",
+      "[CODE] proto_src/LLBot（shake 段：face(faceType=Poke) 的等价上报形态）",
+      "[CODE] proto_src/LagrangeV2/Lagrange.Milky/Entity/Segment/（15 个文件 = 13 种 incoming 段 + SegmentBase/ISegment）",
+      "[DOC] Milky 规范 protocol/src/ir/common.ts（markdown 段 since 1.3，两份内嵌实现都未定义）"
+    ]
+  },
+  "segments": [
+    {
+      "protocol": "onebot11",
+      "wire_type": "text",
+      "typed": true,
+      "normalized": "text",
+      "evidence": "[CODE] OB11MessageDataType.text"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "image",
+      "typed": true,
+      "normalized": "images/image_files",
+      "evidence": "[CODE] OB11MessageDataType.image"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "video",
+      "typed": true,
+      "normalized": "videos",
+      "evidence": "[CODE] OB11MessageDataType.video"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "record",
+      "typed": true,
+      "normalized": "records",
+      "evidence": "[CODE] OB11MessageDataType.record(voice)"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "file",
+      "typed": true,
+      "normalized": "files",
+      "evidence": "[CODE] OB11MessageDataType.file"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "at",
+      "typed": true,
+      "normalized": "mentions/is_mentioned",
+      "evidence": "[CODE] OB11MessageDataType.at"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "reply",
+      "typed": true,
+      "normalized": "reply_id/reply_ref",
+      "evidence": "[CODE] OB11MessageDataType.reply"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "json",
+      "typed": true,
+      "normalized": "json_cards",
+      "evidence": "[CODE] OB11MessageDataType.json"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "face",
+      "typed": true,
+      "normalized": "faces",
+      "evidence": "[CODE] OB11MessageDataType.face"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "mface",
+      "typed": true,
+      "normalized": "faces(kind=market_face)",
+      "evidence": "[CODE] OB11MessageDataType.mface"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "markdown",
+      "typed": true,
+      "normalized": "text",
+      "evidence": "[CODE] OB11MessageDataType.markdown"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "node",
+      "typed": true,
+      "normalized": "forwards",
+      "evidence": "[CODE] OB11MessageDataType.node（合并转发消息节点）"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "forward",
+      "typed": true,
+      "normalized": "forwards",
+      "evidence": "[CODE] OB11MessageDataType.forward"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "xml",
+      "typed": true,
+      "normalized": "xmls",
+      "evidence": "[CODE] OB11MessageDataType.xml"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "poke",
+      "typed": true,
+      "normalized": "pokes",
+      "evidence": "[CODE] OB11MessageDataType.poke"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "miniapp",
+      "typed": true,
+      "normalized": "json_cards",
+      "evidence": "[CODE] OB11MessageDataType.miniapp（注释：json类）"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "onlinefile",
+      "typed": true,
+      "normalized": "files(sub_type=onlinefile)",
+      "evidence": "[CODE] OB11MessageDataType.onlinefile"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "flashtransfer",
+      "typed": true,
+      "normalized": "files(sub_type=flash_transfer)",
+      "evidence": "[CODE] OB11MessageDataType.flashtransfer"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "shake",
+      "typed": true,
+      "normalized": "pokes(poke_type=shake)",
+      "evidence": "[CODE] LLBot：face(faceType=Poke) 上报为 shake{}"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "music",
+      "typed": false,
+      "normalized": "",
+      "evidence": "[CODE] OB11MessageDataType.music"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "dice",
+      "typed": false,
+      "normalized": "",
+      "evidence": "[CODE] OB11MessageDataType.dice"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "rps",
+      "typed": false,
+      "normalized": "",
+      "evidence": "[CODE] OB11MessageDataType.rps"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "contact",
+      "typed": false,
+      "normalized": "",
+      "evidence": "[CODE] OB11MessageDataType.contact"
+    },
+    {
+      "protocol": "onebot11",
+      "wire_type": "location",
+      "typed": false,
+      "normalized": "",
+      "evidence": "[CODE] OB11MessageDataType.location"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "text",
+      "typed": true,
+      "normalized": "text",
+      "evidence": "[CODE] LagrangeV2 Entity/Segment/TextSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "mention",
+      "typed": true,
+      "normalized": "mentions/is_mentioned",
+      "evidence": "[CODE] MentionSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "mention_all",
+      "typed": true,
+      "normalized": "mentions(\"all\")",
+      "evidence": "[CODE] MentionAllSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "image",
+      "typed": true,
+      "normalized": "images/image_files",
+      "evidence": "[CODE] ImageSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "face",
+      "typed": true,
+      "normalized": "faces",
+      "evidence": "[CODE] FaceSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "market_face",
+      "typed": true,
+      "normalized": "faces(kind=market_face)",
+      "evidence": "[CODE] MarketFaceSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "file",
+      "typed": true,
+      "normalized": "files",
+      "evidence": "[CODE] FileSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "forward",
+      "typed": true,
+      "normalized": "forwards",
+      "evidence": "[CODE] ForwardSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "record",
+      "typed": true,
+      "normalized": "records",
+      "evidence": "[CODE] RecordSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "video",
+      "typed": true,
+      "normalized": "videos",
+      "evidence": "[CODE] VideoSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "xml",
+      "typed": true,
+      "normalized": "xmls",
+      "evidence": "[CODE] XmlSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "light_app",
+      "typed": true,
+      "normalized": "json_cards",
+      "evidence": "[CODE] LightAppSegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "reply",
+      "typed": true,
+      "normalized": "reply_id/reply_ref",
+      "evidence": "[CODE] ReplySegment.cs"
+    },
+    {
+      "protocol": "milky",
+      "wire_type": "markdown",
+      "typed": true,
+      "normalized": "text",
+      "evidence": "[DOC] Milky 规范 common.ts（since 1.3；两份内嵌实现未定义）"
+    }
+  ]
+}

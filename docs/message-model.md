@@ -82,6 +82,28 @@ NormalizedSegment（kind 为语义类型，attrs 为已归一字段）
 4. **未建模段一律进 `unknown`**，保留 `raw_type/raw_data`，绝不丢消息（任务书 §十八.9）；
 5. **`json_card.app` 必须保留** —— 它是区分小程序/卡片/合并转发的唯一可靠依据（NapCat 与 LLBot 独立互证）`[CODE]×2`。
 
+## 4.5 Gate I：类型化覆盖率台账（Normalized Message Coverage）
+
+任务书 Gate I 要求：`Typed Coverage = 已有 Typed Model 的 Segment / 已知 Segment ≥ 80%`，
+剩余类型必须能被 UnknownSegment 安全承载，且**不允许通过删除不支持的 segment 提高覆盖率**。
+
+**实测（2026-08-09）：typed 33 / known 38 = 86.8%** ✅
+
+| 协议 | 已知段类型 | 已类型化 | 来源 |
+| :--- | :--- | :--- | :--- |
+| OneBot 11 家族 | 24 | 19 | `[CODE]` NapCat `OB11MessageDataType` 枚举 23 项 + LLBot 的 `shake` |
+| Milky | 14 | 14 | `[CODE]` LagrangeV2 `Entity/Segment/`（13 种 incoming）+ `[DOC]` 规范的 `markdown` |
+| **合计** | **38** | **33** | 台账：`tests/fixtures/segment_inventory.json`（每条带来源证据）|
+
+- **本轮新增类型化**（原先落在 UnknownSegment，现进统一模型）：
+  `node`（合并转发节点 → `forwards`）、`miniapp`（小程序卡片 → `json_cards`）、
+  `onlinefile`（在线文件 → `files[sub_type=onlinefile]`）、`flashtransfer`（QQ 闪传 → `files[sub_type=flash_transfer]`）；
+- **仍未类型化（5 项，全部在 OneBot 11 家族）**：`music`、`dice`、`rps`、`contact`、`location` ——
+  它们**不进业务模型但绝不丢**：原样进 `segments_summary`、`raw_data` 逐字段保真
+  （`tests/test_normalized_coverage.py::test_untyped_entries_are_safely_carried_by_unknown_segment` 逐条验证）；
+- **防假绿**：台账必须覆盖两个协议枚举里的**每一个**类型（漏一个就红灯，堵住"删条目刷覆盖率"）；
+  每个 typed 声明都用最小样本喂**真解析器**，断言落到承诺的归一化载体；解析器源码里必须真的出现该类型名。
+
 ## 5. 尚未确定的维度（显式列出，避免以后被当成"已支持"）
 
 - `[UNKNOWN]` SnowLuma / LLBot 的 `markdown` 完整字段与是否短路；

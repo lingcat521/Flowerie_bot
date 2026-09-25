@@ -346,6 +346,36 @@ class OneBotEventParser:
                 # 内容是文本 → 并入 text，避免丢掉用户可见内容（与 Milky 侧对称）
                 text_parts.append(str(data.get("content") or ""))
                 summary.append((seg_type, dict(data)))
+            elif seg_type == "miniapp":
+                # NapCat OB11MessageDataType 注释：miniapp 是"json类"（小程序卡片）
+                payload = _parse_json_payload(data)
+                app = _json_app(payload)
+                json_cards.append({
+                    "app": app,
+                    "is_forward_card": app == "com.tencent.multimsg",
+                    "payload": payload if isinstance(payload, (dict, str)) else str(payload),
+                })
+                summary.append((seg_type, dict(data)))
+            elif seg_type == "node":
+                # 合并转发消息节点：[CODE] NapCat OB11MessageDataType.node（"合并转发消息节点"）
+                forwards.append({"id": str(data.get("id") or ""),
+                                 "inline": bool(data.get("content")),
+                                 "title": str(data.get("nickname") or "")})
+                summary.append((seg_type, dict(data)))
+            elif seg_type == "onlinefile":
+                # 在线文件/文件夹：[CODE] NapCat OB11MessageDataType.onlinefile
+                files.append({"file_id": str(data.get("msgId") or data.get("elementId") or ""),
+                              "name": str(data.get("fileName") or ""),
+                              "size": data.get("fileSize"), "url": "", "path": "",
+                              "sub_type": "onlinefile"})
+                summary.append((seg_type, dict(data)))
+            elif seg_type == "flashtransfer":
+                # QQ 闪传：[CODE] NapCat OB11MessageDataType.flashtransfer
+                files.append({"file_id": str(data.get("fileSetId") or ""),
+                              "name": str(data.get("fileName") or ""),
+                              "size": data.get("fileSize"), "url": "", "path": "",
+                              "sub_type": "flash_transfer"})
+                summary.append((seg_type, dict(data)))
             elif seg_type:
                 summary.append((seg_type, dict(data)))
         event.message_segments = [dict(seg) for seg in arr]  # 段浅拷贝（兼容组装）
