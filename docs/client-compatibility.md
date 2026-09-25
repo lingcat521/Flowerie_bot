@@ -206,7 +206,7 @@ Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.
 | :--- | :--- | :--- | :--- | :--- |
 | 协议端（决定 wire 形态）| NapCatQQ、LLBot、Lagrange.Milky（内嵌）| Lagrange.OneBot、go-cqhttp | onebots、Yogurt、onebot-kotlin | OpenShamrock |
 | SDK / 框架（消费侧）| NoneBot2 + adapter-onebot、SnowLuma | Koishi、Kovi、ROneBot、milky-python-sdk | imhelper 及 40+ 项（见 6.2）| — |
-| 规范 / 文档 | OneBot11-spec、Milky-spec | Lagrange.Milky.Document（Lagrange.Milky.Document）| — | — |
+| 规范 / 文档 | OneBot11-spec、Milky-spec | Lagrange.Milky.Document（仅文档）| — | — |
 | 工具 / 中间件 | — | — | matcha、nonebot-plugin-all4one | — |
 
 **行动结论**：① 必须逐个核对 wire 形态的协议端里，只剩 **onebots / Yogurt**（仓库地址未确认）与 **OpenShamrock**（不可得）；
