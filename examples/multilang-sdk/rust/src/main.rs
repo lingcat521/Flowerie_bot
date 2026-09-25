@@ -536,7 +536,7 @@ fn communication_html(vars: &BTreeMap<String, Json>) -> String {
     html.push_str(&format!("<tr><th>request_id</th><td id=\"communication-request-id\">{} <small id=\"communication-request-id-source\">{}</small></td></tr>",
                            escape_html(&var_str(vars, "request_id")),
                            escape_html(&var_str(vars, "request_id_source"))));
-    html.push_str(&format!("<tr><th>trace_id</th><td id=\"communication-trace-id\">{} <small id=\"communication-trace-id-source\">{}</small></td></tr>",
+    html.push_str(&format!("<tr><th>trace_id</th><td id=\"communication-trace-id\">{}</td><td><small id=\"communication-trace-id-source\">{}</small></td></tr>",
                            escape_html(&var_str(vars, "trace_id")),
                            escape_html(&var_str(vars, "trace_id_source"))));
     html.push_str(&format!("<tr><th>route</th><td id=\"communication-route-out\">{} <small id=\"communication-route-source\">{}</small></td></tr>",

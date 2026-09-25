@@ -25,7 +25,6 @@ WebUI 协议钩子（引擎调用；钩子内部自己兜住异常，只返回�
 import base64
 import json
 import os
-import re
 import time
 
 PLUGIN_ID_FALLBACK = "plugin_webui_test"

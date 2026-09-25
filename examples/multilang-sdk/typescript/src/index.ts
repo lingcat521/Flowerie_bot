@@ -370,8 +370,8 @@ function communicationHtml(v: Record<string, string>): string {
     + '<tr><th>request_id</th><td id="communication-request-id">' + escapeHtml(v.request_id)
     + ' <small id="communication-request-id-source">' + escapeHtml(v.request_id_source)
     + "</small></td></tr>"
-    + '<tr><th>trace_id</th><td id="communication-trace-id">' + escapeHtml(v.trace_id)
-    + ' <small id="communication-trace-id-source">' + escapeHtml(v.trace_id_source)
+    + '<tr><th>trace_id</th><td id="communication-trace-id">' + escapeHtml(v.trace_id) + '</td>'
+    + '<td><small id="communication-trace-id-source">' + escapeHtml(v.trace_id_source)
     + "</small></td></tr>"
     + '<tr><th>route</th><td id="communication-route-out">' + escapeHtml(v.route)
     + ' <small id="communication-route-source">' + escapeHtml(v.route_source)

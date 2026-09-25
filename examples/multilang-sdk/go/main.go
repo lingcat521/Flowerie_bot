@@ -576,8 +576,8 @@ func (m *minimal) communicationHTML(v map[string]any) string {
 		`<tr><th>request_id</th><td id="communication-request-id">` + htmlEsc(v["request_id"]) +
 		` <small id="communication-request-id-source">` + htmlEsc(v["request_id_source"]) +
 		`</small></td></tr>` +
-		`<tr><th>trace_id</th><td id="communication-trace-id">` + htmlEsc(v["trace_id"]) +
-		` <small id="communication-trace-id-source">` + htmlEsc(v["trace_id_source"]) +
+		`<tr><th>trace_id</th><td id="communication-trace-id">` + htmlEsc(v["trace_id"]) + `</td>` +
+		`<td><small id="communication-trace-id-source">` + htmlEsc(v["trace_id_source"]) +
 		`</small></td></tr>` +
 		`<tr><th>route</th><td id="communication-route-out">` + htmlEsc(v["route"]) +
 		` <small id="communication-route-source">` + htmlEsc(v["route_source"]) +

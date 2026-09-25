@@ -452,12 +452,12 @@ public final class MinimalPlugin {
                 + "<tr><th>response</th><td><pre id=\"communication-response\">"
                 + escapeHtml(strField(v, "response")) + "</pre></td></tr>"
                 + "<tr><th>request_id</th><td id=\"communication-request-id\">"
-                + escapeHtml(strField(v, "request_id"))
-                + " <small id=\"communication-request-id-source\">"
+                + escapeHtml(strField(v, "request_id")) + "</td><td>"
+                + "<small id=\"communication-request-id-source\">"
                 + escapeHtml(strField(v, "request_id_source")) + "</small></td></tr>"
                 + "<tr><th>trace_id</th><td id=\"communication-trace-id\">"
-                + escapeHtml(strField(v, "trace_id"))
-                + " <small id=\"communication-trace-id-source\">"
+                + escapeHtml(strField(v, "trace_id")) + "</td><td>"
+                + "<small id=\"communication-trace-id-source\">"
                 + escapeHtml(strField(v, "trace_id_source")) + "</small></td></tr>"
                 + "<tr><th>route</th><td id=\"communication-route-out\">"
                 + escapeHtml(strField(v, "route"))
