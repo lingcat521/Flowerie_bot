@@ -64,9 +64,42 @@ MAX_CONFIG_VALUE_BYTES = 8 * 1024
 class PluginApi:
     """同步插件 API：每个方法向 Flowerie 发 action 请求并等待响应（阻塞读取 stdin）。"""
 
-    def __init__(self, send_action, plugin_id: str):
+    def __init__(self, send_action, plugin_id: str, runner=None):
         self._send_action = send_action
         self.plugin_id = plugin_id
+        #: 与其它语言 SDK 对齐的 API（storage/config/permission/context）需要 runner 的本地实现
+        self._runner = runner
+
+    # ---------- Plugin Protocol v1：与其它语言 SDK 对齐的 API ----------
+    def storage_get(self, key: str) -> Any:
+        """读取本插件存储（与 TypeScript/Go/Rust/Java 的 ctx.storageGet 同名同义）。"""
+        return (self._runner._storage_get(key) or {}).get("value")
+
+    def storage_set(self, key: str, value: Any) -> Dict[str, Any]:
+        return self._runner._storage_set(key, value)
+
+    def storage_delete(self, key: str) -> Dict[str, Any]:
+        return self._runner._storage_delete(key)
+
+    def storage_list(self, prefix: str = "") -> Any:
+        return (self._runner._storage_list(prefix) or {}).get("keys") or []
+
+    def config_get(self, keys=None) -> Dict[str, Any]:
+        """操作员配置 + 插件覆盖层（操作员的值优先）。"""
+        return (self._runner._op_config_get(keys) or {}).get("values") or {}
+
+    def config_set(self, values: Dict[str, Any]) -> Dict[str, Any]:
+        return self._runner._op_config_set(values)
+
+    def permission_check(self, permission: str) -> bool:
+        """查询管理员是否批准了某权限（只读；无法提权）。"""
+        res = self._runner._op_permission_check(permission) or {}
+        return bool(res.get("granted"))
+
+    def context_info(self) -> Dict[str, Any]:
+        """拉取引擎侧上下文（插件名/版本/已批准权限）。"""
+        res = self._runner._op_context() or {}
+        return res.get("result") if isinstance(res.get("result"), dict) else res
 
     def send_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return self._send_action("send_message", payload)
@@ -708,7 +741,7 @@ class PluginRunner:
         self.plugin_id = plugin_id
         self.module = None
         self._req_id = 0
-        self.api = PluginApi(self._send_action_inner, plugin_id)
+        self.api = PluginApi(self._send_action_inner, plugin_id, self)
 
     # ---------- 基础 ----------
     def _emit(self, obj: Dict[str, Any]) -> None:
@@ -904,58 +937,59 @@ class PluginRunner:
         except (OSError, ValueError):
             return {}
 
+    # ---------- 可选方法的**计算**部分（协议分派与插件 API 共用同一实现，避免两套逻辑漂移） ----------
+    def _op_context(self) -> Dict[str, Any]:
+        return self._send_engine_op("context.get", {})
+
+    def _op_permission_check(self, permission: str) -> Dict[str, Any]:
+        return self._send_engine_op("permission.check", {"permission": str(permission or "")})
+
+    def _op_config_get(self, keys=None) -> Dict[str, Any]:
+        res = self._send_engine_op("config.get", {})
+        values = res.get("values") if isinstance(res, dict) and res.get("ok") else {}
+        if not isinstance(values, dict):
+            values = {}
+        merged = dict(self._config_overlay())
+        merged.update(values)              # 操作员配置优先（插件不能覆盖管理员的值）
+        if isinstance(keys, list) and keys:
+            wanted = [str(x) for x in keys]
+            merged = {k: v for k, v in merged.items() if k in wanted}
+        return {"ok": True, "values": merged}
+
+    def _op_config_set(self, values) -> Dict[str, Any]:
+        if not isinstance(values, dict):
+            return {"ok": False, "error": "config.set 需要 values 对象"}
+        overlay = self._config_overlay()
+        for k, v in values.items():
+            key = str(k)
+            if not STORAGE_KEY_RE.match(key):
+                return {"ok": False, "error": "配置键非法: %s" % key}
+            if len(json.dumps(v, ensure_ascii=False).encode("utf-8")) > MAX_CONFIG_VALUE_BYTES:
+                return {"ok": False,
+                        "error": "配置值超过 %d 字节上限: %s" % (MAX_CONFIG_VALUE_BYTES, key)}
+            overlay[key] = v
+        if len(overlay) > MAX_CONFIG_KEYS:
+            return {"ok": False, "error": "配置键数量超过 %d 上限" % MAX_CONFIG_KEYS}
+        try:
+            with open(self._config_path(), "w", encoding="utf-8") as fh:
+                json.dump(overlay, fh, ensure_ascii=False)
+        except OSError as exc:
+            return {"ok": False, "error": "写入失败: %s" % exc}
+        return {"ok": True, "saved": sorted(str(k) for k in values)}
+
     def _handle_optional(self, req_id, method: str, params: Dict[str, Any]) -> None:
         if method == "context.get":
-            res = self._send_engine_op("context.get", {})
-            self._emit({"id": req_id, "result": res})
+            self._emit({"id": req_id, "result": self._op_context()})
             return
         if method == "permission.check":
-            res = self._send_engine_op("permission.check",
-                                       {"permission": str(params.get("permission") or "")})
-            self._emit({"id": req_id, "result": res})
+            self._emit({"id": req_id,
+                        "result": self._op_permission_check(params.get("permission"))})
             return
         if method == "config.get":
-            res = self._send_engine_op("config.get", {})
-            values = res.get("values") if isinstance(res, dict) and res.get("ok") else {}
-            if not isinstance(values, dict):
-                values = {}
-            merged = dict(self._config_overlay())
-            merged.update(values)          # 操作员配置优先（插件不能覆盖管理员的值）
-            keys = params.get("keys")
-            if isinstance(keys, list) and keys:
-                merged = {k: v for k, v in merged.items() if k in [str(x) for x in keys]}
-            self._emit({"id": req_id, "result": {"ok": True, "values": merged}})
+            self._emit({"id": req_id, "result": self._op_config_get(params.get("keys"))})
             return
         if method == "config.set":
-            values = params.get("values")
-            if not isinstance(values, dict):
-                self._emit({"id": req_id, "result": {"ok": False,
-                            "error": "config.set 需要 values 对象"}})
-                return
-            overlay = self._config_overlay()
-            for k, v in values.items():
-                key = str(k)
-                if not STORAGE_KEY_RE.match(key):
-                    self._emit({"id": req_id, "result": {"ok": False,
-                                "error": "配置键非法: %s" % key}})
-                    return
-                if len(json.dumps(v, ensure_ascii=False).encode("utf-8")) > MAX_CONFIG_VALUE_BYTES:
-                    self._emit({"id": req_id, "result": {"ok": False,
-                                "error": "配置值超过 %d 字节上限: %s" % (MAX_CONFIG_VALUE_BYTES, key)}})
-                    return
-                overlay[key] = v
-            if len(overlay) > MAX_CONFIG_KEYS:
-                self._emit({"id": req_id, "result": {"ok": False,
-                            "error": "配置键数量超过 %d 上限" % MAX_CONFIG_KEYS}})
-                return
-            try:
-                with open(self._config_path(), "w", encoding="utf-8") as fh:
-                    json.dump(overlay, fh, ensure_ascii=False)
-            except OSError as exc:
-                self._emit({"id": req_id, "result": {"ok": False,
-                            "error": "写入失败: %s" % exc}})
-                return
-            self._emit({"id": req_id, "result": {"ok": True, "saved": sorted(values)}})
+            self._emit({"id": req_id, "result": self._op_config_set(params.get("values"))})
             return
         if method == "storage.get":
             self._emit({"id": req_id, "result": self._storage_get(params.get("key"))})

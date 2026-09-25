@@ -209,6 +209,7 @@ export class FloweriePlugin {
   private eventHooks = new Map<string, MessageHook[]>();
   private startupHooks: LifecycleHook[] = [];
   private shutdownHooks: LifecycleHook[] = [];
+  private healthHooks: Array<() => boolean | void> = [];
   private hooks = new Map<string, (...args: unknown[]) => unknown>();
 
   constructor(opts: { capabilities?: string[]; pluginId?: string; pluginDir?: string } = {}) {
@@ -231,6 +232,14 @@ export class FloweriePlugin {
   }
   onStartup(fn: LifecycleHook): this { this.startupHooks.push(fn); return this; }
   onShutdown(fn: LifecycleHook): this { this.shutdownHooks.push(fn); return this; }
+  /** 心跳钩子（Python 侧对应 health_check）：返回 false 即视为不健康。 */
+  onHealth(fn: () => boolean | void): this { this.healthHooks.push(fn); return this; }
+  // 与 Python SDK 的具名钩子对齐（协议层就是 event 名字，on() 是通用入口）
+  onCommand(fn: MessageHook): this { return this.on("command", fn); }
+  onNotice(fn: MessageHook): this { return this.on("notice", fn); }
+  onRequest(fn: MessageHook): this { return this.on("request", fn); }
+  onLifecycle(fn: MessageHook): this { return this.on("lifecycle", fn); }
+  onSchedule(fn: MessageHook): this { return this.on("schedule", fn); }
   /** 注册一个可被控制面调用的 hook（插件 WebUI 的数据钩子等）。 */
   registerHook(name: string, fn: (...args: unknown[]) => unknown): this {
     this.hooks.set(name, fn);
@@ -269,9 +278,18 @@ export class FloweriePlugin {
           this.client.reply(id, { actions });
           return;
         }
-        case "health":
-          this.client.reply(id, { ok: true });
+        case "health": {
+          let healthy = true;
+          for (const fn of this.healthHooks) {
+            try {
+              if (fn() === false) healthy = false;
+            } catch (err: any) {
+              healthy = false;
+            }
+          }
+          this.client.reply(id, healthy ? { ok: true } : { ok: false, error: "health check failed" });
           return;
+        }
         case "shutdown":
           for (const fn of this.shutdownHooks) await fn(this.context);
           this.client.reply(id, { ok: true });

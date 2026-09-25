@@ -51,6 +51,16 @@ type request struct {
 	Params json.RawMessage `json:"params,omitempty"`
 }
 
+// message 是**入站**消息：既可能是引擎请求（method），也可能是我方请求的应答（result/error）。
+// 字段名与 JSON 键大小写不敏感匹配，因此不需要 struct tag（少一层转义坑）。
+type message struct {
+	ID     int
+	Method string
+	Params json.RawMessage
+	Result json.RawMessage
+	Error  string
+}
+
 // Plugin 是插件主体：注册钩子后 Run() 进入协议主循环。
 type Plugin struct {
 	capabilities []string
@@ -64,6 +74,7 @@ type Plugin struct {
 
 	startupHooks  []func(*Context)
 	shutdownHooks []func(*Context)
+	healthHooks   []func(*Context) bool
 	messageHooks  []func(*Context, map[string]any) any
 	eventHooks    map[string][]func(*Context, map[string]any) any
 	namedHooks    map[string]func(args ...any) any
@@ -113,6 +124,37 @@ func (p *Plugin) OnShutdown(fn func(*Context)) *Plugin {
 	return p
 }
 
+// OnHealth 注册心跳钩子（Python 侧对应 health_check）：返回 false 即视为不健康。
+func (p *Plugin) OnHealth(fn func(*Context) bool) *Plugin {
+	p.healthHooks = append(p.healthHooks, fn)
+	return p
+}
+
+// 与 Python SDK 的具名钩子对齐（协议层就是 event 名字，On() 是通用入口）
+func (p *Plugin) OnCommand(fn func(*Context, map[string]any) any) *Plugin {
+	return p.On("command", fn)
+}
+
+// OnNotice 注册通知事件钩子。
+func (p *Plugin) OnNotice(fn func(*Context, map[string]any) any) *Plugin {
+	return p.On("notice", fn)
+}
+
+// OnRequest 注册请求事件钩子。
+func (p *Plugin) OnRequest(fn func(*Context, map[string]any) any) *Plugin {
+	return p.On("request", fn)
+}
+
+// OnLifecycle 注册生命周期事件钩子。
+func (p *Plugin) OnLifecycle(fn func(*Context, map[string]any) any) *Plugin {
+	return p.On("lifecycle", fn)
+}
+
+// OnSchedule 注册定时事件钩子。
+func (p *Plugin) OnSchedule(fn func(*Context, map[string]any) any) *Plugin {
+	return p.On("schedule", fn)
+}
+
 // OnMessage 注册消息钩子（可返回 Action / []Action / nil）。
 func (p *Plugin) OnMessage(fn func(*Context, map[string]any) any) *Plugin {
 	p.messageHooks = append(p.messageHooks, fn)
@@ -146,7 +188,7 @@ func (p *Plugin) Run() error {
 		if line == "" {
 			continue
 		}
-		var msg request
+		var msg message
 		if err := json.Unmarshal([]byte(line), &msg); err != nil {
 			continue // 非法行跳过，不断连（协议容错）
 		}
@@ -163,7 +205,7 @@ func (p *Plugin) Run() error {
 	return scanner.Err()
 }
 
-func (p *Plugin) deliver(msg request) {
+func (p *Plugin) deliver(msg message) {
 	p.mu.Lock()
 	ch, ok := p.pending[msg.ID]
 	if ok {
@@ -200,7 +242,7 @@ func (p *Plugin) replyError(id int, message string) {
 	_ = p.write(reply{ID: id, Error: message})
 }
 
-func (p *Plugin) handle(msg request) bool {
+func (p *Plugin) handle(msg message) bool {
 	params := map[string]any{}
 	if len(msg.Params) > 0 {
 		_ = json.Unmarshal(msg.Params, &params)
@@ -229,7 +271,17 @@ func (p *Plugin) handle(msg request) bool {
 		payload, _ := params["payload"].(map[string]any)
 		p.replyResult(msg.ID, map[string]any{"actions": p.dispatch(event, payload)})
 	case "health":
-		p.replyResult(msg.ID, map[string]any{"ok": true})
+		healthy := true
+		for _, fn := range p.healthHooks {
+			if !fn(p.ctx) {
+				healthy = false
+			}
+		}
+		if healthy {
+			p.replyResult(msg.ID, map[string]any{"ok": true})
+		} else {
+			p.replyResult(msg.ID, map[string]any{"ok": false, "error": "health check failed"})
+		}
 	case "shutdown":
 		for _, fn := range p.shutdownHooks {
 			fn(p.ctx)

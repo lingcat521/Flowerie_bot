@@ -63,3 +63,51 @@ shutdown              → ok 且进程干净退出
 3. 在 `tests/test_plugin_sdk_contract.py` 的 `LANGUAGES` 里登记（示例目录 + 工具链需求）；
 4. 跑 `python3 -m pytest tests/test_plugin_sdk_contract.py -q`，全绿后在
    [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) 里按**实际证据**更新状态。
+
+## 6. 能力对齐（parity）：五语言必须一模一样
+
+任务书第 2 份 §十四 + 用户要求：**其它语言 SDK 的能力必须与 Python SDK 对齐**，
+不允许某个语言悄悄少一项。这里的"能力"分两层，各有自动化证据：
+
+### 6.1 协议层（硬性，有测试钉住）
+
+| 项 | 要求 | 证据 |
+| :--- | :--- | :--- |
+| 可选方法集合 | 五种语言**声明完全相同**的 8 项（`context.get / config.get / config.set / permission.check / storage.get / storage.set / storage.delete / storage.list`）| `test_plugin_sdk_contract.py::test_handshake_declares_protocol_and_capabilities`（**相等**断言，不是子集）|
+| 必需方法 | `initialize / event / health / shutdown` 五种语言都实现 | 同上（握手 + health + 事件 + 退出用例）|
+| 心跳 | 五种语言都能回 `{ok: true}` | `::test_health_method_is_supported` |
+| 事件语义 | `message` 与 `command` 两类事件在五种语言里返回**同一条动作** | `::test_event_yields_vector_action` / `::test_command_event_yields_same_action` |
+| 存储/配置/权限 | 五种语言走同一批向量（含穿越键必须被拒）| `::test_storage_roundtrip_matches_vector` / `::test_permission_check_uses_reverse_channel` |
+| 数据钩子 | 五种语言都能被控制面 hook 调用并返回同一结果 | `::test_hook_status_reads_storage` |
+| 源码一致性 | 五个 SDK 源码里都能找到这 8 个能力名（防"改了文档没改代码"）| `::test_capability_parity_is_declared_in_every_sdk_source` |
+
+### 6.2 具名钩子对照（写法不同，语义一致）
+
+| Python | TypeScript | Go | Rust | Java |
+| :--- | :--- | :--- | :--- | :--- |
+| `on_message` | `onMessage` | `OnMessage` | `on_message` | `onMessage` |
+| `on_command` | `onCommand` | `OnCommand` | `on_command` | `onCommand` |
+| `on_notice` | `onNotice` | `OnNotice` | `on_notice` | `onNotice` |
+| `on_request` | `onRequest` | `OnRequest` | `on_request` | `onRequest` |
+| `on_lifecycle` | `onLifecycle` | `OnLifecycle` | `on_lifecycle` | `onLifecycle` |
+| `on_schedule` | `onSchedule` | `OnSchedule` | `on_schedule` | `onSchedule` |
+| `health_check` | `onHealth` | `OnHealth` | `on_health` | `onHealth` |
+| `on_startup` / `on_shutdown` | `onStartup` / `onShutdown` | `OnStartup` / `OnShutdown` | `on_startup` / `on_shutdown` | `onStartup` / `onShutdown` |
+| `api.storage_*` | `ctx.storageGet/Set/Delete/List` | `ctx.StorageGet/Set/Delete/List` | `ctx.storage_get/set/delete/list` | `ctx.storageGet/Set/Delete/List` |
+| `api.config_get/config_set` | `ctx.configGet/configSet` | `ctx.ConfigGet/ConfigSet` | `ctx.config_get/config_set` | `ctx.configGet/configSet` |
+| `api.permission_check` | `ctx.permissionCheck` | `ctx.PermissionCheck` | `ctx.permission_check` | `ctx.permissionCheck` |
+| `api.context_info` | `ctx.refreshContext` | `ctx.Info` | `ctx.info` | `ctx.info` |
+
+### 6.3 Python 的"超集"部分（**是额外便利，不是能力差异**）
+
+Python 的 `PluginApi` 另有 160+ 个动作包装方法（`send_message` / `group_ban` / `mcp_call` …）与 `kv_*`。
+这些是**对同一套 action 通道的语言习语封装**：其它语言用
+`ctx.action("send_group_msg", {...})` 得到完全一样的效果（协议层没有差别）。
+判断标准很简单：**协议层能力集合必须相等**（§6.1），语言习语封装可以不同。
+
+### 6.4 自查命令
+
+```bash
+python3 -m pytest tests/test_plugin_sdk_contract.py -q -rs
+# 22 passed / 30 skipped（本机只有 node）；CI 装了 go/rustc/javac → 五种语言全跑
+```

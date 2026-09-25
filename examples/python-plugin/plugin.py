@@ -17,6 +17,14 @@ def on_message(event, api=None):
     return None
 
 
+def on_command(event, api=None):
+    """命令事件：/ping → pong（与其它语言示例同一语义，跨语言契约测试比对）。"""
+    if str(event.get("text") or "") == "/ping":
+        return {"type": "send_group_msg",
+                "params": {"group_id": event.get("group_id"), "message": "pong"}}
+    return None
+
+
 def status(*_args):
     """控制面 hook（插件 WebUI 的数据钩子走同一条通道）：返回 storage 里的计数器。"""
     try:

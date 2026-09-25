@@ -259,6 +259,7 @@ pub struct Plugin {
     startup: Vec<StartupFn>,
     shutdown: Vec<StartupFn>,
     message: Vec<MessageFn>,
+    health: Vec<Box<dyn Fn(&Context) -> bool>>,
     events: HashMap<String, Vec<MessageFn>>,
     hooks: HashMap<String, HookFn>,
     shared: Shared,
@@ -282,6 +283,7 @@ impl Plugin {
             startup: Vec::new(),
             shutdown: Vec::new(),
             message: Vec::new(),
+            health: Vec::new(),
             events: HashMap::new(),
             hooks: HashMap::new(),
             shared: shared.clone(),
@@ -316,6 +318,37 @@ impl Plugin {
     pub fn on_event<F: Fn(&Context, &Json) -> Option<Json> + 'static>(&mut self, name: &str, f: F) -> &mut Self {
         self.events.entry(name.to_string()).or_default().push(Box::new(f));
         self
+    }
+
+    /// 心跳钩子（Python 侧对应 health_check）：返回 false 即视为不健康。
+    pub fn on_health<F: Fn(&Context) -> bool + 'static>(&mut self, f: F) -> &mut Self {
+        self.health.push(Box::new(f));
+        self
+    }
+
+    /// 与 Python SDK 的具名钩子对齐（协议层就是 event 名字，on_event 是通用入口）。
+    pub fn on_command<F: Fn(&Context, &Json) -> Option<Json> + 'static>(&mut self, f: F) -> &mut Self {
+        self.on_event("command", f)
+    }
+
+    /// 通知事件。
+    pub fn on_notice<F: Fn(&Context, &Json) -> Option<Json> + 'static>(&mut self, f: F) -> &mut Self {
+        self.on_event("notice", f)
+    }
+
+    /// 请求事件。
+    pub fn on_request<F: Fn(&Context, &Json) -> Option<Json> + 'static>(&mut self, f: F) -> &mut Self {
+        self.on_event("request", f)
+    }
+
+    /// 生命周期事件。
+    pub fn on_lifecycle<F: Fn(&Context, &Json) -> Option<Json> + 'static>(&mut self, f: F) -> &mut Self {
+        self.on_event("lifecycle", f)
+    }
+
+    /// 定时事件。
+    pub fn on_schedule<F: Fn(&Context, &Json) -> Option<Json> + 'static>(&mut self, f: F) -> &mut Self {
+        self.on_event("schedule", f)
     }
 
     /// 控制面可调用的 hook（插件 WebUI 的数据钩子走同一通道）。
@@ -403,7 +436,20 @@ impl Plugin {
                 let actions = self.dispatch(name, &payload);
                 self.reply(id, Json::obj(vec![("actions", Json::Arr(actions))]))?;
             }
-            "health" => self.reply(id, Json::obj(vec![("ok", Json::Bool(true))]))?,
+            "health" => {
+                let mut healthy = true;
+                for hook in self.health.iter() {
+                    if !hook(&self.ctx) {
+                        healthy = false;
+                    }
+                }
+                if healthy {
+                    self.reply(id, Json::obj(vec![("ok", Json::Bool(true))]))?;
+                } else {
+                    self.reply(id, Json::obj(vec![("ok", Json::Bool(false)),
+                        ("error", Json::str("health check failed"))]))?;
+                }
+            }
             "shutdown" => {
                 for hook in self.shutdown.iter() {
                     hook(&self.ctx);

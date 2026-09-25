@@ -49,6 +49,11 @@ public class FloweriePlugin {
         Object handle(List<Object> args);
     }
 
+    /** 心跳钩子（Python 侧对应 health_check）：返回 false 即视为不健康。 */
+    public interface HealthHandler {
+        boolean handle(Context ctx);
+    }
+
     private final BufferedReader in = new BufferedReader(
             new InputStreamReader(System.in, StandardCharsets.UTF_8));
     private final PrintStream out = new PrintStream(System.out, true, StandardCharsets.UTF_8);
@@ -60,6 +65,7 @@ public class FloweriePlugin {
     private final List<MessageHandler> messageHooks = new ArrayList<>();
     private final Map<String, List<MessageHandler>> eventHooks = new HashMap<>();
     private final Map<String, HookHandler> namedHooks = new HashMap<>();
+    private final List<HealthHandler> healthHooks = new ArrayList<>();
 
     /** 插件上下文：storage / config / permission / action / log。 */
     public class Context {
@@ -263,6 +269,37 @@ public class FloweriePlugin {
         return this;
     }
 
+    /** 注册心跳钩子（与 Python 的 health_check 对齐）。 */
+    public FloweriePlugin onHealth(HealthHandler handler) {
+        healthHooks.add(handler);
+        return this;
+    }
+
+    // 与 Python SDK 的具名钩子对齐（协议层就是 event 名字，onEvent 是通用入口）
+    public FloweriePlugin onCommand(MessageHandler handler) {
+        return onEvent("command", handler);
+    }
+
+    /** 通知事件。 */
+    public FloweriePlugin onNotice(MessageHandler handler) {
+        return onEvent("notice", handler);
+    }
+
+    /** 请求事件。 */
+    public FloweriePlugin onRequest(MessageHandler handler) {
+        return onEvent("request", handler);
+    }
+
+    /** 生命周期事件。 */
+    public FloweriePlugin onLifecycle(MessageHandler handler) {
+        return onEvent("lifecycle", handler);
+    }
+
+    /** 定时事件。 */
+    public FloweriePlugin onSchedule(MessageHandler handler) {
+        return onEvent("schedule", handler);
+    }
+
     /** 注册控制面 hook。 */
     public FloweriePlugin registerHook(String name, HookHandler handler) {
         namedHooks.put(name, handler);
@@ -362,9 +399,21 @@ public class FloweriePlugin {
                     reply(id, Json.obj("actions", actions));
                     return false;
                 }
-                case "health":
-                    reply(id, Json.obj("ok", true));
+                case "health": {
+                    boolean healthy = true;
+                    for (HealthHandler handler : healthHooks) {
+                        try {
+                            if (!handler.handle(ctx)) {
+                                healthy = false;
+                            }
+                        } catch (RuntimeException e) {
+                            healthy = false;
+                        }
+                    }
+                    reply(id, healthy ? Json.obj("ok", true)
+                            : Json.obj("ok", false, "error", "health check failed"));
                     return false;
+                }
                 case "shutdown":
                     for (LifecycleHandler handler : shutdownHooks) {
                         handler.handle(ctx);

@@ -141,8 +141,11 @@ def test_handshake_declares_protocol_and_capabilities(peer):
     assert result["protocol_version"] == VECTORS["protocol_version"]
     assert result["api_version"] == "1"
     caps = set(result.get("capabilities") or [])
-    missing = sorted(set(VECTORS["required_capabilities"]) - caps)
-    assert missing == [], "%s 少声明能力：%s" % (peer.lang, missing)
+    # **能力对齐**（用户要求 + 任务书 §十四）：五种语言必须声明**完全相同**的能力集合，
+    # 不允许某个 SDK 悄悄少一项（这正是 Capability Matrix 不能撒谎的地方）。
+    expected = set(VECTORS["required_capabilities"])
+    assert caps == expected, "%s 的能力集合与向量不一致：多 %s / 少 %s" % (
+        peer.lang, sorted(caps - expected), sorted(expected - caps))
 
 
 @pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
@@ -204,6 +207,41 @@ def test_shutdown_is_clean(peer):
     assert peer.call("shutdown")["result"]["ok"] is True
     peer.proc.stdin.close()
     assert peer.proc.wait(timeout=10) == 0
+
+
+@pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
+def test_health_method_is_supported(peer):
+    """心跳：五种语言都必须回 {ok: true}（与 Python 的 health_check 对齐）。"""
+    peer.initialize()
+    result = peer.call("health")["result"]
+    assert result.get("ok") is True, "%s 的 health 未返回 ok：%s" % (peer.lang, result)
+
+
+@pytest.mark.parametrize("peer", sorted(LANGUAGES), indirect=True)
+def test_command_event_yields_same_action(peer):
+    """命令事件：五种语言的具名钩子（on_command / OnCommand / on_command / onCommand）语义一致。"""
+    peer.initialize()
+    actions = peer.call("event", VECTORS["command_event"])["result"]["actions"]
+    assert actions, "%s 对命令事件没有返回动作" % peer.lang
+    assert actions[0] == VECTORS["expected_command_action"], (
+        "%s 的命令动作与向量不一致：%s" % (peer.lang, actions[0]))
+
+
+def test_capability_parity_is_declared_in_every_sdk_source():
+    """静态对照：五种 SDK 的源码里都必须出现同一批能力名（防「改了文档没改代码」）。"""
+    sources = {
+        "python": "src/plugins/runner/python_runner.py",
+        "typescript": "sdk/typescript/flowerie_sdk.ts",
+        "go": "sdk/go/flowerie/plugin.go",
+        "rust": "sdk/rust/src/lib.rs",
+        "java": "sdk/java/src/main/java/dev/flowerie/sdk/FloweriePlugin.java",
+    }
+    for method in VECTORS["required_capabilities"]:
+        needle = method.replace(".", "[.]")   # 源码里可能写成字符串或正则，两种都接受
+        for lang, rel in sources.items():
+            text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
+            assert method in text or needle in text, (
+                "%s 的 SDK 源码里找不到能力 %s（%s）" % (lang, method, rel))
 
 
 def test_availability_table_is_reported(capsys):

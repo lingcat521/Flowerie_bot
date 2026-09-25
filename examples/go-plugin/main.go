@@ -26,6 +26,20 @@ func main() {
 		return nil
 	})
 
+	// 命令事件（与 Python 的 on_command 对齐）：/ping → pong
+	plugin.OnCommand(func(ctx *flowerie.Context, ev map[string]any) any {
+		if text, _ := ev["text"].(string); text == "/ping" {
+			return flowerie.Action{
+				"type": "send_group_msg",
+				"params": map[string]any{
+					"group_id": ev["group_id"],
+					"message":  "pong",
+				},
+			}
+		}
+		return nil
+	})
+
 	// 控制面 hook：插件 WebUI 的数据钩子走同一条通道
 	plugin.RegisterHook("status", func(args ...any) any {
 		value, ok := plugin.Context().StorageGet("counter")

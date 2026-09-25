@@ -25,6 +25,21 @@ fn main() {
         None
     });
 
+    // 命令事件（与 Python 的 on_command 对齐）：/ping → pong
+    plugin.on_command(|_ctx: &Context, ev: &Json| {
+        if ev.get("text").and_then(|v| v.as_str()) == Some("/ping") {
+            let group_id = ev.get("group_id").cloned().unwrap_or(Json::Null);
+            return Some(Json::obj(vec![
+                ("type", Json::str("send_group_msg")),
+                ("params", Json::obj(vec![
+                    ("group_id", group_id),
+                    ("message", Json::str("pong")),
+                ])),
+            ]));
+        }
+        None
+    });
+
     // 控制面 hook：插件 WebUI 的数据钩子走同一条通道
     plugin.register_hook("status", |_args: &[Json]| Json::obj(vec![("counter", Json::Null)]));
 

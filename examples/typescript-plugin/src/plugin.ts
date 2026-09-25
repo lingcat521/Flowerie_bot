@@ -16,6 +16,14 @@ plugin.onMessage((ctx, event) => {
   return null;
 });
 
+// 命令事件（与 Python 的 on_command 对齐）：/ping → pong
+plugin.onCommand((ctx, event) => {
+  if (event && event.text === "/ping") {
+    return { type: "send_group_msg", params: { group_id: event.group_id, message: "pong" } };
+  }
+  return null;
+});
+
 // 控制面可调用的 hook（插件 WebUI 的数据钩子走同一条通道）
 plugin.registerHook("status", (ctx?: unknown) => {
   const value = plugin.ctx.storageGet("counter") as { n?: number } | null;
