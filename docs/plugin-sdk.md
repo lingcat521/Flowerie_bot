@@ -98,6 +98,10 @@ shutdown              → ok 且进程干净退出
 | `api.permission_check` | `ctx.permissionCheck` | `ctx.PermissionCheck` | `ctx.permission_check` | `ctx.permissionCheck` |
 | `api.context_info` | `ctx.refreshContext` | `ctx.Info` | `ctx.info` | `ctx.info` |
 
+> **Rust 的 hook 回调签名**：`plugin.register_hook("status", |ctx: &Context, args: &[Json]| ...)` ——
+> 第一个参数是上下文（要读 storage/config 就得用它）；Go / TypeScript / Java 的闭包直接捕获
+> plugin / ctx，所以签名里没有额外参数。两种写法的**协议行为完全相同**（都走 `hook` 方法）。
+
 ### 6.3 Python 的"超集"部分（**是额外便利，不是能力差异**）
 
 Python 的 `PluginApi` 另有 160+ 个动作包装方法（`send_message` / `group_ban` / `mcp_call` …）与 `kv_*`。
@@ -109,5 +113,30 @@ Python 的 `PluginApi` 另有 160+ 个动作包装方法（`send_message` / `gro
 
 ```bash
 python3 -m pytest tests/test_plugin_sdk_contract.py -q -rs
-# 22 passed / 30 skipped（本机只有 node）；CI 装了 go/rustc/javac → 五种语言全跑
+# 23 passed / 30 skipped（本机只有 node：python + typescript 真跑，其余三种 skip 并打印原因）
+# CI 装了 go/rustc/javac → 五种语言全跑（证据见 plugin-sdk-capabilities.md）
+
+# 强制走 tsc 编译路径（验证「老 node + 没有 @types/node」这条分支）：
+PATH="$HOME/tscheck/bin:$PATH" FLOWERIE_FORCE_TSC=1 \
+  python3 -m pytest tests/test_plugin_sdk_contract.py -k typescript -q
+# 10 passed
+```
+
+### 6.5 TypeScript 的零依赖编译（机器上没有 `@types/node` 也能用）
+
+SDK 刻意**不依赖任何 npm 包**，但 `tsc` 自身不带 Node 类型：在没有 `@types/node` 的机器上
+（典型：CI runner）直接编译会报 `TS2307 Cannot find module 'node:fs'` ×3
+加 `TS2580 Cannot find name 'process' / 'Buffer'` ×6。
+
+- `sdk/typescript/shims/node.d.ts` 是仓库自带的**最小宿主类型声明**（只声明 SDK 真正用到的 API）；
+- `examples/typescript-plugin/run.sh` 会检测 `@types/node` 能否解析：不能解析时自动把 shim 一起传给 `tsc`；
+- 有 `@types/node` 的项目**不要**引入 shim（会和官方声明重复）；
+- 静态回归保护：`test_typescript_shim_covers_host_apis` 解析 SDK 里出现的
+  `process. / fs. / path. / readline. / Buffer.` 成员，逐个要求在 shim 里有声明。
+
+实测（本机 tsc 5.9.3，无 `@types/node`）：
+
+```text
+不带 shim：error TS2307 ×3 + TS2580 ×6      ← 复现了 CI 上那条失败
+带   shim：0 error；10 个 TS 契约用例全绿（FLOWERIE_FORCE_TSC=1）
 ```

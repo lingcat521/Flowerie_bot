@@ -41,7 +41,7 @@ struct Io {
 type Shared = Rc<RefCell<Io>>;
 type StartupFn = Box<dyn Fn(&Context)>;
 type MessageFn = Box<dyn Fn(&Context, &Json) -> Option<Json>>;
-type HookFn = Box<dyn Fn(&[Json]) -> Json>;
+type HookFn = Box<dyn Fn(&Context, &[Json]) -> Json>;
 
 /// 传给插件的上下文：storage / config / permission / action。
 pub struct Context {
@@ -352,7 +352,7 @@ impl Plugin {
     }
 
     /// 控制面可调用的 hook（插件 WebUI 的数据钩子走同一通道）。
-    pub fn register_hook<F: Fn(&[Json]) -> Json + 'static>(&mut self, name: &str, f: F) -> &mut Self {
+    pub fn register_hook<F: Fn(&Context, &[Json]) -> Json + 'static>(&mut self, name: &str, f: F) -> &mut Self {
         self.hooks.insert(name.to_string(), Box::new(f));
         self
     }
@@ -465,7 +465,7 @@ impl Plugin {
                 }
                 let args = params.get("args").and_then(|v| v.as_arr()).cloned().unwrap_or_default();
                 let result = match self.hooks.get(&name) {
-                    Some(hook) => hook(&args),
+                    Some(hook) => hook(&self.ctx, &args),
                     None => Json::Null,
                 };
                 self.reply(id, Json::obj(vec![("ok", Json::Bool(true)), ("result", result)]))?;

@@ -40,8 +40,15 @@ fn main() {
         None
     });
 
-    // 控制面 hook：插件 WebUI 的数据钩子走同一条通道
-    plugin.register_hook("status", |_args: &[Json]| Json::obj(vec![("counter", Json::Null)]));
+    // 控制面 hook：插件 WebUI 的数据钩子走同一条通道。
+    // 与其它语言示例语义一致：读本插件 storage 的 counter.n（没有则 null）。
+    plugin.register_hook("status", |ctx: &Context, _args: &[Json]| {
+        let counter = match ctx.storage_get("counter") {
+            Ok(Some(value)) => value.get("n").cloned().unwrap_or(Json::Null),
+            _ => Json::Null,
+        };
+        Json::obj(vec![("counter", counter)])
+    });
 
     plugin.on_shutdown(|ctx: &Context| {
         ctx.log("rust 示例插件退出");

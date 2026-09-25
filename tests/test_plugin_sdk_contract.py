@@ -10,6 +10,7 @@
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -242,6 +243,36 @@ def test_capability_parity_is_declared_in_every_sdk_source():
             text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
             assert method in text or needle in text, (
                 "%s 的 SDK 源码里找不到能力 %s（%s）" % (lang, method, rel))
+
+
+#: 宿主 API 命名空间 → SDK 里出现的 `ns.member` 都必须在 shim 里有声明
+HOST_API_RE = re.compile(r"\b(process|fs|path|readline|Buffer)\.([A-Za-z_$][A-Za-z0-9_$]*)")
+TS_SDK = os.path.join(ROOT, "sdk/typescript/flowerie_sdk.ts")
+TS_SHIM = os.path.join(ROOT, "sdk/typescript/shims/node.d.ts")
+TS_RUNNER = os.path.join(ROOT, "examples/typescript-plugin/run.sh")
+
+
+def test_typescript_shim_covers_host_apis():
+    """零依赖编译：SDK 用到的 Node 宿主 API 必须都在自带的 shim 里声明。
+
+    CI 的 tsc 环境**没有** @types/node（SDK 零 npm 依赖是刻意的设计），
+    run.sh 会在缺少 @types/node 时把 shims/node.d.ts 一起传给 tsc
+    （实测：不带 shim 时 tsc 报 TS2307 x3 + TS2580，带上后 0 错误）。
+    这条静态用例守住「SDK 新增宿主 API 但忘了补声明 → CI 编译挂掉」的回归。
+    """
+    source = open(TS_SDK, encoding="utf-8").read()
+    shim = open(TS_SHIM, encoding="utf-8").read()
+    used = sorted({"%s.%s" % (ns, member) for ns, member in HOST_API_RE.findall(source)})
+    assert used, "没有解析到宿主 API —— 正则或 SDK 结构变了，请同步更新本用例"
+    missing = [name for name in used if name.split(".", 1)[1] not in shim]
+    assert not missing, "shims/node.d.ts 缺少这些宿主 API 的声明：%s" % missing
+    for module in ("node:fs", "node:path", "node:readline"):
+        assert 'declare module "%s"' % module in shim, "shim 缺模块声明：%s" % module
+    for glob in ("declare const process", "declare const Buffer"):
+        assert glob in shim, "shim 缺全局声明：%s" % glob
+    runner = open(TS_RUNNER, encoding="utf-8").read()
+    assert "shims/node.d.ts" in runner and "@types/node" in runner, \
+        "run.sh 必须在缺少 @types/node 时自动带上 shim（否则 CI 上的 tsc 路径编译不过）"
 
 
 def test_availability_table_is_reported(capsys):

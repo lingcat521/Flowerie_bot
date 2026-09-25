@@ -10,7 +10,12 @@ Flowerie **Plugin Protocol v1** 的 TypeScript 实现。零 npm 依赖，只用 
 | 方式 | 命令 | 要求 |
 | :--- | :--- | :--- |
 | 零构建（推荐） | `node src/plugin.ts` | Node ≥ 22.6（类型擦除） |
-| 传统编译 | `tsc` | 任意现代 TypeScript |
+| 传统编译 | `tsc src/plugin.ts flowerie_sdk.ts shims/node.d.ts --target es2022 --module commonjs` | 任意现代 TypeScript（**不需要** `@types/node`）|
+
+> **零依赖编译**：SDK 只用 node 内置模块，但 `tsc` 自身不带 Node 类型。仓库自带
+> `shims/node.d.ts`（最小宿主声明）——机器上没有 `@types/node` 时把它一起传给 `tsc` 即可
+> （有 `@types/node` 的项目别带 shim，会重复声明）。
+> `examples/typescript-plugin/run.sh` 会自动判断，可直接照抄。
 
 ## 最小示例
 

@@ -179,30 +179,41 @@ func (p *Plugin) Context() *Context { return p.ctx }
 // ---------------- 协议主体 ----------------
 
 // Run 进入协议主循环（读到 stdin 关闭或 shutdown 后返回）。
+//
+// 读与处理分离：读循环跑在独立 goroutine 里，**应答**（没有 method 的行）由读循环立即投递，
+// 请求则排队交给当前 goroutine 顺序处理。这样处理函数内部发起的反向请求
+// （reverse：engine op / action）在等待应答期间才能被及时唤醒——读写挤在同一个循环里
+// 会自己把自己锁死（实测 CI：permission.check 一发起就 "fatal error: all goroutines are asleep - deadlock!"）。
 func (p *Plugin) Run() error {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-	done := make(chan struct{})
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
+	requests := make(chan message, 16)
+	readDone := make(chan error, 1)
+	go func() {
+		defer close(requests)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue
+			}
+			var msg message
+			if err := json.Unmarshal([]byte(line), &msg); err != nil {
+				continue // 非法行跳过，不断连（协议容错）
+			}
+			if msg.Method == "" {
+				p.deliver(msg) // 引擎对我方请求的应答
+				continue
+			}
+			requests <- msg
 		}
-		var msg message
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			continue // 非法行跳过，不断连（协议容错）
-		}
-		if msg.Method == "" {
-			p.deliver(msg) // 引擎对我方请求的应答
-			continue
-		}
-		stop := p.handle(msg)
-		if stop {
-			close(done)
-			return nil
+		readDone <- scanner.Err()
+	}()
+	for msg := range requests {
+		if p.handle(msg) {
+			return nil // shutdown：主循环结束，读循环随进程退出
 		}
 	}
-	return scanner.Err()
+	return <-readDone
 }
 
 func (p *Plugin) deliver(msg message) {

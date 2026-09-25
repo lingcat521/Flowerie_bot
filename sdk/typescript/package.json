@@ -8,6 +8,7 @@
   "types": "flowerie_sdk.ts",
   "files": [
     "flowerie_sdk.ts",
+    "shims/node.d.ts",
     "README.md"
   ],
   "engines": {
