@@ -18,7 +18,7 @@ plugin.event 的实例；RPC 与 Event 是两类消息，不共用响应语义�
 """
 import asyncio
 import time
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 
 from src.plugins import comm
 from src.plugins.comm import PluginCommError

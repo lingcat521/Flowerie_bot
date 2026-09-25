@@ -28,10 +28,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import httpx
 
 from src.core.sanitizer import validate_memory_content
+from src.plugins import comm
 from src.plugins.http_action import plugin_http_request, redact_url
 from src.plugins.installer import PluginInstaller, PluginInstallError
 from src.plugins.manifest import PluginManifest, PluginManifestError
-from src.plugins import comm
 from src.plugins.permissions import PermissionManager
 from src.plugins.router import PluginBus, PluginRouter
 from src.plugins.runtime import PluginRuntime

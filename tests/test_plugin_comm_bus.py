@@ -11,8 +11,8 @@ import os
 import pytest
 
 from src.plugins import comm
-from src.plugins.manifest import PluginManifest
 from src.plugins.manager import PluginManager
+from src.plugins.manifest import PluginManifest
 
 #: 真插件源码：暴露方法、订阅事件、并用 SDK 发起调用（reverse op 路径）
 PLUGIN_TEMPLATE = '''"""测试用真插件：把插件间通信的每条路径都跑一遍。"""
@@ -347,8 +347,8 @@ async def test_instance_addressing_and_any_healthy_instance(tmp_path):
         # 第二个真实实例：同一个 plugin_id，不同目录（内容可区分）
         second_dir = rig.make_plugin("comm_b", dir_name="comm_b.instance1")
         manifest = PluginManifest.load(os.path.join(second_dir, "manifest.json"))
-        from src.plugins.runtime import PluginRuntime
         from src.plugins.permissions import PermissionManager
+        from src.plugins.runtime import PluginRuntime
         rt2 = PluginRuntime("comm_b", manifest, second_dir, protection="normal")
         rt2.instance_id = "instance1"
         rt2.permissions = PermissionManager(["plugin.call.*", "plugin.emit"], "normal")

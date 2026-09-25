@@ -104,6 +104,10 @@ class PluginRuntime:
                     "plugin_dir": self.plugin_dir,
                     "data_dir": os.path.join(self.plugin_dir, "data"),
                     "protocol_version": "1",
+                    # §四 Plugin Identity：插件进程没有别的途径知道自己的 id
+                    # （exec runtime 的入口是任意语言的可执行文件），引擎按连接告诉它
+                    "plugin_id": self.plugin_id,
+                    "instance_id": self.instance_id,
                 }}),
                 timeout=self._limits["startup_timeout"],
             )

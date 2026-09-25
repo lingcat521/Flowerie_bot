@@ -12,8 +12,8 @@ import shutil
 import pytest
 
 from src.plugins import comm
-from src.plugins.manifest import PluginManifest
 from src.plugins.manager import PluginManager
+from src.plugins.manifest import PluginManifest
 from src.plugins.runtime import _ENV_WHITELIST as ENGINE_ENV_WHITELIST
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

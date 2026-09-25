@@ -207,7 +207,7 @@ func registerComm(plugin *flowerie.Plugin, ctx *flowerie.Context) {
 		commCalls = append(commCalls, params)
 		commMu.Unlock()
 		return map[string]any{
-			"plugin_id": ctx.PluginID,
+			"plugin_id": commTargetPluginID(request, ctx.PluginID),
 			"runtime":   "go",
 			"trace_id":  commString(request, "trace_id"),
 			"hop_count": commInt(request, "hop_count"),
@@ -297,6 +297,19 @@ func commParams(request map[string]any) map[string]any {
 		return map[string]any{}
 	}
 	return params
+}
+
+// commTargetPluginID 取请求模型里的 target.plugin_id（引擎按连接填写，§四）；
+// 拿不到时才退回 SDK 上下文 —— 与 Java/Rust 示例的兜底顺序保持一致。
+func commTargetPluginID(request map[string]any, fallback string) string {
+	target, ok := request["target"].(map[string]any)
+	if !ok {
+		return fallback
+	}
+	if id, ok := target["plugin_id"].(string); ok && id != "" {
+		return id
+	}
+	return fallback
 }
 
 func commString(source map[string]any, key string) string {

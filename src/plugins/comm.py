@@ -48,10 +48,11 @@ from src.plugins.protocol import PLUGIN_METHODS, PROTOCOL_VERSION
 #: 五类消息（§十）：RPC 与 Event 分开，不得混成一种机制
 MESSAGE_KINDS = ("CALL", "RESPONSE", "EVENT", "ERROR", "CANCEL")
 
-#: 插件 -> 引擎 的反向 op（与 protocol.PLUGIN_METHODS 一一对应，插件只能通过 Core 发起）。
-#: 引擎 -> 插件 的方法名（PLUGIN_METHODS）定义在 protocol.py —— 那份才是协议的单一来源，
-#: 这里只保留"插件能发起的 op"这一镜像清单，避免两处各写一份方法名。
+#: 插件 -> 引擎 的反向 op（插件只能通过 Core 发起；§十二 不许旁路）。
+#: 与引擎 -> 插件 的协议方法名一一对应（发起侧叫 emit，被调侧叫 event）—— 顺序对齐，
+#: 由 protocol.PLUGIN_METHODS 提供被调侧名字，杜绝两处各写一份方法名。
 PLUGIN_OPS = ("plugin.call", "plugin.emit", "plugin.cancel")
+PLUGIN_OP_TO_METHOD = dict(zip(PLUGIN_OPS, PLUGIN_METHODS))
 #: 能力分组名（SDK 的 initialize 里可写组名或方法名，两种等价）
 PLUGIN_CAPABILITY_GROUP = "plugin"
 

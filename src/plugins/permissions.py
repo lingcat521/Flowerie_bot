@@ -23,7 +23,6 @@
 即使管理员批准，运行时 Action 检查也会返回 "not supported in v1"。
 """
 import re
-
 from typing import Dict, Optional
 
 # 完整权限集（manifest 校验 + 运行时检查共用）

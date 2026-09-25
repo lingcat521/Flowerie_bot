@@ -13,12 +13,12 @@ import pytest
 
 from src.plugins import comm
 from src.plugins.comm import PluginCommError
-from src.plugins.protocol import OPTIONAL_METHODS
 from src.plugins.permissions import (
     call_permission_granted,
     emit_permission_granted,
     is_call_permission,
 )
+from src.plugins.protocol import OPTIONAL_METHODS
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, "src/plugins/runner/python_runner.py")
