@@ -64,7 +64,7 @@ func main() {
 	plugin.WebUI().
 		Page(func(args map[string]any) any {
 			return map[string]any{
-				"html": settingsForm(plugin.Context().PluginID),
+				"html": settingsForm(ctxPluginID(args, plugin.Context().PluginID)),
 				"vars": map[string]any{"nickname": readNickname(plugin)},
 			}
 		}).
@@ -79,7 +79,7 @@ func main() {
 				nickname = string([]rune(nickname)[:64])
 			}
 			return map[string]any{
-				"html":        settingsForm(plugin.Context().PluginID),
+				"html":        settingsForm(ctxPluginID(args, plugin.Context().PluginID)),
 				"vars":        map[string]any{"nickname": nickname},
 				"message":     "已保存",
 				"config_set":  map[string]any{"nickname": nickname},
@@ -101,6 +101,16 @@ func main() {
 	if err := plugin.Run(); err != nil {
 		panic(err)
 	}
+}
+
+// ctxPluginID 取引擎给的受控 context 里的 plugin.id（插件不自己声明身份），拿不到再退回本地 ctx。
+func ctxPluginID(args map[string]any, fallback string) string {
+	context, _ := args["context"].(map[string]any)
+	pluginInfo, _ := context["plugin"].(map[string]any)
+	if id, _ := pluginInfo["id"].(string); id != "" {
+		return id
+	}
+	return fallback
 }
 
 // readNickname 读本插件 storage 里的昵称（与 ctx.StorageGet 同一份文件）。

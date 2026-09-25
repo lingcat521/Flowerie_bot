@@ -196,7 +196,7 @@ class PluginManager:
             return None, "插件未启用或不存在"
         approved = set(row.get("approved_permissions") or [])
         if not self._webui_granted(approved, "webui.view"):
-            return None, "插件未批准 webui.view 权限（管理员批准后才能访问）"
+            return None, "插件未批准 webui.view 权限（旧权限名 web_ui；管理员批准后才能访问）"
         try:
             manifest = self._manifest_of(row)
         except Exception:  # noqa: BLE001
@@ -237,7 +237,7 @@ class PluginManager:
             return None, None, None, "插件未启用或不存在"
         approved = set(row.get("approved_permissions") or [])
         if not self._webui_granted(approved, "webui.view"):
-            return None, None, None, "插件未批准 webui.view 权限（管理员批准后才能访问）"
+            return None, None, None, "插件未批准 webui.view 权限（旧权限名 web_ui；管理员批准后才能访问）"
         try:
             manifest = self._manifest_of(row)
         except Exception:  # noqa: BLE001
@@ -317,7 +317,7 @@ class PluginManager:
             return None, err
         approved = self._webui_approved(plugin_id)
         if not self._webui_granted(approved, "webui.view"):
-            return None, "插件未批准 webui.view 权限（管理员批准后才能访问）"
+            return None, "插件未批准 webui.view 权限（旧权限名 web_ui；管理员批准后才能访问）"
         action_name = str(action or "get")
         is_action = action_name != "get"
         if is_action and not self._webui_granted(approved, "webui.action"):

@@ -55,14 +55,14 @@ public final class Plugin {
                 Json.obj("vars", Json.obj("nickname", readNickname(plugin))));
 
         plugin.webUI()
-                .page(args -> Json.obj("html", settingsForm(plugin.context().pluginId()),
+                .page(webuiArgs -> Json.obj("html", settingsForm(plugin.context().pluginId()),
                         "vars", Json.obj("nickname", readNickname(plugin))))
-                .action(args -> {
-                    Object action = args.get("action");
+                .action(webuiArgs -> {
+                    Object action = webuiArgs.get("action");
                     if (!"save".equals(action)) {
                         return Json.obj("ok", false, "error", "未知动作: " + action);
                     }
-                    Object form = args.get("form");
+                    Object form = webuiArgs.get("form");
                     String nickname = "";
                     if (form instanceof Map) {
                         Object raw = ((Map<?, ?>) form).get("nickname");
@@ -76,8 +76,8 @@ public final class Plugin {
                             "config_set", Json.obj("nickname", nickname),
                             "storage_set", Json.obj("nickname", nickname));
                 })
-                .asset(args -> {
-                    if ("theme.css".equals(args.get("path"))) {
+                .asset(webuiArgs -> {
+                    if ("theme.css".equals(webuiArgs.get("path"))) {
                         return Json.obj("content_type", "text/css",
                                 "body", "body { color: #1f6feb; }");
                     }

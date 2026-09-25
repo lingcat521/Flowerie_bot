@@ -275,6 +275,41 @@ impl Default for Plugin {
     }
 }
 
+/// Plugin WebUI Protocol 注册器（任务书第 3 份 §六）：
+///
+/// ```ignore
+/// plugin.webui().page(|_ctx, _args| Json::str("<h1>hi</h1>")).action(|_ctx, _args| Json::Null);
+/// ```
+///
+/// 处理器拿到引擎给的受控参数（page/context，action 时还有 action/form），
+/// 返回 `Json::Str`（= html 简写）或 `Json::Obj`（白名单字段）。
+/// 路由、权限、校验、净化、隔离全部由引擎负责，插件只负责内容。
+pub struct Webui<'a> {
+    plugin: &'a mut Plugin,
+}
+
+impl<'a> Webui<'a> {
+    fn register<F: Fn(&Context, &Json) -> Json + 'static>(self, method: &str, f: F) -> Self {
+        self.plugin.webui_handlers.insert(method.to_string(), Box::new(f));
+        self
+    }
+
+    /// 页面处理器（webui.page）。
+    pub fn page<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
+        self.register("webui.page", f)
+    }
+
+    /// 动作处理器（webui.action）。
+    pub fn action<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
+        self.register("webui.action", f)
+    }
+
+    /// 资源处理器（webui.asset）。
+    pub fn asset<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
+        self.register("webui.asset", f)
+    }
+}
+
 impl Plugin {
     /// 创建插件（默认声明全部可选能力）。
     pub fn new() -> Self {
@@ -361,40 +396,10 @@ impl Plugin {
         self
     }
 
-/// Plugin WebUI Protocol 注册器（任务书第 3 份 §六）：
-///
-/// ```ignore
-/// plugin.webui().page(|_ctx, _args| Json::str("<h1>hi</h1>")).action(|_ctx, _args| Json::Null);
-/// ```
-///
-/// 处理器拿到引擎给的受控参数（page/context，action 时还有 action/form），
-/// 返回 `Json::Str`（= html 简写）或 `Json::Obj`（白名单字段）。
-/// 路由、权限、校验、净化、隔离全部由引擎负责，插件只负责内容。
-pub struct Webui<'a> {
-    plugin: &'a mut Plugin,
-}
-
-impl<'a> Webui<'a> {
-    fn register<F: Fn(&Context, &Json) -> Json + 'static>(self, method: &str, f: F) -> Self {
-        self.plugin.webui_handlers.insert(method.to_string(), Box::new(f));
-        self
+    /// WebUI 注册入口：`plugin.webui().page(|ctx, args| ...).action(...)`。
+    pub fn webui(&mut self) -> Webui<'_> {
+        Webui { plugin: self }
     }
-
-    /// 页面处理器（webui.page）。
-    pub fn page<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
-        self.register("webui.page", f)
-    }
-
-    /// 动作处理器（webui.action）。
-    pub fn action<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
-        self.register("webui.action", f)
-    }
-
-    /// 资源处理器（webui.asset）。
-    pub fn asset<F: Fn(&Context, &Json) -> Json + 'static>(self, f: F) -> Self {
-        self.register("webui.asset", f)
-    }
-}
 
     /// 上下文（测试/嵌入场景）。
     pub fn context(&self) -> &Context {
