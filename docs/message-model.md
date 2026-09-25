@@ -56,16 +56,23 @@ NormalizedSegment（kind 为语义类型，attrs 为已归一字段）
 | mention | `at{qq}` `[DOC]` | `at{qq,name?}` `[CODE]` | `at{qq}` `[CODE]` | `at{qq}` `[CODE]` | **Text 元素 atType=One → `mention{user_id,name}`** `[CODE]` |
 | mention_all | `at{qq=all}` `[DOC]` | `at{qq=all}` `[CODE]` | `at{qq=all}` `[CODE]` | `at{uid=all,targetUin=0}` `[CODE]` | `mention_all{}` `[CODE]` |
 | image | `image{file,url?}` `[DOC]` | `image{file,path?,url?,name?,thumb?,sub_type?,summary?}` `[CODE]` | `image{file,subType,url,file_size}` `[CODE]` | `image{...}` `[CODE]` | `image{resource_id,temp_url,width,height,summary,sub_type}` `[CODE]` |
-| face | `face{id}` `[DOC]` | `face{id,resultId?,chainCount?}` `[CODE]` | `face{id,sub_type}` `[CODE]` | `face{id}` `[CODE]` | `face{face_id,is_large}` `[CODE]` |
-| market_face | 非标准 | `mface{emoji_package_id,emoji_id,key,summary}` `[CODE]` | `mface{...,url}` `[CODE]` | `mface` `[CODE]` | `market_face{emoji_package_id,emoji_id,key,summary,url}` `[CODE]` |
-| file | `file{file,url?,file_id?}` `[DOC]` | FileBase（**无 file_id**）`[CODE]` | `file{file,url(file://),file_id,path,file_size}` `[CODE]` | `file{fileId,url}` `[CODE]` | `file{file_id,file_name,file_size}`（**无 url**）`[CODE]` |
-| forward | `forward{id}` / `node{...}` `[DOC]` | ARK(`app=com.tencent.multimsg`) 或 MULTIFORWARD/`forward{id,content?}` `[CODE]` | `forward`（由 MultiForward XML 或 Ark 而来）`[CODE]` | `forward` `[CODE]` | `ForwardSegment`（独立段）`[CODE]` |
-| json_card | `json{data}` `[DOC]` | `json{data,config?}`（**app 分流**）`[CODE]` | `json{data}`（不分流，交给上层）`[CODE]` | `json{data}` `[CODE]` | **`LightAppSegment`**（独立段，无 app 字段概念）`[CODE]` |
-| xml | `xml{data}` `[DOC]` | `xml{data}` `[CODE]` | — `[UNKNOWN]` | `xml` `[CODE]` | `XmlSegment` `[CODE]` |
-| markdown | 非标准 | `markdown{content}`（并**短路**其它元素）`[CODE]` | `markdown`（未细读）`[UNKNOWN]` | `markdown` `[CODE]` | 由 `MarkdownData` 独立处理（LLBot 侧会短路）`[CODE]` |
+| face | `face{id}` `[DOC]` | `face{id,resultId?,chainCount?}` `[CODE]` | `face{id,sub_type}` `[CODE]` | `face{id}` `[CODE]` | `face{face_id}`（副本 A；规范另有 `is_large` since 1.1）`[CODE]`/`[DOC]` |
+| market_face | 非标准 | `mface{emoji_package_id,emoji_id,key,summary}` `[CODE]` | `mface{...,url}` `[CODE]` | `mface` `[CODE]` | `market_face{url}`（**副本 A 实现只有 url**；规范另有 emoji_package_id/emoji_id/key/summary）`[CODE]`/`[DOC]` |
+| file | `file{file,url?,file_id?}` `[DOC]` | FileBase（**无 file_id**）`[CODE]` | `file{file,url(file://),file_id,path,file_size}` `[CODE]` | `file{fileId,url}` `[CODE]` | `file{file_id,file_name,file_size,file_hash?}`（**无 url**）`[CODE]` |
+| forward | `forward{id}` / `node{...}` `[DOC]` | ARK(`app=com.tencent.multimsg`) 或 MULTIFORWARD/`forward{id,content?}` `[CODE]` | `forward`（由 MultiForward XML 或 Ark 而来）`[CODE]` | `forward` `[CODE]` | `ForwardSegment{forward_id,title,preview,summary}`（独立段）`[CODE]` |
+| json_card | `json{data}` `[DOC]` | `json{data,config?}`（**app 分流**）`[CODE]` | `json{data}`（不分流，交给上层）`[CODE]` | `json{data}` `[CODE]` | **`LightAppSegment{app_name,json_payload}`**（独立段；**app 在 payload 内**，`com.tencent.multimsg` 判定同样适用）`[CODE]` |
+| xml | `xml{data}` `[DOC]` | `xml{data}` `[CODE]` | — `[UNKNOWN]` | `xml` `[CODE]` | `XmlSegment{service_id,xml_payload}`（**仅副本 A**）`[CODE]` |
+| markdown | 非标准 | `markdown{content}`（并**短路**其它元素）`[CODE]` | `markdown`（未细读）`[UNKNOWN]` | `markdown` `[CODE]` | `markdown{content}` —— **规范有（since 1.3）、两份内嵌实现都无**`[DOC]`（Flowerie 已按内容并入 `text`）|
 | poke | **`poke{type,id}` 是规范段**（NoneBot adapter 有工厂）`[CODE]` | `poke{type,id}` 段 + notice + GreyTip(8) 元素 `[CODE]` | **`face(faceType=Poke)` → `shake{}`** `[CODE]` | `poke` 段 `[CODE]` | **事件** `group_nudge{group_id,sender_id,receiver_id,display_action,display_suffix,display_action_img_url}` `[CODE]×2` |
 | 闪传/在线文件 | — `[UNKNOWN]` | `flashtransfer{fileSetId}`、`onlinefile{msgId,elementId,fileName,fileSize,isDir}` `[CODE]` | — `[UNKNOWN]` | `flash_file` `[CODE]` | — `[UNKNOWN]` |
 | inline_keyboard | — `[UNKNOWN]` | ElementType.INLINEKEYBOARD(17) `[CODE]` | — | `inline_keyboard` 段 `[CODE]` | — `[UNKNOWN]` |
+
+> **Milky 列的"作者实现"有**两份布局不同**的内嵌副本，勿混用**（均为 `[CODE]`，见 protocol-reverse-engineering.md §6.1 / §9 C2）：
+> - **副本 A** `LagrangeV2/Lagrange.Milky/Entity/Segment/`：15 个文件 / **13 种** incoming（含 face / market_face / xml，无 markdown）；
+> - **副本 B** `Lagrange.Core/Lagrange.Milky/Models/Segments/`：11 个文件 / **10 种** incoming（无 face / market_face / xml / markdown）。
+>
+> 且**实现字段比规范窄**（副本 A 的 `market_face` 只有 `url`、`face` 只有 `face_id`）——
+> 解析一律**逐字段兜底**，不得假定字段存在；上表标注 A/B 差异处即为此。
 
 ## 4. 由模型直接得出的实现要求（P4 的输入）
 
@@ -82,3 +89,9 @@ NormalizedSegment（kind 为语义类型，attrs 为已归一字段）
 - `[UNKNOWN]` 各家对 `reply` 的定位能力（Milky 内联被引段；OneBot 只给 id → 需要额外 API 拉取）；
 - `[UNKNOWN]` `temp`（临时会话）在 NapCat / SnowLuma 侧的表现（仅 Milky/LLBot 有证据）；
 - `[UNKNOWN]` 表情类段在**发送**方向各家是否接受（本轮只核对了 NapCat 与 Milky 的接收侧与部分发送侧）。
+- **已知缺口（不是 `[UNKNOWN]`，而是"证据已得、尚未消费"）**：
+  - Milky `reply.segments`（**内联被引用消息内容**，规范 `common.ts` L332 `since 1.2`）——
+    Flowerie 目前只取 `message_seq` 当 `reply_id`，内联内容未用（Milky 独有优势：无需再调 API 拉引用）；
+  - Milky `record{resource_id,temp_url,duration}` / `video{resource_id,temp_url,width,height,duration}` ——
+    两个解析器都未建模，仅进 `segments_summary`（`InternalEvent` 暂无对应字段）；
+  - Milky `xml{service_id,xml_payload}` —— 与 OneBot 的 `xml` 段一样只进 `segments_summary`（两侧一致）。
