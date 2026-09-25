@@ -247,12 +247,9 @@ def test_plugin_subprocess_transport_closed_before_loop_close(tmp_path):
     PytestUnraisableExceptionWarning，GitHub 还会把 traceback 那行标成 error annotation ——
     测试其实全绿，页面上却像「3.12 测试报错」。
 
-    断言点放在「清理后 transport 必须已在关闭中」，不依赖 GC 时机。
+    断言点放在「清理后 transport 必须已在关闭中」，不依赖 GC 时机（进程级 unraisable 扫描
+    会把别的用例的泄漏也算进来，故不用）。
     """
-    unraisable = []
-    old_hook = sys.unraisablehook
-    sys.unraisablehook = lambda item: unraisable.append(item)
-
     async def run():
         dir_path = _deploy(tmp_path, "minimal_plugin")
         rt = _make_runtime(dir_path)
@@ -262,10 +259,12 @@ def test_plugin_subprocess_transport_closed_before_loop_close(tmp_path):
         assert transport is not None
         # 进程还活着：asyncio 这时不会自动关 transport（只有正常退出 + 管道 EOF 才会）
         assert not transport.is_closing(), "前置条件不成立：transport 已关闭"
-        rt._cleanup()   # stop / kill 都会走到的清理路径
-        assert transport.is_closing(), (
-            "清理后 transport 仍开着 → 它会在事件循环关闭后才被 GC，"
-            "BaseSubprocessTransport.__del__ 抛 RuntimeError: Event loop is closed")
+        # 管理器「即发即忘」路径用的同步方法：必须在调度异步 shutdown 之前就关掉
+        rt.close_transport_now()
+        assert transport.is_closing(), "close_transport_now() 没有关闭 transport"
+        rt.close_transport_now()          # 幂等：重复调用不应抛
+        rt._cleanup()                     # stop / kill 都会走到的清理路径
+        assert transport.is_closing()
         assert rt.proc is None
         proc.kill()
         try:
@@ -273,14 +272,8 @@ def test_plugin_subprocess_transport_closed_before_loop_close(tmp_path):
         except Exception:  # noqa: BLE001 - 收尾不抛
             pass
 
-    try:
-        asyncio.run(run())   # 事件循环在这里关闭
-        for _ in range(3):
-            gc.collect()     # 强制回收，复现 CI 里「循环关了才 GC」的时机
-        bad = [u for u in unraisable if "Event loop is closed" in str(getattr(u, "exc_value", ""))]
-        assert not bad, "子进程 transport 在事件循环关闭后仍被回收：%r" % bad
-    finally:
-        sys.unraisablehook = old_hook
+    asyncio.run(run())   # 事件循环在这里关闭；transport 已关闭 → 之后 GC 也不会碰已关闭的循环
+    gc.collect()
 
 @pytest.mark.asyncio
 async def test_exec_build_command_points_at_entry(tmp_path):

@@ -470,3 +470,31 @@ async def test_disable_clears_sdk_matchers(env):
     ok, _ = mgr.disable("sdk_plugin")
     assert ok
     assert "sdk_plugin" not in mgr._matchers
+
+async def test_stop_runtime_closes_transport_before_async_shutdown(env):
+    """回归：_stop_runtime 必须**同步**关闭子进程 transport（即发即忘路径）。
+
+    _stop_runtime 用 asyncio_create_task 调度 rt.shutdown() 而不 await；在没有运行中事件
+    循环时那个协程根本不会被执行。若把 transport 的关闭留给 shutdown() → _cleanup()，
+    transport 就会活到事件循环关闭之后才被 GC，BaseSubprocessTransport.__del__ 抛
+    RuntimeError: Event loop is closed（unraisable；CI 里被 GitHub 标成一行 error）。
+    """
+    mgr, _repo, _sender, _tmp = env
+    calls = []
+
+    class FakeRuntime:
+        def close_transport_now(self):
+            calls.append("close")
+
+        async def shutdown(self):
+            calls.append("shutdown")
+
+    mgr._runtimes["fake"] = FakeRuntime()
+    mgr._stop_runtime("fake")
+    assert calls == ["close"], "transport 要在同步阶段就关掉（此刻 shutdown 还没被调度执行）"
+    assert "fake" not in mgr._runtimes
+    for _ in range(20):
+        if "shutdown" in calls:
+            break
+        await asyncio.sleep(0)
+    assert calls == ["close", "shutdown"]

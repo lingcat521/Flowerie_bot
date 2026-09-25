@@ -1,5 +1,6 @@
 """主动发言概率配置化测试：默认值保持原行为、热更新读取、非法配置拒绝、min<=max。"""
 import random
+import types
 
 import pytest
 
@@ -96,19 +97,44 @@ def test_bot_multiplier_applied(monkeypatch):
 
 
 # ---------- ActiveChatManager（只配置化，逻辑不变） ----------
+class _FrozenClock:
+    """固定时钟：让「夜间静默」判定与 CI 的实际运行时刻无关。
+
+    active_chat_manager 用 time.time() 取当前时间、time.localtime(now).tm_hour 取小时；
+    默认静默窗口是 00:00~08:00，因此真实时钟落在夜里时，「概率=1.0 就该发言」的断言
+    必然失败（CI 曾在 03:56 UTC 跑出 assert False is True）。这里把整点钉死在白天。
+    """
+
+    def __init__(self, hour: int):
+        self._hour = hour
+
+    def time(self):
+        return 1_700_000_000.0
+
+    def localtime(self, _ts=None):
+        return types.SimpleNamespace(tm_hour=self._hour)
+
+    def __getattr__(self, name):
+        # 其余 API 转发真实模块（本模块只用到 time/localtime）
+        import time as _real_time
+        return getattr(_real_time, name)
+
+
 def test_active_chat_probability_config(monkeypatch):
+    import src.core.active_chat_manager as acm_mod
+
     cfg = _Cfg()
     acm = ActiveChatManager(cfg, {}, GlobalState(), cooldown=_DummyCooldown())
+    monkeypatch.setattr(acm_mod, "time", _FrozenClock(12))   # 固定为白天 12 点
     monkeypatch.setattr(random, "random", lambda: 0.99)
     assert acm.should_active_chat(1) is False
     cfg.ACTIVE_CHAT_PROBABILITY = 1.0
     monkeypatch.setattr(random, "random", lambda: 0.99)
     assert acm.should_active_chat(1) is True
-    # 夜间静默与冷却逻辑不变
+    # 夜间静默与冷却逻辑不变（静默窗口设成覆盖 12 点，与真实时刻无关）
     cfg.ACTIVE_CHAT_PROBABILITY = 1.0
     cfg.NIGHT_SILENCE_START, cfg.NIGHT_SILENCE_END = 0, 24
     assert acm.should_active_chat(1) is False
-
 
 class _DummyCooldown:
     def can_bot_reply(self, group_id):

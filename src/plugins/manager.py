@@ -572,6 +572,11 @@ class PluginManager:
     def _stop_runtime(self, plugin_id: str) -> None:
         rt = self._runtimes.pop(plugin_id, None)
         if rt is not None:
+            # 同步关掉子进程 transport **再**调度异步 shutdown：
+            # 这里是即发即忘（无运行中循环时协程根本不会被执行），若把关闭留给
+            # rt.shutdown() → _cleanup()，transport 就可能活到事件循环关闭之后才被 GC，
+            # BaseSubprocessTransport.__del__ 会抛 "RuntimeError: Event loop is closed"。
+            rt.close_transport_now()
             asyncio_create_task(rt.shutdown())
 
     def _mark_status(self, plugin_id: str, status: str) -> None:
@@ -2181,5 +2186,6 @@ def asyncio_create_task(coro) -> None:
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        return  # 无运行中的循环：直接丢弃（进程即将退出场景）
+        coro.close()  # 无运行中循环：关掉协程（避免 never awaited 告警），退出场景不阻塞
+        return
     loop.create_task(coro)
