@@ -401,13 +401,13 @@ def test_decode_bytes_rejects_oversize_and_broken_payloads():
     assert ok3 is False
 
 
-def test_decode_napcat_file_response_stays_strict():
+def test_decode_base64_json_file_response_stays_strict():
     """兼容入口：非 JSON 一律拒绝，绝不把错误页当文件内容。"""
     fp = _decoder()
-    assert fp.decode_napcat_file_response("<html>login</html>", "a.txt") == ("", False)
-    assert fp.decode_napcat_file_response('{"retcode":1}', "a.txt") == ("", False)
-    assert fp.decode_napcat_file_response('{"retcode":0,"data":{}}', "a.txt") == ("", False)
+    assert fp.decode_base64_json_file_response("<html>login</html>", "a.txt") == ("", False)
+    assert fp.decode_base64_json_file_response('{"retcode":1}', "a.txt") == ("", False)
+    assert fp.decode_base64_json_file_response('{"retcode":0,"data":{}}', "a.txt") == ("", False)
     import base64 as _b64
 
     body = '{"retcode":0,"data":{"base64":"%s"}}' % _b64.b64encode(b"ok-content").decode()
-    assert fp.decode_napcat_file_response(body, "a.txt") == ("ok-content", True)
+    assert fp.decode_base64_json_file_response(body, "a.txt") == ("ok-content", True)

@@ -77,13 +77,52 @@ tests/test_onebot_serializer.py     # 出站字段收敛 + fixture 往返
 tests/test_onebot_response_contract.py # 响应三态矩阵
 ```
 
-## 7. 明确还没做的（如实）
+## 7. 协议耦合度量（§二十一：Client Imports = 0，**已可执行**）
 
-1. **出站序列化尚未接入发送热路径**：`Sender.send_msg_raw()` 目前原样透传段数组；
-   接入需要"按配置选择 profile"的开关 + CI 验证（计划中的下一步）。
-2. **Milky 出站序列化**未实现（本轮只做了 OneBot 11）；Milky 侧目前只有入站归一化与动作名映射。
-3. **实机验证全缺**：本环境没有可运行的协议端 → 所有"客户端实际行为"都是源码级 [CODE]，
-   实机项在 [client-compatibility.md](client-compatibility.md) 与最终报告里标 BLOCKED。
-4. `docs/reverse-engineering/` 目前只有 go-cqhttp 一份；NapCat / LLBot / Lagrange / Milky 各客户端
-   文档在后续轮次补齐（内容大部分已在 [protocol-reverse-engineering.md](protocol-reverse-engineering.md) 里，
-   需要按 §二十三 的八段格式重整）。
+规则与度量都在 `tests/test_protocol_coupling.py` 里（三条规则 + 一次度量输出），
+口径：**注释与字符串不计**（引用客户端源码行号是任务书要求，不能算耦合）。
+
+当前实测（commit `4741794` 之后）：
+
+| 层 | 代码级客户端名命中 | 说明 |
+| :--- | ---: | :--- |
+| `src/core` | **0** | 核心不认识任何客户端 |
+| `src/services` | **0** | 本轮清掉最后一处：`decode_napcat_file_response` → `decode_base64_json_file_response`（按行为命名，客户端事实留在注释与 Adapter）|
+| `src/sdk` | **0** | |
+| `src/plugins` | **0** | |
+| `src/adapters` | 11 | **允许**：档案/序列化/解析都在这里 |
+| `src/transport` | 1 | **允许**：端点映射 |
+| `src`（全部）里的 `import` 客户端实现 | **0** | §十一 的第一条硬规则 |
+
+三条可执行规则：
+
+1. `test_no_client_implementation_imports` —— `src/` 不得 import 任何客户端实现；
+2. `test_client_names_do_not_leak_into_core_layers` —— Core/Services/SDK/Plugins 的**代码**里不得出现客户端名
+   （例外清单 `ALLOWED_CODE_MENTIONS` 当前为空，加一条必须写理由）；
+3. `test_no_per_client_branching_in_core_layers` —— 不得出现 `== "napcat"` 这类按客户端分支（§九：走 ClientProfile）。
+
+度量输出示例（`pytest tests/test_protocol_coupling.py -q -s`）：
+
+```text
+协议耦合度量（代码级；注释与字符串不计）：
+  src/core         代码级客户端名命中 0
+  src/services     代码级客户端名命中 0
+  src/sdk          代码级客户端名命中 0
+  src/plugins      代码级客户端名命中 0
+  src/adapters     代码级客户端名命中 11
+  src/transport    代码级客户端名命中 1
+  src（全部）        import 客户端实现 0
+```
+
+## 8. 明确还没做的（如实）
+
+1. **出站序列化尚未接入发送热路径**：两个序列化器（`onebot_serializer` / `milky_serializer`）已有契约与往返测试，
+   但 `Sender.send_msg_raw()` 仍原样透传段数组；接入需要"按配置选择 profile"的开关 + CI 验证（下一轮）；
+2. **实机验证全缺**：本环境没有可运行的协议端 → 所有客户端行为结论都是源码级 `[CODE]` 或官方文档 `[DOC]`，
+   实机项一律 `BLOCKED BY EXTERNAL DEPENDENCY`（见 [client-compatibility.md](client-compatibility.md)）；
+3. **未调查的客户端仍是 UNKNOWN**：onebots / Yogurt / OpenShamrock（源码不可得）/ imhelper 等；
+   查询它们的档案得到空档案（全 UNKNOWN），**没有**任何"应该也能用"的推断；
+4. **Lagrange.OneBot 实现源码不可得**（[source-acquisition.md](source-acquisition.md) C4）→ 该列只有文档级证据，
+   大量格子保持 UNKNOWN；Milky 侧的 Lagrange 实现（内嵌）不受影响；
+5. **最终报告未写**：§二十四 的量化指标（覆盖率 / 测试数 / 阻塞项 / 证据等级分层）在下一轮汇总，
+   数字来源就是本文件 §7、[client-compatibility.md](client-compatibility.md) §4.x 与各测试的打印输出。

@@ -195,10 +195,16 @@ class FileParser:
             logger.error(f"File decode error: {e}")
             return "", False
 
-    # ========== [兼容保留] NapCat /get_file 的 JSON(base64) 响应 -> 文本 ==========
-    def decode_napcat_file_response(self, response_text: str, file_name: str) -> Tuple[str, bool]:
-        """[兼容保留] 新路径：取数在 Adapter（src/adapters/onebot/resource_fetcher.py），
-        本方法只为老调用方保留 —— 仍然是"非 JSON 一律拒绝、绝不当成文件内容"的严格口径。
+    # ========== [兼容保留] 文件接口的 JSON(base64) 响应 -> 文本 ==========
+    def decode_base64_json_file_response(self, response_text: str, file_name: str) -> Tuple[str, bool]:
+        """解析 {"retcode":0,"data":{"base64":"..."}} 形态的文件下载响应。
+
+        **命名按行为、不按客户端**（任务书 §四/§十一：客户端名字不得进入 Services 层）——
+        这种响应的来源客户端证据（NapCat `/get_file` 返回 base64 JSON）记在
+        [../../../docs/reverse-engineering/onebot11/napcat.md](../../../docs/reverse-engineering/onebot11/napcat.md)
+        与 Adapter 的 resource_fetcher 里；本方法只负责"严格解码"：
+        非 JSON / retcode≠0 / 缺 base64 一律拒绝，绝不当成文件内容。
+        旧名 `decode_napcat_file_response` 已按边界改名（仓库内无其它调用方）。
         """
         try:
             data = json.loads(response_text)
