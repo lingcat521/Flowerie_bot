@@ -25,12 +25,12 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **G1** | Milky `message_scene=temp` | incomplete（`scope=""`）| complete | source + fixture + test | **CLOSED**（CI `9e4a9fc` 三项全绿，2026-08-09）|
 | **G2** | Milky 请求类事件字段级映射 | incomplete（只有 kind/request_kind）| complete | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（Docs 已更新，待 CI 绿 → CLOSED）|
-| **G3** | Milky `record` / `video` / `xml` | incomplete（仅 `segments_summary`）| complete/explicit | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（待 CI 绿 → CLOSED）|
-| **G4** | Milky `reply.segments` | incomplete（只消费 message_seq）| complete | source + fixture + test | **IMPLEMENTED / FIXTURE_VERIFIED**（待 CI 绿 → CLOSED）|
+| **G3** | Milky `record` / `video` / `xml` | incomplete（仅 `segments_summary`）| complete/explicit | source + fixture + test | **CLOSED**（CI `0ad18aa` 三项全绿）|
+| **G4** | Milky `reply.segments` | incomplete（只消费 message_seq）| complete | source + fixture + test | **CLOSED**（CI `c2ee950` 三项全绿）|
 | **G5** | Milky 多媒体发送（upload→resource_id→send）| no real validation | complete | source + real device | OPEN（依赖实机）|
 | **G6** | 实机 Integration Test（OneBot11 10 + Milky 12）| missing | complete | integration test | OPEN（依赖实机）|
 | **G7** | OpenShamrock | SOURCE_UNAVAILABLE | researched/validated | source/device | OPEN（重试 + 文档研究）|
-| **G8** | OneBot v12 | not implemented | researched + mapped | spec/source | **IMPLEMENTED / NOT_REAL_DEVICE_VALIDATED**（规范级研究 + 骨架 + 契约测试）|
+| **G8** | OneBot v12 | not implemented | researched + mapped | spec/source | **CLOSED**（目标=研究+映射已达成；CI `c0065e2` 全绿；状态携 `NOT_REAL_DEVICE_VALIDATED`）|
 
 ## 3. DoD 逐项（任务书 §12 表）
 
@@ -38,12 +38,12 @@
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | G1 temp | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
 | G2 request | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
-| G3 media/XML | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
-| G4 reply.segments | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | IMPLEMENTED |
+| G3 media/XML | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | **CLOSED** |
+| G4 reply.segments | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | **CLOSED** |
 | G5 media send | | | | | | | | OPEN |
 | G6 real integration | | -- | -- | -- | -- | | | OPEN |
 | G7 OpenShamrock | | | | | | | | OPEN |
-| G8 OneBot12 | ✓ | ✓ | ✓ | ✓ | ✓ | ?（无实现可联调）| ✓ | IMPLEMENTED |
+| G8 OneBot12 | ✓ | ✓ | ✓ | ✓ | ✓ | ?（无实现可联调）| ✓ | **CLOSED**（携 NOT_REAL_DEVICE_VALIDATED）|
 
 ## 4. G1 封口记录（Milky `message_scene=temp`）
 
@@ -80,7 +80,7 @@
 
 | 指标 | 定义 | 当前 | 目标 |
 | :--- | :--- | :--- | :--- |
-| Gap Closure Rate | CLOSED / 8 | **2/8 CLOSED**（G1/G2）+ 4 项 IMPLEMENTED 待 CI（G3/G4/G8）+ G5/G6/G7 待实机 | 8/8 或明确 BLOCKED |
+| Gap Closure Rate | CLOSED / 8 | **5/8 CLOSED**（G1/G2/G3/G4/G8，均有 CI 全绿记录）；G5/G6/G7 依赖实机 | 8/8 或明确 BLOCKED |
 | Real Integration Coverage | 实机验证能力 / 要求验证能力 | 0%（无实机）| ≥90% 或 BLOCKED |
 | 新增测试（G1–G5）| 任务书 §17 | G1 = 11、G2 = 12、G3 = 10、G4 = 9（要求 G4 ≥4）—— 已 42；G8 另加 14 | ≥19 累计 |
 
