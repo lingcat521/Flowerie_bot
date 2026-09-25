@@ -30,7 +30,7 @@ Transport（HTTP / WS / 连接与响应包封）           ← 只认识"发出�
 | 解析归一 | `src/adapters/{onebot,milky,onebot12}_parser.py` | **有**：段类型、字段名、命名空间、临时会话来源群 |
 | 业务处理 | `src/core/*` / `src/services/*` | 无 |
 | 出站构造 | `src/services/sender.py`（今天：原样透传）| 无（由调用方给段数组）|
-| 出站序列化 | `src/adapters/onebot_serializer.py` + 档案 | **有**：字段白名单、命名空间、扩展段、越界取值 |
+| 出站序列化 | `src/adapters/{onebot,milky}_serializer.py` + 档案 + `outgoing.py`（路由）| **有**：字段白名单、命名空间、扩展段、越界取值；**经组合根注入 Sender**（`CLIENT_PROFILE` 为空时完全不生效）|
 | 发送 | `src/transport/action_channels.py` | 端点映射（Milky action 名）+ 响应包封 |
 | 响应解析 | `src/transport/onebot_response.py` | **有**：ok / async / failed 三态与失败字段差异 |
 
@@ -116,9 +116,7 @@ tests/test_onebot_response_contract.py # 响应三态矩阵
 
 ## 8. 明确还没做的（如实）
 
-1. **出站序列化尚未接入发送热路径**：两个序列化器（`onebot_serializer` / `milky_serializer`）已有契约与往返测试，
-   但 `Sender.send_msg_raw()` 仍原样透传段数组；接入需要"按配置选择 profile"的开关 + CI 验证（下一轮）；
-2. **实机验证全缺**：本环境没有可运行的协议端 → 所有客户端行为结论都是源码级 `[CODE]` 或官方文档 `[DOC]`，
+1. **实机验证全缺**：本环境没有可运行的协议端 → 所有客户端行为结论都是源码级 `[CODE]` 或官方文档 `[DOC]`，
    实机项一律 `BLOCKED BY EXTERNAL DEPENDENCY`（见 [client-compatibility.md](client-compatibility.md)）；
 3. **未调查的客户端仍是 UNKNOWN**：onebots / Yogurt / OpenShamrock（源码不可得）/ imhelper 等；
    查询它们的档案得到空档案（全 UNKNOWN），**没有**任何"应该也能用"的推断；

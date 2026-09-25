@@ -92,9 +92,25 @@ wire, notes = serialize_segments(internal_segments, profile=profile)
 2. 只有"有证据表明客户端会拒绝/误解"的字段才被移除，并且**一定**留下 note；
 3. 客户端自己的兜底行为（如 go-cqhttp 把未知段变成字面 CQ 文本）**不由我们复刻** —— note 里写明即可。
 
-**当前接入状态（如实）**：序列化器已就绪并有契约/往返测试，但**尚未接入发送热路径** ——
-接入需要"按档案选择 profile"的配置开关与 CI 验证（下一轮）。在那之前，
-`Sender.send_msg_raw()` 保持原样透传，行为与今天一致。
+**接入状态（本轮完成）**：已经接进发送热路径，但**默认关闭** —— 由配置 `CLIENT_PROFILE` 决定：
+
+```bash
+# 不设（默认）= 原样发送，行为与历史完全一致
+CLIENT_PROFILE=
+# 已调查的客户端：按档案收敛出站段
+CLIENT_PROFILE=go-cqhttp
+# 同名客户端出现在两套协议里时显式写协议（llbot 同时有 OneBot 11 与 Milky 实现）
+CLIENT_PROFILE=milky:llbot
+```
+
+接线方式（ADR-001 冻结层规则：services 不得反向依赖 adapters）：
+- 组合根 `main.py` 用 `src/adapters/outgoing.py::make_outgoing_adapter(CLIENT_PROFILE)` 构造收敛器；
+- 注入 `Sender(config, outgoing_adapter=…)`；服务层只调用注入进来的可调用对象，**不认识任何客户端名**；
+- 两处段数组发送路径（`send_msg_raw` / 图片消息）都会收敛；收敛器抛异常时**不阻断发送**（原样发出 + 记错误日志）；
+- 未调查的客户端名 → **不做收敛**，只记一条 `unknown_client_no_adaptation` 日志（不伪装成已适配）。
+
+测试：`tests/test_outgoing_routing.py`（17 条）覆盖配置解析、默认关闭、未调查客户端、两个协议的收敛，
+并用 ast **静态守卫**接线（Sender 必须接收注入 + 两处调用 + 组合根必须注入 + 服务层不得 import adapters）。
 
 ## 5. 怎么加一个新客户端（清单）
 

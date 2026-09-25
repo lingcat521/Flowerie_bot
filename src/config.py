@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # DeepSeek
     QQ_PROTOCOL: str = "onebot"          # 协议端：onebot（NapCat 等）| milky（Milky 协议端，如 Lagrange.Milky/Yogurt）
     MILKY_API_BASE: str = "http://127.0.0.1:8080"   # Milky 协议端 HTTP 根（/api/<action>）
+    # 出站段按**哪个客户端档案**收敛（空 = 不收敛，行为与历史一致）：
+    #   "go-cqhttp" / "napcat" / "llbot"      → 客户端名（协议按通道推断）
+    #   "onebot11:llbot" / "milky:llbot"      → 同名客户端出现在两套协议里时显式写协议
+    # 取值必须是 docs/client-profiles.md 里登记过的客户端；未调查的名字不会做任何收敛（只记一条日志）
+    CLIENT_PROFILE: str = ""
     MILKY_EVENT_URL: str = "ws://127.0.0.1:8080/event"  # Milky 事件推送 WebSocket
     MILKY_ACCESS_TOKEN: str = ""         # Bearer 鉴权（协议端 access_token）
     DEEPSEEK_API_KEY: str = Field(...)  # 环境变量名 = 字段名（pydantic-settings）

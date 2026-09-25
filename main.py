@@ -119,7 +119,11 @@ async def main():
     prompt_manager = PromptManager(settings_repo, max_length=config.MAX_CUSTOM_PROMPT_LENGTH)
 
     # 优雅管理异步资源（HTTP session / AI 客户端）
-    async with AIClient(config, memory_manager) as ai_client, Sender(config) as sender:
+    # 出站段收敛器（任务书 §十/§十一）：客户端差异只在 Adapter 层，组合根负责注入
+    from src.adapters.outgoing import make_outgoing_adapter
+    _outgoing_adapter = make_outgoing_adapter(getattr(config, "CLIENT_PROFILE", ""))
+    async with AIClient(config, memory_manager) as ai_client, \
+            Sender(config, outgoing_adapter=_outgoing_adapter) as sender:
         # ---- 消息边界组合根（Phase 4）：解析器 + 现有 Sender（共享实例，不重复构造）----
         # 依赖链: Settings(config) → Sender(config) → make_adapters(BOT_QQ, sender)
         #         → OneBotEventParser + Adapters{parser, sender}

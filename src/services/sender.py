@@ -13,9 +13,13 @@ _M_SEND_FAIL = registry.counter("message_send_failure_total", "消息发送失�
 
 
 class Sender:
-    def __init__(self, config: Settings, ws_sender=None, channel_factory=make_action_channel):
+    def __init__(self, config: Settings, ws_sender=None, channel_factory=make_action_channel,
+                 outgoing_adapter=None):
         # channel_factory: (config, session, ws_sender) -> 动作通道。默认用 transport 层实现，可注入替换（组合根 / 测试）。
         # 依赖方向：services -> transport（冻结层规则只禁 services 反向依赖 adapters；见 ADR-001）。
+        # outgoing_adapter: 出站段收敛器，**由组合根注入**（main.py 用 src/adapters/outgoing.py 构造）——
+        # 服务层因此不需要 import adapters；None（默认）= 原样发送，行为与历史完全一致。
+        self._outgoing_adapter = outgoing_adapter
         self.config = config
         self.session: aiohttp.ClientSession = None
         # WS 发送通道（SEND_VIA_WS=true 时生效）：async (action, params) -> dict
@@ -50,6 +54,29 @@ class Sender:
             self._channel = self._channel_factory(self.config, self.session, self._ws_sender)
         return self._channel
 
+    def _prepare_outgoing(self, segments: list, *, is_group: bool) -> list:
+        """按注入的客户端档案收敛出站段；未注入 → 原样返回（行为不变）。
+
+        协议名从**通道名**推断（onebot-http / onebot-ws / milky-http），不在服务层出现任何客户端名。
+        适配器抛异常时**不阻断发送**（原样发送 + 记错误日志）——兼容性收敛不该变成新的故障点。
+        """
+        if self._outgoing_adapter is None:
+            return segments
+        channel_name = str(getattr(self._ensure_channel(), "name", "") or "")
+        protocol = "milky" if "milky" in channel_name else "onebot11"
+        try:
+            prepared, notes = self._outgoing_adapter(segments, is_group=is_group,
+                                                     protocol=protocol)
+        except Exception as e:  # noqa: BLE001
+            logger.error("outgoing_adapter_failed err=%s", e,
+                         extra={"event": "message_send_failed"})
+            return segments
+        if notes:
+            logger.info("outgoing_adapter_notes count=%s reasons=%s", len(notes),
+                        sorted({str(n.get("reason")) for n in notes}),
+                        extra={"event": "message_send_started"})
+        return prepared
+
     async def _post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
         """统一出口：协议差异（OneBot HTTP / OneBot WS / Milky）全部在 Adapter 通道内（Gate B/O）。"""
         return await self._ensure_channel().post(endpoint, payload, timeout)
@@ -71,6 +98,7 @@ class Sender:
         if text and text.strip():
             segments.append({"type": "text", "data": {"text": text[: self.config.MAX_REPLY_LENGTH]}})
         segments.append({"type": "image", "data": {"file": f"file://{image_path}"}})
+        segments = self._prepare_outgoing(segments, is_group=True)
         payload = {"group_id": group_id, "message": segments}
         logger.info("message_send_started group=%s image=%s", group_id, image_path,
                     extra={"event": "message_send_started"})
@@ -142,6 +170,7 @@ class Sender:
             segments.extend(message[:40])
         else:
             segments.append({"type": "text", "data": {"text": str(message)}})
+        segments = self._prepare_outgoing(segments, is_group=(target == "group"))
         # 统一入口：Milky 模式自动映射动作名 + Bearer；WS/HTTP 也在这里分流（任务书 §13）
         endpoint = "send_group_msg" if target == "group" else "send_private_msg"
         payload = {"group_id": target_id, "message": segments} if target == "group" \

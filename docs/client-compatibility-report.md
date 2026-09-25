@@ -205,7 +205,7 @@ Core/Services/SDK/Plugins 对客户端零耦合（实测），矩阵与文档由
 
 **下一步（按价值排序）**：
 
-1. **把序列化器接进发送热路径**（profile 配置开关 + CI 验证）—— 目前"已就绪但未接线"；
+1. ~~把序列化器接进发送热路径~~ **已完成**：`CLIENT_PROFILE` 开关 + 组合根注入 + 静态接线守卫（默认关闭，行为与历史一致）；
 2. 补齐 LLBot record/video/forward 与 Lagrange.Milky 的 Action 面（把 UNKNOWN 变成有证据的格子）；
 3. 有真机环境后跑 `tests/integration/`（22 条）与 G5/G6，把 BLOCKED 转为 INTEGRATION VERIFIED；
 4. 继续按 [client-profiles.md](client-profiles.md) §5 的清单接入未调查客户端（onebots/Yogurt/…）。
