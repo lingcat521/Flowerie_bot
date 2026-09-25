@@ -14,6 +14,7 @@ import json
 
 import aiohttp
 
+from src.transport.onebot_response import parse_onebot_response
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -90,7 +91,8 @@ class OneBotHTTPChannel:
                 if resp.status != 200:
                     return {"ok": False, "error": f"HTTP {resp.status}"}
                 body = await resp.json(content_type=None)
-                return {"ok": body.get("status", "ok") == "ok", "data": body.get("data")}
+                # 响应模型见 parse_onebot_response 的 docstring（ok / async / failed 三态）
+                return parse_onebot_response(body)
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
@@ -124,10 +126,10 @@ class OneBotWSChannel(OneBotHTTPChannel):
     async def post(self, endpoint: str, payload: dict, timeout: float = 10.0) -> dict:
         try:
             resp = await self._ws_sender(endpoint.lstrip("/"), payload)
-            if isinstance(resp, dict) and resp.get("status") in ("ok", None):
-                return {"ok": True, "data": resp.get("data")}
-            return {"ok": False,
-                    "error": f"WS retcode={resp.get('retcode') if isinstance(resp, dict) else resp}"}
+            result = parse_onebot_response(resp)
+            if not result.get("ok"):
+                result["error"] = "WS " + str(result.get("error"))
+            return result
         except Exception as e:  # noqa: BLE001
             logger.error("message_send_action_failed action=%s err=%s", endpoint, e,
                          extra={"event": "message_send_failed", "action": endpoint})

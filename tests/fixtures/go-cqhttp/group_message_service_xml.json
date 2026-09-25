@@ -1,0 +1,43 @@
+{
+  "_provenance": {
+    "client": "go-cqhttp",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "CODE",
+    "note": "字段与类型逐字取自源码分支；值为示例（未实机抓包）",
+    "version": "go-cqhttp a5923f1（archived；OneBot 11 事实基线）",
+    "source": "coolq/cqcode.go L235-246：ServiceElement → {\"type\":\"xml\",\"data\":{\"data\":o.Content,\"resid\":o.ResId}}"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000102,
+  "self_id": 10001,
+  "message_id": 900003,
+  "message_seq": 77125,
+  "group_id": 123456,
+  "user_id": 456789,
+  "anonymous": null,
+  "font": 0,
+  "message": [
+    {
+      "type": "xml",
+      "data": {
+        "data": "<?xml version=\"1.0\"?><msg serviceID=\"1\"><item/></msg>",
+        "resid": "ResId_XML_1"
+      }
+    }
+  ],
+  "raw_message": "[CQ:xml,data=...]",
+  "sender": {
+    "age": 0,
+    "area": "",
+    "level": "",
+    "sex": "unknown",
+    "user_id": 456789,
+    "role": "member",
+    "nickname": "群友",
+    "card": "",
+    "title": ""
+  }
+}

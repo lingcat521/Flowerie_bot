@@ -218,7 +218,7 @@ Flowerie 因此**不做**发送侧拆分；详见 `protocol-reverse-engineering.
 | :--- | :--- | :--- | :--- |
 | NapCatQQ | TS | **SOURCE_OBTAINED**（已逆向） | 见 protocol-reverse-engineering.md §3 |
 | LLOneBot / LLBot | TS | **SOURCE_OBTAINED**（已逆向） | 同时实现 OneBot 11 与 Milky，见 §4 |
-| Lagrange.OneBot | C# | **SOURCE_OBTAINED**（同 Lagrange.Core 仓库） | 与 Lagrange.Core 同源 |
+| Lagrange.OneBot | C# | **SOURCE_UNAVAILABLE**（2026-09-25 复核：LagrangeDev/Lagrange.OneBot HTTP 404；本地 Lagrange.Core/V2 无 OneBot 代码 —— 见 source-acquisition.md C4）| OneBot 11 列只能靠 [DOC]（Lagrange.Doc，且页面自称过时）|
 | Lagrange.Milky | C# | **SOURCE_OBTAINED**（内嵌 Lagrange.Core/V2） | 见 §6 |
 | OpenShamrock | Kotlin/Java | **SOURCE_UNAVAILABLE** | 原仓库（whitechi73/OpenShamrock）不可得：clone 报 could not read Username，仓库搜索只剩第三方分支/适配；**未逆向，不声称支持** |
 | go-cqhttp | Go | **SOURCE_OBTAINED** a5923f1（121 文件） | 已归档，但**是事实基线**（很多实现模仿它的字段） |

@@ -1,0 +1,36 @@
+{
+  "_provenance": {
+    "client": "go-cqhttp",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "CODE",
+    "note": "响应包封 OK() → {data,retcode:0,status:\"ok\",message:\"\"}（api.go L2141）",
+    "version": "go-cqhttp a5923f1（archived；OneBot 11 事实基线）",
+    "source": "coolq/api.go L1676-1706 CQGetMessage()：message_id:int32(GetGlobalID) / message_id_v2:string(GetID) / real_id=message_seq=MessageSeq / group:bool / sender{user_id,nickname} / time"
+  },
+  "status": "ok",
+  "retcode": 0,
+  "message": "",
+  "data": {
+    "message_id": 900001,
+    "message_id_v2": "0f3a9c2b-77aa-4a1e-9f10-1234567890ab",
+    "message_type": "group",
+    "real_id": 77123,
+    "message_seq": 77123,
+    "group": true,
+    "sender": {
+      "user_id": 456789,
+      "nickname": "群友"
+    },
+    "time": 1756000100,
+    "group_id": 123456,
+    "message": [
+      {
+        "type": "text",
+        "data": {
+          "text": "hello"
+        }
+      }
+    ]
+  }
+}

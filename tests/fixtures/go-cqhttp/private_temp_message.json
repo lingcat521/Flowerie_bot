@@ -1,0 +1,36 @@
+{
+  "_provenance": {
+    "client": "go-cqhttp",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "CODE",
+    "note": "字段与类型逐字取自源码分支；值为示例（未实机抓包）",
+    "version": "go-cqhttp a5923f1（archived；OneBot 11 事实基线）",
+    "source": "coolq/event.go L136-172 tempMessageEvent()：\"temp_source\":e.Session.Source、\"message_id\":m.Id（未入库→直接用客户端 seq）、sender 里带 group_id"
+  },
+  "post_type": "message",
+  "message_type": "private",
+  "sub_type": "group",
+  "time": 1756000107,
+  "self_id": 10001,
+  "temp_source": 0,
+  "message_id": 77129,
+  "user_id": 456789,
+  "message": [
+    {
+      "type": "text",
+      "data": {
+        "text": "临时会话"
+      }
+    }
+  ],
+  "raw_message": "临时会话",
+  "font": 0,
+  "sender": {
+    "user_id": 456789,
+    "group_id": 123456,
+    "nickname": "群友",
+    "sex": "unknown",
+    "age": 0
+  }
+}

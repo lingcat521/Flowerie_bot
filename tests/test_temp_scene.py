@@ -123,3 +123,37 @@ def test_temp_roundtrip_stable():
     ev2 = MilkyEventParser(bot_qq=BOT_QQ).parse(rebuilt)
     assert (ev2.scope, ev2.scene, ev2.context_group_id, ev2.text) == \
            (ev.scope, ev.scene, ev.context_group_id, ev.text)
+
+
+# ---- 多客户端等价（任务书：OneBot 11 / Milky 多客户端协议级兼容）----
+
+def test_onebot_gocqhttp_temp_uses_sender_group_id():
+    """go-cqhttp 把临时会话的来源群放在 sender.group_id（coolq/event.go L136-172）[CODE]。
+
+    与顶层 group_id 形态（另一些实现）必须归一到同一个 context_group_id ——
+    这是跨客户端等价，不是"看起来兼容"。
+    """
+    ev = _onebot({"post_type": "message", "message_type": "private", "sub_type": "group",
+                  "user_id": 456789, "message_id": 77129, "time": 1, "temp_source": 0,
+                  "message": [{"type": "text", "data": {"text": "临时会话"}}],
+                  "sender": {"user_id": 456789, "group_id": 123456, "nickname": "群友",
+                             "sex": "unknown", "age": 0}})
+    assert ev.scene == "temp" and ev.group_id is None
+    assert ev.context_group_id == 123456, "go-cqhttp 的 sender.group_id 未被识别为上下文群"
+
+
+def test_gocqhttp_fixture_matches_top_level_shape():
+    """同一语义的两种客户端形态，归一化结果必须完全一致（跨客户端等价性）。"""
+    import json
+    import os
+    root = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(root, "fixtures/go-cqhttp/private_temp_message.json"),
+              encoding="utf-8") as fh:
+        fixture = json.load(fh)
+    from_top = _onebot({"post_type": "message", "message_type": "private", "sub_type": "group",
+                        "user_id": 456789, "message_id": 77129, "time": 1, "group_id": 123456,
+                        "message": [{"type": "text", "data": {"text": "临时会话"}}]})
+    from_sender = _onebot(fixture)
+    assert (from_top.scope, from_top.scene, from_top.context_group_id) == \
+           (from_sender.scope, from_sender.scene, from_sender.context_group_id)
+    assert from_sender.context_group_id == 123456

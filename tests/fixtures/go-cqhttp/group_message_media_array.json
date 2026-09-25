@@ -1,0 +1,85 @@
+{
+  "_provenance": {
+    "client": "go-cqhttp",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "CODE",
+    "note": "字段与类型逐字取自源码分支；值为示例（未实机抓包）",
+    "version": "go-cqhttp a5923f1（archived；OneBot 11 事实基线）",
+    "source": "coolq/cqcode.go L62-280 toElements()：record{file,url} / video{file,url} / image{file,subType,url[,type,id]} / face{id} / dice{value} / rps{value}"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000100,
+  "self_id": 10001,
+  "message_id": 900001,
+  "message_seq": 77123,
+  "group_id": 123456,
+  "user_id": 456789,
+  "anonymous": null,
+  "font": 0,
+  "message": [
+    {
+      "type": "record",
+      "data": {
+        "file": "a0b1c2d3.amr",
+        "url": "https://multimedia.nt.qq.com.cn/download?fileid=rec"
+      }
+    },
+    {
+      "type": "video",
+      "data": {
+        "file": "d4e5f6a7.mp4",
+        "url": "https://multimedia.nt.qq.com.cn/download?fileid=vid"
+      }
+    },
+    {
+      "type": "image",
+      "data": {
+        "file": "9f8e7d6c.image",
+        "subType": "0",
+        "url": "https://gchat.qpic.cn/gchatpic_new/1/2-3"
+      }
+    },
+    {
+      "type": "image",
+      "data": {
+        "file": "1a2b3c4d.image",
+        "subType": "0",
+        "url": "https://gchat.qpic.cn/gchatpic_new/4/5-6",
+        "type": "flash"
+      }
+    },
+    {
+      "type": "face",
+      "data": {
+        "id": "14"
+      }
+    },
+    {
+      "type": "dice",
+      "data": {
+        "value": "3"
+      }
+    },
+    {
+      "type": "rps",
+      "data": {
+        "value": "2"
+      }
+    }
+  ],
+  "raw_message": "[CQ:record,file=a0b1c2d3.amr][CQ:video,file=d4e5f6a7.mp4][CQ:image,file=9f8e7d6c.image]",
+  "sender": {
+    "age": 0,
+    "area": "",
+    "level": "",
+    "sex": "unknown",
+    "user_id": 456789,
+    "role": "member",
+    "nickname": "群友",
+    "card": "",
+    "title": ""
+  }
+}

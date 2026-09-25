@@ -1,0 +1,43 @@
+{
+  "_provenance": {
+    "client": "go-cqhttp",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "CODE",
+    "note": "字段与类型逐字取自源码分支；值为示例（未实机抓包）",
+    "version": "go-cqhttp a5923f1（archived；OneBot 11 事实基线）",
+    "source": "coolq/cqcode.go L235-246：内容不含 \"<?xml\" 时只把 type 改成 json，data 里的 resid 不删（与 NapCat 的 json{data,config} 不同）"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "normal",
+  "time": 1756000103,
+  "self_id": 10001,
+  "message_id": 900004,
+  "message_seq": 77126,
+  "group_id": 123456,
+  "user_id": 456789,
+  "anonymous": null,
+  "font": 0,
+  "message": [
+    {
+      "type": "json",
+      "data": {
+        "data": "{\"app\":\"com.tencent.mannounce\"}",
+        "resid": "ResId_JSON_1"
+      }
+    }
+  ],
+  "raw_message": "[CQ:json,data=...]",
+  "sender": {
+    "age": 0,
+    "area": "",
+    "level": "",
+    "sex": "unknown",
+    "user_id": 456789,
+    "role": "member",
+    "nickname": "群友",
+    "card": "",
+    "title": ""
+  }
+}

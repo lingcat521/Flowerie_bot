@@ -118,3 +118,63 @@ git clone https://github.com/whitechi73/OpenShamrock.git
 
 **结论**：不是鉴权问题 —— **上游账号与仓库均已不存在**。状态保持 `SOURCE_UNAVAILABLE`，
 Android 端 OneBot11 差异继续标 `[UNKNOWN]`，不做任何声称（任务书 §20/§22）。
+
+## 更正（第四轮 · 多客户端兼容任务书，2026-09-25）
+
+### C4. `Lagrange.OneBot` 的实现源码**不可得** —— 此前文档写错了
+
+此前 [client-compatibility.md](client-compatibility.md) §6.1 写的是
+「Lagrange.OneBot | C# | **SOURCE_OBTAINED**（同 Lagrange.Core 仓库）| 与 Lagrange.Core 同源」。
+本轮按任务书 §三「不得假装已经调查」复核，**这条是错的**，证据（都可复现）：
+
+```text
+$ curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" \
+      https://api.github.com/repos/LagrangeDev/Lagrange.OneBot
+404                                   # 仓库已不存在（含改名/删除）
+
+$ curl -s -H "Authorization: Bearer $TOKEN" \
+      'https://api.github.com/orgs/LagrangeDev/repos?per_page=100' | jq -r '.[].name'
+Lagrange.Core / LagrangeV2(archived) / Lagrange.Milky.Document / Lagrange.Kritor /
+lagrangejs / lagrange-python / LagrangeGo / lagrange-kotlin / Lagrange.Cpp / … 
+# 清单里没有任何 OneBot 11 实现仓库
+
+$ grep -ril onebot ~/proto_src/Lagrange.Core/ ~/proto_src/LagrangeV2/ --include='*.cs'
+Lagrange.Core/Lagrange.Core.Runner/QrCodeHelper.cs      # 无关命中（注释）
+LagrangeV2/Lagrange.Core.Runner/QrCodeHelper.cs         # 无关命中
+
+$ git clone --depth 1 https://github.com/LagrangeDev/Lagrange.OneBot.git
+fatal: could not read Username for 'https://github.com'   # 404 → git 要求凭据
+
+$ GitHub 搜索 "Lagrange.OneBot in:name" → 2 个仓库：
+  HornCopper/Lagrange-Python.OneBot（第三方 Python 实现，stars=11）
+  LagrangeDev/Lagrange.OneBot.DatabaseShift（数据库迁移工具，非协议实现）
+```
+
+**结论**：Lagrange.OneBot 的 OneBot 11 实现 = `SOURCE_UNAVAILABLE`（截至 2026-09-25）。
+本地 `Lagrange.Core` / `LagrangeV2` 只能证明 **Lagrange.Milky** 侧（内嵌实现），
+**不能**用来证明 Lagrange 的 OneBot 11 行为 —— 二者是不同协议面。
+因此 Client Compatibility Matrix 的 Lagrange（OneBot 11）列**只能**由 `[DOC]` 支撑，且必须标明 DOC。
+
+### C5. 补充获取：`Lagrange.Doc`（官方文档仓库）＝ 仅 [DOC]
+
+```text
+$ git clone --depth 1 https://github.com/LagrangeDev/Lagrange.Doc.git   # 成功
+```
+
+| 项 | 值 |
+| :--- | :--- |
+| HEAD | `98e96e5`（与既有的 Lagrange.Milky.Document 同源同提交）|
+| 内容 | `docs/v1/Lagrange.OneBot/{API,Segment,Config,AutoUpdate}/` 与 `docs/v1/Lagrange.Milky/` |
+| 可用性**限制**（文档自己写的） | 「此文档已经过时, 请参阅 Apifox 上的 Lagrange.OneBot 文档」→ 页面只是**目录 + 指向规范**，正文很少 |
+| 能给什么 | `Segment/Extend/index.md` 的 **File / Folder / Node** 字段表（字段名与类型）＝ `[DOC]` |
+| 不能给什么 | 具体 JSON 构造、字段可选性、null 行为、Action 参数校验 —— 这些**必须**源码或实机，当前两者都没有 → 记 `UNKNOWN` |
+
+### C6. 本轮新增获取
+
+| 项目 | 仓库 | HEAD | 状态 |
+| :--- | :--- | :--- | :--- |
+| Lagrange.Doc | LagrangeDev/Lagrange.Doc | `98e96e5` | **DOCUMENTATION_ONLY**（官方文档，页面自称过时）|
+| Lagrange.OneBot | LagrangeDev/Lagrange.OneBot | —— | **SOURCE_UNAVAILABLE**（HTTP 404，见 C4）|
+
+> 获取方式与既有一致：`git clone --depth 1` 到 `~/proto_src/`（工作区之外，不入仓库）。
+> 本轮没有用任何"模型记忆"补 Lagrange.OneBot 的字段 —— 拿不到就是拿不到。

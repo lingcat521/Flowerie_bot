@@ -197,11 +197,19 @@ class OneBotEventParser:
             message_id=message_id, timestamp=timestamp,
             raw_data=raw,
         )
-        if scene == "temp" and group_id is not None:
+        if scene == "temp":
             # 群临时会话：**规范未定义**私聊事件里的 group_id（event/message.md L10-22 无该字段），
-            # 某些实现会额外带上 —— 有就记录为上下文群，没有就留空，绝不推断
-            event.context_group_id = group_id
-            event.group_id = None
+            # 客户端各写各的 —— 有就记录为上下文群，没有就留空，绝不推断：
+            #   * go-cqhttp：sender.group_id（coolq/event.go L136-172，另带 temp_source）[CODE]
+            #   * 另一些实现：顶层 group_id（见 tests/test_temp_scene.py::test_onebot_private_with_impl_group_id_becomes_context）
+            ctx_gid = group_id
+            if ctx_gid is None:
+                sender = raw.get("sender")
+                if isinstance(sender, dict):
+                    ctx_gid = sender.get("group_id")
+            if ctx_gid is not None:
+                event.context_group_id = ctx_gid
+                event.group_id = None
         event.operator_id = raw.get("operator_id") or actor_id
         event.target_id = raw.get("target_id")
         if kind == "notice" and str(raw.get("notice_type") or "") == "group_upload":

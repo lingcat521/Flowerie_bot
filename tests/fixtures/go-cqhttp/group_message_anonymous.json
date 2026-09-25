@@ -1,0 +1,43 @@
+{
+  "_provenance": {
+    "client": "go-cqhttp",
+    "status": "[CODE]",
+    "captured": false,
+    "evidence": "CODE",
+    "note": "字段与类型逐字取自源码分支；值为示例（未实机抓包）",
+    "version": "go-cqhttp a5923f1（archived；OneBot 11 事实基线）",
+    "source": "coolq/converter.go L62-125 formatGroupMessage()：IsAnonymous() 时 sub_type=anonymous、anonymous{flag,id,name}、sender.nickname=\"匿名消息\"（无 role/card/title）"
+  },
+  "post_type": "message",
+  "message_type": "group",
+  "sub_type": "anonymous",
+  "time": 1756000105,
+  "self_id": 10001,
+  "message_id": 900006,
+  "message_seq": 77128,
+  "group_id": 123456,
+  "user_id": 800001,
+  "anonymous": {
+    "flag": "800001|匿名群友",
+    "id": 800001,
+    "name": "匿名群友"
+  },
+  "font": 0,
+  "message": [
+    {
+      "type": "text",
+      "data": {
+        "text": "匿名发言"
+      }
+    }
+  ],
+  "raw_message": "匿名发言",
+  "sender": {
+    "age": 0,
+    "area": "",
+    "level": "",
+    "sex": "unknown",
+    "user_id": 800001,
+    "nickname": "匿名消息"
+  }
+}
