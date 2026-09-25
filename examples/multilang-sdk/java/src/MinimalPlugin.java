@@ -56,8 +56,8 @@ public final class MinimalPlugin {
             plugin.expose("seen", request -> seen());
         });
 
-        // 插件事件（§九）：test.event 记录 payload + 日志
-        plugin.on("test.event", event -> onTestEvent(plugin, event));
+        // 引擎事件 test.event（§四）：用 onEvent 注册（on() 是 plugin.event 的订阅，两条通道别混）
+        plugin.onEvent("test.event", (ctx, event) -> onTestEvent(plugin, event));
 
         // 消息事件：/sdk@<自己> 命令
         plugin.onMessage((ctx, event) -> onMessage(plugin, event));

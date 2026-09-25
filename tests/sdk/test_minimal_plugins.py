@@ -12,7 +12,7 @@ import logging
 
 import pytest
 
-from tests.sdk.harness import LANGUAGES, RigCtx, missing_reason
+from tests.sdk.harness import RigCtx, missing_reason
 
 LANGS = ["python", "typescript", "go", "rust", "java"]
 #: §十七 验收表：只有真跑过的行才会写 PASS（环境缺失写 SKIP 原因）
@@ -45,7 +45,8 @@ async def test_build_load_ready_and_api(tmp_path, lang):
         _record(lang, "Ready", "PASS")
 
         pong = await rig.send("/sdk@%s ping %s" % (plugin_id, plugin_id))
-        assert pong == {"ok": True, "plugin": LANGUAGES[lang]["label"], "runtime": lang}, pong
+        assert pong == {"ok": True, "plugin": plugin_id.replace("_", "-"),
+                        "runtime": lang}, pong
         _record(lang, "Ping", "PASS")
 
         info = await rig.send("/sdk@%s info" % plugin_id)

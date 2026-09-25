@@ -7,7 +7,7 @@ Rust → Java（任务书说明"如果对应语言 Runtime 已完成，也增加
 """
 import pytest
 
-from tests.sdk.harness import LANGUAGES, RigCtx, missing_reason
+from tests.sdk.harness import RigCtx, missing_reason
 
 #: (调用方, 被调方, 是否最低验收路径)
 PATHS = [
@@ -43,7 +43,8 @@ async def test_plugin_communication_path(tmp_path, path):
         await rig.load(caller, plugin_id=caller_id)
         await rig.load(callee, plugin_id=callee_id)
 
-        expected = {"ok": True, "plugin": LANGUAGES[callee]["label"], "runtime": callee}
+        # 契约：ping 的 plugin 字段 = 自己 plugin_id 把 _ 换成 -（这里两个 id 都是 path_*）
+        expected = {"ok": True, "plugin": callee_id.replace("_", "-"), "runtime": callee}
 
         # §六：plugin.call(target, "ping") 拿到对方的 ping 结果
         pong = await rig.send("/sdk@%s ping %s" % (caller_id, callee_id))
@@ -75,9 +76,10 @@ async def test_typescript_chain_go_and_java(tmp_path):
         java = await rig.load("java", plugin_id="chain_java")
         ts2 = await rig.load("typescript", plugin_id="chain_ts_2")
         out = await rig.send("/sdk@%s chain %s %s %s" % (ts, go, java, ts2))
-        assert out["t1"] == {"ok": True, "plugin": "minimal-go", "runtime": "go"}, out
+        assert out["t1"] == {"ok": True, "plugin": go.replace("_", "-"), "runtime": "go"}, out
         assert out["t2"] == {"hello": "world"}, out
-        assert out["t3"] == {"ok": True, "plugin": "minimal-ts", "runtime": "typescript"}, out
+        assert out["t3"] == {"ok": True, "plugin": ts2.replace("_", "-"),
+                             "runtime": "typescript"}, out
 
 
 @pytest.mark.asyncio
@@ -90,9 +92,11 @@ async def test_same_language_second_instance(tmp_path):
         first = await rig.load("typescript", plugin_id="same_ts_a")
         second = await rig.load("typescript", plugin_id="same_ts_b")
         out = await rig.send("/sdk@%s ping %s" % (first, second))
-        assert out == {"ok": True, "plugin": "minimal-ts", "runtime": "typescript"}, out
+        assert out == {"ok": True, "plugin": second.replace("_", "-"),
+                       "runtime": "typescript"}, out
         back = await rig.send("/sdk@%s ping %s" % (second, first))
-        assert back == out, back
+        assert back == {"ok": True, "plugin": first.replace("_", "-"),
+                        "runtime": "typescript"}, back
 
 
 def test_zz_paths_table_is_reported(capsys):
