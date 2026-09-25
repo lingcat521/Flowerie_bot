@@ -50,6 +50,9 @@ class AdapterUnderTest:
     send_markers: Tuple[str, ...]
     action_markers: Tuple[str, ...]
     segment_path: Tuple[str, ...] = ("message",)   # 段容器在原生事件里的路径
+    segment_type_key: str = "type"                # 段类型字段名（伪协议用 "t"）
+    segment_value_key: str = "data"               # 段载荷字段名（伪协议用 "v"）
+    container_wired: bool = True                  # 是否已接入生产组合根（未接入者须在 note 说明）
     malformed_inputs: Tuple[Any, ...] = field(default_factory=tuple)
 
 
@@ -135,6 +138,7 @@ def onebot12_under_test() -> AdapterUnderTest:
         descriptor=get_descriptor("onebot12"),
         identity_field="type",
         container_protocol="",  # 骨架：暂未接入组合根（见 onebot12-research.md）
+        container_wired=False,
         message_event={"id": "evt-1", "time": 1700000000.5, "type": "message",
                        "detail_type": "group", "sub_type": "",
                        "self": {"platform": "qq", "user_id": str(BOT_QQ)},
@@ -158,6 +162,44 @@ def onebot12_under_test() -> AdapterUnderTest:
     )
 
 
+def testproto_under_test() -> AdapterUnderTest:
+    """Gate E/F 的虚拟协议：新增协议在契约夹具里就是这样「加一条」。
+
+    注意：这里**不修改生产注册表**（capabilities.descriptors() 仍只含三个真实协议），
+    伪协议只在测试侧登记 —— 这也是 PEC 测量的一部分（生产代码零改动）。
+    """
+    from src.adapters.testkit.test_protocol import TestProtocolEventParser, test_protocol_descriptor
+
+    return AdapterUnderTest(
+        protocol_id="testproto",
+        parser=TestProtocolEventParser(bot_qq=BOT_QQ),
+        descriptor=test_protocol_descriptor(),
+        identity_field="kind",
+        container_protocol="",   # 虚拟协议未接入组合根（不修改生产装配代码）
+        container_wired=False,
+        segment_type_key="t",
+        segment_value_key="v",
+        message_event={"kind": "msg", "chan": "group:123456", "from": 456789, "seq": 1001,
+                       "ts": 1700000000,
+                       "parts": [{"t": "at", "v": str(BOT_QQ)},
+                                 {"t": "text", "v": " 契约测试"},
+                                 {"t": "img", "url": "https://x/a.png", "name": "a.png"}]},
+        notice_event={"kind": "notice", "evt": "poke", "chan": "group:123456",
+                      "from": 456789, "to": BOT_QQ, "ts": 1700000000},
+        unknown_segment={"t": "future_part", "v": {"foo": "bar"}},
+        unknown_event={"kind": "future_kind", "chan": "group:1", "ts": 1700000000},
+        source_files=("src/adapters/testkit/test_protocol.py",),
+        send_markers=("async def post", "TestProtocolChannel"),
+        action_markers=("async def recall", "recalled"),
+        segment_path=("parts",),
+        malformed_inputs=(None, {}, [], "string", 42, {"kind": None},
+                          {"kind": "msg", "parts": "not-a-list"},
+                          {"kind": "msg", "parts": [None, 1, "x", {}]},
+                          {"kind": "msg", "chan": "group:abc", "from": "xyz"}),
+    )
+
+
 def all_adapters() -> Tuple[AdapterUnderTest, ...]:
     """新增协议只需在这里加一条 —— 12 项契约会自动对它生效（Gate D/E 的配套设计）。"""
-    return (onebot11_under_test(), milky_under_test(), onebot12_under_test())
+    return (onebot11_under_test(), milky_under_test(), onebot12_under_test(),
+            testproto_under_test())

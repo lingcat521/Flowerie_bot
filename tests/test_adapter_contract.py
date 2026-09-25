@@ -12,7 +12,11 @@ from typing import Any, Dict
 
 import pytest
 
-from src.adapters.capabilities import CANONICAL_CAPABILITIES, CapState, capability_coverage
+from src.adapters.capabilities import (
+    CANONICAL_CAPABILITIES,
+    CapState,
+    coverage_for_descriptor,
+)
 from src.adapters.container import make_adapters
 from src.adapters.contract import AdapterUnderTest, all_adapters
 from src.adapters.proto import InternalEvent
@@ -59,9 +63,11 @@ def test_contract_03_lifecycle(a):
         assert built.transport == expected
         assert built.descriptor.protocol_id == a.protocol_id
     else:
-        # 骨架适配器：明确"未接入组合根"，且不会被误当成已接入
-        assert "骨架" in a.descriptor.note
+        # 未接入生产组合根的适配器（骨架 / 虚拟协议）：必须在描述符里写明理由，
+        # 且绝不能被组合根误选中
+        assert a.descriptor.note, "未接入组合根的适配器必须说明原因"
         assert make_adapters(10001, _complete_fake_sender(), protocol="onebot").descriptor.protocol_id == "onebot11"
+        assert make_adapters(10001, _complete_fake_sender(), protocol="milky").descriptor.protocol_id == "milky"
 
 
 @pytest.mark.parametrize("a", ADAPTERS, ids=IDS)
@@ -69,7 +75,7 @@ def test_contract_04_capability_declaration(a):
     caps = a.descriptor.capabilities
     missing = [c for c in CANONICAL_CAPABILITIES if not caps.declared(c)]
     assert missing == [], missing
-    assert capability_coverage(a.protocol_id) >= 0.95
+    assert coverage_for_descriptor(a.descriptor) >= 0.95
     assert all(caps.state(c) in CapState.VALID for c in CANONICAL_CAPABILITIES)
 
 
@@ -108,8 +114,8 @@ def test_contract_08_action_mapping(a):
 def test_contract_09_unknown_segment(a):
     raw = _with_unknown_segment(a)
     ev = a.parser.parse(raw)
-    seg_type = a.unknown_segment["type"]
-    assert (seg_type, a.unknown_segment["data"]) in ev.segments_summary
+    seg_type = a.unknown_segment[a.segment_type_key]
+    assert (seg_type, a.unknown_segment[a.segment_value_key]) in ev.segments_summary
 
 
 @pytest.mark.parametrize("a", ADAPTERS, ids=IDS)
@@ -161,5 +167,5 @@ def _complete_fake_sender():
 def test_contract_summary_all_adapters_12_of_12():
     """Gate D 汇总：每个已登记适配器都必须有 12 项契约（新增协议忘登记会在这里暴露）。"""
     ids_seen = [a.protocol_id for a in ADAPTERS]
-    assert ids_seen == ["onebot11", "milky", "onebot12"]
-    assert len(ADAPTERS) * 12 == 36
+    assert ids_seen == ["onebot11", "milky", "onebot12", "testproto"]
+    assert len(ADAPTERS) * 12 == 48

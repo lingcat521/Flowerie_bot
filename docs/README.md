@@ -44,6 +44,9 @@
 | [adapter-architecture.md](adapter-architecture.md) | **Adapter 分层架构**：依赖方向硬约束 / 数据流 / 归一化契约 / 接入新客户端五步清单 | 开发者 |
 | [mvp-analysis.md](mvp-analysis.md) | **MVP 对照报告**：事实清单 / 为什么能工作 / 值得迁移 / 不能直接迁移 | 开发者 |
 | [source-acquisition.md](source-acquisition.md) | **源码获取台账**：15 个仓库与 commit、各客户端 `SOURCE_*` 状态（含失败与更正） | 开发者 |
+| [architecture/](architecture/README.md) | **架构 ADR 集**：ADR-001 传输解耦 / ADR-002 能力模型 / ADR-003 Adapter 边界与契约 / ADR-004 虚拟协议实验（新增协议 PEC = 0） | 开发者 |
+| [architecture/acceptance-metrics.md](architecture/acceptance-metrics.md) | **验收 Dashboard**：八项绝对门槛 + Gate A–Z 实测值 + 逐提交 CI 真实结论 | 开发者 |
+| [protocol-gap-closure.md](protocol-gap-closure.md) | **协议缺口台账**：A 部分 G1–G8 封口状态 / DoD 九段链 / BLOCKED 与证据 | 开发者 |
 
 ## 归档
 

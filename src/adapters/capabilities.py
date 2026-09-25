@@ -219,8 +219,14 @@ def get_descriptor(protocol_id: str) -> AdapterDescriptor:
         raise KeyError("未登记的协议: %s（已登记：%s）" % (protocol_id, sorted(descriptors()))) from None
 
 
-def capability_coverage(protocol_id: str) -> float:
-    """Gate G 口径：该协议**已显式声明**的能力 / 规范能力总数。"""
-    caps = get_descriptor(protocol_id).capabilities
+def coverage_for_descriptor(descriptor: AdapterDescriptor) -> float:
+    """与 capability_coverage 同口径，但直接作用于描述符 —— 供未登记进生产注册表的
+    适配器（例如 Gate E 的虚拟协议）使用。"""
+    caps = descriptor.capabilities
     declared = sum(1 for c in CANONICAL_CAPABILITIES if caps.declared(c))
     return declared / float(len(CANONICAL_CAPABILITIES))
+
+
+def capability_coverage(protocol_id: str) -> float:
+    """Gate G 口径：该协议**已显式声明**的能力 / 规范能力总数。"""
+    return coverage_for_descriptor(get_descriptor(protocol_id))
