@@ -184,6 +184,42 @@
 - `src/onebot11/action/**`：OneBot 侧段定义与 `file/GetFile.ts`、`file/GetImage.ts` 的取值方式；
 - `src/ntqqapi/helper/message{Parsing,Building}.ts`（422/456 行）：更底层的 NTQQ 元素编解码；
 - `src/milky/transform/event.ts`（470 行）：Milky 事件（含 poke 类通知）的映射。
+### 4.4 LLBot 的 OneBot11 入站（`src/onebot11/transform/message/incoming.ts`，327 行）[CODE]
+
+| 元素 | OneBot 段与字段（逐字） | 与 NapCat 的差异 |
+| :--- | :--- | :--- |
+| `picElement` | `image{file, **subType**(camelCase), url(生成), file_size}` | NapCat 是 `sub_type`（snake_case）→ **同语义不同名** |
+| `videoElement` | `video{file, url \|\| file://path, path, file_size}` | NapCat 只有 FileBase（`file/path/url/name/thumb`） |
+| `fileElement` | `file{file, url(file://或空), **file_id**(fileUuid), path, file_size}` | **NapCat 的 FileBase 没有 `file_id`** |
+| `pttElement` | `record{file, url(生成), file_size}` | NapCat 同段名，字段更少 |
+| `arkElement` | **`json{data: bytesData}`** —— OneBot 侧**不区分 app** | NapCat 同样原样透传 bytesData（分流发生在客户端内部） |
+| `faceElement` | 分三路：`faceType=Poke && faceIndex=1` → **`shake{}`**；`faceIndex=Dice` → `dice{result}`；`faceIndex=RPS` → `rps{result}`；否则 → `face{id, **sub_type**(faceType)}` | NapCat 的 `face` 是 `{id, resultId?, chainCount?}` → **字段集不同** |
+| `marketFaceElement` | `mface{summary, **url**(拼 gxh.vip.qq.com), emoji_id, emoji_package_id, key}` | NapCat 的 mface **没有 url** |
+| `markdownElement` | （见文件 L244 起，本轮未细读） | — |
+
+### 4.5 交叉结论：同一个用户动作，三种协议形态（最重要的一节）
+
+**「戳一戳 / poke」在三个实现里完全不同**：
+
+| 来源 | 形态 | 字段 |
+| :--- | :--- | :--- |
+| OneBot 11（MVP / Flowerie 现在处理的那个） | `notice` + `notice_type=notify` + `sub_type=poke` | `user_id`, `target_id`（MVP 回退 `target`/`to_user_id`）, `group_id` |
+| NapCat | ① `notice` 的 `OB11PokeEvent`；② 消息里的 **`poke{type,id}` 段**；③ 内部 `GreyTip=8` 元素 | 段形态 `{type,id}` |
+| **LLBot 的 OneBot11** | **`face` 元素 `faceType=Poke` → `shake{}` 段**（无 id、无目标！） | `{}` |
+| **Milky（LLBot 实现）** | **事件** `group_nudge` / `friend_nudge` | 群：`{group_id, sender_id, **receiver_id**, display_action, display_suffix, display_action_img_url}`；友：`{user_id, is_self_send, is_self_receive, display_action, …}` |
+
+→ 归一化层必须把「戳一戳」抽象成**一个语义事件**（谁戳谁、在哪个会话），而不是照搬某家的字段；
+  尤其 LLBot 的 `shake` 段**不带目标**，只能从 `sender/受话人` 推断 → 这类信息差必须在 Adapter 里显式处理 `[CODE]`。
+
+**「表情」有三类，且各家字段不同**：
+
+| 类别 | NapCat | LLBot(OneBot) | LLBot(Milky) |
+| :--- | :--- | :--- | :--- |
+| QQ 表情 | `face{id, resultId?, chainCount?}` | `face{id, sub_type}` | `face{face_id, is_large}` |
+| 商城表情 | `mface{emoji_package_id, emoji_id, key, summary}` | 同 + **`url`** | `market_face{…, url}` |
+| 图片形式表情 | `image{sub_type}`（FileBase 扩展） | `image{subType}` | `image{sub_type: sticker}` |
+
+→ 归一化层至少要能区分这三类，并把 `id`/`face_id`/`faceIndex`、`sub_type`/`subType`、`summary`/`faceName` 收敛成统一字段 `[CODE]`。
 ## 5. 待调查清单（含第一步命令）
 
 | 目标 | 第一步 |
