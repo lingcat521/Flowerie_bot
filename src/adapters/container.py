@@ -44,24 +44,32 @@ def _missing_sender_methods(sender: Any) -> list:
     return missing
 
 
+def make_parser(protocol: str, bot_qq: Optional[int]) -> EventParser:
+    """按协议构造解析器（组合根唯一入口）。
+
+    `make_adapters` 与多实例装配（`src/adapters/instance.py`，Gate S）共用这里，
+    避免"第二种装配方式"各写一份协议分支。
+    """
+    if str(protocol or "onebot").lower() == "milky":
+        from src.adapters.milky_parser import MilkyEventParser
+
+        return MilkyEventParser(bot_qq=bot_qq)
+    from src.adapters.onebot_parser import OneBotEventParser
+
+    return OneBotEventParser(bot_qq=bot_qq)
+
+
 def make_adapters(bot_qq: Optional[int], sender: Any, protocol: str = "onebot") -> Adapters:
     """组装组合根：解析器 + 现有 Sender（不重复构造任何网络资源）。
 
     - sender 必须满足 MessageSender 契约（启动期校验，失败即 RuntimeError）
     - protocol=onebot → OneBotEventParser；protocol=milky → MilkyEventParser
     """
-    from src.adapters.onebot_parser import OneBotEventParser
-
     missing = _missing_sender_methods(sender)
     if missing:
         raise RuntimeError(f"sender 不满足 MessageSender 契约（缺 {missing}）")
-    if str(protocol or "onebot").lower() == "milky":
-        from src.adapters.milky_parser import MilkyEventParser
-        parser: EventParser = MilkyEventParser(bot_qq=bot_qq)
-        transport = "milky"
-    else:
-        parser = OneBotEventParser(bot_qq=bot_qq)
-        transport = "onebot"
+    transport = "milky" if str(protocol or "onebot").lower() == "milky" else "onebot"
+    parser = make_parser(transport, bot_qq)
     # 能力描述符随解析器一起装配（Gate G/H）：上层用 capabilities.supports(...) 判断，不去猜协议
     descriptor = get_descriptor("milky" if transport == "milky" else "onebot11")
     return Adapters(parser=parser, sender=sender, bot_qq=bot_qq, transport=transport,

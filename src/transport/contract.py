@@ -13,7 +13,6 @@ MilkyHTTPChannel）各自为政。调用方无法用同一套语义驱动它们�
 
 依赖：只依赖标准库（不 import aiohttp / websockets），因此"传输契约"本身不绑定任何网络库。
 """
-from abc import ABC
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple
 
@@ -57,11 +56,16 @@ CONTRACT_ITEMS: Tuple[ContractItem, ...] = (
 )
 
 
-class TransportContract(ABC):
+class TransportContract:
     """8 项契约的基类：默认实现一律抛 NotImplementedError，逼实现者逐项交代。
 
     - 实现项：直接覆盖基类方法；
     - 不适用项：不覆盖，改在 `NA_REASONS` 里写明理由（理由为空的 N/A 视为未交代）。
+
+    **刻意不继承 `abc.ABC` / 不用 `@abstractmethod`**：本契约允许实现者把某项标成 N/A
+    （例如 HTTP 没有 `receive`），而 `@abstractmethod` 会让"不实现某几项"的子类无法实例化 ——
+    两者语义冲突。是否交代齐全由 `check_transport_contract()` 统一核对（含 N/A 必须有理由）。
+    （另：ruff 的 B024 也会直接指出"ABC 里没有抽象方法"。）
     """
 
     #: 传输名（用于报告）
