@@ -40,7 +40,6 @@ import sys
 import traceback
 from typing import Any, Dict, List, Optional
 
-
 # ---------------- Plugin Protocol v1 常量（与 src/plugins/protocol.py 保持一致） ----------------
 # runner 由 PluginRuntime 以 `python -I`（隔离模式）启动，sys.path 里没有仓库代码，
 # 因此这里内联一份最小副本；tests/test_plugin_protocol.py 会逐项比对两份常量，防止悄悄漂移。
