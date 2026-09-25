@@ -57,7 +57,10 @@ public final class MinimalPlugin {
         });
 
         // 引擎事件 test.event（§四）：用 onEvent 注册（on() 是 plugin.event 的订阅，两条通道别混）
-        plugin.onEvent("test.event", (ctx, event) -> onTestEvent(plugin, event));
+        plugin.onEvent("test.event", (ctx, event) -> {
+            onTestEvent(plugin, event);
+            return null;                       // MessageHandler.handle 返回 Object（引擎忽略事件返回值）
+        });
 
         // 消息事件：/sdk@<自己> 命令
         plugin.onMessage((ctx, event) -> onMessage(plugin, event));

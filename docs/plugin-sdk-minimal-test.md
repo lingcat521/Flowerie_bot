@@ -25,7 +25,13 @@
 | `boom` | 无 | 抛/panic（PLUGIN_ERROR 探针）|
 | `seen` | 无 | `{"events": [<收到过的 test.event payload>], "logs": ["[test.event] hello"]}`（日志行文本固定 `[test.event] <message>`）|
 
-**事件处理**：`test.event` 到达时，记录 payload 并用 SDK 日志打一行 `[test.event] <message>`。
+**事件处理**：`test.event` 到达时，记录 payload 并用 SDK 日志打一行 `[test.event] <message>`，
+并把日志行放进 `seen().logs`（不依赖各语言日志通道差异）。
+
+> 各语言"引擎事件"的注册 API 不同，别和插件间事件订阅混用：
+> Python `on_<event>`/`on_event` · TypeScript `plugin.on(name, fn)`（引擎事件与
+> `plugin.event` 共用一张表）· Go `On/OnMessage` · Rust `on_event/on_message` ·
+> Java **`onEvent(name, fn)`**（`on()` 是 `plugin.event` 订阅，用它注册引擎事件会收不到）。
 
 **消息命令**（`message` 事件的 `text` 形如 `/sdk@<executor_id> <命令>`，**只有自己的 plugin_id 等于 executor_id 时才执行**（事件是广播的，不寻址会多插件同时回包）；命令参数里的 `<target>` 才是被调用的插件）；返回值以
 `{"type":"send_message","payload":{"group_id":<事件里的 group_id>,"message":<JSON 字符串>}}` 动作回给引擎；注意是 `payload` 而不是 `params`（引擎执行动作时读 `action["payload"]`，写错就变成"没有目标与 message"））：

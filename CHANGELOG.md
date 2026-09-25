@@ -7,6 +7,25 @@
 
 ## [未发布]
 
+### 新增 —— 多语言 SDK 最小化插件实测（任务书《插件测试》）
+
+- **最小插件** ~~BT~~examples/multilang-sdk/{python,typescript,go,rust,java}/~~BT~~：一个语言一个极简插件，
+  只依赖该语言 SDK，统一语义 ~~BT~~ping/get_info/echo/slow/boom/seen~~BT~~ + ~~BT~~test.event~~BT~~ +
+  ~~BT~~/sdk@<自己> <命令>~~BT~~（ping/info/echo/seen/call/route/chain/errors），结果用
+  ~~BT~~{"type":"send_message","payload":{…}}~~BT~~ 动作回给引擎；Build 与 Load 分开
+  （~~BT~~build.sh~~BT~~ 真编译进 ~~BT~~.build/~~BT~~，~~BT~~run.sh~~BT~~ 只 exec 产物）。
+- **实测入口** ~~BT~~tests/sdk/~~BT~~：真仓库 + 真引擎公开 API（~~BT~~discover/enable/start_all/dispatch_event/shutdown~~BT~~）
+  + 真插件进程，不 mock 插件、不绕过 SDK 直连 Runtime、不调用 Core 内部 API；覆盖
+  Build/Load/Ready/Ping/Info/Echo/Event/Call/Error/Permission/Shutdown 十一行 +
+  七条跨（同）语言链路（最低验收 TS→Go / TS→Java / TS→TS）+ 独立启动探针（含子进程 stderr）。
+- **SDK 补齐**：Python runner 现在会把**任意事件类型**（如 ~~BT~~test.event~~BT~~）分派给
+  ~~BT~~on_<event>~~BT~~ / ~~BT~~on_event~~BT~~ 钩子（此前只认 6 个内置事件名，自定义事件被静默丢弃）；
+  Java 最小插件用 ~~BT~~onEvent~~BT~~ 注册引擎事件（~~BT~~on()~~BT~~ 是插件间事件订阅）。
+- **CI**：新增 SDK 语言矩阵步骤（~~BT~~pytest -q -s tests/sdk/~~BT~~，go/rustc/javac/node 真编译真运行），
+  全量 pytest 用 ~~BT~~--ignore=tests/sdk~~BT~~ 避免重复构建。
+- 文档：~~BT~~docs/plugin-sdk-minimal-test.md~~BT~~（契约）、~~BT~~docs/plugin-sdk-minimal-report.md~~BT~~
+  （§十七 验收表 + §十八 17 问）、~~BT~~examples/multilang-sdk/README.md~~BT~~。
+
 ### 新增 —— Plugin-to-Plugin 通信（任务书《通信》：协议 + Core Router + 五语言 SDK）
 
 - **协议模型**（`src/plugins/comm.py`）：五类消息 CALL/RESPONSE/EVENT/ERROR/CANCEL 严格区分；
