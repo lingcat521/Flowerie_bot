@@ -77,7 +77,7 @@ examples/multilang-sdk/python/{manifest.json, plugin.py}
 
 链路：`dispatch_event("message", {text:"/sdk chain …"})` -> 引擎投递 -> 插件 SDK ->
 `plugin.call` -> Core Router -> 另一个真插件进程 -> 结果回到动作
-（`send_group_msg`）-> 测试断言 message 内容。
+（`send_message` + `payload`）-> 测试断言 message 内容。
 
 ## 4. 环境缺失怎么处理（§十三/§十四）
 

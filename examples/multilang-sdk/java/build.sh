@@ -3,10 +3,14 @@
 # 零第三方依赖（不用 Maven/Gradle，不拉任何依赖）；任何一步失败都非零退出。
 #
 # SDK 位置解析顺序（第一个命中者胜出）：
-#   1. \$FLOWERIE_JAVA_SDK_DIR              —— 直接指向 sdk/java/src/main/java
-#   2. \$HERE/sdk/java/src/main/java|\$HERE/sdk —— 插件目录内自带的副本（可选）
-#   3. \$FLOWERIE_SDK_DIR（sdk 根或 java 子目录）、\$FLOWERIE_REPO_ROOT/sdk/java/src/main/java
-#   4. 从插件目录逐级向上找仓库根（在仓库里就地构建：examples/multilang-sdk/java -> <repo>）
+#   1. \$FLOWERIE_JAVA_SDK_DIR / \$FLOWERIE_SDK_JAVA —— 直接指向 sdk/java/src/main/java
+#   2. \$HERE/sdk/...                                 —— 插件目录内自带的 SDK 副本（可选）
+#   3. \$FLOWERIE_SDK_DIR / \$FLOWERIE_REPO_ROOT      —— sdk 根 / 仓库根
+#   4. $GITHUB_WORKSPACE                    —— CI 检出目录（GitHub Actions 必设）；夹具把插件目录拷走后，靠它仍能找到仓库根
+#   5. 从插件目录逐级向上找仓库根（就地构建：examples/multilang-sdk/java -> <repo>）
+#
+# 为什么需要 3–4：验收夹具（tests/sdk/harness.py: build_minimal）只把**插件目录**拷到临时目录再跑
+# 本脚本，此时仓库与 SDK 都不是它的祖先 —— 用这些变量指路即可，不必把 SDK 复制进插件目录。
 set -eu
 
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -32,11 +36,14 @@ looks_like_sdk() {
 SDK_SRC=""
 for candidate in \
   "${FLOWERIE_JAVA_SDK_DIR:-}" \
+  "${FLOWERIE_SDK_JAVA:-}" \
+  "${FLOWERIE_SDK_JAVA:-}/dev/flowerie/sdk" \
   "$HERE/sdk/java/src/main/java" \
   "$HERE/sdk" \
   "${FLOWERIE_SDK_DIR:-}/java/src/main/java" \
   "${FLOWERIE_SDK_DIR:-}" \
-  "${FLOWERIE_REPO_ROOT:-}/sdk/java/src/main/java"
+  "${FLOWERIE_REPO_ROOT:-}/sdk/java/src/main/java" \
+  "${GITHUB_WORKSPACE:-}/sdk/java/src/main/java"
 do
   if looks_like_sdk "$candidate"; then
     SDK_SRC="$candidate"
@@ -56,7 +63,7 @@ if [ -z "$SDK_SRC" ]; then
 fi
 
 if [ -z "$SDK_SRC" ]; then
-  fail "找不到 Java SDK 源码（需要 $SDK_MARK）。已尝试：\$FLOWERIE_JAVA_SDK_DIR、\$HERE/sdk、\$FLOWERIE_SDK_DIR、\$FLOWERIE_REPO_ROOT，以及从 $HERE 向上查找仓库根。"
+  fail "找不到 Java SDK 源码（需要 $SDK_MARK）。已尝试：\$FLOWERIE_JAVA_SDK_DIR / \$FLOWERIE_SDK_JAVA、\$HERE/sdk、\$FLOWERIE_SDK_DIR、\$FLOWERIE_REPO_ROOT、\$GITHUB_WORKSPACE，以及从 $HERE 向上查找仓库根。Hint: 夹具把插件目录单独拷到临时目录时，导出 FLOWERIE_REPO_ROOT=<仓库根>，或把 sdk/ 一并铺进构建目录。"
 fi
 
 # ---------- 3. 真编译 ----------

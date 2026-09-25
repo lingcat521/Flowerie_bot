@@ -62,7 +62,13 @@ jobs:
       - name: Ruff check
         run: ruff check .
 
+      # 多语言 SDK 最小化插件实测（任务书《插件测试》§十五 语言矩阵）：
+      # 真 build（go build / rustc / javac / tsc）-> 真加载 -> READY -> ping/echo/event ->
+      # plugin.call 跨语言 -> 权限/错误 -> shutdown；-s 让 §十七 验收表与 §五 链路表打进 CI 日志。
+      - name: SDK minimal plugin matrix (build/load/ping/echo/event/call/error/permission/shutdown)
+        run: pytest -q -s tests/sdk/
+
       - name: Run tests (pytest)
         env:
           TEST_POSTGRES_URL: postgresql://flowerie:flowerie@127.0.0.1:5432/flowerie_test
-        run: pytest -q -rs
+        run: pytest -q -rs --ignore=tests/sdk

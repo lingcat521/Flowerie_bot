@@ -1,0 +1,16 @@
+{
+  "id": "minimal_rust",
+  "name": "Minimal Rust Plugin（多语言 SDK 实测）",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "任务书《插件测试》的最小 Rust 插件：只用 sdk/rust（零 crate 依赖），暴露 ping/get_info/echo/slow/boom/seen，处理 test.event 与 /sdk@<自己> 命令。",
+  "runtime": "exec",
+  "entry": "run.sh",
+  "api_version": 1,
+  "permissions": [
+    "read_message",
+    "send_message",
+    "plugin.call.*",
+    "plugin.emit"
+  ]
+}

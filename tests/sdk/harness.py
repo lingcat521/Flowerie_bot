@@ -12,13 +12,13 @@ Core Router -> 另一个真插件进程 -> 结果回到动作 -> 测试断言消
 import asyncio
 import json
 import os
+import select
 import shutil
 import subprocess
 import sys
 import tempfile
 
 from src.plugins.manager import PluginManager
-from src.plugins.runtime import _ENV_WHITELIST as ENGINE_ENV_WHITELIST
 from src.repositories.settings_repository import SettingsRepository
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -44,10 +44,11 @@ def missing_reason(lang):
     need = [b for b in LANGUAGES[lang]["needs"] if shutil.which(b) is None]
     if need:
         return "BLOCKED BY ENVIRONMENT：本机缺 %s（CI 有）" % ", ".join(need)
-    if LANGUAGES[lang]["needs"] and "LD_PRELOAD" not in ENGINE_ENV_WHITELIST:
-        if "termux-exec" in os.environ.get("LD_PRELOAD", ""):
-            return ("BLOCKED BY ENVIRONMENT：Termux 沙箱下引擎的环境变量白名单不含 LD_PRELOAD，"
-                    "前缀内的 %s 无法被插件进程启动（CI 无此限制）" % LANGUAGES[lang]["needs"][0])
+    # Termux 沙箱专属：前缀里的 node/go/java 需要 libtermux-exec 的 LD_PRELOAD 才能启动，
+    # 而引擎按白名单裁剪插件进程的环境变量（安全不变式，不为测试放宽）—— 这是环境限制。
+    if LANGUAGES[lang]["needs"] and "termux-exec" in os.environ.get("LD_PRELOAD", ""):
+        return ("BLOCKED BY ENVIRONMENT：Termux 沙箱下引擎按白名单裁剪插件进程环境变量（不含 "
+                "LD_PRELOAD），前缀内的 %s 无法被启动（CI 无此限制）" % LANGUAGES[lang]["needs"][0])
     source = os.path.join(EXAMPLES, LANGUAGES[lang]["dir"])
     if not os.path.isdir(source):
         return "最小插件尚未落地：%s" % source
@@ -86,10 +87,16 @@ def build_minimal(lang):
     script = os.path.join(source, "build.sh")
     if _BUILD_ROOT is None:
         _BUILD_ROOT = tempfile.mkdtemp(prefix="flowerie-sdk-build-")
-    work = os.path.join(_BUILD_ROOT, lang)
+    # 复制成与仓库一致的布局：<work>/examples/multilang-sdk/<lang> + <work>/sdk
+    # （各语言 build.sh 用 ../../../sdk/... 定位 SDK，本机与 CI 行为因此一致）
+    work = os.path.join(_BUILD_ROOT, "repo", "examples", "multilang-sdk", lang)
     if os.path.isdir(work):
         shutil.rmtree(work)
+    os.makedirs(os.path.dirname(work), exist_ok=True)
     shutil.copytree(source, work)
+    sdk_root = os.path.join(_BUILD_ROOT, "repo", "sdk")
+    if not os.path.isdir(sdk_root):
+        shutil.copytree(os.path.join(ROOT, "sdk"), sdk_root)
     if not os.path.isfile(script):
         _BUILD_CACHE[lang] = {"ok": True, "dir": work, "note": "python runner 直接加载源码，无需构建"}
         return _BUILD_CACHE[lang]
@@ -159,8 +166,7 @@ class Rig:
                                                  {"typescript": "ts"}.get(lang, lang))
         self.build(lang)
         self.deploy(lang, plugin_id, declared=declared)
-        if not self.mgr._started:
-            self.mgr.discover()
+        self.mgr.discover()                      # 幂等：扫描插件目录并把新插件登记为未启用
         approved = approved if approved is not None else [
             "read_message", "send_message", "plugin.call.*", "plugin.emit"]
         ok, why = await self.mgr.enable(plugin_id, approved_permissions=list(approved))
@@ -230,3 +236,59 @@ class RigCtx:
         await self.rig.close()
         return False
 
+
+def standalone_probe(lang, plugin_dir, plugin_id="minimal_probe", timeout=120):
+    """§十八 问题 2：最小插件能不能**独立启动**（不走引擎，直接按协议握手 + 干净退出）。
+
+    这是诊断用的旁证：§十七 验收表的每一行仍然由真引擎驱动；这一条只回答
+    「插件自己能不能被拉起来并说协议」，失败时把子进程 stderr 带回来便于定位。
+    """
+    spec = LANGUAGES[lang]
+    if spec["runtime"] == "python":
+        runner = os.path.join(ROOT, "src", "plugins", "runner", "python_runner.py")
+        cmd = [sys.executable, "-I", runner, "--dir", plugin_dir, "--entry", spec["entry"],
+               "--plugin-id", plugin_id]
+    else:
+        cmd = ["/bin/sh", spec["entry"]]
+    proc = subprocess.Popen(cmd, cwd=plugin_dir, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True, bufsize=1)
+    out = {"ok": False, "steps": [], "stderr": ""}
+
+    def call(mid, method, params=None, wait=timeout):
+        proc.stdin.write(json.dumps({"id": mid, "method": method, "params": params or {}}) + "\n")
+        proc.stdin.flush()
+        ready, _, _ = select.select([proc.stdout], [], [], wait)
+        assert ready, "等 %s 的应答超时（%ss）" % (method, wait)
+        line = proc.stdout.readline()
+        assert line, "连接提前关闭（%s）" % method
+        msg = json.loads(line)
+        assert msg.get("id") == mid, msg
+        out["steps"].append(method)
+        return msg
+
+    try:
+        init = call(1, "initialize", {"context": {"plugin_dir": plugin_dir,
+                                                  "data_dir": os.path.join(plugin_dir, "data"),
+                                                  "protocol_version": "1",
+                                                  "plugin_id": plugin_id}})
+        assert init["result"]["ok"] is True, init
+        out["capabilities"] = sorted(init["result"].get("capabilities") or [])
+        assert call(2, "health")["result"].get("ok") is True
+        assert call(3, "shutdown")["result"].get("ok") is True
+        proc.stdin.close()
+        proc.wait(timeout=15)
+        out["exit"] = proc.returncode
+        out["ok"] = True
+    except Exception as exc:  # noqa: BLE001 - 诊断信息要带回去
+        out["error"] = "%s: %s" % (type(exc).__name__, exc)
+    finally:
+        try:
+            if proc.poll() is None:
+                proc.kill()
+        except OSError:
+            pass
+        try:
+            out["stderr"] = (proc.stderr.read() or "")[-1500:]
+        except (OSError, ValueError):
+            pass
+    return out

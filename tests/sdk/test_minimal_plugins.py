@@ -9,7 +9,6 @@
 import asyncio
 import json
 import logging
-import os
 
 import pytest
 
@@ -199,3 +198,18 @@ def test_zzz_acceptance_table_is_reported(capsys):
     assert any(RESULTS.get((lang, "Ping")) == "PASS" for lang in LANGS), \
         "至少要有一种语言真的跑完（本机至少 python；CI 上五种语言全跑）"
 
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lang", LANGS)
+async def test_minimal_plugin_starts_standalone(lang):
+    """§十八 问题 2：最小插件能不能独立启动（协议握手 + health + 干净退出，不经引擎）。"""
+    reason = missing_reason(lang)
+    if reason:
+        pytest.skip(reason)
+    from tests.sdk.harness import build_minimal, standalone_probe
+
+    built = build_minimal(lang)
+    probe = standalone_probe(lang, built["dir"])
+    assert probe["ok"], "独立启动失败：%s\nstderr=%s" % (probe.get("error"), probe.get("stderr"))
+    assert probe["exit"] == 0, probe
+    assert len(probe["capabilities"]) == 14, probe["capabilities"]

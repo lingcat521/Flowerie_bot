@@ -98,7 +98,7 @@ async def test_same_language_second_instance(tmp_path):
 def test_zz_paths_table_is_reported(capsys):
     """把三条最低验收路径的真实结果打印出来（未跑的语言写明环境缺失原因）。"""
     lines = ["§五 跨语言链路（最低验收：TS->Go / TS->Java / TS->TS）"]
-    for caller, callee, required in PATHS:
+    for caller, callee, _required in PATHS:
         key = (caller, callee)
         value = PATH_RESULTS.get(key)
         if value:
