@@ -7,6 +7,7 @@ import pytest
 
 from src.plugins.manager import PluginManager
 from src.repositories.settings_repository import SettingsRepository
+from src.sdk.onebot.adapter import OneBotAdapter
 from tests.test_plugin_manager import FakeConfig, FakeSender, _deploy  # noqa: F401
 
 
@@ -40,6 +41,7 @@ async def _mgr(tmp, approved=None, memory=None, ai=None):
     cfg = FakeConfig()
     cfg.PLUGIN_DIR = plugin_dir
     mgr = PluginManager(cfg, repo, sender=sender, memory_manager=memory,
+                               bot_factory=OneBotAdapter,
                         ai_client=ai)
     import shutil
     shutil.rmtree(plugin_dir, ignore_errors=True)

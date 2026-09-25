@@ -9,6 +9,7 @@ import pytest
 
 from src.plugins.manager import PluginManager
 from src.repositories.settings_repository import SettingsRepository
+from src.sdk.onebot.adapter import OneBotAdapter
 
 TESTS_PLUGINS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "plugins")
 
@@ -93,7 +94,8 @@ async def env(tmp_path):
     plugin_dir.mkdir()
     config = FakeConfig()
     config.PLUGIN_DIR = str(plugin_dir)
-    mgr = PluginManager(config, repo, sender=sender)
+    # Gate T：插件管理器自身不认识协议，OneBot 适配器由调用方（组合根 / 集成测试）注入
+    mgr = PluginManager(config, repo, sender=sender, bot_factory=OneBotAdapter)
     yield mgr, repo, sender, tmp_path
     await mgr.shutdown()  # 结束所有子进程（防残留）
 
