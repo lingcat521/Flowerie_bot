@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from src.transport.ws_server import WebSocketServer
 from src.services.sender import Sender
+from src.transport.ws_server import WebSocketServer
 
 
 class _Cfg:
