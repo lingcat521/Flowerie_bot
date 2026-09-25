@@ -164,6 +164,16 @@ class PluginRuntime:
             if task is not None and not task.done():
                 task.cancel()
             setattr(self, attr, None)
+        # 显式关闭子进程 transport **再**断开引用：否则它会在事件循环关闭之后才被 GC，
+        # __del__ → pipe.close() → loop.call_soon() 抛 "RuntimeError: Event loop is closed"
+        # （CI 记为 PytestUnraisableExceptionWarning，GitHub 还会把它标成一行 error）。
+        # asyncio 的 transport.close() 幂等：即便已关闭，重复调用也只是直接返回。
+        transport = getattr(self.proc, "_transport", None)
+        if transport is not None:
+            try:
+                transport.close()
+            except Exception:  # noqa: BLE001 - 清理路径绝不抛
+                logger.debug("transport_close_failed id=%s", self.plugin_id)
         self.proc = None
 
     # ---------- 命令构造 ----------

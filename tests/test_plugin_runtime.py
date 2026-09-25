@@ -6,9 +6,11 @@
 - 插件崩溃：进程退出被隔离（Flowerie 继续）
 """
 import asyncio
+import gc
 import json
 import os
 import shutil
+import sys
 import time
 
 import pytest
@@ -234,6 +236,51 @@ async def test_exec_shell_plugin_executes(tmp_path):
     finally:
         await rt.shutdown()
 
+
+def test_plugin_subprocess_transport_closed_before_loop_close(tmp_path):
+    """回归：运行时的清理路径必须显式关闭子进程 transport。
+
+    asyncio 只在进程正常退出且管道读到 EOF 时才自动关 transport。如果运行时是被异常路径
+    丢弃的（读取任务 ↔ 协议 ↔ transport 互相引用成环），transport 会活到事件循环关闭之后
+    才被 GC：BaseSubprocessTransport.__del__ → pipe.close() → loop.call_soon() 抛
+    RuntimeError: Event loop is closed（unraisable）。CI 里表现为
+    PytestUnraisableExceptionWarning，GitHub 还会把 traceback 那行标成 error annotation ——
+    测试其实全绿，页面上却像「3.12 测试报错」。
+
+    断言点放在「清理后 transport 必须已在关闭中」，不依赖 GC 时机。
+    """
+    unraisable = []
+    old_hook = sys.unraisablehook
+    sys.unraisablehook = lambda item: unraisable.append(item)
+
+    async def run():
+        dir_path = _deploy(tmp_path, "minimal_plugin")
+        rt = _make_runtime(dir_path)
+        await rt.start()
+        proc = rt.proc
+        transport = getattr(proc, "_transport", None)
+        assert transport is not None
+        # 进程还活着：asyncio 这时不会自动关 transport（只有正常退出 + 管道 EOF 才会）
+        assert not transport.is_closing(), "前置条件不成立：transport 已关闭"
+        rt._cleanup()   # stop / kill 都会走到的清理路径
+        assert transport.is_closing(), (
+            "清理后 transport 仍开着 → 它会在事件循环关闭后才被 GC，"
+            "BaseSubprocessTransport.__del__ 抛 RuntimeError: Event loop is closed")
+        assert rt.proc is None
+        proc.kill()
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=3)
+        except Exception:  # noqa: BLE001 - 收尾不抛
+            pass
+
+    try:
+        asyncio.run(run())   # 事件循环在这里关闭
+        for _ in range(3):
+            gc.collect()     # 强制回收，复现 CI 里「循环关了才 GC」的时机
+        bad = [u for u in unraisable if "Event loop is closed" in str(getattr(u, "exc_value", ""))]
+        assert not bad, "子进程 transport 在事件循环关闭后仍被回收：%r" % bad
+    finally:
+        sys.unraisablehook = old_hook
 
 @pytest.mark.asyncio
 async def test_exec_build_command_points_at_entry(tmp_path):
