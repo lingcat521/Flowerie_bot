@@ -41,7 +41,9 @@ Instance Cross-talk: 0            # tests/test_multi_instance.py（3 实例并�
 Transport Contract: WS 8/8 ; HTTP 6 implemented + 2 N/A(附理由) = 8/8 covered
 
 pytest（本地，无 aiohttp/pydantic 等依赖）:
-1203 passed / 15 skipped / 19 failed（19 项全部是本地缺依赖，CI 已装依赖 → 不失败）
+1203 passed / 37 skipped（含 22 个实机用例默认 skip）/ 19 failed（19 项全部是本地缺依赖）
+pytest（CI，依赖齐全）:
+1605 passed / 26 skipped（含 22 个实机用例 skip）/ 0 failed
 CI: success（CI + Acceptance + Push on main 三项）
 ```
 

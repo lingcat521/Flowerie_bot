@@ -105,7 +105,8 @@
 | `b5ef621` | docs(arch) 最终验收报告（§36 数字块）| **success** | **success** | success |
 | `be84d1d` | test(integration) 实机 harness（§13/§14）| failure | failure | success |
 | `1455f22` | docs: 缺口台账指标 + development 三层测试 | failure | failure | success |
-| 本轮 | fix(test): 集成用例 import 折叠（ruff I001）+ 本地合并检查器 | 待记录 | 待记录 | 待记录 |
+| `666de2f` | fix(test) 集成用例 import 折叠（ruff I001）+ 本地合并检查器 | **success** | **success** | success |
+| 本轮 | docs(arch) 最终报告的 pytest 数字补 CI 侧实测 | 待记录 | 待记录 | 待记录 |
 
 > **记录规则**：只写实际查到的结论（逐提交从 GitHub API 读取），未查到就写 `待记录`，**不写成 success**。
 > **红提交如实保留**：上表 8 个 failure 的原因分别是 ① ruff I001（import 顺序，跨 6 个提交，
