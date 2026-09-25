@@ -123,23 +123,46 @@
 - 消息转换：`packages/napcat-core/packet/message/converter.ts`（173 行，`packetMsgToRaw`）；
 - 事件类：`packages/napcat-onebot/event/notice/OB11*NoticeEvent.ts`（poke 是 `OB11PokeEvent.ts`）。
 
-## 4. LLBot（调查中，下一轮从这里接）
+## 4. LLBot（Milky + OneBot 双实现）[CODE]
 
-源码：`~/proto_src/LLBot`（HEAD `9f374f6`，`src/` 796 文件 + `test/` 238 文件）。**它是唯一同时实现 OneBot 11 与 Milky 的客户端**，是 Milky 实现层证据的最佳来源（Lagrange.Milky 仓库不可得）。
+源码：`~/proto_src/LLBot`（HEAD `9f374f6`，`src/` 796 文件、`test/` 238 文件）。
+它是**唯一同时实现 OneBot 11 与 Milky 的客户端**，也是 Milky 实现层的最佳可得证据
+（Lagrange.Milky 实现仓库不可得 → 该列只能靠 LLBot 的 [CODE] + 规范 [DOC] 互证）。
 
-已定位的关键路径：
+### 4.1 Milky 入站映射（`src/milky/transform/message/incoming.ts`，252 行）
 
-- **Milky 侧**：`src/milky/adapter.ts`、`src/milky/transform/message/{incoming,outgoing}.ts`、
-  `src/milky/transform/{event,entity,system}.ts`、`src/milky/common/{event,api,download}.ts`、
-  `src/milky/api/{message,file,friend,group,system}.ts`、`src/milky/generated/schema.ts`、
-  `src/milky/network/{http,webhook}.ts`
-- **OneBot11 侧**：`src/onebot11/action/**`（含 `file/GetFile.ts`、`file/GetImage.ts`）
-- **NTQQ 转换**：`src/ntqqapi/helper/messageParsing.ts`、`src/ntqqapi/helper/messageBuilding.ts`
-- 其他：`src/main/qqProtocol/mixins/message.ts`
+消息外壳（L8-56）：`message_scene` = `friend` / `group` / **`temp`（临时会话）**；字段 `peer_id`、
+`message_seq`(=msgSeq)、`sender_id`(=senderUin)、`time`、`segments[]`，群消息额外带 `group` / `group_member`。
 
-下一轮第一步：读 `src/milky/transform/message/incoming.ts` 与 `outgoing.ts`（Milky 段 ↔ NTQQ），
-再读 `src/onebot11/` 的段定义与 `src/ntqqapi/helper/message{Parsing,Building}.ts`。
+| NTQQ 元素 | Milky 段 | 字段（逐字取自源码） |
+| :--- | :--- | :--- |
+| `Text`（`atType=All`） | `mention_all` | `{}` |
+| `Text`（`atType=One`） | `mention` | `user_id`, `name`（**@ 藏在 Text 元素里，不是独立元素**） |
+| `Text` | `text` | `text` |
+| `Face` | `face` | `face_id`(=faceIndex.toString()), `is_large`(faceType===3) |
+| `Reply` | `reply` | `message_seq`, `sender_id`, `time`, **`segments`（内联被引消息的段数组）** |
+| `Pic` | `image` | `resource_id`(fileUuid), **`temp_url`**, `width`, `height`, `summary`, `sub_type`(`sticker`/`normal`，picSubType===1→sticker) |
+| `Ptt` | `record` | `resource_id`, `temp_url`, `duration` |
+| `Video` | `video` | `resource_id`, `temp_url`, `width`, `height`, `duration` |
+| `File` | `file` | `file_id`(fileUuid), `file_name`, `file_size` |
+| `MultiForward` | `forward` | `forward_id`(resId), `title`, `preview[]`, `summary`（**从 `xmlContent` 解析 XML** 得到） |
+| `MarketFace` | `market_face` | `emoji_package_id`, `emoji_id`, `key`, `summary`(=faceName), `url`（拼出 `gxh.vip.qq.com/.../raw300.gif`） |
+| `Ark`（`app=com.tencent.multimsg`） | **`forward`** | `forward_id`(= `meta.detail.resid`), `title`(=detail.source), `preview[]`(=detail.news[].text), `summary` |
+| `Ark`（其他 app） | **`light_app`** | `app_name`(=app), `json_payload`(=原始 bytesData) |
+| `markdownElement` | `markdown` | `content` —— **短路整个循环**：只要有 markdown 元素，其它元素全部忽略（L61-69） |
 
+转发内层结构（L244-252）：`{ message_seq, sender_name, avatar_url, time, segments[] }`。
+
+**互证价值**：LLBot 与 NapCat 各自独立地对 Ark 做 `app === com.tencent.multimsg` 判定，
+一个映射成 `forward`、一个映射成 ARK 元素 —— 说明「JSON/Ark 必须按 `app` 分流」是**客户端共识**，
+不是某一家的私有行为 → Flowerie 的归一化层必须保留 `app` 这一维。
+
+### 4.2 待办（LLBot 剩余部分）
+
+- `src/milky/transform/message/outgoing.ts`（131 行）：Milky → NTQQ 的发送映射；
+- `src/onebot11/action/**`：OneBot 侧段定义与 `file/GetFile.ts`、`file/GetImage.ts` 的取值方式；
+- `src/ntqqapi/helper/message{Parsing,Building}.ts`（422/456 行）：更底层的 NTQQ 元素编解码；
+- `src/milky/transform/event.ts`（470 行）：Milky 事件（含 poke 类通知）的映射。
 ## 5. 待调查清单（含第一步命令）
 
 | 目标 | 第一步 |

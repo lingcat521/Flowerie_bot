@@ -138,6 +138,32 @@ element.elementType !== ElementType.FILE && element.elementType !== ElementType.
 | 在线文件 | — | [CODE] `onlinefile{msgId,elementId,fileName,fileSize,isDir}` | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | **未建模** | [UNKNOWN] |
 | markdown | — | [CODE] `markdown{content}` | [UNKNOWN] | [DOC] 无 | [UNKNOWN] | [UNKNOWN] | **未建模** | [UNKNOWN] |
 
+### 4.1 Milky 列的证据（来自 LLBot 实现 [CODE]）
+
+> Lagrange.Milky 实现仓库不可得（见 source-acquisition.md），因此 Milky 列以 **LLBot 的 Milky 实现**
+> 为 `[CODE]` 证据 + `SaltifyDev/milky` 规范为 `[DOC]` 证据，两者互证。
+> 源码：`~/proto_src/LLBot/src/milky/transform/message/incoming.ts`（252 行）。
+
+| 能力 | Milky 段与字段 [CODE] |
+| :--- | :--- |
+| 文本 / @ | `text{text}`；**@ 不是独立元素**，而是 Text 元素的 `atType`：`One`→`mention{user_id,name}`、`All`→`mention_all{}` |
+| 图片 | `image{resource_id(fileUuid), temp_url, width, height, summary, sub_type(sticker/normal)}`（`picSubType===1` → `sticker`） |
+| QQ 表情 | `face{face_id: faceIndex.toString(), is_large: faceType===3}` |
+| 商城表情 | `market_face{emoji_package_id, emoji_id, key, summary, url}`（url 由 emoji_id 拼 `gxh.vip.qq.com` 路径） |
+| 语音 / 视频 | `record{resource_id,temp_url,duration}` / `video{resource_id,temp_url,width,height,duration}` |
+| 文件（消息段） | `file{file_id(fileUuid), file_name, file_size}`（**无 url**，需另走下载接口） |
+| 合并转发 | `forward{forward_id, title, preview[], summary}`；来源二选一：`MultiForward` 元素的 **XML `xmlContent`**（`resId`），或 **Ark**（`app=com.tencent.multimsg` → `meta.detail.resid`） |
+| JSON/Ark 卡片 | **按 `app` 分流**：`com.tencent.multimsg` → `forward`；其它 → `light_app{app_name, json_payload}` |
+| 引用 | `reply{message_seq, sender_id, time, segments[]}` —— **内联携带被引消息的完整段数组**（与 OneBot 只给 `id` 完全不同） |
+| markdown | `markdown{content}`，且**短路**：只要消息里有 markdown 元素，其余元素一律不产出 |
+| 临时会话 | `message_scene = temp`（OneBot 侧叫 `group_temp`；Flowerie 当前按 group/private 二分） |
+
+**对 Flowerie 的直接影响（待 P3/P4 落地）**：
+
+1. `reply` 段在 Milky 里**自带被引内容** → 归一化层要么把内联段也归一（信息更全），要么明确丢弃（不能假装它没出现）；
+2. `mention`/`mention_all` 属于 Text 元素属性 → 归一化层不能只按「段类型」判断 @；
+3. `image.sub_type=sticker` 是**图片形式的表情包** → 与 `face`/`market_face` 是三种不同的东西；
+4. `temp` 场景需要归一化层新增一类会话（当前 Flowerie 只有 group/private）。
 ## 5. 待办（下一轮）
 
 1. SnowLuma：定位它的 OneBot/Milky 实现与事件模型；
