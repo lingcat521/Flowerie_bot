@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>HTML WebUI 示例 · 设置</title>
+  <link rel="stylesheet" href="/panel/plugins/webui/html_webui_demo/static/style.css">
+</head>
+<body>
+<div class="flowerie-plugin-webui">
+  <h1>设置</h1>
+  <p class="ok">{{ message }}</p>
+  <form method="post" action="/panel/plugins/webui/html_webui_demo/settings">
+    <label>问候语
+      <input type="text" name="greeting" value="{{ greeting }}" maxlength="80">
+    </label>
+    <label>通知状态（只读展示）
+      <input type="text" value="{{ notify }}" readonly>
+    </label>
+    <label class="inline">
+      <input type="checkbox" name="notify" value="1" {{ notify_checked }}> 开启通知
+    </label>
+    <button type="submit" name="plugin_action" value="save">保存</button>
+    <a class="doc-link" href="/panel/plugins/webui/html_webui_demo/index">返回总览</a>
+  </form>
+  <p class="hint">上次保存：{{ saved_at }}</p>
+</div>
+</body>
+</html>

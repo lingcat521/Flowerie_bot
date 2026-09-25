@@ -1,0 +1,19 @@
+{
+  "id": "html_webui_demo",
+  "name": "HTML WebUI 示例",
+  "version": "1.0.0",
+  "author": "Flowerie",
+  "description": "真实 HTML 插件页面示例：webui/pages/*.html + webui/static/ + 受控模板变量 + POST action",
+  "runtime": "python",
+  "entry": "main.py",
+  "api_version": "1",
+  "permissions": ["web_ui", "web_ui.files"],
+  "web_ui": {
+    "static": "static",
+    "entry": "webui_page",
+    "pages": [
+      { "id": "index", "title": "总览", "file": "pages/index.html" },
+      { "id": "settings", "title": "设置", "file": "pages/settings.html" }
+    ]
+  }
+}

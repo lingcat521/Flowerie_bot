@@ -21,6 +21,7 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 from src.plugins.permissions import ALL_PERMISSIONS
+from src.plugins.webui_loader import PAGE_EXTS, PluginWebuiPathError, validate_relative
 
 # 允许的 manifest 顶层字段（严格白名单）
 _ALLOWED_KEYS = frozenset({
@@ -216,19 +217,34 @@ class PluginManifest:
 
     @staticmethod
     def _validate_web_ui(raw: Any) -> Optional[Dict[str, Any]]:
-        """Plugin WebUI 声明：web_ui.pages[]（id/title/description；未知字段拒绝）。
+        """Plugin WebUI 声明（**只做加法**，旧字段语义不变）。
 
-        组件由插件运行时返回（webui_page hook 动态 DSL），manifest 只声明页面骨架。"""
+        两种页面形态：
+        - **HTML 页面**（新，推荐）：`pages[].file` 指向插件 webui 根内的 `.html` 文件，
+          由 `webui_loader` + `webui_security` 加载与净化；
+        - **DSL 页面**（旧，compat）：不写 `file`，仍由插件 `web_ui.entry` hook 返回 DSL dict。
+
+        未知字段一律拒绝；页面路径在此处就做**静态校验**（绝对路径 / `..` / 反斜杠 / 非法扩展名
+        在加载前就被拒，而不是等到 HTTP 请求时）。
+        """
         if raw is None:
             return None
         if not isinstance(raw, dict):
             raise PluginManifestError("web_ui 必须是对象")
-        unknown = set(raw.keys()) - {"pages", "entry"}
+        unknown = set(raw.keys()) - {"pages", "entry", "static"}
         if unknown:
             raise PluginManifestError(f"web_ui 含未知字段: {sorted(unknown)}")
         entry = str(raw.get("entry") or "webui_page")
         if not re.fullmatch(r"^[a-z_][a-z0-9_]{0,63}$", entry):
             raise PluginManifestError("web_ui.entry 必须是合法函数名")
+        declared_static = raw.get("static")
+        static_dir: Optional[str] = None
+        if declared_static is not None:
+            static_dir = str(declared_static).strip()
+            parts = static_dir.split("/")
+            if (not static_dir or static_dir.startswith("/") or "\\" in static_dir
+                    or any(p in ("", ".", "..") for p in parts)):
+                raise PluginManifestError("web_ui.static 必须是插件内的相对目录（不允许 .. / 绝对路径）")
         pages_raw = raw.get("pages")
         if not isinstance(pages_raw, list) or not pages_raw:
             raise PluginManifestError("web_ui.pages 必须是非空数组")
@@ -238,7 +254,7 @@ class PluginManifest:
         for i, pg in enumerate(pages_raw):
             if not isinstance(pg, dict):
                 raise PluginManifestError(f"web_ui.pages[{i}] 必须是对象")
-            pk = set(pg.keys()) - {"id", "title", "description"}
+            pk = set(pg.keys()) - {"id", "title", "description", "file"}
             if pk:
                 raise PluginManifestError(f"web_ui.pages[{i}] 含未知字段: {sorted(pk)}")
             pid = str(pg.get("id", "")).strip()
@@ -248,8 +264,19 @@ class PluginManifest:
             if not title or len(title) > 64:
                 raise PluginManifestError(f"web_ui.pages[{i}].title 必须 1~64 字符")
             desc = str(pg.get("description", "")).strip()[:300]
-            pages.append({"id": pid, "title": title, "description": desc})
-        return {"entry": entry, "pages": pages}
+            record = {"id": pid, "title": title, "description": desc}
+            file_rel = pg.get("file")
+            if file_rel is not None:
+                try:
+                    record["file"] = validate_relative(file_rel, PAGE_EXTS,
+                                                       field=f"web_ui.pages[{i}].file")
+                except PluginWebuiPathError as exc:
+                    raise PluginManifestError(str(exc)) from None
+            pages.append(record)
+        result: Dict[str, Any] = {"entry": entry, "pages": pages}
+        if static_dir:
+            result["static"] = static_dir
+        return result
 
     @staticmethod
     def _validate_declarations(raw: Any) -> List[Dict[str, Any]]:

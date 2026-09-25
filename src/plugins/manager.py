@@ -32,6 +32,8 @@ from src.plugins.installer import PluginInstaller, PluginInstallError
 from src.plugins.manifest import PluginManifest, PluginManifestError
 from src.plugins.permissions import PermissionManager
 from src.plugins.runtime import PluginRuntime
+from src.plugins.webui_loader import (PluginWebuiPathError, read_page, read_static,
+                                      static_root)
 from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
 from src.sdk.event import BotEvent
@@ -226,6 +228,143 @@ class PluginManager:
             return None, "插件返回了非法响应（必须是 DSL 对象）"
         # 附加页面元数据（供 shell 展示）
         return {"dsl": result, "page": page}, ""
+
+    # ---------- 新：真实 HTML 页面（任务书第 1 份 §4-§8） ----------
+    def _plugin_webui_page_context(self, plugin_id: str, page_id: str):
+        """权限 + manifest + 页面定位（HTML / DSL 两条路径共用的前置检查）。"""
+        row = self.get_plugin(plugin_id)
+        if row is None or not row.get("enabled"):
+            return None, None, None, "插件未启用或不存在"
+        approved = set(row.get("approved_permissions") or [])
+        if "web_ui" not in approved:
+            return None, None, None, "插件未批准 web_ui 权限（管理员批准后才能访问）"
+        try:
+            manifest = self._manifest_of(row)
+        except Exception:  # noqa: BLE001
+            return None, None, None, "插件 manifest 不可解析"
+        if not manifest or not manifest.web_ui:
+            return None, None, None, "插件未声明 web_ui"
+        page = next((p for p in manifest.web_ui["pages"] if p["id"] == page_id), None)
+        if page is None:
+            return None, None, None, f"页面不存在: {page_id}"
+        return row, manifest, page, ""
+
+    def _webui_template_context(self, plugin_id: str, row: dict, page: dict) -> Dict[str, Any]:
+        """受控模板变量（任务书第 1 份 §7）：只有这些键，插件不能注入任意对象。"""
+        return {
+            "plugin_id": str(plugin_id),
+            "plugin_name": str(row.get("name") or plugin_id),
+            "page_id": str(page.get("id") or ""),
+            "page_title": str(page.get("title") or ""),
+            "page_description": str(page.get("description") or ""),
+            "message": "",
+        }
+
+    async def _webui_html_hook_vars(self, plugin_id: str, manifest: Any, page_id: str, action: str,
+                                    params: Optional[dict], values: Optional[dict]):
+        """HTML 页面的可选数据钩子：插件可返回 `{"vars": {...}}` / `{"message": "..."}`。
+
+        与 DSL 的区别：**没有 hook 也能渲染 HTML 页面**（静态页面是合法用法）。
+        hook 报错/超时不影响页面本身，但会如实返回给调用方（面板会显示警示，不静默吞掉）。
+        """
+        rt = self._runtimes.get(plugin_id)
+        if rt is None:
+            return {}, ""
+        hook_name = str(manifest.web_ui.get("entry") or "webui_page")
+        try:
+            result = await asyncio.wait_for(
+                self._runtime_hook_call(rt, hook_name, page_id, action,
+                                        dict(params or {}), dict(values or {})),
+                timeout=4.0)
+        except asyncio.TimeoutError:
+            return {}, "插件数据钩子超时（4s 上限）"
+        except Exception as e:  # noqa: BLE001
+            return {}, f"插件数据钩子失败: {type(e).__name__}: {e}"
+        if result is None:
+            return {}, ""
+        if not isinstance(result, dict):
+            return {}, "插件数据钩子返回了非法类型（应为对象）"
+        if result.get("__error__"):
+            return {}, str(result["__error__"])
+        if "type" in result:
+            # 这是 DSL 组件树，不是 HTML 变量：明确拒绝，避免"HTML 页面里塞 DSL"的隐性回退
+            return {}, "HTML 页面不应返回 DSL 组件树（请返回 {'vars': {...}}）"
+        out: Dict[str, Any] = {}
+        for key in ("vars", "context"):
+            extra = result.get(key)
+            if isinstance(extra, dict):
+                out.update({str(k): extra[k] for k in extra})
+        if result.get("message") is not None:
+            out["message"] = str(result.get("message"))
+        return out, ""
+
+    async def plugin_webui_render(self, plugin_id: str, page_id: str, action: str = "get",
+                                  params: Optional[dict] = None, values: Optional[dict] = None):
+        """Plugin WebUI 渲染入口（新）：返回 (result, error)。
+
+        - HTML 页面（manifest 声明了 `file`）：
+              result = {"mode": "html", "html": ..., "page": {...}, "vars": {...},
+                        "dropped": [...], "unresolved": [...], "hook_error": str}
+          顺序是**先净化、后替换变量**：变量值由模板渲染器 escape，无法借替换注入标记。
+        - DSL 页面（兼容层，无 `file`）：result = {"mode": "dsl", "dsl": {...}, "page": {...}}
+        """
+        row, manifest, page, err = self._plugin_webui_page_context(plugin_id, page_id)
+        if err:
+            return None, err
+        rel = page.get("file")
+        if not rel:
+            legacy, legacy_err = await self.plugin_webui_page(plugin_id, page_id, action, params, values)
+            if legacy_err:
+                return None, legacy_err
+            return {"mode": "dsl", "dsl": legacy.get("dsl"), "page": legacy.get("page")}, ""
+        root = self.plugin_webui_dir(plugin_id)
+        try:
+            raw_html, _path = read_page(root, rel)
+        except PluginWebuiPathError as e:
+            return None, "页面不可用：%s" % e
+        extra_vars, hook_error = await self._webui_html_hook_vars(plugin_id, manifest, page_id,
+                                                                  action, params, values)
+        context = self._webui_template_context(plugin_id, row, page)
+        context.update(extra_vars)
+        from src.plugins.webui_security import render_plugin_template, sanitize_plugin_html
+
+        style_prefix = "/panel/plugins/webui/%s/static/" % plugin_id
+        safe_html, dropped = sanitize_plugin_html(raw_html, style_prefix=style_prefix)
+        html, unresolved = render_plugin_template(safe_html, context)
+        return {"mode": "html", "html": html, "page": page, "vars": context,
+                "dropped": dropped, "unresolved": unresolved, "hook_error": hook_error}, ""
+
+    def plugin_webui_page_file(self, plugin_id: str, page_id: str) -> Optional[str]:
+        """页面声明的相对路径（没有 = DSL 页面）。给面板/测试做模式判定用。"""
+        _row, _manifest, page, err = self._plugin_webui_page_context(plugin_id, page_id)
+        if err:
+            return None
+        return page.get("file")
+
+    def plugin_webui_static_root(self, plugin_id: str) -> str:
+        """该插件的静态资源根目录（manifest `web_ui.static`，默认 "static"）。"""
+        row = self.get_plugin(plugin_id)
+        declared = None
+        if row is not None:
+            manifest = self._manifest_of(row)
+            if manifest and manifest.web_ui:
+                declared = manifest.web_ui.get("static")
+        return static_root(self.plugin_webui_dir(plugin_id), declared)
+
+    def plugin_webui_static_file(self, plugin_id: str, rel_path: str):
+        """读取插件静态资源：返回 (bytes, mime)；越界/非法一律抛 PluginWebuiPathError。
+
+        `.css` 在这里就过 `sanitize_plugin_css`（**单一收口**）：任何调用方拿到的都是净化后的
+        样式，不依赖上层 HTTP 处理器再补一次。
+        """
+        root = self.plugin_webui_static_root(plugin_id)
+        blob, mime, _path = read_static(root, rel_path)
+        if mime.startswith("text/css"):
+            from src.plugins.webui_security import sanitize_plugin_css
+
+            css, _report = sanitize_plugin_css(blob.decode("utf-8", errors="replace"))
+            blob = css.encode("utf-8")
+        return blob, mime
 
     # ================= 注册表 =================
     def _manifest_of(self, record: dict) -> Optional[PluginManifest]:

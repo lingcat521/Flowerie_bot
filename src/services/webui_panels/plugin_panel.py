@@ -132,16 +132,20 @@ class PluginPanelMixin:
         else:
             action, values = "get", {}
         params = {str(k): str(v) for k, v in request.query.items()}
-        result, err = await self._plugin_manager.plugin_webui_page(pid, page, action, params, values)
+        # 统一入口：HTML 页面（manifest 声明 file）走新路径，未声明则回落旧 DSL 兼容层
+        result, err = await self._plugin_manager.plugin_webui_render(pid, page, action, params, values)
         plugin_row = self._plugin_manager.get_plugin(pid) or {}
         pname = str(plugin_row.get("name") or pid)
         page_meta = result.get("page", {"title": page, "description": ""}) if isinstance(result, dict) else {}
-        dsl_html = ""
-        if err:
-            dsl_html = ""
-        elif isinstance(result, dict):
-            from src.services.webui_render.plugin_dsl import render_plugin_dsl
-            dsl_html = render_plugin_dsl(result.get("dsl"))
+        mode = str(result.get("mode") or "dsl") if isinstance(result, dict) else "dsl"
+        hook_error = str(result.get("hook_error") or "") if isinstance(result, dict) else ""
+        content_html = ""
+        if not err and isinstance(result, dict):
+            if mode == "html":
+                content_html = str(result.get("html") or "")     # 已在 manager 内净化 + 变量 escape
+            else:
+                from src.services.webui_render.plugin_dsl import render_plugin_dsl
+                content_html = render_plugin_dsl(result.get("dsl"))
         tabs = []
         try:
             manifest = self._plugin_manager._manifest_of(plugin_row)
@@ -153,9 +157,18 @@ class PluginPanelMixin:
         from src.services.webui_render.plugin_webui import render_plugin_webui_page
         html = render_plugin_webui_page(
             pname, str(page_meta.get("title") or page),
-            str(page_meta.get("description") or ""), dsl_html,
-            error=err, plugin_id=pid, plugin_tabs=tabs)
-        return web.Response(text=html, content_type="text/html", charset="utf-8")
+            str(page_meta.get("description") or ""), content_html,
+            error=err, plugin_id=pid, plugin_tabs=tabs, hook_error=hook_error, mode=mode)
+        # 插件页面响应加一层浏览器侧防线（任务书 §8/§9）：
+        # default-src none 彻底禁脚本；样式/图片只允许同源；表单只能提交回本站。
+        # 即便净化器漏掉某个构造，浏览器也不会执行它（纵深防御）。
+        csp = ("default-src 'none'; style-src 'self' 'unsafe-inline'; "
+               "img-src 'self' data:; font-src 'self'; "
+               "form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+        return web.Response(text=html, content_type="text/html", charset="utf-8",
+                            headers={"Content-Security-Policy": csp,
+                                     "X-Content-Type-Options": "nosniff",
+                                     "Referrer-Policy": "no-referrer"})
 
     async def _handle_panel_plugins_refresh(self, request: web.Request) -> web.Response:
         if not self._check_token(request):

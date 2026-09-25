@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>HTML WebUI 示例 · 总览</title>
+  <!-- 插件自己的样式：只在插件页面加载；选择器统一限定在 .flowerie-plugin-webui 之下 -->
+  <link rel="stylesheet" href="/panel/plugins/webui/html_webui_demo/static/style.css">
+</head>
+<body>
+<div class="flowerie-plugin-webui">
+  <h1>{{ plugin_name }} · 总览</h1>
+  <p class="lead">{{ greeting }}</p>
+
+  <section class="card">
+    <h2>运行状态</h2>
+    <table>
+      <tr><th>插件 ID</th><td>{{ plugin_id }}</td></tr>
+      <tr><th>当前页面</th><td>{{ page_title }}</td></tr>
+      <tr><th>服务器时间</th><td>{{ server_time }}</td></tr>
+      <tr><th>上次保存</th><td>{{ saved_at }}</td></tr>
+    </table>
+    <p class="ok">{{ message }}</p>
+  </section>
+
+  <section class="card">
+    <h2>快捷设置</h2>
+    <form method="post" action="/panel/plugins/webui/html_webui_demo/settings">
+      <label>问候语
+        <input type="text" name="greeting" value="{{ greeting }}" maxlength="80">
+      </label>
+      <label class="inline">
+        <input type="checkbox" name="notify" value="1" {{ notify_checked }}> 开启通知
+      </label>
+      <button type="submit" name="plugin_action" value="save">保存</button>
+    </form>
+  </section>
+
+  <p class="hint">页面由真实 HTML 文件渲染；数据来自插件返回的受控模板变量；提交走 POST action。</p>
+</div>
+</body>
+</html>

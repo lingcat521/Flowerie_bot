@@ -53,6 +53,7 @@ from src.services.webui_panels import (
     NicknamePanelMixin,
     PersonaPanelMixin,
     PluginPanelMixin,
+    PluginWebUIStaticMixin,
     PromptPanelMixin,
 )
 
@@ -69,7 +70,7 @@ _LOGIN_FAIL_WINDOW = 60
 
 class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, AppearancePanelMixin,
                   McpPanelMixin, PromptPanelMixin, PersonaPanelMixin,
-                  KnowledgePanelMixin, PluginPanelMixin, NicknamePanelMixin):
+                  KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin, NicknamePanelMixin):
 
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
@@ -165,6 +166,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/register", self._handle_panel_register)
         app.router.add_post("/panel/save", self._handle_panel_save)
         app.router.add_post("/panel/test/model", self._handle_panel_model_test)
+        # 静态资源与页面是两条独立通道：静态路由必须**先**注册（否则会被 {page} 吃掉）
+        app.router.add_get("/panel/plugins/webui/{pid}/static/{path:.*}",
+                           self._handle_panel_plugin_webui_static)
         app.router.add_get("/panel/plugins/webui/{pid}/{page}", self._handle_panel_plugin_webui)
         app.router.add_post("/panel/plugins/webui/{pid}/{page}", self._handle_panel_plugin_webui)
         app.router.add_post("/panel/plugins/webui/upload/{pid}/{page}", self._handle_panel_webui_upload)

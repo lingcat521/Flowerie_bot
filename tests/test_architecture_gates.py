@@ -34,6 +34,9 @@ KNOWN_SERVICES_AIOHTTP = {
     "src/services/webui_panels/nickname_panel.py",
     "src/services/webui_panels/persona_panel.py",
     "src/services/webui_panels/plugin_panel.py",
+    # 插件 WebUI 静态资源处理器（任务书第 1 份 §12）：属 Web UI 应用服务器面，
+    # 不是协议传输；与上面 12 个面板文件同类。
+    "src/services/webui_panels/plugin_webui_static.py",
     "src/services/webui_panels/prompt_panel.py",
 }
 

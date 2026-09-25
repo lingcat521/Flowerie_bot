@@ -13,10 +13,11 @@ from src.services.webui_panels.mcp_panel import McpPanelMixin
 from src.services.webui_panels.nickname_panel import NicknamePanelMixin
 from src.services.webui_panels.persona_panel import PersonaPanelMixin
 from src.services.webui_panels.plugin_panel import PluginPanelMixin
+from src.services.webui_panels.plugin_webui_static import PluginWebUIStaticMixin
 from src.services.webui_panels.prompt_panel import PromptPanelMixin
 
 __all__ = [
     "AccountPanelMixin", "AppearancePanelMixin", "AuthPanelMixin", "ConfigPanelMixin",
     "KnowledgePanelMixin", "McpPanelMixin", "NicknamePanelMixin", "PersonaPanelMixin",
-    "PluginPanelMixin", "PromptPanelMixin",
+    "PluginPanelMixin", "PluginWebUIStaticMixin", "PromptPanelMixin",
 ]

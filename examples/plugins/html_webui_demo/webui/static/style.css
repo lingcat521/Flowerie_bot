@@ -1,0 +1,22 @@
+/* 插件样式（禁止 @import / 外链 url / expression —— 服务端会净化并记录） */
+.flowerie-plugin-webui { color: #3a4456; }
+.flowerie-plugin-webui h1 { font-size: 20px; margin: 0 0 8px; }
+.flowerie-plugin-webui .lead { font-size: 15px; color: #5b8def; margin: 0 0 14px; }
+.flowerie-plugin-webui .card {
+  background: #fff; border: 1px solid #e3e7ef; border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.flowerie-plugin-webui table { border-collapse: collapse; width: 100%; }
+.flowerie-plugin-webui th { text-align: left; width: 120px; color: #7a869a; font-weight: 500; }
+.flowerie-plugin-webui td, .flowerie-plugin-webui th { padding: 6px 4px; border-bottom: 1px solid #f0f2f7; }
+.flowerie-plugin-webui label { display: block; margin: 8px 0; }
+.flowerie-plugin-webui label.inline { display: flex; align-items: center; gap: 6px; }
+.flowerie-plugin-webui input[type="text"] {
+  width: 100%; padding: 8px 10px; border: 1px solid #d8dee9; border-radius: 8px; font-size: 14px;
+}
+.flowerie-plugin-webui button {
+  background: #5b8def; color: #fff; border: none; border-radius: 9px;
+  padding: 9px 20px; cursor: pointer; margin-top: 6px;
+}
+.flowerie-plugin-webui .ok { color: #2f9e44; }
+.flowerie-plugin-webui .hint { color: #8a94a6; font-size: 13px; }
