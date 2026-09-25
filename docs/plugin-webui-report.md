@@ -79,9 +79,20 @@
 | `0fcb6bf` | 红 | 五语言 communication 页的 `trace_id`/`request_id` 单元格里嵌了 `<small>` 说明 → `inner_text()` 带出说明，E2E"裸 id 随请求往返"断言误判；另有未使用的 `re` 导入 | 五语言统一把说明移出 id 单元格；删导入 |
 | `792dc1e` | 见 6.2 | —— | —— |
 
-### 6.2 最终结果
+### 6.2 最终结果（commit `c56bbc1`，三项 workflow 全绿）
 
-（待填：792dc1e 的 CI / Acceptance / webui-e2e 真实数字）
+| workflow / 步骤 | 结果 | 真实数字 |
+| :--- | :--- | :--- |
+| `CI` · Ruff check（3.9 与 3.12）| **success** | All checks passed! |
+| `CI` · SDK 语言矩阵 | **success** | **46 passed** (86.34s)：五语言真 build/真启动/真调用/真关闭 |
+| `CI` · Plugin WebUI（http/static/security/isolation/action/communication）| **success** | **102 passed / 1 xfailed** (4.42s)，真 WebUIServer + 真 PluginManager + 真插件进程 |
+| `CI` · 全量 pytest（不含 sdk/webui/e2e）| **success** | **2136 passed / 22 skipped** |
+| `CI` · `webui-e2e`（真 Chromium）| **success** | **21 passed** (115.23s)：`playwright install --with-deps chromium` + §8 DOM 断言 + §28 三条链路 |
+| `Acceptance` | **success** | **37/37 通过**；pytest **2288 passed / 39 skipped / 1 xfailed**；ruff clean |
+| `Push on main` | **success** | CodeQL（actions / javascript-typescript / python）全过 |
+
+> 39 skipped 与 22 skipped 都是**既有**实机集成用例（无真实协议端环境），与上一阶段口径一致；
+> 本轮新增的 webui / sdk / e2e 用例**一条都没有被跳过**（浏览器链路在 CI 上是真跑的 21 passed）。
 
 ## 7. 环境阻塞（§33.6，单列，不与 WebUI 结论混写）
 
@@ -96,7 +107,7 @@
 | :--- | :--- | :--- | :--- |
 | A | 五种语言 WebUI 都能被发现 | **PASS** | 五语言 manifest `web_ui` 段 + 页面声明（真 `PluginManifest.load` + 真 loader）|
 | B | 五种语言 WebUI 都能 HTTP 加载 | **PASS** | `tests/webui/` 真服务器黑盒 + `tests/sdk/` 五语言页面 |
-| C | 五种语言 WebUI 都经真实浏览器渲染 | 见 §6 | `tests/e2e/test_plugin_webui_browser.py`（CI 装 Chromium）；本机 BLOCKED |
+| C | 五种语言 WebUI 都经真实浏览器渲染 | **PASS**（CI）| `tests/e2e/test_plugin_webui_browser.py`（CI 装 Chromium）；本机 BLOCKED |
 | D | HTML + CSS + static assets 正确加载 | **PASS** | `test_plugin_webui_static.py`（200/text/css/非空/页面真引用/净化）|
 | E | WebUI → Plugin Action 成功 | **PASS** | `test_plugin_webui_plugin_action.py`（get_info/echo/set_config）|
 | F | WebUI Config Round-trip 成功 | **PASS** | 同文件：POST save → 重开读回一致 + 落盘证据 |
@@ -108,9 +119,9 @@
 | L | 跨插件文件隔离测试通过 | **PASS** | §4 第二行 |
 | M | Secret leakage 测试通过 | **PASS** | §4 第三行 |
 | N | XSS / HTML injection 测试通过 | **PASS** | §4 第四行 |
-| O | 至少三条跨语言 WebUI E2E 链路通过 | 见 §6 | 三条链路均已具备页面与测试；CI 有全部工具链 |
+| O | 至少三条跨语言 WebUI E2E 链路通过 | **PASS**（CI `webui-e2e` 21 passed）| 三条链路均已具备页面与测试；CI 有全部工具链 |
 | P | 现有 SDK 46/46 测试仍通过 | **PASS** | 见 §5 |
-| Q | 现有全量回归无新增失败 | 见 §6 | |
+| Q | 现有全量回归无新增失败 | **PASS**（Acceptance 37/37；2288 passed）| |
 | R | QQ/P2P 未具备环境时保持 BLOCKED，不伪造 PASS | **PASS** | 见 §7 |
 
 ## 9. 已实测的平台限制（如实记录，未改 Core）
