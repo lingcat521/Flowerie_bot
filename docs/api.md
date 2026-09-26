@@ -8,22 +8,22 @@
 **消息**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
-| `delete_message(payload)` |  | `delete_message` |
-| `get_context(payload)` |  | `read_message_history` |
-| `get_group_history(payload)` |  | `read_message_history` |
-| `get_message(payload)` |  | `read_message_history` |
+| `delete_message(payload)` | 撤回消息（payload.message_id；需要 delete_message 权限）。 | `delete_message` |
+| `get_context(payload)` | 取会话上下文（当前实现：payload.group_id 的最近 10 条群消息）。 | `read_message_history` |
+| `get_group_history(payload)` | 取群历史消息（payload.group_id + count，count 默认 15）。 | `read_message_history` |
+| `get_message(payload)` | 按 payload.message_id 取单条消息。 | `read_message_history` |
 | `send_many(payload)` | 多条发送：条数/间隔由主进程 Core 统一控制。 | `send_message` |
-| `send_message(payload)` |  | `send_message` |
-| `send_private_message(payload)` |  | `send_message` |
-| `send_reply(payload)` |  | `send_message` |
+| `send_message(payload)` | 发送群/私聊消息（payload.group_id 或 user_id + payload.message，可选 reply_id 引用回复）。 | `send_message` |
+| `send_private_message(payload)` | 发送私聊消息（payload.user_id + payload.message）。 | `send_message` |
+| `send_reply(payload)` | 回复消息（目标 + message + reply_id；与 send_message 同一实现）。 | `send_message` |
 
 **群**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
-| `group_admin(payload)` |  | `group_manage` |
+| `group_admin(payload)` | 设置 / 取消群管理员（group_id + user_id + enable）。 | `group_manage` |
 | `group_admins(payload)` | 群管理员列表（成员列表本地过滤 admin/owner） | `read_group_info` |
 | `group_apply(payload)` | 群申请处理（等价 handle_group_request） | `request_handle` |
-| `group_ban(payload)` |  | `group_manage` |
+| `group_ban(payload)` | 群禁言 / 解禁（group_id + user_id + duration 秒，0 表示解禁，上限 2592000）。 | `group_manage` |
 | `group_essence(payload)` | 群精华消息列表（等价 essence_list） | `read_group_info` |
 | `group_file_delete(payload)` | 删除群文件。 | `group_manage` |
 | `group_file_move(payload)` | 移动群文件。 | `group_manage` |
@@ -36,7 +36,7 @@
 | `group_honor(payload)` | 群荣誉信息。 | `read_group_info` |
 | `group_info(payload)` | 群信息。 | `read_group_info` |
 | `group_invite(payload)` | 群邀请（v1 无端点→not supported） | `group_manage` |
-| `group_kick(payload)` |  | `group_manage` |
+| `group_kick(payload)` | 移出群成员（group_id + user_id，可选 reject_add 拒绝其再加群）。 | `group_manage` |
 | `group_list(payload)` | 群列表。 | `read_group_info` |
 | `group_member_search(payload)` | 群成员搜索（group_id + query；成员列表本地过滤） | `read_group_info` |
 | `group_member_update(payload)` | 群成员信息更新（user_id + card；等价设置群名片） | `group_manage` |
@@ -46,8 +46,8 @@
 | `group_notice_update(payload)` | 更新群公告（删除旧公告+发送新公告组合） | `group_manage` |
 | `group_portrait(payload)` | 修改群头像。 | `group_manage` |
 | `group_title(payload)` | 群成员头衔（group_id/user_id/title；等价 set_group_special_title） | `group_manage` |
-| `is_group_admin(payload)` |  | `read_group_info` |
-| `is_group_owner(payload)` |  | `read_group_info` |
+| `is_group_admin(payload)` | 判断成员是否群管理员（group_id + user_id）。 | `read_group_info` |
+| `is_group_owner(payload)` | 判断成员是否群主（group_id + user_id）。 | `read_group_info` |
 
 **关系/用户**
 | 方法 | 作用 | 权限 |
@@ -58,7 +58,7 @@
 | `friend_group(payload)` | 好友分组管理（v1 无端点→not supported） | `read_user_info` |
 | `friend_online(payload)` | 好友在线状态（v1 无端点→not supported） | `read_user_info` |
 | `friend_remark(payload)` | 设置好友备注（网关需支持；v1 无端点→not supported） | `read_user_info` |
-| `get_user(payload)` |  | `read_user_info` |
+| `get_user(payload)` | 拉取用户/好友信息（payload.user_id）。 | `read_user_info` |
 | `user_forward(payload)` | 私聊合并转发。 | `read_user_info` |
 | `user_history(payload)` | 好友/私聊消息历史。 | `read_user_info` |
 | `user_poke(payload)` | 私聊戳一戳。 | `read_user_info` |
@@ -78,12 +78,12 @@
 **记忆/存储**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
-| `kv_delete(payload)` |  | `storage` |
-| `kv_get(payload)` |  | `storage` |
-| `kv_list(payload)` |  | `storage` |
-| `kv_set(payload)` |  | `storage` |
-| `mem_clear(payload)` |  | `read_memory` |
-| `mem_update(payload)` |  | `read_memory` |
+| `kv_delete(payload)` | 删除插件级持久 KV 的一个 key。 | `storage` |
+| `kv_get(payload)` | 读插件级持久 KV（key ≤128 字符；与 storage.* 是两套存储，见开发指南 §6）。 | `storage` |
+| `kv_list(payload)` | 列出插件级持久 KV 的全部键值。 | `storage` |
+| `kv_set(payload)` | 写插件级持久 KV（key ≤128 字符，值序列化后 ≤64 KiB）。 | `storage` |
+| `mem_clear(payload)` | 清空某用户在某群的记忆，返回清除条数。 | `read_memory` |
+| `mem_update(payload)` | 更新一条长期记忆（user_id + group_id + key + value ≤2000 字符）。 | `read_memory` |
 | `memory_delete(payload)` | 记忆删除（插件 KV 域删除） | `write_memory` |
 | `memory_expire(payload)` | 记忆过期查询（v1 无 TTL 域→not supported） | `read_memory` |
 | `memory_get(payload)` | 记忆读取（等价 get_memory） | `read_memory` |
@@ -106,15 +106,15 @@
 | `plugin_reload(payload)` | 插件重载（自身；停止并重载） | `plugin_admin` |
 | `plugin_service(payload)` | 插件服务（注册/发现/调用插件服务总线） | `plugin_admin` |
 | `plugin_test(payload)` | 自测（运行插件 on_plugin_test 钩子） | `plugin_admin` |
-| `schedule_cancel(payload)` |  | `scheduler` |
-| `schedule_list(payload)` |  | `scheduler` |
-| `schedule_register(payload)` |  | `scheduler` |
+| `schedule_cancel(payload)` | 按 schedule_id 取消定时任务。 | `scheduler` |
+| `schedule_list(payload)` | 列出本插件已注册的定时任务。 | `scheduler` |
+| `schedule_register(payload)` | 注册定时任务（kind + when + 可选 name，透传给调度器）。 | `scheduler` |
 
 **AI/MCP**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
 | `ai_budget(payload)` | 预算/限额（配置的每日限额与剩余） | `ai_chat` |
-| `ai_chat(payload)` |  | `ai_chat` |
+| `ai_chat(payload)` | 调用 AI 对话（message ≤2000 字符 + 可选 system ≤1000）。 | `ai_chat` |
 | `ai_embedding(payload)` | AI 向量化（文本→向量；复用花语向量模型客户端） | `ai_chat` |
 | `ai_model_info(payload)` | 模型信息（名称/地址/类型） | `ai_chat` |
 | `ai_models(payload)` | 模型列表（已配置 AI 模型） | `ai_chat` |
@@ -123,12 +123,12 @@
 | `ai_token(payload)` | Token 统计（文本→token 估算） | `ai_chat` |
 | `ai_usage(payload)` | 用量统计（调用次数/费用指标） | `ai_chat` |
 | `ai_vision(payload)` | AI 视觉识图（图片地址/描述；主进程 vision 客户端，敏感图不可见跳转） | `ai_chat` |
-| `http_delete(payload)` |  | `http_request` |
-| `http_download(payload)` |  | `http_request` |
-| `http_head(payload)` |  | `http_request` |
+| `http_delete(payload)` | 发起 HTTP DELETE（安全边界与 http_request 相同）。 | `http_request` |
+| `http_download(payload)` | 下载 URL 到本地（安全边界与 http_request 相同）。 | `http_request` |
+| `http_head(payload)` | 发起 HTTP HEAD（安全边界与 http_request 相同）。 | `http_request` |
 | `http_middleware(payload)` | HTTP 中间件（主进程专属→not supported） | `plugin_admin` |
-| `http_put(payload)` |  | `http_request` |
-| `http_request(payload)` |  | `http_request` |
+| `http_put(payload)` | 发起 HTTP PUT（安全边界与 http_request 相同）。 | `http_request` |
+| `http_request(payload)` | 发起 HTTP 请求（需要 http_request 权限，受超时与响应上限约束）。 | `http_request` |
 | `mcp_call(payload)` | MCP 工具调用（管理员配置服务器；工具白名单） | `http_request` |
 | `mcp_prompt(payload)` | MCP Prompt 模板（v1 未实现→not supported） | `http_request` |
 | `mcp_resource(payload)` | MCP 资源读取（v1 未实现→not supported） | `http_request` |
@@ -139,14 +139,14 @@
 **其他**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
-| `__init__(payload)` |  | `—` |
+| `__init__(payload)` | 构造插件 API：绑定 action 通道、插件 id 与 runner（storage/config/permission/context 走 runner 本地实现）。 | `—` |
 | `audio_info(payload)` | 音频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
 | `cache_delete(payload)` | 缓存删（等价 KV 删除） | `storage` |
 | `cache_get(payload)` | 缓存读（等价 KV 读取） | `storage` |
 | `cache_set(payload)` | 缓存写（等价 KV 写入） | `storage` |
 | `call(payload)` | 通用语义化动作调用（v1.5；封装唯一，动作名白名单由主进程校验）。 | `—` |
 | `config_get(payload)` | 操作员配置 + 插件覆盖层（操作员的值优先）。 | `—` |
-| `config_set(payload)` |  | `—` |
+| `config_set(payload)` | 写插件自己的配置覆盖层（操作员配置优先，插件改不动操作员的值）。 | `—` |
 | `context_info(payload)` | 拉取引擎侧上下文（插件名/版本/已批准权限）。 | `—` |
 | `db_index(payload)` | 索引（字段索引加速查询） | `storage` |
 | `db_migration(payload)` | 迁移（插件数据域 schema 版本） | `storage` |
@@ -160,29 +160,29 @@
 | `file_download(payload)` | 文件下载（仅插件空间） | `filesystem_read` |
 | `file_info(payload)` | 文件信息（大小/类型/图片尺寸；插件空间） | `filesystem_read` |
 | `file_upload(payload)` | 文件上传到插件 WebUI 空间（web_ui.files 权限；安全校验） | `filesystem_write` |
-| `format_time(payload)` |  | `—` |
+| `format_time(payload)` | 格式化时间戳（format 默认 %Y-%m-%d %H:%M:%S，缺省用当前时间）。 | `—` |
 | `forward_message(payload)` | 转发消息（payload 含 group_id/user_id + message_id；自动选群/私聊） | `send_message` |
-| `get_group(payload)` |  | `read_group_info` |
-| `get_group_info(payload)` |  | `read_group_info` |
-| `get_group_member(payload)` |  | `read_group_info` |
-| `get_group_members(payload)` |  | `read_group_info` |
-| `get_memory(payload)` |  | `read_memory` |
-| `handle_friend_request(payload)` |  | `request_handle` |
-| `handle_group_request(payload)` |  | `request_handle` |
+| `get_group(payload)` | 拉取群信息（payload.group_id）。 | `read_group_info` |
+| `get_group_info(payload)` | 从引擎已缓存的状态里取群资料（payload.group_id，不发起网络请求）。 | `read_group_info` |
+| `get_group_member(payload)` | 取群成员信息（payload.group_id + user_id）。 | `read_group_info` |
+| `get_group_members(payload)` | 取群成员列表（payload.group_id）。 | `read_group_info` |
+| `get_memory(payload)` | 读长期记忆（payload.user_id + group_id，可按 key 取）。 | `read_memory` |
+| `handle_friend_request(payload)` | 处理加好友请求（flag + approve + 可选 remark）。 | `request_handle` |
+| `handle_group_request(payload)` | 处理加群请求（flag + approve + 可选 reason）。 | `request_handle` |
 | `health(payload)` | 健康检查（进程信息） | `plugin_admin` |
 | `image_compress(payload)` | 图片压缩（v1 无图像库→not supported） | `filesystem_read` |
 | `image_resize(payload)` | 图片缩放（v1 无图像库→not supported） | `filesystem_read` |
 | `image_screenshot(payload)` | 图片截图（v1 无图像能力→not supported） | `filesystem_read` |
-| `log(payload)` |  | `—` |
+| `log(payload)` | 写插件日志（level 默认 info，message ≤500 字符；不需要权限）。 | `—` |
 | `mark_message(payload)` | 标记消息（已读/未读；v1 无端点→not supported） | `delete_message` |
 | `merge_message(payload)` | 消息合并（payload 段列表 → 单条消息负载；纯本地语义） | `send_message` |
 | `metrics(payload)` | 指标快照（全量注册表） | `plugin_admin` |
 | `mock_api(payload)` | Mock（SDK 本地测试工具；API 层→not supported） | `plugin_admin` |
-| `now(payload)` |  | `—` |
+| `now(payload)` | 返回当前时间戳（timestamp + UTC ISO 字符串）。 | `—` |
 | `permission_check(payload)` | 查询管理员是否批准了某权限（只读；无法提权）。 | `—` |
 | `quote_chain(payload)` | 引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义） | `read_message_history` |
-| `random_choice(payload)` |  | `—` |
-| `random_int(payload)` |  | `—` |
+| `random_choice(payload)` | 从 choices 数组里随机取一个（空数组报错）。 | `—` |
+| `random_int(payload)` | 返回 [low, high] 内的随机整数（要求 low ≤ high）。 | `—` |
 | `read_status(payload)` | 消息已读状态查询（v1 无端点→not supported） | `read_message_history` |
 | `resource_quota(payload)` | 资源配额（保护级别映射） | `plugin_admin` |
 | `resource_usage(payload)` | 资源占用（插件进程 CPU/内存；/proc 读取） | `plugin_admin` |
@@ -192,10 +192,10 @@
 | `split_message(payload)` | 消息拆段（payload.text；按段/长度拆分，纯本地语义） | `read_message` |
 | `sse(payload)` | SSE 通道（v1 明确不支持→not supported） | `plugin_admin` |
 | `static_file(payload)` | 静态文件（插件 WebUI 空间；列/取链接） | `plugin_admin` |
-| `storage_delete(payload)` |  | `—` |
+| `storage_delete(payload)` | 删除本插件私有存储的一个键（键不存在也算成功）。 | `—` |
 | `storage_get(payload)` | 读取本插件存储（与 TypeScript/Go/Rust/Java 的 ctx.storageGet 同名同义）。 | `—` |
-| `storage_list(payload)` |  | `—` |
-| `storage_set(payload)` |  | `—` |
+| `storage_list(payload)` | 列出本插件私有存储的键名（可按前缀过滤）。 | `—` |
+| `storage_set(payload)` | 写本插件私有存储（键须匹配 ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$，总量 ≤200 键 / 64 KiB）。 | `—` |
 | `task_cancel(payload)` | 任务取消（v1 主进程无句柄→not supported；SDK TaskManager 提供） | `plugin_admin` |
 | `task_pause(payload)` | 任务暂停（同上） | `plugin_admin` |
 | `task_resume(payload)` | 任务恢复（同上） | `plugin_admin` |
@@ -203,5 +203,5 @@
 | `trace(payload)` | 链路追踪（trace_id 查近期日志） | `plugin_admin` |
 | `video_info(payload)` | 视频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
 | `webhook(payload)` | Webhook 发送（等价 http_request）；接收注册 v1 不支持 | `webhook` |
-| `write_memory(payload)` |  | `write_memory` |
+| `write_memory(payload)` | 写长期记忆（payload.user_id + group_id + key + value）。 | `write_memory` |
 | `ws(payload)` | WebSocket 通道（v1 明确不支持→not supported） | `plugin_admin` |

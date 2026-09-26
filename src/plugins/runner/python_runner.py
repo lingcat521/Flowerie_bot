@@ -196,6 +196,7 @@ class PluginApi:
     """同步插件 API：每个方法向 Flowerie 发 action 请求并等待响应（阻塞读取 stdin）。"""
 
     def __init__(self, send_action, plugin_id: str, runner=None):
+        """构造插件 API：绑定 action 通道、插件 id 与 runner（storage/config/permission/context 走 runner 本地实现）。"""
         self._send_action = send_action
         self.plugin_id = plugin_id
         #: 与其它语言 SDK 对齐的 API（storage/config/permission/context）需要 runner 的本地实现
@@ -209,12 +210,15 @@ class PluginApi:
         return (self._runner._storage_get(key) or {}).get("value")
 
     def storage_set(self, key: str, value: Any) -> Dict[str, Any]:
+        """写本插件私有存储（键须匹配 ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$，总量 ≤200 键 / 64 KiB）。"""
         return self._runner._storage_set(key, value)
 
     def storage_delete(self, key: str) -> Dict[str, Any]:
+        """删除本插件私有存储的一个键（键不存在也算成功）。"""
         return self._runner._storage_delete(key)
 
     def storage_list(self, prefix: str = "") -> Any:
+        """列出本插件私有存储的键名（可按前缀过滤）。"""
         return (self._runner._storage_list(prefix) or {}).get("keys") or []
 
     def config_get(self, keys=None) -> Dict[str, Any]:
@@ -222,6 +226,7 @@ class PluginApi:
         return (self._runner._op_config_get(keys) or {}).get("values") or {}
 
     def config_set(self, values: Dict[str, Any]) -> Dict[str, Any]:
+        """写插件自己的配置覆盖层（操作员配置优先，插件改不动操作员的值）。"""
         return self._runner._op_config_set(values)
 
     def permission_check(self, permission: str) -> bool:
@@ -235,27 +240,35 @@ class PluginApi:
         return res.get("result") if isinstance(res.get("result"), dict) else res
 
     def send_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """发送群/私聊消息（payload.group_id 或 user_id + payload.message，可选 reply_id 引用回复）。"""
         return self._send_action("send_message", payload)
 
     def send_private_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """发送私聊消息（payload.user_id + payload.message）。"""
         return self._send_action("send_private_message", payload)
 
     def get_group(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """拉取群信息（payload.group_id）。"""
         return self._send_action("get_group", payload)
 
     def get_user(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """拉取用户/好友信息（payload.user_id）。"""
         return self._send_action("get_user", payload)
 
     def get_memory(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """读长期记忆（payload.user_id + group_id，可按 key 取）。"""
         return self._send_action("get_memory", payload)
 
     def write_memory(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """写长期记忆（payload.user_id + group_id + key + value）。"""
         return self._send_action("write_memory", payload)
 
     def http_request(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """发起 HTTP 请求（需要 http_request 权限，受超时与响应上限约束）。"""
         return self._send_action("http_request", payload)
 
     def log(self, level: str, message: str) -> Dict[str, Any]:
+        """写插件日志（level 默认 info，message ≤500 字符；不需要权限）。"""
         return self._send_action("log", {"level": level, "message": message})
 
     # ---------- v2.1 缺口池：消息 ----------
@@ -673,6 +686,7 @@ class PluginApi:
 
     # ---------- SDK 动作（消息/群管/匹配注册；无需插件感知 OneBot payload） ----------
     def send_reply(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """回复消息（目标 + message + reply_id；与 send_message 同一实现）。"""
         return self._send_action("send_reply", payload)
 
     def send_many(self, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -680,30 +694,39 @@ class PluginApi:
         return self._send_action("send_many", payload)
 
     def delete_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """撤回消息（payload.message_id；需要 delete_message 权限）。"""
         return self._send_action("delete_message", payload)
 
     def get_message(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """按 payload.message_id 取单条消息。"""
         return self._send_action("get_message", payload)
 
     def get_group_history(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """取群历史消息（payload.group_id + count，count 默认 15）。"""
         return self._send_action("get_group_history", payload)
 
     def get_context(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """取会话上下文（当前实现：payload.group_id 的最近 10 条群消息）。"""
         return self._send_action("get_context", payload)
 
     def get_group_member(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """取群成员信息（payload.group_id + user_id）。"""
         return self._send_action("get_group_member", payload)
 
     def group_ban(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """群禁言 / 解禁（group_id + user_id + duration 秒，0 表示解禁，上限 2592000）。"""
         return self._send_action("group_ban", payload)
 
     def group_kick(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """移出群成员（group_id + user_id，可选 reject_add 拒绝其再加群）。"""
         return self._send_action("group_kick", payload)
 
     def is_group_admin(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """判断成员是否群管理员（group_id + user_id）。"""
         return self._send_action("is_group_admin", payload)
 
     def is_group_owner(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """判断成员是否群主（group_id + user_id）。"""
         return self._send_action("is_group_owner", payload)
 
     def matcher_register(self, matchers: list) -> Dict[str, Any]:
@@ -712,77 +735,100 @@ class PluginApi:
 
     # ---------- v1.4 扩展（请求处理/调度/存储/AI/记忆/工具/HTTP 扩展） ----------
     def handle_friend_request(self, flag: str, approve: bool, remark: str = "") -> Dict[str, Any]:
+        """处理加好友请求（flag + approve + 可选 remark）。"""
         return self._send_action("handle_friend_request",
                                  {"flag": flag, "approve": bool(approve), "remark": remark})
 
     def handle_group_request(self, flag: str, approve: bool, reason: str = "") -> Dict[str, Any]:
+        """处理加群请求（flag + approve + 可选 reason）。"""
         return self._send_action("handle_group_request",
                                  {"flag": flag, "approve": bool(approve), "reason": reason})
 
     def schedule_register(self, kind: str, when, name: str = "") -> Dict[str, Any]:
+        """注册定时任务（kind + when + 可选 name，透传给调度器）。"""
         return self._send_action("schedule_register",
                                  {"kind": kind, "when": when, "name": name})
 
     def schedule_cancel(self, schedule_id: str) -> Dict[str, Any]:
+        """按 schedule_id 取消定时任务。"""
         return self._send_action("schedule_cancel", {"schedule_id": schedule_id})
 
     def schedule_list(self) -> Dict[str, Any]:
+        """列出本插件已注册的定时任务。"""
         return self._send_action("schedule_list", {})
 
     def kv_get(self, key: str) -> Dict[str, Any]:
+        """读插件级持久 KV（key ≤128 字符；与 storage.* 是两套存储，见开发指南 §6）。"""
         return self._send_action("kv_get", {"key": key})
 
     def kv_set(self, key: str, value) -> Dict[str, Any]:
+        """写插件级持久 KV（key ≤128 字符，值序列化后 ≤64 KiB）。"""
         return self._send_action("kv_set", {"key": key, "value": value})
 
     def kv_delete(self, key: str) -> Dict[str, Any]:
+        """删除插件级持久 KV 的一个 key。"""
         return self._send_action("kv_delete", {"key": key})
 
     def kv_list(self) -> Dict[str, Any]:
+        """列出插件级持久 KV 的全部键值。"""
         return self._send_action("kv_list", {})
 
     def ai_chat(self, message: str, system: str = "") -> Dict[str, Any]:
+        """调用 AI 对话（message ≤2000 字符 + 可选 system ≤1000）。"""
         return self._send_action("ai_chat", {"message": message, "system": system})
 
     def mem_update(self, user_id: int, group_id: int, key: str, value: str) -> Dict[str, Any]:
+        """更新一条长期记忆（user_id + group_id + key + value ≤2000 字符）。"""
         return self._send_action("mem_update",
                                  {"user_id": user_id, "group_id": group_id,
                                   "key": key, "value": value})
 
     def mem_clear(self, user_id: int, group_id: int) -> Dict[str, Any]:
+        """清空某用户在某群的记忆，返回清除条数。"""
         return self._send_action("mem_clear", {"user_id": user_id, "group_id": group_id})
 
     def random_choice(self, choices: list) -> Dict[str, Any]:
+        """从 choices 数组里随机取一个（空数组报错）。"""
         return self._send_action("random_choice", {"choices": list(choices or [])})
 
     def random_int(self, low: int, high: int) -> Dict[str, Any]:
+        """返回 [low, high] 内的随机整数（要求 low ≤ high）。"""
         return self._send_action("random_int", {"low": int(low), "high": int(high)})
 
     def now(self) -> Dict[str, Any]:
+        """返回当前时间戳（timestamp + UTC ISO 字符串）。"""
         return self._send_action("now", {})
 
     def format_time(self, timestamp: float = 0, fmt: str = "%Y-%m-%d %H:%M:%S") -> Dict[str, Any]:
+        """格式化时间戳（format 默认 %Y-%m-%d %H:%M:%S，缺省用当前时间）。"""
         return self._send_action("format_time", {"timestamp": timestamp, "format": fmt})
 
     def http_put(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """发起 HTTP PUT（安全边界与 http_request 相同）。"""
         return self._send_action("http_put", payload)
 
     def http_delete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """发起 HTTP DELETE（安全边界与 http_request 相同）。"""
         return self._send_action("http_delete", payload)
 
     def http_head(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """发起 HTTP HEAD（安全边界与 http_request 相同）。"""
         return self._send_action("http_head", payload)
 
     def http_download(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """下载 URL 到本地（安全边界与 http_request 相同）。"""
         return self._send_action("http_download", payload)
 
     def get_group_members(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """取群成员列表（payload.group_id）。"""
         return self._send_action("get_group_members", payload)
 
     def get_group_info(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """从引擎已缓存的状态里取群资料（payload.group_id，不发起网络请求）。"""
         return self._send_action("get_group_info", payload)
 
     def group_admin(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """设置 / 取消群管理员（group_id + user_id + enable）。"""
         return self._send_action("group_admin", payload)
 
 

@@ -17,6 +17,33 @@ GROUPS = {
 }
 
 
+def _describe(method: str, doc: str) -> str:
+    """方法说明：优先 docstring 首行；没有 docstring 时从实现里推导，保证表格不出现空说明。
+
+    - self._send_action("x", ...) -> 引擎动作 x 的语义封装
+    - self._runner._y(...)        -> runner 本地实现 y
+    """
+    if doc:
+        return doc.splitlines()[0].strip()
+    path = ROOT / "src/plugins/runner/python_runner.py"
+    try:
+        text = path.read_text(encoding="utf-8")
+        tree = ast.parse(text)
+    except (OSError, SyntaxError):
+        return "-"
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or node.name != method:
+            continue
+        seg = ast.get_source_segment(text, node) or ""
+        m = re.search(r'self\._send_action\("([^"]+)"', seg)
+        if m:
+            return "引擎动作 %s 的语义封装。" % m.group(1)
+        m = re.search(r"self\._runner\.(\w+)\(", seg)
+        if m:
+            return "runner 本地实现 %s。" % m.group(1).lstrip("_")
+    return "-"
+
+
 def main():
     tree = ast.parse((ROOT / "src/plugins/runner/python_runner.py").read_text(encoding="utf-8"))
     api = {}
@@ -41,7 +68,7 @@ def main():
         lines.append("| 方法 | 作用 | 权限 |")
         lines.append("| --- | --- | --- |")
         for m in members:
-            doc = api[m].splitlines()[0] if api[m] else ""
+            doc = _describe(m, api[m])
             lines.append(f"| `{m}(payload)` | {doc} | `{perms.get(m, '—')}` |")
         lines.append("")
     rest = [m for m in sorted(api) if m not in used]
@@ -50,7 +77,7 @@ def main():
         lines.append("| 方法 | 作用 | 权限 |")
         lines.append("| --- | --- | --- |")
         for m in rest:
-            doc = api[m].splitlines()[0] if api[m] else ""
+            doc = _describe(m, api[m])
             lines.append(f"| `{m}(payload)` | {doc} | `{perms.get(m, '—')}` |")
         lines.append("")
     OUT.write_text("\n".join(lines), encoding="utf-8")
