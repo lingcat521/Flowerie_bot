@@ -132,29 +132,49 @@ class PluginRuntime:
                     self.plugin_id, self.manifest.runtime, self.protocol_version,
                     len(self.capabilities), extra={"event": "plugin_lifecycle"})
 
-    async def shutdown(self, timeout: float = 5.0) -> None:
-        """优雅停止：发 shutdown 请求 → 等待进程退出 → 强制清理。"""
-        self._shutting_down = True
-        if self.proc is None:
-            return
+    def transport_closed(self) -> bool:
+        """transport 是否已关闭（或本来就没有）。关闭判定绝不抛。"""
+        transport = getattr(self.proc, "_transport", None)
+        if transport is None:
+            return True
         try:
-            await asyncio.wait_for(self.request("shutdown", {}, timeout=min(timeout, 3.0)),
-                                   timeout=timeout)
-        except Exception:  # noqa: BLE001 - 关闭路径不抛
-            pass
-        await self._kill("shutdown")
-        self._shutting_down = False
+            return bool(transport.is_closing())
+        except Exception:  # noqa: BLE001 - 关闭判定不抛
+            return True
+
+    async def shutdown(self, timeout: float = 5.0) -> None:
+        """优雅停止：发 shutdown 请求 → 等待进程退出 → 强制清理。
+
+        transport 已被同步关闭时（PluginManager._stop_runtime 先调 close_transport_now()）
+        **跳过**优雅请求：管道已断，请求不可能有响应，只会白等一个超时再 _kill()。
+        """
+        self._shutting_down = True
+        try:
+            if self.proc is None:
+                return
+            if not self.transport_closed():
+                try:
+                    await asyncio.wait_for(self.request("shutdown", {}, timeout=min(timeout, 3.0)),
+                                           timeout=timeout)
+                except Exception:  # noqa: BLE001 - 关闭路径不抛
+                    pass
+            await self._kill("shutdown")
+        finally:
+            self._shutting_down = False
 
     async def _kill(self, reason: str) -> None:
         if self.proc is None:
             return
+        # transport 已关时 asyncio 收不到子进程退出通知，proc.wait() 可能永远不返回 ——
+        # 关闭路径用更短的等待（terminate → kill），不让事件循环关闭被挂住。
+        wait_timeout = 0.5 if self.transport_closed() else 3.0
         try:
             self.proc.terminate()
             try:
-                await asyncio.wait_for(self.proc.wait(), timeout=3.0)
+                await asyncio.wait_for(self.proc.wait(), timeout=wait_timeout)
             except asyncio.TimeoutError:
                 self.proc.kill()
-                await asyncio.wait_for(self.proc.wait(), timeout=3.0)
+                await asyncio.wait_for(self.proc.wait(), timeout=wait_timeout)
         except Exception:  # noqa: BLE001
             pass
         self._cleanup()

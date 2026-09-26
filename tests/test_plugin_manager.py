@@ -500,3 +500,38 @@ async def test_stop_runtime_closes_transport_before_async_shutdown(env):
             break
         await asyncio.sleep(0)
     assert calls == ["close", "shutdown"]
+
+
+@pytest.mark.asyncio
+async def test_stop_runtime_shutdown_tasks_are_drained_on_shutdown(env):
+    """回归：_stop_runtime 派出的即发即忘 shutdown 任务必须被 shutdown() 收干净。
+
+    背景（实测 6 条 "Task was destroyed but it is pending!"）：runtime 在 _stop_runtime
+    第一行就被移出 _runtimes，manager.shutdown() 的循环因此看不到它 → 它派出的
+    rt.shutdown() 任务一直挂到事件循环关闭（runtime.py:135/141），_kill()/_cleanup()
+    也没跑完（子进程退出状态没人收）。
+    """
+    mgr, _repo, _sender, _tmp = env
+    mgr._shutdown_drain_timeout = 0.5
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    class SlowRuntime:
+        def close_transport_now(self):
+            return None
+
+        async def shutdown(self):
+            started.set()
+            try:
+                await asyncio.sleep(30)
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+
+    mgr._runtimes["slow"] = SlowRuntime()
+    mgr._stop_runtime("slow")
+    await asyncio.wait_for(started.wait(), timeout=2.0)
+    assert mgr._shutdown_tasks, "shutdown 任务没有被登记（修复前它是孤儿任务）"
+    await mgr.shutdown()
+    assert cancelled.is_set(), "drain 超时后必须 cancel 残留任务（否则 loop 关闭仍会报 destroyed）"
+    assert not [t for t in mgr._shutdown_tasks if not t.done()], "shutdown() 之后仍有未完成的 shutdown 任务"

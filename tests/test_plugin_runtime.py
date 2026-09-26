@@ -236,6 +236,43 @@ async def test_exec_shell_plugin_executes(tmp_path):
         await rt.shutdown()
 
 
+@pytest.mark.asyncio
+async def test_shutdown_skips_graceful_request_when_transport_closed(tmp_path):
+    """回归：transport 已被同步关闭时，shutdown() 不再发注定无响应的 shutdown 请求。
+
+    背景：PluginManager._stop_runtime 是同步函数，它先 close_transport_now() 再
+    create_task(rt.shutdown())；管道已断，那个 shutdown 请求永远等不到响应 ——
+    实测就是任务挂在 runtime.py:141（await wait_for(request(...))）直到超时/被销毁。
+    修复后：跳过请求，直接 _kill() → _cleanup()，proc 与后台任务全部清干净。
+    """
+    dir_path = _deploy(tmp_path, "minimal_plugin")
+    rt = _make_runtime(dir_path)
+    await rt.start()
+    try:
+        assert rt.transport_closed() is False, "前置条件：起进程后 transport 应当是开的"
+        sent = []
+        original = rt.request
+
+        async def spy(method, params=None, **kwargs):
+            sent.append(method)
+            return await original(method, params, **kwargs)
+
+        rt.request = spy
+        rt.close_transport_now()
+        assert rt.transport_closed() is True
+        t0 = time.time()
+        await asyncio.wait_for(rt.shutdown(), timeout=4.0)
+        elapsed = time.time() - t0
+        assert "shutdown" not in sent, "transport 已关时不该再发 shutdown 请求（注定无响应）"
+        assert rt.proc is None, "_kill() → _cleanup() 必须跑完"
+        assert getattr(rt, "_reader_task", None) is None
+        assert getattr(rt, "_stderr_task", None) is None
+        assert elapsed < 3.0, "关闭路径不应再等那个 3s 请求超时（实测 %.2fs）" % elapsed
+    finally:
+        if rt.proc is not None:      # 断言失败时别留子进程
+            rt.proc.kill()
+
+
 def test_plugin_subprocess_transport_closed_before_loop_close(tmp_path):
     """回归：运行时的清理路径必须显式关闭子进程 transport。
 

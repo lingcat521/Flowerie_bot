@@ -92,6 +92,9 @@ class PluginManager:
         self._comm_router = PluginRouter()
         self._comm_bus = PluginBus(self._comm_router)
         self._schedule_tasks: Dict[str, Any] = {} # schedule_id -> asyncio.Task
+        # _stop_runtime 派出的「即发即忘」shutdown 任务（必须有人收，见 _drain_shutdown_tasks）
+        self._shutdown_tasks: set = set()
+        self._shutdown_drain_timeout = 8.0
 
     @property
     def plugin_dir(self) -> str:
@@ -1021,6 +1024,29 @@ class PluginManager:
         self._runtimes.clear()
         for inst in list(self._comm_router.all_instances()):
             self._comm_router.unregister(inst.plugin_id, inst.instance_id)
+        await self._drain_shutdown_tasks()
+
+    async def _drain_shutdown_tasks(self) -> None:
+        """回收 _stop_runtime 派出的即发即忘 shutdown 任务。
+
+        为什么需要：_stop_runtime（同步函数，disable / uninstall / 升级 / refresh 都会调）
+        先把 runtime 从 _runtimes 里摘掉，再 create_task(rt.shutdown())；上面那个循环因此
+        永远看不到它。不显式等待的话，事件循环关闭时 asyncio 会报
+        "Task was destroyed but it is pending!"（runtime.py:135/141），而且 _kill() /
+        _cleanup() 可能压根没跑（子进程退出状态没人收、reader/stderr 任务没取消）。
+        """
+        pending = [t for t in self._shutdown_tasks if not t.done()]
+        if not pending:
+            self._shutdown_tasks.clear()
+            return
+        _, still = await asyncio.wait(pending, timeout=self._shutdown_drain_timeout)
+        for task in still:
+            task.cancel()
+        if still:
+            await asyncio.gather(*still, return_exceptions=True)
+            logger.warning("plugin_shutdown_drain_timeout count=%d", len(still),
+                           extra={"event": "plugin_lifecycle"})
+        self._shutdown_tasks.clear()
 
     def _stop_runtime(self, plugin_id: str) -> None:
         rt = self._runtimes.pop(plugin_id, None)
@@ -1033,7 +1059,12 @@ class PluginManager:
             # rt.shutdown() → _cleanup()，transport 就可能活到事件循环关闭之后才被 GC，
             # BaseSubprocessTransport.__del__ 会抛 "RuntimeError: Event loop is closed"。
             rt.close_transport_now()
-            asyncio_create_task(rt.shutdown())
+            # 保存引用：任务必须有人收（它对应的 runtime 已从 _runtimes 摘除，
+            # manager.shutdown() 的循环看不到它）
+            task = asyncio_create_task(rt.shutdown())
+            if task is not None:
+                self._shutdown_tasks.add(task)
+                task.add_done_callback(self._shutdown_tasks.discard)
 
     def _mark_status(self, plugin_id: str, status: str) -> None:
         row = self.repository.get_plugin(plugin_id)
@@ -2721,12 +2752,15 @@ def _rule_from(conditions: dict):
     return Rule(**dict(conditions or {}))
 
 
-def asyncio_create_task(coro) -> None:
-    """兼容无事件循环上下文（_stop_runtime 可能被同步调用）。"""
-    import asyncio
+def asyncio_create_task(coro) -> Optional[asyncio.Task]:
+    """兼容无事件循环上下文（_stop_runtime 可能被同步调用）；返回 Task 或 None。
+
+    返回 Task 是为了让调用方**保存引用**：否则任务可能被 GC，也没有人能 await 它
+    （_stop_runtime 把它登记进 PluginManager._shutdown_tasks，由 shutdown() 收干净）。
+    """
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         coro.close()  # 无运行中循环：关掉协程（避免 never awaited 告警），退出场景不阻塞
-        return
-    loop.create_task(coro)
+        return None
+    return loop.create_task(coro)

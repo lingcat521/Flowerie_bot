@@ -231,6 +231,15 @@ class WebUIStack:
             await self.webui.stop()
         finally:
             await self.manager.shutdown()
+        # 兜底：把本循环里仍未结束的任务收干净。loop.close() 时 asyncio 会对残留任务打印
+        # "Task was destroyed but it is pending!"（本机实测 6 条，来自模块级重启插件派出的
+        # 即发即忘 shutdown），任务被 destroy 意味着它自己的清理逻辑没跑完。
+        current = asyncio.current_task()
+        leftover = [t for t in asyncio.all_tasks() if t is not current and not t.done()]
+        for task in leftover:
+            task.cancel()
+        if leftover:
+            await asyncio.gather(*leftover, return_exceptions=True)
 
     def _wait_until_serving(self, timeout=30.0):
         deadline = time.time() + timeout

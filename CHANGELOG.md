@@ -11,22 +11,22 @@
 
 ### 新增 —— 多语言 SDK 最小化插件实测（任务书《插件测试》）
 
-- **最小插件** ~~BT~~examples/multilang-sdk/{python,typescript,go,rust,java}/~~BT~~：一个语言一个极简插件，
-  只依赖该语言 SDK，统一语义 ~~BT~~ping/get_info/echo/slow/boom/seen~~BT~~ + ~~BT~~test.event~~BT~~ +
-  ~~BT~~/sdk@<自己> <命令>~~BT~~（ping/info/echo/seen/call/route/chain/errors），结果用
-  ~~BT~~{"type":"send_message","payload":{…}}~~BT~~ 动作回给引擎；Build 与 Load 分开
-  （~~BT~~build.sh~~BT~~ 真编译进 ~~BT~~.build/~~BT~~，~~BT~~run.sh~~BT~~ 只 exec 产物）。
-- **实测入口** ~~BT~~tests/sdk/~~BT~~：真仓库 + 真引擎公开 API（~~BT~~discover/enable/start_all/dispatch_event/shutdown~~BT~~）
+- **最小插件** `examples/multilang-sdk/{python,typescript,go,rust,java}/`：一个语言一个极简插件，
+  只依赖该语言 SDK，统一语义 `ping/get_info/echo/slow/boom/seen` + `test.event` +
+  `/sdk@<自己> <命令>`（ping/info/echo/seen/call/route/chain/errors），结果用
+  `{"type":"send_message","payload":{…}}` 动作回给引擎；Build 与 Load 分开
+  （`build.sh` 真编译进 `.build/`，`run.sh` 只 exec 产物）。
+- **实测入口** `tests/sdk/`：真仓库 + 真引擎公开 API（`discover/enable/start_all/dispatch_event/shutdown`）
   + 真插件进程，不 mock 插件、不绕过 SDK 直连 Runtime、不调用 Core 内部 API；覆盖
   Build/Load/Ready/Ping/Info/Echo/Event/Call/Error/Permission/Shutdown 十一行 +
   七条跨（同）语言链路（最低验收 TS→Go / TS→Java / TS→TS）+ 独立启动探针（含子进程 stderr）。
-- **SDK 补齐**：Python runner 现在会把**任意事件类型**（如 ~~BT~~test.event~~BT~~）分派给
-  ~~BT~~on_<event>~~BT~~ / ~~BT~~on_event~~BT~~ 钩子（此前只认 6 个内置事件名，自定义事件被静默丢弃）；
-  Java 最小插件用 ~~BT~~onEvent~~BT~~ 注册引擎事件（~~BT~~on()~~BT~~ 是插件间事件订阅）。
-- **CI**：新增 SDK 语言矩阵步骤（~~BT~~pytest -q -s tests/sdk/~~BT~~，go/rustc/javac/node 真编译真运行），
-  全量 pytest 用 ~~BT~~--ignore=tests/sdk~~BT~~ 避免重复构建。
-- 文档：~~BT~~docs/plugin-sdk-minimal-test.md~~BT~~（契约）、~~BT~~docs/plugin-sdk-minimal-report.md~~BT~~
-  （§十七 验收表 + §十八 17 问）、~~BT~~examples/multilang-sdk/README.md~~BT~~。
+- **SDK 补齐**：Python runner 现在会把**任意事件类型**（如 `test.event`）分派给
+  `on_<event>` / `on_event` 钩子（此前只认 6 个内置事件名，自定义事件被静默丢弃）；
+  Java 最小插件用 `onEvent` 注册引擎事件（`on()` 是插件间事件订阅）。
+- **CI**：新增 SDK 语言矩阵步骤（`pytest -q -s tests/sdk/`，go/rustc/javac/node 真编译真运行），
+  全量 pytest 用 `--ignore=tests/sdk` 避免重复构建。
+- 文档：`docs/plugin-sdk-minimal-test.md`（契约）、`docs/plugin-sdk-minimal-report.md`
+  （§十七 验收表 + §十八 17 问）、`examples/multilang-sdk/README.md`。
 
 ### 新增 —— Plugin-to-Plugin 通信（任务书《通信》：协议 + Core Router + 五语言 SDK）
 
@@ -76,6 +76,25 @@
 - 全部 `docs/**.md` 重新校对：过时徽章 / 测试数 / 版本号 / 功能清单改对，删除重复与失效内容，保留最大信息量
 - **插件开发部分重写为"不看源码即可写插件"**：manifest 全字段、五语言 API 对照、权限全表、存储与配置、
   Plugin WebUI、插件间通信、错误与调试、打包与安装、13 种语言最小实现清单
+
+### 修复 —— 插件运行时关停的生命周期缺陷（实测发现）
+
+- **即发即忘的 shutdown 任务没人收**：`PluginManager._stop_runtime()`（同步函数，disable /
+  uninstall / 升级 / refresh 都会走）先把 runtime 从 `_runtimes` 摘掉，再
+  `create_task(rt.shutdown())`；`PluginManager.shutdown()` 只遍历 `_runtimes`，于是这个任务
+  成了孤儿 —— 事件循环关闭时 asyncio 报 `Task was destroyed but it is pending!`
+  （`runtime.py:135/141`；实机跑 `pytest tests/webui` 出现 6 条），且 `_kill()` / `_cleanup()`
+  可能没跑完（子进程退出状态没人收、reader/stderr 任务没取消）。
+  修：`asyncio_create_task()` 返回 Task，`_stop_runtime()` 登记进 `_shutdown_tasks`，
+  `shutdown()` 末尾 `_drain_shutdown_tasks()` 等待并（超时则）cancel 收干净。
+- **注定失败的优雅停机**：transport 已被 `close_transport_now()` 同步关闭后，`rt.shutdown()`
+  仍会发 `shutdown` 请求 —— 管道已断，请求永远等不到响应，白等一个 3 s 超时再 `_kill()`。
+  修：新增 `PluginRuntime.transport_closed()`，已关时跳过请求；`_kill()` 在 transport 已关时
+  用更短的等待（0.5 s）避免挂住事件循环关闭。
+- 回归用例：`tests/test_plugin_manager.py::test_stop_runtime_shutdown_tasks_are_drained_on_shutdown`、
+  `tests/test_plugin_runtime.py::test_shutdown_skips_graceful_request_when_transport_closed`
+  （两条在修复前的代码上都会失败，已实测）；`tests/webui/conftest.py` 收尾时再 cancel + gather
+  一次残留任务做兜底。
 
 **版本速览**：2.3.0 · 2.2.6 · 2.2.5 · 2.2.4 · 2.2.3 · 2.2.2 · 2.2.0 · 2.1.4 · 2.1.2 · 2.1.1 · 2.1.0 · 2.0.1 · 2.0.0 · 1.7.0 · 1.6.0 · 1.5.0 · 1.4.0 · 1.3.0 · 1.2.0
 
