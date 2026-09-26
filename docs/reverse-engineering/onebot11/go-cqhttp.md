@@ -108,7 +108,7 @@
 | `video` | `file`、`cover`、`cache` | 无 ftyp 头会自动转码 |
 | `file` | `path`、`name`、`size`、`busid` | 与上报侧同构 → **可往返** |
 | `reply` | `id`（数字）或 `text`+`user_id/qq`（+`time/seq`）| `id` 走客户端自己的 DB（global id），需先收过那条消息 |
-| `face` | `id`；`type=="sticker"` → 动画表情 | |
+| `face` | `id`；`type=="sticker"` → 动画表情 | — |
 | `poke` | `qq` | go-cqhttp 自有段（规范没有）|
 | `dice` / `rps` | `value` | 越界（dice>6 / rps>2）→ 报错 |
 | `xml` / `json` | `data`、`resid` | `resid` 会被 `ParseInt` |

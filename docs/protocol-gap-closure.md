@@ -39,9 +39,12 @@
 | G2 request | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | **CLOSED** |
 | G3 media/XML | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | **CLOSED** |
 | G4 reply.segments | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | **CLOSED** |
-| G5 media send | | | | | | | | OPEN |
-| G6 real integration | | -- | -- | -- | -- | | | OPEN |
-| G7 OpenShamrock | | | | | | | | OPEN |
+| G5 media send | — | — | — | — | — | — | — | OPEN |
+| G6 real integration | — | -- | -- | -- | -- | — | — | OPEN |
+| G7 OpenShamrock | — | — | — | — | — | — | — | OPEN |
+
+> 表中 `—` = 该项**未做/未验证**；`--（不适用）` = 该项对本 Gap 不适用。G5/G6/G7 保持 OPEN，不写成 CLOSED。
+
 | G8 OneBot12 | ✓ | ✓ | ✓ | ✓ | ✓ | --（不适用）| ✓ | **CLOSED**（携 NOT_REAL_DEVICE_VALIDATED）|
 
 ## 4. 封口记录（G1–G4 / G8）

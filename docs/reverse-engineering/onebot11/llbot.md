@@ -33,7 +33,7 @@
 | pic | `image` | `{file: fileName, subType: picSubType, url, file_size}` | L81-107 |
 | video | `video` | `{file, url, path, file_size}` | L108-130 |
 | file | `file` | `{file: fileName, url: file://…, file_id: fileUuid, path, file_size}` | L131-154 |
-| record | `record` | 见 L155-176 | |
+| record | `record` | 见 L155-176 | — |
 | ark | `json` | `{data: bytesData}` | L177-181 |
 | face | `shake` / `dice` / `rps` / `face` | poke → `shake{data:{}}`（**空对象、无目标**）；骰子/猜拳 → `{result}`；其它 → `{id, sub_type: faceType}` | L182-222 |
 | market face | `mface` | `{summary, url, emoji_id, emoji_package_id, key}`（url 由 emoji_id 拼）| L223-248 |

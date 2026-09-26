@@ -100,7 +100,7 @@
 | K / L / M / N | 路径穿越 / 跨插件文件隔离 / Secret leakage / XSS·HTML injection | **PASS** | §4 第 1–4 行 |
 | O | 至少三条跨语言 WebUI E2E 链路通过 | **PASS**（CI `webui-e2e` 21 passed）| 三条链路均已具备页面与测试；CI 有全部工具链 |
 | P | 现有 SDK 46/46 测试仍通过 | **PASS** | 见 §5 / §6.2 |
-| Q | 现有全量回归无新增失败 | **PASS**（Acceptance 37/37；2288 passed）| |
+| Q | 现有全量回归无新增失败 | **PASS**（Acceptance 37/37；2288 passed）| 见 §5 / §6.2 |
 | R | QQ/P2P 未具备环境时保持 BLOCKED，不伪造 PASS | **PASS** | 见 §7 |
 
 ## 9. 已实测的平台限制（如实记录，未改 Core）

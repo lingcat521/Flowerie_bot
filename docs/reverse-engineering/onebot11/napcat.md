@@ -52,10 +52,10 @@ handleTempGroupMessage()：sub_type='group'、**顶层 group_id = 来源群**、
 
 | 段 | NapCat 字段 [CODE] | 备注 |
 | :--- | :--- | :--- |
-| `text` | `{text}` | |
+| `text` | `{text}` | — |
 | `face` | `{id, resultId?, chainCount?}` | 连击/结果 id 是 NapCat 扩展 |
 | `mface` | `{emoji_package_id, emoji_id, key, summary}` | **go-cqhttp 没有这个段**（降级 text） |
-| `at` | `{qq, name?}` | |
+| `at` | `{qq, name?}` |— |
 | `reply` | `{id?, seq?}`，**seq 优先** | go-cqhttp 用 `id`（DB global id） |
 | `image` | FileBase + `{summary?, sub_type?}` | **`sub_type` 下划线**（go-cqhttp 是 `subType`）|
 | `record`/`video`/`file` | FileBase `{file, path?, url?, name?, thumb?}` | 与 go-cqhttp 的 file 段字段集不同 |
@@ -65,7 +65,7 @@ handleTempGroupMessage()：sub_type='group'、**顶层 group_id = 来源群**、
 | `json` | `{data: string\|object, config?: {token}}` | `data` 允许**对象**；go-cqhttp 只当字符串 |
 | `xml` | `{data}` | 无 resid |
 | `markdown` / `miniapp` / `contact` / `location` / `onlinefile` / `flashtransfer` | 各自的 schema | **go-cqhttp 全都没有** |
-| `node` / `forward` | 节点（发）/ 转发（收） | |
+| `node` / `forward` | 节点（发）/ 转发（收） |— |
 
 ### 3. 发送请求与响应
 

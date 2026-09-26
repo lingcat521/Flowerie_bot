@@ -37,7 +37,7 @@
 | SDK language coupling | **0** | TS 零 npm 依赖（自带 shim）、Go 只用标准库、Rust 零 crate、Java 只用 JDK、Python 只用标准库；SDK 之间零依赖 |
 | Permission bypass | **0** | 唯一入口是引擎反向 op；权限检查在 `PluginBus.call` 内（SDK 无法跳过）；LOCAL 通路同样先过权限 |
 | Cross-plugin isolation | **100%** | 每个插件仍是独立进程（协议与隔离不变式不变）；插件拿不到对方语言的对象（语言内部对象在边界被拒绝）|
-| CI | 见 §3.2 | |
+| CI | 见 §3.2 | §3.2：三项 workflow 的真 run 号与关键数字（commit `47c9862`）|
 
 ## 3. 真实验证（本地 + CI）
 

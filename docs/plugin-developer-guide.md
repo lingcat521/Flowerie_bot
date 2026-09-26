@@ -160,7 +160,7 @@ def on_startup(context, api=None):
 | 必需（4） | `initialize` `event` `health` `shutdown` | 任何插件都要实现；引擎一定会调用 |
 | 可选·核心（8） | `context.get` `config.get` `config.set` `permission.check` `storage.get` `storage.set` `storage.delete` `storage.list` | 在 `initialize` 的 `capabilities` 里声明后引擎才会调用 |
 | 可选·WebUI（3） | `webui.page` `webui.action` `webui.asset` | §7 |
-| | 可选·插件间（3） | `plugin.call` `plugin.event` `plugin.cancel` | §8（发起侧名字是 `plugin.emit`，落地方法名是 `plugin.event`） |
+| 可选·插件间（3） | `plugin.call` `plugin.event` `plugin.cancel` | §8（发起侧名字是 `plugin.emit`，落地方法名是 `plugin.event`） |
 | 引擎内部（1） | `hook` | 引擎调插件具名函数：`{"name":"my_hook","args":[…]}`（WebUI 数据钩子/控制面） |
 
 **能力分组写法**：`capabilities` 可以写方法名，也可以写组名（等价）——
