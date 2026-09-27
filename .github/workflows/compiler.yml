@@ -3,6 +3,16 @@ name: Build Flowerie_bot
 on:
   release:
     types: [created]
+  # 手动重建资产：release 事件只在 release **创建**时触发，而 GitHub 的「Re-run」会复用
+  # 原始事件的 commit（移动 tag 之后再 re-run 也不会构建新代码）。需要在已发布的 release 上
+  # 重建资产时（例如 tag 已前移到新提交），用这个入口：
+  #   gh workflow run compiler.yml --ref main -f tag=v2.3.0
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要构建并上传资产的 Release tag（例如 v2.3.0）"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -320,7 +330,7 @@ jobs:
 
         GH_TOKEN: ${{ github.token }}
 
-        TAG: ${{ github.event.release.tag_name }}
+        TAG: ${{ github.event.inputs.tag || github.event.release.tag_name }}
 
       run: |
 
