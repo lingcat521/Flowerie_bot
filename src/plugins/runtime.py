@@ -78,6 +78,10 @@ class PluginRuntime:
         #: Plugin Protocol v1 反向通道（config / permission / context），由 PluginManager 注入
         self._engine_op_handler: Optional[Callable[[str, str, Dict[str, Any]], Any]] = None
         self._action_sem = asyncio.Semaphore(_MAX_CONCURRENT_ACTIONS)
+        #: 正在处理的「插件→引擎」请求任务（action / engine op）。必须保存引用：
+        #: ① 无强引用的 Task 可能被 GC 中途取消、异常也无处取；
+        #: ② 关闭时要 cancel 并等它们结束，否则事件循环关闭时报 Task was destroyed。
+        self._inflight: set = set()
 
     # ---------- 生命周期 ----------
     async def start(self) -> None:
@@ -150,17 +154,36 @@ class PluginRuntime:
         """
         self._shutting_down = True
         try:
-            if self.proc is None:
-                return
-            if not self.transport_closed():
-                try:
-                    await asyncio.wait_for(self.request("shutdown", {}, timeout=min(timeout, 3.0)),
-                                           timeout=timeout)
-                except Exception:  # noqa: BLE001 - 关闭路径不抛
-                    pass
-            await self._kill("shutdown")
+            if self.proc is not None:
+                if not self.transport_closed():
+                    try:
+                        await asyncio.wait_for(self.request("shutdown", {}, timeout=min(timeout, 3.0)),
+                                               timeout=timeout)
+                    except Exception:  # noqa: BLE001 - 关闭路径不抛
+                        pass
+                await self._kill("shutdown")
+            await self._drain_inflight()
         finally:
             self._shutting_down = False
+
+    def _track_inflight(self, task) -> None:
+        """登记「插件→引擎」请求任务（见 __init__ 里 _inflight 的说明）。"""
+        self._inflight.add(task)
+        task.add_done_callback(self._inflight.discard)
+
+    async def _drain_inflight(self, timeout: float = 3.0) -> None:
+        """取消并等待仍在跑的请求任务（关闭路径；绝不抛）。"""
+        pending = [t for t in self._inflight if not t.done()]
+        if not pending:
+            self._inflight.clear()
+            return
+        for task in pending:
+            task.cancel()
+        try:
+            await asyncio.wait_for(asyncio.gather(*pending, return_exceptions=True), timeout=timeout)
+        except Exception:  # noqa: BLE001 - 关闭路径不抛
+            pass
+        self._inflight.clear()
 
     async def _kill(self, reason: str) -> None:
         if self.proc is None:
@@ -209,6 +232,9 @@ class PluginRuntime:
             if task is not None and not task.done():
                 task.cancel()
             setattr(self, attr, None)
+        for task in list(self._inflight):
+            if not task.done():
+                task.cancel()
         self.close_transport_now()
         self.proc = None
 
@@ -403,12 +429,12 @@ class PluginRuntime:
                 # 插件侧 action id 从 _ACTION_ID_BASE 起，绝不与响应请求 id 相撞）
                 if msg.get("method") == "action" and self._action_handler is not None:
                     await self._action_sem.acquire()
-                    asyncio.create_task(self._handle_action_line_sem(msg))
+                    self._track_inflight(asyncio.create_task(self._handle_action_line_sem(msg)))
                     continue
                 if msg.get("method") == "engine":
                     # Plugin Protocol v1 反向通道（config / permission / context）
                     await self._action_sem.acquire()
-                    asyncio.create_task(self._handle_engine_op_sem(msg))
+                    self._track_inflight(asyncio.create_task(self._handle_engine_op_sem(msg)))
                     continue
                 if isinstance(msg_id, int) and msg_id in self._pending:
                     fut = self._pending[msg_id]

@@ -323,3 +323,39 @@ async def test_exec_build_command_points_at_entry(tmp_path):
     cmd, env = rt._build_command()
     assert cmd == [os.path.join(dir_path, "plugin.sh")]
     assert "PATH" in env or env == {}
+
+
+@pytest.mark.asyncio
+async def test_shutdown_cancels_inflight_plugin_requests(tmp_path):
+    """回归：插件→引擎的请求任务曾用裸 asyncio.create_task 派发（runtime.py:406/411）。
+
+    没有强引用的 Task 可能被 GC 中途取消、异常也无处取；关闭时也不追踪它 →
+    任务在事件循环关闭后仍在跑（Task was destroyed but it is pending）。
+    修复后：任务登记进 _inflight，shutdown() 取消并等待它们结束。
+    """
+    dir_path = _deploy(tmp_path, "minimal_plugin")
+    rt = _make_runtime(dir_path)
+    await rt.start()
+    started = asyncio.Event()
+    finished = asyncio.Event()
+
+    async def slow_request():
+        started.set()
+        try:
+            await asyncio.sleep(30)
+        finally:
+            finished.set()
+
+    try:
+        task = asyncio.create_task(slow_request())
+        rt._track_inflight(task)
+        await asyncio.wait_for(started.wait(), timeout=2.0)
+        assert rt._inflight, "请求任务没有被登记进 _inflight"
+        await asyncio.wait_for(rt.shutdown(), timeout=8.0)
+        assert finished.is_set(), "关闭时任务没有被取消（finally 未执行）"
+        assert task.cancelled(), "请求任务应以 cancelled 结束"
+        assert not rt._inflight, "关闭后 _inflight 未清空"
+        assert rt.proc is None
+    finally:
+        if rt.proc is not None:
+            rt.proc.kill()
