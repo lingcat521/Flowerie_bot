@@ -35,6 +35,7 @@ from src.plugins.manifest import PluginManifest, PluginManifestError
 from src.plugins.permissions import PermissionManager
 from src.plugins.router import PluginBus, PluginRouter
 from src.plugins.runtime import PluginRuntime
+from src.plugins.scheduler import PluginScheduler
 from src.plugins.webui_loader import PluginWebuiPathError, read_page, read_static, static_root
 from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
@@ -86,12 +87,12 @@ class PluginManager:
         # bot_factory: (sender, context_manager) -> BotAdapter；由组合根注入具体协议实现，
         # 插件管理器自身不认识任何协议（Gate T / 任务书 §34）。
         self._bot_factory = bot_factory
-        self._schedules: Dict[str, dict] = {}     # schedule_id -> {plugin_id,name,kind,...}
+        # 定时任务（Phase 1 / M1：从 manager 拆出的独立职责域，见 src/plugins/scheduler.py）
+        self._scheduler = PluginScheduler(self.dispatch_event)
         # Plugin-to-Plugin 通信（任务书第 4 份 §二十七）：Core Router + Communication Bus。
         # 管理器只做编排；路由/权限/超时/环保护全部在 router.py 里（Core 不依赖任何语言）。
         self._comm_router = PluginRouter()
         self._comm_bus = PluginBus(self._comm_router)
-        self._schedule_tasks: Dict[str, Any] = {} # schedule_id -> asyncio.Task
         # _stop_runtime 派出的「即发即忘」shutdown 任务（必须有人收，见 _drain_shutdown_tasks）
         self._shutdown_tasks: set = set()
         self._shutdown_drain_timeout = 8.0
@@ -2328,43 +2329,15 @@ class PluginManager:
             return {"ok": ok, "flag": flag, "approve": approve}
         if action_type == "schedule_register":
             # 轻量调度：interval（秒循环）/ delay（一次性延时）/ daily（HH:MM 每日）
-            name = str(payload.get("name") or f"task{len(self._schedules) + 1}")[:50]
+            name = str(payload.get("name") or self._scheduler.default_name())[:50]
             kind = str(payload.get("kind") or "interval")
             when = payload.get("when")
-            if kind == "interval":
-                seconds = float(when or 60)
-                if not (1 <= seconds <= 86400):
-                    return {"ok": False, "error": "interval 必须 1~86400 秒"}
-            elif kind == "delay":
-                seconds = float(when or 0)
-                if not (0 < seconds <= 86400 * 7):
-                    return {"ok": False, "error": "delay 必须 0~604800 秒"}
-            elif kind == "daily":
-                if not re.match(r"^\d{2}:\d{2}$", str(when or "")):
-                    return {"ok": False, "error": "daily 需要 HH:MM（如 09:30）"}
-            else:
-                return {"ok": False, "error": f"未知 schedule kind: {kind}"}
-            # 同插件同名覆盖（幂等）
-            for sid, sched in list(self._schedules.items()):
-                if sched.get("plugin_id") == plugin_id and sched.get("name") == name:
-                    await self._cancel_schedule(sid)
-            sid = f"{plugin_id}:{name}"
-            self._schedules[sid] = {"plugin_id": plugin_id, "name": name, "kind": kind,
-                                    "when": when, "created": time.time()}
-            task = asyncio_create_task(self._schedule_loop(sid, kind, when))
-            self._schedule_tasks[sid] = task
-            return {"ok": True, "schedule_id": sid, "name": name, "kind": kind}
+            return await self._scheduler.register(plugin_id, name, kind, when)
         if action_type == "schedule_cancel":
             sid = str(payload.get("schedule_id") or "")
-            sched = self._schedules.get(sid)
-            if sched is None or sched.get("plugin_id") != plugin_id:
-                return {"ok": False, "error": "schedule 不存在（或不属于本插件）"}
-            await self._cancel_schedule(sid)
-            return {"ok": True, "schedule_id": sid}
+            return await self._scheduler.cancel(plugin_id, sid)
         if action_type == "schedule_list":
-            mine = [{**s, "schedule_id": sid} for sid, s in self._schedules.items()
-                    if s.get("plugin_id") == plugin_id]
-            return {"ok": True, "schedules": mine}
+            return {"ok": True, "schedules": self._scheduler.list_for(plugin_id)}
         if action_type == "kv_get":
             key = str(payload.get("key") or "")
             if not key or len(key) > 128:
@@ -2488,67 +2461,9 @@ class PluginManager:
         except Exception:  # noqa: BLE001
             return None
 
-    async def _schedule_loop(self, sid: str, kind: str, when) -> None:
-        """轻量调度执行：interval/delay/daily（asyncio Task；无第三方依赖）。"""
-        import asyncio as _asyncio
-        try:
-            if kind == "delay":
-                await _asyncio.sleep(float(when or 0))
-                await self._dispatch_schedule(sid)
-                # delay 一次性任务：触发即清理（interval/daily 保留）
-                self._schedule_tasks.pop(sid, None)
-                self._schedules.pop(sid, None)
-            elif kind == "interval":
-                seconds = float(when or 60)
-                while sid in self._schedule_tasks:
-                    await _asyncio.sleep(seconds)
-                    if sid not in self._schedule_tasks:
-                        break
-                    await self._dispatch_schedule(sid)
-            elif kind == "daily":
-                hh, mm = str(when or "00:00").split(":")
-                while sid in self._schedule_tasks:
-                    now = datetime.now()
-                    nxt = now.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
-                    if nxt <= now:
-                        nxt = nxt + timedelta(days=1)
-                    await _asyncio.sleep(max(1.0, (nxt - now).total_seconds()))
-                    if sid not in self._schedule_tasks:
-                        break
-                    await self._dispatch_schedule(sid)
-        except _asyncio.CancelledError:
-            return
-        except Exception:  # noqa: BLE001 - 调度器异常不拖垮管理器
-            return
-
-    async def _dispatch_schedule(self, sid: str) -> None:
-        sched = self._schedules.get(sid)
-        if sched is None:
-            return
-        payload = {"kind": "schedule", "schedule_id": sid, "name": sched["name"],
-                   "trigger": sched["kind"], "plugin_id": sched["plugin_id"],
-                   "trace_id": ""}
-        try:
-            await self.dispatch_event("schedule", payload)
-        except Exception:  # noqa: BLE001
-            pass
-
-    async def _cancel_schedule(self, sid: str) -> None:
-        task = self._schedule_tasks.pop(sid, None)
-        self._schedules.pop(sid, None)
-        if task is not None:
-            try:
-                task.cancel()
-            except Exception:  # noqa: BLE001
-                pass
-
     def cancel_all_schedules(self) -> None:
-        """shutdown 时清理全部调度器。"""
-        for sid in list(self._schedule_tasks.keys()):
-            task = self._schedule_tasks.pop(sid, None)
-            if task is not None:
-                task.cancel()
-        self._schedules.clear()
+        """shutdown 时清理全部调度器（Phase 1 / M1：委托给 PluginScheduler）。"""
+        self._scheduler.cancel_all()
 
     async def _http_ext(self, plugin_id: str, action_type: str, payload: dict) -> dict:
         """HTTP 扩展：PUT/DELETE/HEAD 与下载到插件目录（全部复用 http_action 防线）。
