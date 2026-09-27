@@ -39,6 +39,8 @@ class NicknamePanelMixin:
         return getattr(self, "group_style_rules", None)
 
     async def _handle_panel_nicknames(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
         return web.Response(text=self._render_nicknames_page(),
                             content_type="text/html", charset="utf-8")
 
@@ -67,6 +69,8 @@ class NicknamePanelMixin:
                                     personas=personas)
 
     async def _handle_panel_nicknames_save(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
         form = await request.post()
         store = self._nickname_store
         if store is None:

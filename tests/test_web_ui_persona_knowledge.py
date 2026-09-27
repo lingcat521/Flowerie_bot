@@ -700,3 +700,49 @@ def test_login_and_register_username_input_width_consistent():
     for html in (render_login_page(), render_register_page()):
         assert 'name="username" type="text"' in html
         assert 'name="password" type="password"' in html
+
+
+# ---------- 回归：WebUI 断链（Phase 0 审计报告 §5 第 3 条） ----------
+async def test_broken_webui_form_routes_are_registered():
+    """回归：页面上有表单、实际却没有路由的三处。
+
+    - `POST /panel/nicknames`（webui_render/nicknames.py:74 的表单）
+    - `POST /panel/knowledge/config`（webui_render/knowledge.py:137 的表单）
+    - `GET /panel/nicknames`（nicknames.py:78 的「刷新」链接）
+    """
+    with tempfile.TemporaryDirectory() as td:
+        _, _, _, server, _, _ = _make_stack(td)
+        paths = {r.resource.canonical for r in server.build_app().router.routes()}
+        assert "/panel/nicknames" in paths
+        assert "/panel/knowledge/config" in paths
+
+
+async def test_nickname_handlers_require_auth():
+    """回归：nickname_panel 的两个 handler 曾没有 _check_token。
+
+    直接补路由而不补鉴权，等于开了一个**未认证写入口** —— 本用例钉住这一点。
+    """
+    with tempfile.TemporaryDirectory() as td:
+        _, _, _, server, _, _ = _make_stack(td)
+        r_get = await server._handle_panel_nicknames(FakeRequest())
+        r_post = await server._handle_panel_nicknames_save(
+            FakeRequest(form={"group_id": "1", "nickname": "x"}))
+        assert r_get.status == 302, r_get.status
+        assert r_post.status == 302, r_post.status
+        assert server._nickname_store is None          # 未注入 store：也确实没有写入
+
+
+async def test_group_style_rules_injection_reaches_panel():
+    """回归：main.py 曾漏把 group_style_rules 注入 WebUIServer。
+
+    后果：nickname_panel._style_rule_store 恒 None → 人格页「群规则」永远显示「未初始化」。
+    """
+    import inspect
+    with tempfile.TemporaryDirectory() as td:
+        _, _, _, server, _, _ = _make_stack(td)
+        assert server._style_rule_store is None
+        sentinel = object()
+        server.group_style_rules = sentinel            # 等价于 WebUIServer(..., group_style_rules=store)
+        assert server._style_rule_store is sentinel
+        # 构造参数必须一直存在（main.py 的注入契约）
+        assert "group_style_rules" in inspect.signature(WebUIServer.__init__).parameters

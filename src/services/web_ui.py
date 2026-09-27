@@ -75,9 +75,11 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
                  persona_manager=None, meme_manager=None, prompt_manager=None,
-                 plugin_manager=None, group_nicknames=None):
+                 plugin_manager=None, group_nicknames=None, group_style_rules=None):
         self.config = config
         self.group_nicknames = group_nicknames
+        # 群专属发言规则 store（与 MessageRouter 共享同一实例；按 群+人设 解析）
+        self.group_style_rules = group_style_rules
         self.config_service = config_service
         # status_provider: 可调用，返回状态 dict（ws_connected/uptime 等），由 main 注入
         self._status_provider = status_provider
@@ -197,6 +199,10 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/persona/group", self._handle_panel_persona_group)
         app.router.add_post("/panel/persona/admin-rules", self._handle_panel_persona_admin_rules)
         app.router.add_post("/panel/persona/grouprules", self._handle_panel_persona_grouprules)
+
+        # 群昵称（GET 供页面内「刷新」链接；POST 保存；两者都过 _check_token）
+        app.router.add_get("/panel/nicknames", self._handle_panel_nicknames)
+        app.router.add_post("/panel/nicknames", self._handle_panel_nicknames_save)
         # 群聊自定义 Prompt 管理（零 JS 表单：全局 / 按群读写，按群隔离）
         app.router.add_post("/panel/prompt/global", self._handle_panel_prompt_global)
         app.router.add_post("/panel/prompt/group", self._handle_panel_prompt_group)
@@ -206,6 +212,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/knowledge/save", self._handle_panel_knowledge_save)
         app.router.add_post("/panel/knowledge/delete", self._handle_panel_knowledge_delete)
         app.router.add_post("/panel/knowledge/clear", self._handle_panel_knowledge_clear)
+        app.router.add_post("/panel/knowledge/config", self._handle_panel_knowledge_config)
         # 插件管理（零 JS 表单：保护级别 / 扫描 / 上传 / URL / 启用 / 禁用 / 卸载）
         app.router.add_post("/panel/plugins/refresh", self._handle_panel_plugins_refresh)
         app.router.add_post("/panel/plugins/upload", self._handle_panel_plugins_upload)
