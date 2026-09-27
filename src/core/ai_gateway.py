@@ -190,16 +190,18 @@ class AiGateway:
             # 群特色昵称（group nickname × persona）：按 群+当前人设 解析
             #（人设精确命中 → 群级 → BOT_NICKNAME 默认）
             _ns = self._nicknames()
-            if _ns is not None and kwargs.get("group_id") is not None:
+            # 注意：group_id 是 guarded_chat 的**位置参数**（生产调用走位置参数），
+            # 必须用上面已回退好的 _gid，不能只看 kwargs["group_id"]（那会让整段恒不生效）。
+            if _ns is not None and _gid is not None:
                 _pid = kwargs.pop("persona_id", None) or (
-                    self._persona_manager().resolve_persona_id(kwargs["group_id"])
+                    self._persona_manager().resolve_persona_id(_gid)
                     if callable(getattr(self, "_persona_manager", None)) else None)
-                kwargs["bot_nickname"] = _ns.get(kwargs["group_id"], _pid)
+                kwargs["bot_nickname"] = _ns.get(_gid, _pid)
                 kwargs["default_nickname"] = _ns.default
             # 群专属发言规则（覆盖全局 GLOBAL_STYLE_RULES；无配置 → 回退全局）
             _sr = self._style_rules() if callable(getattr(self, "_style_rules", None)) else None
-            if _sr is not None and kwargs.get("group_id") is not None:
-                _rule = _sr.get(kwargs["group_id"])
+            if _sr is not None and _gid is not None:
+                _rule = _sr.get(_gid)
                 if _rule:
                     kwargs["group_style_rules"] = _rule
             # 工具 payload：MCP（启用、有 allowlist 工具且额度 > 0）+ 内部 reply 工具
