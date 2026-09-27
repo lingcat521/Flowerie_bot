@@ -7,7 +7,6 @@
 import importlib
 import logging
 
-from src.utils import metrics as metrics_mod
 from src.utils.metrics import registry
 
 
