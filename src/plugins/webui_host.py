@@ -13,8 +13,7 @@ import os
 import re
 from typing import Any, Callable, Dict, Optional, Tuple
 
-from src.plugins.webui_loader import (PluginWebuiPathError, STATIC_EXTS, read_page,
-                                    read_static, static_root, validate_relative)
+from src.plugins.webui_loader import PluginWebuiPathError, read_page, read_static, static_root
 
 #: 允许的上传扩展名（与拆分前 PluginManager._WEBUI_ALLOWED_EXT 相同）
 WEBUI_ALLOWED_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".txt", ".json",
