@@ -105,6 +105,21 @@ def test_daily_limit():
         asyncio.run(m.close())
 
 
+def test_daily_counter_pruned_across_days():
+    """跨天后旧的 (group_id, day) 计数键被清掉（P19 无界增长防护）。"""
+    cfg = StubConfig(BLOSSOM_MEMORY_EXTRACT_ENABLED=True, BLOSSOM_MEMORY_DAILY_EXTRACT_LIMIT=5)
+    m = make_manager(cfg)
+    try:
+        assert asyncio.run(m.extract_and_store(7, 1, "a")) is True
+        assert len(m._daily_extracted) == 1
+        m._daily_day = "19700101"                       # 伪造成「上次计数是很多天前」
+        m._daily_extracted[(999, "19700101")] = 3
+        assert asyncio.run(m.extract_and_store(7, 1, "b")) is True
+        assert [k for k in m._daily_extracted if k[1] == "19700101"] == []
+    finally:
+        asyncio.run(m.close())
+
+
 # ---------- 6) TTL + 上限清理 ----------
 def test_ttl_and_max_prune():
     import tempfile

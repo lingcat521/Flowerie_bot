@@ -171,6 +171,7 @@ class BlossomMemoryManager:
         self.reranker = reranker
         self._search = VectorSearch(self.threshold, self.vector_dim)
         self._daily_extracted: Dict[tuple, int] = {}   # (group_id, date) -> count
+        self._daily_day = ""                          # 最近一次计数的日期（换天时清旧键）
         self._mem = self._model_facts_guard()
 
     def _model_facts_guard(self) -> bool:
@@ -200,6 +201,11 @@ class BlossomMemoryManager:
             return False
         # 每日限额（按群）：超过 limit 不再提取
         day = time.strftime("%Y%m%d", time.localtime())
+        # 无界增长防护：限额以「天」为界，跨天后旧 (group_id, day) 键永远不会再命中，
+        # 但字典会一直攒着 —— 换天时清一次（每天最多 O(n) 一次，不是每次调用）
+        if self._daily_day != day:
+            self._daily_extracted.clear()
+            self._daily_day = day
         key = (group_id, day)
         used = self._daily_extracted.get(key, 0)
         if used >= self.daily_limit:
