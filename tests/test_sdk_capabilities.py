@@ -122,7 +122,7 @@ async def test_schedule_register_dispatch_and_cancel(tmp_path):
     assert all(s["name"] != "t1" for s in lst)   # delay 一次性已清理
     assert any(s["name"] == "tick" for s in lst)
     await mgr.shutdown()
-    assert mgr._schedules == {}  # shutdown 清理
+    assert mgr._scheduler._schedules == {}  # shutdown 清理（M1 后状态归 PluginScheduler）
 
 
 # ---------- 工具 ----------

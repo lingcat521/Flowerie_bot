@@ -15,7 +15,6 @@
 manifest 校验、进程隔离、日志、崩溃保护、资源限制、权限强制。
 """
 import asyncio
-import base64
 import json
 import os
 import random
@@ -37,7 +36,7 @@ from src.plugins.router import PluginBus, PluginRouter
 from src.plugins.runtime import PluginRuntime
 from src.plugins.scheduler import PluginScheduler
 from src.plugins.webui_host import PluginWebUIHost
-from src.plugins.webui_loader import PluginWebuiPathError, read_page, read_static, static_root
+from src.plugins.webui_loader import PluginWebuiPathError, read_page
 from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
 from src.sdk.event import BotEvent
@@ -89,7 +88,10 @@ class PluginManager:
         # 插件管理器自身不认识任何协议（Gate T / 任务书 §34）。
         self._bot_factory = bot_factory
         # 定时任务（Phase 1 / M1：从 manager 拆出的独立职责域，见 src/plugins/scheduler.py）
-        self._scheduler = PluginScheduler(self.dispatch_event)
+        # 惰性回调（同 webui_host）：测试会 monkeypatch mgr.dispatch_event，
+        # 传绑定方法会让 patch 失效（tests/test_sdk_capabilities.py 抓到过）。
+        self._scheduler = PluginScheduler(
+            lambda event, payload: self.dispatch_event(event, payload))
         # WebUI 宿主（Phase 1 / M2：文件空间先搬出，其余逐步搬）
         # 注入**惰性回调**而不是绑定方法：测试与面板会 monkeypatch
         # manager.get_plugin / _manifest_of，属性查找必须发生在每次调用时。
