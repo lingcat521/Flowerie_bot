@@ -26,6 +26,7 @@ from src.services.webui_render.theme import (
     THEME_ORDER,
     THEMES,
     background_rules,
+    hex_to_rgb,
     theme_body_class,
     theme_css_block,
     theme_default_alpha,
