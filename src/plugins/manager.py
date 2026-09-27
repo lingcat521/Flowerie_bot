@@ -91,7 +91,13 @@ class PluginManager:
         # 定时任务（Phase 1 / M1：从 manager 拆出的独立职责域，见 src/plugins/scheduler.py）
         self._scheduler = PluginScheduler(self.dispatch_event)
         # WebUI 宿主（Phase 1 / M2：文件空间先搬出，其余逐步搬）
-        self._webui_host = PluginWebUIHost(self._plugin_dir)
+        # 注入**惰性回调**而不是绑定方法：测试与面板会 monkeypatch
+        # manager.get_plugin / _manifest_of，属性查找必须发生在每次调用时。
+        self._webui_host = PluginWebUIHost(
+            lambda: self._plugin_dir(),
+            lambda pid: self.get_plugin(pid),
+            lambda row: self._manifest_of(row),
+            lambda pid: self._runtimes.get(pid))
         # Plugin-to-Plugin 通信（任务书第 4 份 §二十七）：Core Router + Communication Bus。
         # 管理器只做编排；路由/权限/超时/环保护全部在 router.py 里（Core 不依赖任何语言）。
         self._comm_router = PluginRouter()
@@ -369,82 +375,33 @@ class PluginManager:
             return None
         return page.get("file")
 
+    # ================= Plugin WebUI：静态资源 / 资产 / 协议辅助（Phase 1 / M2b：实现搬到 PluginWebUIHost） =================
     def plugin_webui_static_root(self, plugin_id: str) -> str:
-        """该插件的静态资源根目录（manifest `web_ui.static`，默认 "static"）。"""
-        row = self.get_plugin(plugin_id)
-        declared = None
-        if row is not None:
-            manifest = self._manifest_of(row)
-            if manifest and manifest.web_ui:
-                declared = manifest.web_ui.get("static")
-        return static_root(self.plugin_webui_dir(plugin_id), declared)
+        return self._webui_host.plugin_webui_static_root(plugin_id)
 
     def plugin_webui_static_file(self, plugin_id: str, rel_path: str):
-        """读取插件静态资源：返回 (bytes, mime)；越界/非法一律抛 PluginWebuiPathError。
+        return self._webui_host.plugin_webui_static_file(plugin_id, rel_path)
 
-        `.css` 在这里就过 `sanitize_plugin_css`（**单一收口**）：任何调用方拿到的都是净化后的
-        样式，不依赖上层 HTTP 处理器再补一次。
-        """
-        root = self.plugin_webui_static_root(plugin_id)
-        blob, mime, _path = read_static(root, rel_path)
-        if mime.startswith("text/css"):
-            from src.plugins.webui_security import sanitize_plugin_css
-
-            css, _report = sanitize_plugin_css(blob.decode("utf-8", errors="replace"))
-            blob = css.encode("utf-8")
-        return blob, mime
-
-    # ================= WebUI Protocol（任务书第 3 份 §三/§七/§八/§十五） =================
-    #: 插件资源 MIME 白名单（No-JS：没有 javascript，也没有可执行 SVG / text/html）
-    WEBUI_ASSET_MIME = {
-        ".css": "text/css; charset=utf-8",
-        ".txt": "text/plain; charset=utf-8",
-        ".json": "application/json; charset=utf-8",
-        ".csv": "text/csv; charset=utf-8",
-        ".md": "text/plain; charset=utf-8",
-        ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-        ".gif": "image/gif", ".webp": "image/webp", ".ico": "image/x-icon",
-    }
-    #: 插件资源大小上限（比静态文件更严：内容是插件临时生成的）
-    WEBUI_ASSET_MAX_BYTES = 256 * 1024
-    #: 传给 WebUI 页面的上下文里**永远**只有这些顶层键（新增键必须同步进安全测试）
-    WEBUI_CONTEXT_KEYS = ("plugin", "page", "request", "user", "config", "data")
+    async def plugin_webui_asset(self, plugin_id: str, rel_path: str):
+        return await self._webui_host.plugin_webui_asset(plugin_id, rel_path)
 
     @staticmethod
     def _webui_supports(rt, method: str) -> bool:
-        """插件是否声明了某 WebUI 能力（未声明的运行时/测试桩一律不调用）。"""
-        supports = getattr(rt, "supports", None)
-        return bool(callable(supports) and supports(method))
+        return PluginWebUIHost._webui_supports(rt, method)
 
     def _webui_approved(self, plugin_id: str) -> set:
-        """该插件已批准的权限集合（唯一入口：WebUI 各处都从这里取，避免口径不一）。"""
-        row = self.get_plugin(plugin_id) or {}
-        return {str(p) for p in (row.get("approved_permissions") or []) if p}
+        return self._webui_host._webui_approved(plugin_id)
 
     @staticmethod
     def _webui_granted(approved, permission: str) -> bool:
-        from src.plugins.permissions import webui_permission_granted
-        return webui_permission_granted(approved, permission)
+        return PluginWebUIHost._webui_granted(approved, permission)
 
-    async def _webui_call(self, plugin_id: str, method: str, params: Dict[str, Any],
-                          timeout: float = 4.0):
-        """调插件的 WebUI 协议方法（真子进程 + 真管道）。返回 (payload, error)。"""
-        rt = self._runtimes.get(plugin_id)
-        if rt is None:
-            return None, "插件运行中未加载（重启后重试）"
-        if not self._webui_supports(rt, method):
-            return None, "插件未声明能力 %s" % method
-        try:
-            payload = await asyncio.wait_for(rt.request(method, params), timeout=timeout)
-        except asyncio.TimeoutError:
-            return None, "插件响应超时（%ss 上限）" % timeout
-        except Exception as e:  # noqa: BLE001
-            return None, "插件调用失败: %s: %s" % (type(e).__name__, e)
-        if not isinstance(payload, dict):
-            return None, "插件返回了非法响应（应为对象）"
-        if payload.get("ok") is False:
-            return None, str(payload.get("error") or "插件返回 ok=false")
-        return payload, ""
+    async def _webui_call(self, plugin_id: str, method: str, params, timeout: float = 4.0):
+        return await self._webui_host._webui_call(plugin_id, method, params, timeout)
+
+    # ================= WebUI Protocol（任务书第 3 份 §三/§七/§八/§十五） =================
+    #: 传给 WebUI 页面的上下文里**永远**只有这些顶层键（新增键必须同步进安全测试）
+    WEBUI_CONTEXT_KEYS = ("plugin", "page", "request", "user", "config", "data")
 
     def _webui_operator_config(self, plugin_id: str) -> Dict[str, Any]:
         """操作员配置（manifest 的 config 段，只读）——与 engine op 的 config.get 同一来源。"""
@@ -542,57 +499,6 @@ class PluginManager:
                     if err:
                         warnings.append("存储写入失败(%s)：%s" % (key, err))
         return warnings
-
-    async def plugin_webui_asset(self, plugin_id: str, rel_path: str) -> Tuple[bytes, str]:
-        """插件提供的 WebUI 资源（`webui.asset`）：返回 (bytes, mime)。
-
-        越界 / 未批准 / 未声明能力 / MIME 不在白名单 / 超限一律抛 PluginWebuiPathError
-        （HTTP 层统一转 404，不泄露插件是否存在）。No-JS 政策落在三处：
-        路径扩展名白名单没有 .js；MIME 白名单没有 javascript / text/html / svg；
-        `.css` 过 sanitize_plugin_css（与静态文件同一收口）。
-        """
-        from src.plugins.webui_loader import STATIC_EXTS, validate_relative
-
-        rel = validate_relative(rel_path, STATIC_EXTS, field="插件资源")
-        row = self.get_plugin(plugin_id)
-        if row is None or not row.get("enabled"):
-            raise PluginWebuiPathError("插件未启用或不存在")
-        approved = self._webui_approved(plugin_id)
-        if not self._webui_granted(approved, "webui.view"):
-            raise PluginWebuiPathError("插件未批准 webui.view 权限")
-        rt = self._runtimes.get(plugin_id)
-        if not self._webui_supports(rt, "webui.asset"):
-            raise PluginWebuiPathError("插件未声明 webui.asset 能力")
-        payload, err = await self._webui_call(plugin_id, "webui.asset", {"path": rel})
-        if err:
-            raise PluginWebuiPathError(err)
-        ext = os.path.splitext(rel)[1].lower()
-        expect = self.WEBUI_ASSET_MIME.get(ext)
-        if not expect:
-            raise PluginWebuiPathError("插件资源类型不允许：%s" % (ext or "(无)"))
-        declared = str(payload.get("content_type") or "").split(";")[0].strip().lower()
-        if declared and declared != expect.split(";")[0].strip().lower():
-            raise PluginWebuiPathError("content_type 与扩展名不符：%s" % declared)
-        if expect.startswith("text/"):
-            body = payload.get("body")
-            if not isinstance(body, str):
-                raise PluginWebuiPathError("文本资源需要 body 字符串字段")
-            blob = body.encode("utf-8")
-        else:
-            encoded = payload.get("base64")
-            if not isinstance(encoded, str):
-                raise PluginWebuiPathError("二进制资源需要 base64 字段")
-            try:
-                blob = base64.b64decode(encoded, validate=True)
-            except (ValueError, TypeError):
-                raise PluginWebuiPathError("base64 解码失败") from None
-        if len(blob) > self.WEBUI_ASSET_MAX_BYTES:
-            raise PluginWebuiPathError("插件资源超过大小上限")
-        if expect.startswith("text/css"):
-            from src.plugins.webui_security import sanitize_plugin_css
-            css, _report = sanitize_plugin_css(blob.decode("utf-8", errors="replace"))
-            blob = css.encode("utf-8")
-        return blob, expect
 
     # ================= 注册表 =================
     def _manifest_of(self, record: dict) -> Optional[PluginManifest]:
