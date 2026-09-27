@@ -149,7 +149,9 @@ class PluginPanelMixin:
                 content_html = str(result.get("html") or "")     # 已在 manager 内净化 + 变量 escape
             else:
                 from src.services.webui_render.plugin_dsl import render_plugin_dsl
-                content_html = render_plugin_dsl(result.get("dsl"))
+                content_html = render_plugin_dsl(
+                    result.get("dsl"),
+                    default_action="/panel/plugins/webui/%s/%s" % (pid, page))
         tabs = []
         try:
             manifest = self._plugin_manager._manifest_of(plugin_row)

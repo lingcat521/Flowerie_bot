@@ -150,3 +150,30 @@ def test_deep_recursion_guarded():
         deep = {"type": "card", "children": [deep]}
     html = render_plugin_dsl(deep)
     assert "组件嵌套过深" in html
+
+
+def test_default_action_override_for_forms_and_buttons():
+    """回归（Phase 0 审计 §5 第 3 条 #4）：DSL 表单/按钮默认提交到 `/panel/plugin-actions`，
+    而那条路径**没有任何路由** → 插件页面上的表单/按钮一点就 404。
+
+    render_plugin_dsl 现在支持 `default_action`（插件面板传真实页面路径
+    `/panel/plugins/webui/<pid>/<page>`）；不传时保持历史默认值（向后兼容）。
+    """
+    btn = {"type": "button", "text": "跑", "action": "run"}
+    assert 'action="/panel/plugin-actions"' in render_plugin_dsl(btn)
+
+    out = render_plugin_dsl(btn, default_action="/panel/plugins/webui/demo/home")
+    assert 'action="/panel/plugins/webui/demo/home"' in out
+    assert "/panel/plugin-actions" not in out
+
+    form = {"type": "form", "fields": [{"name": "x", "type": "text"}]}
+    out_form = render_plugin_dsl(form, default_action="/panel/plugins/webui/demo/home")
+    assert 'action="/panel/plugins/webui/demo/home"' in out_form
+
+    # 节点自带 post/action 优先于默认值
+    custom = {"type": "button", "text": "跑", "action": "run", "post": "/panel/custom"}
+    out_custom = render_plugin_dsl(custom, default_action="/panel/plugins/webui/demo/home")
+    assert 'action="/panel/custom"' in out_custom
+
+    # contextvar 必须复位：下一次不传参时仍是历史默认值
+    assert 'action="/panel/plugin-actions"' in render_plugin_dsl(btn)

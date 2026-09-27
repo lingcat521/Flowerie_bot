@@ -7,6 +7,7 @@
   · markdown 走受限渲染（无 raw html/iframe/可执行 URL）；SVG 不出自插件
   · 组件全集（v1）：展示/表单/操作/数据/容器（见 _RENDERERS 注册表）
 """
+import contextvars
 import html
 import re
 from typing import Any, Dict
@@ -25,13 +26,26 @@ _SAFE_STYLE_BAD = ("expression(", "url(", "javascript", "@import", "behavior")
 _on_attr = re.compile(r"^on[a-z]+$", re.I)
 
 
-def render_plugin_dsl(dsl: Any) -> str:
-    """渲染插件返回的 DSL（页面/组件树）→ HTML；任何非法/危险输入转为安全文本。"""
+_DEFAULT_ACTION: "contextvars.ContextVar[str]" = contextvars.ContextVar(
+    "flowerie_plugin_dsl_default_action", default="/panel/plugin-actions")
+
+
+def render_plugin_dsl(dsl: Any, *, default_action: str = "/panel/plugin-actions") -> str:
+    """渲染插件返回的 DSL（页面/组件树）→ HTML；任何非法/危险输入转为安全文本。
+
+    default_action：DSL 里表单/按钮**没写 post/action** 时的默认提交地址。
+    插件面板会传真实页面路径（/panel/plugins/webui/<pid>/<page>）；不传则保持历史默认值
+    （/panel/plugin-actions，仅供旧的直接调用兼容 —— 那条路径没有路由，插件面板必须显式传）。
+    """
     if dsl is None:
         return ""
     if not isinstance(dsl, dict):
         return f"<p class=\"hint\">{html.escape(str(dsl))}</p>"
-    return _render_node(dsl, depth=0)
+    token = _DEFAULT_ACTION.set(default_action)
+    try:
+        return _render_node(dsl, depth=0)
+    finally:
+        _DEFAULT_ACTION.reset(token)
 
 
 def _render_node(node: dict, depth: int) -> str:
@@ -148,7 +162,7 @@ def _button(node: dict, depth: int) -> str:
     confirm = str(node.get("confirm", "") or "")
     if confirm:
         kw = f' title="{esc(confirm)}"'
-    post = safe_url(node.get("post", "/panel/plugin-actions"), allow_relative=True) or "/panel/plugin-actions"
+    post = safe_url(node.get("post", _DEFAULT_ACTION.get()), allow_relative=True) or _DEFAULT_ACTION.get()
     return (f'<form method="post" action="{esc(post)}" '
             f'class="inline-form"{kw}>'
             f'<input type="hidden" name="plugin_action" value="{action}">'
@@ -252,7 +266,7 @@ def _form_field(node: dict, depth: int = 0) -> str:
 
 def _form(node: dict, depth: int) -> str:
     fields = node.get("fields") or []
-    action = safe_url(node.get("action", "/panel/plugin-actions"), allow_relative=True) or "/panel/plugin-actions"
+    action = safe_url(node.get("action", _DEFAULT_ACTION.get()), allow_relative=True) or _DEFAULT_ACTION.get()
     method = "post" if str(node.get("method", "post")).lower() == "post" else "get"
     body = "".join(_form_field(f, depth + 1) for f in fields if isinstance(f, dict))
     buttons = ""
