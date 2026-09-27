@@ -8,7 +8,10 @@
 4) 函数内 import 的名字在模块级也被 import、且模块级那个名字任何作用域都没用到
    → 报「F811 风险」（ruff 同时报模块级 F401 + 函数内 F811；2026-09-27 CI 实际踩到）；
 5) 函数内 import 的名字在所属函数里没被用到（symtable 判定 + 函数体内文本计数双重确认，
-   避开 PEP 649 惰性注解作用域造成的假阴性）→ 报「未使用（F401）」。
+   避开 PEP 649 惰性注解作用域造成的假阴性）→ 报「未使用（F401）」；
+6) 文件里被读取、却在本文件任何作用域都没绑定过的名字（含注解里的 typing 名，如漏 import 的
+   `List`）→ 报「未定义（F821）」。本机 Python 3.14 的惰性注解不会求值，这类漏 import 本地
+   跑测试也不报错，但 CI 的 3.9/3.12 会在 import 时 NameError（2026-09-27 M2c 实际踩到）。
 
 规则 4/5 用 symtable 做作用域判定：纯文本计数会把「被函数内同名 import 遮蔽的模块级 import」
 误判成使用过（这正是 4 号规则要抓的形态）。规则 3 保持文本计数（保守、零误报）。
@@ -18,6 +21,7 @@
 误报率高）；本脚本只挡已知会红的四类。
 """
 import ast
+import builtins
 import io
 import os
 import re
@@ -191,6 +195,57 @@ def scoped_import_problems(path: str, tree, text: str):
     return problems
 
 
+#: 解释器隐式注入的名字（模块级不用 import）
+IMPLICIT_NAMES = frozenset({
+    "__file__", "__name__", "__doc__", "__package__", "__spec__", "__loader__",
+    "__builtins__", "__debug__", "__dict__", "__path__", "__all__",
+})
+BUILTIN_NAMES = frozenset(dir(builtins)) | IMPLICIT_NAMES
+
+
+def undefined_names(tree):
+    """F821 兜底：被读取、却在本文件任何作用域都没绑定过的名字。
+
+    只看静态可达的名字：import / 赋值 / 形参 / def / class / except / with / for /
+    match 绑定 / global / nonlocal 都算绑定；内置名与解释器注入名不算未定义。
+    动态注入（globals().update(...)）会漏判成「已绑定」的方向，即只会少报，不会误报。
+    """
+    bound = set()
+    used = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            if isinstance(node.ctx, ast.Load):
+                used.add(node.id)
+            else:
+                bound.add(node.id)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bound.add(node.name)
+        elif isinstance(node, ast.arg):
+            bound.add(node.arg)
+        elif isinstance(node, ast.alias):
+            bound.add(node.asname or node.name.split(".")[0])
+        elif isinstance(node, ast.ExceptHandler):
+            if node.name:
+                bound.add(node.name)
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            bound.update(node.names)
+        elif hasattr(ast, "MatchAs") and isinstance(node, ast.MatchAs):
+            if node.name:
+                bound.add(node.name)
+        elif hasattr(ast, "MatchStar") and isinstance(node, ast.MatchStar):
+            if node.name:
+                bound.add(node.name)
+        elif hasattr(ast, "MatchMapping") and isinstance(node, ast.MatchMapping):
+            if node.rest:
+                bound.add(node.rest)
+    return sorted(used - bound - BUILTIN_NAMES)
+
+
+def undefined_name_problems(tree):
+    return ["未定义的名字 %s（F821：本文件没 import / 没赋值；3.9~3.12 的注解求值会 NameError）"
+            % name for name in undefined_names(tree)]
+
+
 def main():
     args = sys.argv[1:] or [os.path.join(ROOT, "src"), os.path.join(ROOT, "tests"),
                             os.path.join(ROOT, "main.py"), os.path.join(ROOT, "scripts")]
@@ -215,7 +270,7 @@ def main():
             bad += 1
             continue
         for p in (order_problems(tree) + unused_imports(f, tree, text)
-                  + scoped_import_problems(f, tree, text)):
+                  + scoped_import_problems(f, tree, text) + undefined_name_problems(tree)):
             print("%s: %s" % (os.path.relpath(f, ROOT), p))
             bad += 1
     print("检查 %d 个文件；问题 %d 处" % (len(files), bad))
