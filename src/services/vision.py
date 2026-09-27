@@ -53,40 +53,40 @@ class VisionService:
 
     @staticmethod
     def _url_for_log(url: str) -> str:
-            """日志用 URL：只保留 scheme://host/path，去掉 query（CDN 直链的签名参数不入日志）。"""
-            try:
-                from urllib.parse import urlsplit
-                p = urlsplit(url or "")
-                return f"{p.scheme}://{p.netloc}{p.path}"[:80] or (url or "")[:60]
-            except Exception:
-                return (url or "")[:60]
+        """日志用 URL：只保留 scheme://host/path，去掉 query（CDN 直链的签名参数不入日志）。"""
+        try:
+            from urllib.parse import urlsplit
+            p = urlsplit(url or "")
+            return f"{p.scheme}://{p.netloc}{p.path}"[:80] or (url or "")[:60]
+        except Exception:
+            return (url or "")[:60]
 
     async def describe_image(self, image_url: str) -> Optional[str]:
-            """下载图片并调用视觉模型识别，返回一句话描述；失败返回 None。
+        """下载图片并调用视觉模型识别，返回一句话描述；失败返回 None。
 
-            视觉模型/网址/key 由环境变量 VISION_MODEL / VISION_API_URL / VISION_API_KEY
-            独立配置，留空时回退用 DeepSeek 的 key/网址，默认模型 deepseek-flash。
-            """
-            if not image_url:
-                return None
-            model = self.config.VISION_MODEL or "deepseek-flash"
-            api_url = self.config.VISION_API_URL or self.config.DEEPSEEK_API_URL
-            api_key = self.config.VISION_API_KEY or self.config.DEEPSEEK_API_KEY
-            timeout = self.config.VISION_TIMEOUT or 30
+        视觉模型/网址/key 由环境变量 VISION_MODEL / VISION_API_URL / VISION_API_KEY
+        独立配置，留空时回退用 DeepSeek 的 key/网址，默认模型 deepseek-flash。
+        """
+        if not image_url:
+            return None
+        model = self.config.VISION_MODEL or "deepseek-flash"
+        api_url = self.config.VISION_API_URL or self.config.DEEPSEEK_API_URL
+        api_key = self.config.VISION_API_KEY or self.config.DEEPSEEK_API_KEY
+        timeout = self.config.VISION_TIMEOUT or 30
 
-            # 1) 获取图片字节（支持 http(s) url 与 data: URI），下载失败重试 1 次
-            # P2-7 SSRF/资源防线：scheme 白名单、大小上限、MIME 嗅探、重定向上限。
-            image_bytes = await self._download_image(image_url, timeout)
-            if not image_bytes:
-                if not self.last_error:
-                    self.last_error = "下载返回空或非图片"
-                logger.warning(f"Vision download failed ({self.last_error}): {self._url_for_log(image_url)}")
-                return None
-            return await self._describe_image_bytes(image_bytes, model, api_url, api_key, timeout)
+        # 1) 获取图片字节（支持 http(s) url 与 data: URI），下载失败重试 1 次
+        # P2-7 SSRF/资源防线：scheme 白名单、大小上限、MIME 嗅探、重定向上限。
+        image_bytes = await self._download_image(image_url, timeout)
+        if not image_bytes:
+            if not self.last_error:
+                self.last_error = "下载返回空或非图片"
+            logger.warning(f"Vision download failed ({self.last_error}): {self._url_for_log(image_url)}")
+            return None
+        return await self._describe_image_bytes(image_bytes, model, api_url, api_key, timeout)
 
     async def _download_image(self, image_url: str, timeout: float = 10.0) -> Optional[bytes]:
-        self.last_error = ""
         """下载图片字节（http(s)/data: URI；SSRF/大小/魔数校验 + 每跳校验重定向）。"""
+        self.last_error = ""
         # P2-7 SSRF/资源防线：scheme 白名单、大小上限、MIME 嗅探、重定向上限。
         # 注：NapCat 本地图片 url 是 127.0.0.1 loopback，因此故意放行 loopback。
         if image_url.startswith("data:"):
@@ -167,67 +167,67 @@ class VisionService:
 
     async def _describe_image_bytes(self, image_bytes: bytes, model: str, api_url: str,
                                         api_key: str, timeout: float) -> Optional[str]:
-            """把图片字节交给视觉模型，返回一句话描述（describe_image 与本地文件共用）。"""
-            if not image_bytes:
-                return None
-            b64 = base64.b64encode(image_bytes).decode("ascii")
-
-            payload = {
-                "model": model,
-                "messages": [{
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-                        {"type": "text", "text": "请用一句简短自然的话（25字以内）描述这张图片的内容，不要提'这是一张图片'之类的话。"},
-                    ],
-                }],
-                "temperature": 0.3,
-                "max_tokens": 200,
-            }
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            try:
-                r = await self.client.post(api_url, headers=headers, json=payload, timeout=timeout)
-                if r.status_code != 200:
-                    logger.error(f"Vision API HTTP {r.status_code}: {r.text[:200]}")
-                    return None
-                data = r.json()
-                if "choices" in data and len(data["choices"]) > 0:
-                    content = (data["choices"][0].get("message") or {}).get("content")
-                    content = (content or "").strip()
-                    return content or None
-                logger.error(f"Vision API unexpected response: {str(data)[:200]}")
-            except Exception as e:
-                logger.error(f"Vision API error: {e}")
+        """把图片字节交给视觉模型，返回一句话描述（describe_image 与本地文件共用）。"""
+        if not image_bytes:
             return None
+        b64 = base64.b64encode(image_bytes).decode("ascii")
+
+        payload = {
+            "model": model,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                    {"type": "text", "text": "请用一句简短自然的话（25字以内）描述这张图片的内容，不要提'这是一张图片'之类的话。"},
+                ],
+            }],
+            "temperature": 0.3,
+            "max_tokens": 200,
+        }
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        try:
+            r = await self.client.post(api_url, headers=headers, json=payload, timeout=timeout)
+            if r.status_code != 200:
+                logger.error(f"Vision API HTTP {r.status_code}: {r.text[:200]}")
+                return None
+            data = r.json()
+            if "choices" in data and len(data["choices"]) > 0:
+                content = (data["choices"][0].get("message") or {}).get("content")
+                content = (content or "").strip()
+                return content or None
+            logger.error(f"Vision API unexpected response: {str(data)[:200]}")
+        except Exception as e:
+            logger.error(f"Vision API error: {e}")
+        return None
 
     async def describe_image_file(self, file_path: str) -> Optional[str]:
-            """描述本地图片文件（表情包/群消息图），失败返回 None。"""
-            try:
-                fp = str(file_path or "")
-                if fp.startswith("file://"):
-                    fp = fp[len("file://"):]
-                if not os.path.isabs(fp):
-                    # 相对路径：先试 CWD，再试 NapCat 默认图目录（实现差异兜底）
-                    for base in (os.getcwd(), "/storage/emulated/0/Android/data"):
-                        candidate = os.path.join(base, fp.lstrip("/"))
-                        if os.path.exists(candidate):
-                            fp = candidate
-                            break
-                size = os.path.getsize(fp)
-                cap = self.config.MAX_IMAGE_DOWNLOAD_BYTES
-                if size <= 0 or size > cap:
-                    logger.error("Sticker file size out of range: %s (%s bytes)", file_path, size)
-                    return None
-                with open(file_path, "rb") as f:
-                    data = f.read()
-                if not _looks_like_image(data):
-                    logger.error("Sticker file is not an image: %s", file_path)
-                    return None
-            except OSError as e:
-                logger.error("Sticker file read error: %s err=%s", file_path, e)
+        """描述本地图片文件（表情包/群消息图），失败返回 None。"""
+        try:
+            fp = str(file_path or "")
+            if fp.startswith("file://"):
+                fp = fp[len("file://"):]
+            if not os.path.isabs(fp):
+                # 相对路径：先试 CWD，再试 NapCat 默认图目录（实现差异兜底）
+                for base in (os.getcwd(), "/storage/emulated/0/Android/data"):
+                    candidate = os.path.join(base, fp.lstrip("/"))
+                    if os.path.exists(candidate):
+                        fp = candidate
+                        break
+            size = os.path.getsize(fp)
+            cap = self.config.MAX_IMAGE_DOWNLOAD_BYTES
+            if size <= 0 or size > cap:
+                logger.error("Sticker file size out of range: %s (%s bytes)", file_path, size)
                 return None
-            model = self.config.VISION_MODEL or "deepseek-flash"
-            api_url = self.config.VISION_API_URL or self.config.DEEPSEEK_API_URL
-            api_key = self.config.VISION_API_KEY or self.config.DEEPSEEK_API_KEY
-            timeout = self.config.VISION_TIMEOUT or 30
-            return await self._describe_image_bytes(data, model, api_url, api_key, timeout)
+            with open(file_path, "rb") as f:
+                data = f.read()
+            if not _looks_like_image(data):
+                logger.error("Sticker file is not an image: %s", file_path)
+                return None
+        except OSError as e:
+            logger.error("Sticker file read error: %s err=%s", file_path, e)
+            return None
+        model = self.config.VISION_MODEL or "deepseek-flash"
+        api_url = self.config.VISION_API_URL or self.config.DEEPSEEK_API_URL
+        api_key = self.config.VISION_API_KEY or self.config.DEEPSEEK_API_KEY
+        timeout = self.config.VISION_TIMEOUT or 30
+        return await self._describe_image_bytes(data, model, api_url, api_key, timeout)

@@ -253,13 +253,13 @@ class MemoryManager:
         source_message_id: Optional[int] = None,
         confidence: str = "model",
     ) -> None:
-        if not self._enabled:
-            return
         """写入一条记忆（去重 + 矛盾替换 + 数量上限，存储委托 repository）。
 
         安全边界（P1）：user_id 是唯一的寻址键，调用方（程序层）传入，
         模型输出中的任何 QQ 号都不会进入这里。
         """
+        if not self._enabled:
+            return
         if not text or not text.strip():
             return
         text = text.strip()
