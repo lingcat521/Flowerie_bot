@@ -6,8 +6,11 @@
 - 对主业务零侵入：所有方法不抛异常、开销为 O(1)
 - 提供 snapshot()（dict，内部自省）与 export_text()（Prometheus 文本格式）两种导出
 """
+import logging
 import threading
 from typing import Dict, List, Optional, Sequence, Tuple
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_BUCKETS: Tuple[float, ...] = (0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0, 120.0)
 
@@ -88,6 +91,11 @@ class MetricsRegistry:
             if c is None:
                 c = Counter(name, help_text, label_names)
                 self._counters[name] = c
+            elif tuple(c.label_names) != tuple(label_names):
+                # 同名不同 schema 会静默吞标签（Phase 0 审计 §5 第 2 条）——显式告警，不抛错
+                logger.warning(
+                    "metric_schema_conflict name=%s existing=%s requested=%s",
+                    name, tuple(c.label_names), tuple(label_names))
             return c
 
     def histogram(self, name: str, help_text: str, buckets: Sequence[float] = DEFAULT_BUCKETS) -> Histogram:

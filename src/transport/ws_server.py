@@ -15,7 +15,7 @@ from src.utils.trace import trace_context
 logger = get_logger(__name__)
 
 # Metrics
-_M_RECEIVED = registry.counter("received_messages_total", "收到的事件总数（按 post_type）", ["post_type"])
+_M_WS_EVENTS = registry.counter("ws_events_total", "WS/HTTP 收到的事件总数（按 post_type）", ["post_type"])
 _M_RECONNECT = registry.counter("websocket_reconnect_total", "WebSocket 服务重连次数")
 
 
@@ -203,7 +203,7 @@ class WebSocketServer:
                             data.get("post_type"), data.get("message_type") or data.get("notice_type") or "-",
                             extra={"event": "ws_event_received"},
                         )
-                        _M_RECEIVED.inc({"post_type": str(data.get("post_type", "unknown"))})
+                        _M_WS_EVENTS.inc({"post_type": str(data.get("post_type", "unknown"))})
                         # 并发上限 + 单条超时：防止一条慢消息卡死整个群 / 突发消息打爆 API
                         async with self.message_router.process_semaphore:
                             await asyncio.wait_for(

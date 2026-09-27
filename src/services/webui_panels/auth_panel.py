@@ -102,7 +102,8 @@ class AuthPanelMixin:
                 pass
         # 指标摘要（低基数，聚合值）
         status["metrics"] = {k: v for k, v in registry.snapshot().items() if k in (
-            "received_messages_total", "processed_messages_total", "rejected_messages_total",
+            "received_messages_total", "ws_events_total", "processed_messages_total",
+            "rejected_messages_total",
             "ai_requests_total", "ai_attempts_total", "ai_success_total", "ai_failure_total",
             "memory_read_total", "memory_write_total", "message_send_failure_total",
             "mcp_calls_total", "mcp_call_failures_total")}
