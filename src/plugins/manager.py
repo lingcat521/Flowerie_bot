@@ -76,6 +76,8 @@ class PluginManager:
         self.installer = installer or PluginInstaller(self._plugin_dir())
         self._runtimes: Dict[str, PluginRuntime] = {}
         self._manifest_cache: Dict[str, Optional[PluginManifest]] = {}
+        #: pid -> 原始 manifest_json：缓存命中时只比字符串，不再重新序列化 manifest（P13）
+        self._manifest_raw: Dict[str, str] = {}
         self._started = False
         # 本实例（bot）已发送的 message_id 记录：插件只能撤回这些消息（防删他人消息）
         self._sent_message_ids: list = []
@@ -221,13 +223,15 @@ class PluginManager:
                 record = stored
                 raw = stored.get("manifest_json")
         m = self._manifest_cache.get(pid, "missing")
-        if m == "missing" or (isinstance(m, PluginManifest) and m.to_json() != raw):
+        # 命中判断只比原始 JSON（m 由 raw 唯一决定），省掉每次调用一次 to_json() 序列化（P13）
+        if m == "missing" or self._manifest_raw.get(pid) != raw:
             try:
                 m = PluginManifest.from_dict(json.loads(raw))
             except (PluginManifestError, ValueError, TypeError):
                 m = None
             if pid:
                 self._manifest_cache[pid] = m
+                self._manifest_raw[pid] = raw or ""
         return m
 
     def list_plugins(self) -> List[dict]:
@@ -391,6 +395,7 @@ class PluginManager:
             return False, "插件不存在"
         self._stop_runtime(plugin_id)
         self._manifest_cache.pop(plugin_id, None)
+        self._manifest_raw.pop(plugin_id, None)
         self.repository.delete_plugin(plugin_id)
         # CodeQL 可见的净化：basename(去掉任何路径成分) + 同函数内正则校验，
         # 之后只用 _safe_id 拼路径 —— 让局部数据流也能看出污染被切断（§9 情况 B）
@@ -486,6 +491,7 @@ class PluginManager:
             "status": "disabled", "install_source": row.get("install_source", ""),
         })
         self._manifest_cache.pop(plugin_id, None)
+        self._manifest_raw.pop(plugin_id, None)
         logger.info("plugin_disabled id=%s", plugin_id, extra={"event": "plugin_disabled"})
         return True, f"插件 {plugin_id} 已禁用"
 
