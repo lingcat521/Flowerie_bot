@@ -967,12 +967,6 @@ class PluginRunner:
             # 不是我在等的那条：可能是引擎投递进来的 plugin.call / plugin.event / plugin.cancel
             self._pump_nested(msg)
 
-    def _send_action_safe(self, action: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        try:
-            return self._send_action_inner(action, payload)
-        except Exception as e:  # noqa: BLE001 - 插件 API 异常不得拖死 runner
-            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
-
     # ---------- 模块加载 ----------
     def _load_module(self) -> Optional[str]:
         entry_path = os.path.join(self.plugin_dir, self.entry)
