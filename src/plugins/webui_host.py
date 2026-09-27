@@ -11,7 +11,7 @@ import asyncio
 import base64
 import os
 import re
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.plugins.webui_loader import PluginWebuiPathError, read_page, read_static, static_root
 
