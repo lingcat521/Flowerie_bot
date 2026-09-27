@@ -84,16 +84,8 @@ MAX_CONFIG_KEYS = 64
 MAX_CONFIG_VALUE_BYTES = 8 * 1024
 
 
-def all_methods() -> Tuple[str, ...]:
-    return REQUIRED_METHODS + OPTIONAL_METHODS + ENGINE_INTERNAL_METHODS
-
-
 def valid_storage_key(key: Any) -> bool:
     """存储键：字母数字开头，≤64，允许 . _ -；不允许斜杠、点段或隐藏段（防穿越）。"""
-    return bool(STORAGE_KEY_RE.match(str(key or "")))
-
-
-def valid_config_key(key: Any) -> bool:
     return bool(STORAGE_KEY_RE.match(str(key or "")))
 
 
@@ -136,14 +128,6 @@ def normalize_capabilities(raw: Any) -> List[str]:
     return sorted(seen)
 
 
-def group_of(method: str) -> str:
-    """方法名 → 能力分组（Capability Matrix 按分组统计时用）。"""
-    for group, methods in CAPABILITY_GROUPS.items():
-        if method in methods:
-            return group
-    return "core" if method in REQUIRED_METHODS else "unknown"
-
-
 def negotiate_initialize(result: Any) -> Tuple[bool, str, List[str]]:
     """校验 initialize 的返回：返回 (ok, error, capabilities)。
 
@@ -159,11 +143,3 @@ def negotiate_initialize(result: Any) -> Tuple[bool, str, List[str]]:
     if version.split(".")[0] != PROTOCOL_VERSION.split(".")[0]:
         return False, "协议主版本不兼容：插件 %s / 引擎 %s" % (version, PROTOCOL_VERSION), []
     return True, "", normalize_capabilities(result.get("capabilities"))
-
-
-def value_size(value: Any) -> int:
-    """序列化后的字节数（用于存储/配置的大小上限）。"""
-    try:
-        return len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
-    except (TypeError, ValueError):
-        return MAX_STORAGE_VALUE_BYTES + 1

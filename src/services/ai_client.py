@@ -392,11 +392,6 @@ class AIClient:
             logger.debug("memory_update_detected len=%d", len(memory_update))
         return reply_content, memory_update
 
-    async def chat(self, user_message: str, context: str, user_id: Optional[int] = None,
-                   group_id: Optional[int] = None, is_mentioned: bool = False, retry_count: int = 0):
-        """兼容入口：单次尝试（重试请走 MessageRouter.guarded_chat 准入层，每次重试过预算）。"""
-        return await self.chat_once(user_message, context, user_id, group_id, is_mentioned)
-
     # ---------- AI 引战检测 ----------
     async def is_toxic(self, text: str) -> bool:
         """引战检测（委托 ToxicDetector：关键词预检 + AI 二次确认）。"""

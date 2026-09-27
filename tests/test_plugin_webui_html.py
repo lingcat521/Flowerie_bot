@@ -415,3 +415,18 @@ def test_shipped_example_plugin_renders(tmp_path):
 
     css, mime = mgr.plugin_webui_static_file("html_webui_demo", "style.css")
     assert mime.startswith("text/css") and ".flowerie-plugin-webui" in css.decode("utf-8")
+
+
+def test_img_tag_attrs_follow_global_rules():
+    """回归：TAG_ATTRS 里曾有一个笔误键 img_（空集）——它是**无用键**，删掉即可。
+
+    注意：不能把 img_ 重命名成 img —— dict 里 img 已有 {src, alt, width, height}，
+    重命名会覆盖它、把 <img> 的 src/alt 全部丢给净化器（本用例正是这样抓住过一次真实回归）。
+    """
+    from src.plugins.webui_security import TAG_ATTRS
+    assert TAG_ATTRS["img"] == frozenset({"src", "alt", "width", "height"})
+    assert "img_" not in TAG_ATTRS
+    out, _rep = sanitize_plugin_html('<img src="/x.png" onerror="alert(1)" alt="a">')
+    assert "onerror" not in out, out
+    assert 'src="/x.png"' in out, out
+    assert 'alt="a"' in out, out

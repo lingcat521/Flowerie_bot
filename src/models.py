@@ -40,10 +40,8 @@ class GroupState:
 class GlobalState:
     bot_last_reply_global: float = 0.0
     last_active_chat_time: float = 0.0
-    next_random_active_time: float = 0.0
     consecutive_active_count: int = 0
     active_cooldown_until: float = 0.0
-    last_user_message_time: float = time.time()
     ws_connected: bool = False
     poke_recent_replies: Deque[str] = field(default_factory=lambda: deque(maxlen=5))
     # 以下 TTL 状态用 ExpiringMap 自治生命周期（24h），不依赖 backup loop

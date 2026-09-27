@@ -53,7 +53,6 @@ TAG_ATTRS: Dict[str, frozenset] = {
     "colgroup": frozenset({"span"}),
     "details": frozenset({"open"}),
     "time": frozenset({"datetime"}),
-    "img_": frozenset(),
 }
 URL_ATTRS = frozenset({"href", "src", "action", "poster", "formaction"})
 SAFE_SCHEMES = ("http:", "https:", "mailto:")

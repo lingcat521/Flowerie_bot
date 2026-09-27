@@ -118,3 +118,17 @@ class TestContextManagerBackup(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDuplicateReplyGuard(unittest.TestCase):
+    def test_duplicate_reply_length_ratio_guard(self):
+        """回归：重复检测 = 字符集覆盖 ≥90% 且 长度比 ≥0.5（短回复不得被误杀）。
+
+        历史写法是 A and B or (A and C)，其中 B（max(len) <= 0）恒假 —— 化简为 A and C
+        不改变行为；本用例钉住 C 的边界：old 全为同一字符时，1 字回复长度比 0.25 → 不算重复。
+        """
+        cm = ContextManager(SimpleNamespace(CONTEXT_BACKUP_PATH=None, CONTEXT_SIZE=300), {}, GlobalState())
+        cm.add_recent_reply(1, "aaaa")
+        self.assertFalse(cm.is_duplicate_reply(1, "a"))       # 覆盖 100% 但长度比 0.25 < 0.5
+        self.assertTrue(cm.is_duplicate_reply(1, "aaaaa"))    # 覆盖 100% + 长度比 1.0
+        self.assertTrue(cm.is_duplicate_reply(1, "aaaa"))     # 完全相同（走 in recent 分支）

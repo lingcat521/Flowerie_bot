@@ -108,7 +108,7 @@ class ContextManager:
                 continue
             overlap = len(words & old_words) / len(old_words)
             # 字符集覆盖 ≥90% **且** 长度比值 ≥0.5（防"你好"→"你好呀"这类短句误杀）
-            if overlap >= 0.9 and max(len(reply), len(old)) <= 0 or                     (overlap >= 0.9 and min(len(reply), len(old)) / max(1, max({len(reply), len(old)})) >= 0.5):
+            if overlap >= 0.9 and min(len(reply), len(old)) / max(1, max(len(reply), len(old))) >= 0.5:
                 return True
         return False
 
