@@ -246,6 +246,21 @@ def undefined_name_problems(tree):
             % name for name in undefined_names(tree)]
 
 
+def whitespace_problems(text: str):
+    """W291 / W293 / W292 / W391：行尾空白、空行含空白、文件末尾换行。"""
+    problems = []
+    for idx, line in enumerate(text.split(chr(10))[:-1], 1):
+        if line and line != line.rstrip():
+            problems.append("L%d: 行尾有多余空白（W291/W293）" % idx)
+    if text and not text.endswith(chr(10)):
+        problems.append("文件末尾缺少换行符（W292）")
+    elif text.endswith(chr(10) * 3):
+        # 实测校准：仓库里 21 个文件以单个空行结尾（\n\n）而 ruff 不报 W391，
+        # 所以只在末尾有 2 个以上空行（3 个以上换行）时判违规。
+        problems.append("文件末尾有多余空行（W391）")
+    return problems
+
+
 def main():
     args = sys.argv[1:] or [os.path.join(ROOT, "src"), os.path.join(ROOT, "tests"),
                             os.path.join(ROOT, "main.py"), os.path.join(ROOT, "scripts")]
@@ -270,7 +285,8 @@ def main():
             bad += 1
             continue
         for p in (order_problems(tree) + unused_imports(f, tree, text)
-                  + scoped_import_problems(f, tree, text) + undefined_name_problems(tree)):
+                  + scoped_import_problems(f, tree, text) + undefined_name_problems(tree)
+                  + whitespace_problems(text)):
             print("%s: %s" % (os.path.relpath(f, ROOT), p))
             bad += 1
     print("检查 %d 个文件；问题 %d 处" % (len(files), bad))
