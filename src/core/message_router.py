@@ -10,7 +10,6 @@ from src.adapters import InternalEvent, OneBotEventParser  # 消息边界（Phas
 from src.config import Settings
 from src.core import name_mention as _name_mention
 from src.core.ai_gateway import AiGateway
-from src.core.ai_guard_mixin import AiGuardMixin
 from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
 from src.core.message_assembler import MessageAssembler
@@ -41,7 +40,7 @@ _M_RECEIVED = registry.counter("received_messages_total", "收到的群消息总
 _M_PROCESSED = registry.counter("processed_messages_total", "通过去重、进入处理流程的消息总数")
 _M_REJECTED = registry.counter("rejected_messages_total", "被拒绝的消息总数（按原因）", ["reason"])
 
-class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
+class MessageRouter(ReplyDispatchMixin):
     """事件分发与消息处理（流程编排）。
 
     上帝类拆分后只负责：
@@ -75,7 +74,6 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
         self.config = config
         self.ai_client = ai_client
         self.memory_manager = memory_manager
-        self.file_parser = file_parser
         self.sender = sender
         # 消息边界（Phase 5）：OneBot raw → InternalEvent；None 时按默认构造（行为不变）
         self._event_parser = event_parser or OneBotEventParser(bot_qq=getattr(config, "BOT_QQ", None))
@@ -97,7 +95,6 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
         self.meme_summary = meme_summary
         # 消息组装（文本/识图/转发/卡片/文件/存档）→ MessageAssembler
         # 资源取数出口（Gate R）：协议无关，由组合根注入（Adapter 层实现）
-        self.resource_fetcher = resource_fetcher
         self.assembler = MessageAssembler(config, ai_client, file_parser, self.global_state,
                                           resource_fetcher=resource_fetcher)
         # 指令处理 → CommandHandler
@@ -299,7 +296,7 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
 
         # 引战检测（统一准入：走预算闸门）
         if self.config.TOXIC_GROUP_IDS and group_id in self.config.TOXIC_GROUP_IDS:
-            if await self.guarded_is_toxic(group_id, user_id, full_text):
+            if await self.ai_gateway.guarded_is_toxic(group_id, user_id, full_text):
                 now = time.time()
                 last_warn = self.global_state.last_toxic_warning.get(group_id, 0)
                 if now - last_warn >= self.config.TOXIC_WARNING_COOLDOWN:
@@ -641,3 +638,9 @@ class MessageRouter(ReplyDispatchMixin, AiGuardMixin):
                 break
             else:
                 break
+
+    async def guarded_chat(self, group_id: int, user_id: int, **kwargs):
+        """AI 准入：AI_ENABLED=false 时不走 AI；其余委托 AiGateway（熔断/预算/人格/知识/重试）。"""
+        if not getattr(self.config, "AI_ENABLED", True):
+            return None, None, False
+        return await self.ai_gateway.guarded_chat(group_id, user_id, **kwargs)

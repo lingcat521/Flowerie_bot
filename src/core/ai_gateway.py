@@ -1,12 +1,16 @@
 """AiGateway：AI 准入层（从 MessageRouter 拆分，防上帝类）。
 
-统一所有消耗 AI 调用的入口：熔断（provider 级 + 群级）→ 预算闸门 →
+**核心链路**的 AI 调用统一走这里：熔断（provider 级 + 群级）→ 预算闸门 →
 人格解析 → 群聊知识注入 → 重试循环（每次重试单独过预算）。
 
 职责边界：
 - guarded_chat：唯一 AI 对话入口（逻辑请求层）
 - guarded_is_toxic：引战检测准入（预算放行才调 AI）
 - 熔断管理：provider 级全局 + 群级有界容器（TTL + 容量上限）
+
+例外（**刻意**）：插件动作 `ai_chat`（`src/plugins/manager.py`）直连 `AIClient.chat_once` ——
+它独立于聊天预算，由插件权限 `ai_chat` + 插件自律限频约束（见 `src/plugins/permissions.py`），
+**不经过本层**的熔断 / 预算 / 重试。
 """
 import asyncio
 import random
