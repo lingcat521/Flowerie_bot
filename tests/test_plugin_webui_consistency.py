@@ -27,7 +27,7 @@ def _renderer_types() -> set:
 
 
 def _doc_component_types() -> set:
-    text = (ROOT / "docs/plugin-webui.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs/plugins/plugin-webui.md").read_text(encoding="utf-8")
     # 仅 §4 组件表区域（展示/表单/操作/容器小节；权限表里也有 `web_ui` 行，排除）
     seg = text.split("### 展示")[1].split("## 5.")[0]
     return set(re.findall(r"^\| `([a-z_]+)` \|", seg, re.M))

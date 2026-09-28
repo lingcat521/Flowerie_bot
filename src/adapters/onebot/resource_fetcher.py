@@ -6,7 +6,7 @@ OneBot 端点、解析 NapCat 响应，属协议耦合，也是"Core 依赖 file
 
 证据 / 行为：
 - OneBot 11 `/get_file`：`{status, retcode, data:{file, file_name, file_size, base64?}}`；
-  `base64` 是 NapCat / Lagrange 的实现扩展（`[CODE]` 见 docs/onebot-compatibility.md
+  `base64` 是 NapCat / Lagrange 的实现扩展（`[CODE]` 见 docs/reference/onebot-compatibility.md
   与 tests/fixtures/napcat/**）；
 - 协议端也可能回一个**本地路径**（`data.file`）：那本质是 local_path 资源，交给 `LocalPathFetcher` 读；
 - 响应的读取走注入的 `call_api(endpoint, params) -> {"ok","data"}`（HTTP 或 WS 通道），

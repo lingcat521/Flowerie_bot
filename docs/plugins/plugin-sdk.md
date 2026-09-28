@@ -1,14 +1,14 @@
 # Plugin SDK（多语言）
 
-> 插件协议**语言无关**：[plugin-protocol.md](plugin-protocol.md)（线格式 / 方法集 / 错误模型 / 版本协商）。
+> 插件协议**语言无关**：[plugin-protocol.md](../reference/plugin-protocol.md)（线格式 / 方法集 / 错误模型 / 版本协商）。
 > 本文是**通用规则的唯一出处**——五种语言共同的语义只写在这里，单语言文档只写「本语言特有的写法」并链回本文。
-> 源码：`sdk/typescript/flowerie_sdk.ts` · `sdk/go/flowerie/plugin.go` · `sdk/rust/src/lib.rs` · `sdk/java/src/main/java/dev/flowerie/sdk/` · Python 的运行时对端 `src/plugins/runner/python_runner.py`；逐能力状态与证据：[plugin-sdk-capabilities.md](plugin-sdk-capabilities.md)。
+> 源码：`sdk/typescript/flowerie_sdk.ts` · `sdk/go/flowerie/plugin.go` · `sdk/rust/src/lib.rs` · `sdk/java/src/main/java/dev/flowerie/sdk/` · Python 的运行时对端 `src/plugins/runner/python_runner.py`；逐能力状态与证据：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)。
 
 ## 0. 选语言
 
 | 语言 | 单语言文档 | 本语言特有之处 | 可跑示例（CI 实测） |
 | :--- | :--- | :--- | :--- |
-| Python | [sdk.md](sdk.md) | `flowerie_sdk` 手册（Event / BotMessage / Matcher / 上下文）；经典模式仍是 `api.*` | `examples/multilang-sdk/python/` |
+| Python | [sdk.md](../reference/sdk.md) | `flowerie_sdk` 手册（Event / BotMessage / Matcher / 上下文）；经典模式仍是 `api.*` | `examples/multilang-sdk/python/` |
 | TypeScript / Node | [plugin-sdk-typescript.md](plugin-sdk-typescript.md) | 零 npm 依赖；node ≥ 22.6 直跑 `.ts`，否则 `tsc` + SDK 自带 `shims/node.d.ts` | `examples/multilang-sdk/typescript/` |
 | Go | [plugin-sdk-go.md](plugin-sdk-go.md) | 标准库；`go build` 用临时模块 + `replace` 指向 SDK，`GOPROXY=off` | `examples/multilang-sdk/go/` |
 | Rust | [plugin-sdk-rust.md](plugin-sdk-rust.md) | `std` + 自带极简 JSON（`sdk/rust/src/json.rs`）；`rustc` 直编，不用 cargo | `examples/multilang-sdk/rust/` |
@@ -61,7 +61,7 @@ def on_message(event, api=None):
 ```
 （manifest 用上面那份，把 `runtime` 改成 `"python"`、`entry` 改成 `"plugin.py"`；其它语言的完整版见各自文档 §2。）
 
-**协议契约**（细节见 [plugin-protocol.md §4](plugin-protocol.md)）：`initialize`（握手 + 声明能力）、`event`（收事件，**返回动作**）、`health`、`shutdown`；可选 14 项在 `initialize` 的 `capabilities` 里声明，**未声明引擎绝不调用**。
+**协议契约**（细节见 [plugin-protocol.md §4](../reference/plugin-protocol.md)）：`initialize`（握手 + 声明能力）、`event`（收事件，**返回动作**）、`health`、`shutdown`；可选 14 项在 `initialize` 的 `capabilities` 里声明，**未声明引擎绝不调用**。
 
 ## 3. 事件注册
 
@@ -77,7 +77,7 @@ def on_message(event, api=None):
 | 控制面 hook（WebUI 数据）| `def status(...)` | `registerHook(name, fn)` | `RegisterHook(name, fn)` | `register_hook(name, f)` | `registerHook(name, fn)` |
 
 - 回调**返回值就是动作**：`None`/`nil`/`null` = 无动作，对象 = 单个动作，列表 = 多个动作（引擎逐个执行）。
-- Python 的 `FlowerieBot` 用装饰器收集 matcher 上报主进程；**注册了 matcher 的插件只收到匹配事件**，要全量 notice 就别在该插件注册 matcher（拆插件）——见 [sdk.md §2](sdk.md)。
+- Python 的 `FlowerieBot` 用装饰器收集 matcher 上报主进程；**注册了 matcher 的插件只收到匹配事件**，要全量 notice 就别在该插件注册 matcher（拆插件）——见 [sdk.md §2](../reference/sdk.md)。
 
 ## 4. API 表（语义一致，写法各随语言习惯）
 
@@ -103,7 +103,7 @@ Python 的 `PluginApi` 另有 160+ 个动作包装方法（`send_message` / `gro
   插件自己的覆盖层（≤64 键、单值 ≤8 KiB），写不进全局配置。
 - **权限**：插件在 `manifest.permissions` 声明 → 管理员在 Web UI 批准（`read_message` 收事件、`send_message` 回复是绝大多数插件的全部所需）；`permission.check` 是**只读**查询，插件无法提权，引擎在动作出口强制执行。
 > 权限全表 / 保护级别 / 资源上限见 [plugin-developer-guide.md §9](plugin-developer-guide.md) 与
-> [plugin-protocol.md §8](plugin-protocol.md)。
+> [plugin-protocol.md §8](../reference/plugin-protocol.md)。
 
 ## 6. WebUI（Plugin WebUI Protocol）
 
@@ -167,4 +167,4 @@ python3 -m pytest tests/test_plugin_sdk_contract.py -q -rs   # 协议向量 × �
 python3 -m pytest tests/test_plugin_webui_multilang.py tests/sdk/test_minimal_paths.py -q -rs  # WebUI 三通道 × 五语言 + 跨语言 plugin.call 链路
 ```
 
-新语言接入清单：① 实现协议 → ② 在 `examples/multilang-sdk/<lang>/` 放能跑通协议向量的最小插件（`ping → pong` + `status` hook）→ ③ 在 `tests/sdk/harness.py` 的语言表与 `tests/test_plugin_sdk_contract.py` 的 `LANGUAGES` 登记 → ④ 全绿后按**实际证据**更新 [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md)。
+新语言接入清单：① 实现协议 → ② 在 `examples/multilang-sdk/<lang>/` 放能跑通协议向量的最小插件（`ping → pong` + `status` hook）→ ③ 在 `tests/sdk/harness.py` 的语言表与 `tests/test_plugin_sdk_contract.py` 的 `LANGUAGES` 登记 → ④ 全绿后按**实际证据**更新 [plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)。

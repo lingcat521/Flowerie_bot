@@ -29,7 +29,7 @@ def _json_app(payload) -> str:
     """从 JSON/Ark 卡片负载里提取 app（NapCat 与 LLBot 都靠它区分卡片种类）。
 
     证据：NapCat SendMsg.ts L289-297 与 LLBot milky/transform/message/incoming.ts L210-235
-    都判定 app === com.tencent.multimsg 才是合并转发；docs/message-model.md §3 / §4.5。
+    都判定 app === com.tencent.multimsg 才是合并转发；docs/reference/message-model.md §3 / §4.5。
     """
     if isinstance(payload, dict):
         app = payload.get("app")
@@ -56,7 +56,7 @@ def _parse_json_payload(data: Dict[str, Any]):
 
 
 def _normalize_market_face(data: Dict[str, Any]) -> Dict[str, Any]:
-    """商城表情：NapCat/LLBot 字段名不同但语义一致（见 docs/message-model.md §3）。"""
+    """商城表情：NapCat/LLBot 字段名不同但语义一致（见 docs/reference/message-model.md §3）。"""
     return {
         "kind": "market_face",
         "emoji_id": str(data.get("emoji_id") or ""),
@@ -354,7 +354,7 @@ class OneBotEventParser:
                 xmls.append(_normalize_xml_segment(data))
                 summary.append((seg_type, dict(data)))
             elif seg_type == "markdown":
-                # NapCat OB11 段词汇含 markdown（docs/client-compatibility.md §3.1）；
+                # NapCat OB11 段词汇含 markdown（docs/reference/client-compatibility.md §3.1）；
                 # 内容是文本 → 并入 text，避免丢掉用户可见内容（与 Milky 侧对称）
                 text_parts.append(str(data.get("content") or ""))
                 summary.append((seg_type, dict(data)))

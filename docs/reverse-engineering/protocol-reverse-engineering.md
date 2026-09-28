@@ -2,7 +2,7 @@
 
 > 任务书 §22 交付物①，同时作为**跨会话可复用的工作记忆**：已逆向事实、文件路径、行号、待办与恢复步骤都记在这里，避免依赖对话上下文。核对版本 **v2.3.0**。
 > 证据等级：`[CODE]` 源码 / `[DOC]` 文档 / `[FIXTURE]` 真实事件 / `[MVP]` 本地 MVP / `[INFERENCE]` 推断 / `[UNKNOWN]` 无证据。
-> **逐客户端现行事实入口**（本文只保留跨客户端对照与工作记录）：[onebot11/napcat.md](reverse-engineering/onebot11/napcat.md)、[onebot11/llbot.md](reverse-engineering/onebot11/llbot.md)、[onebot11/go-cqhttp.md](reverse-engineering/onebot11/go-cqhttp.md)、[onebot11/lagrange.md](reverse-engineering/onebot11/lagrange.md)、[milky/llbot-milky.md](reverse-engineering/milky/llbot-milky.md)、[milky/lagrange-milky.md](reverse-engineering/milky/lagrange-milky.md)。
+> **逐客户端现行事实入口**（本文只保留跨客户端对照与工作记录）：[onebot11/napcat.md](onebot11/napcat.md)、[onebot11/llbot.md](onebot11/llbot.md)、[onebot11/go-cqhttp.md](onebot11/go-cqhttp.md)、[onebot11/lagrange.md](onebot11/lagrange.md)、[milky/llbot-milky.md](milky/llbot-milky.md)、[milky/lagrange-milky.md](milky/lagrange-milky.md)。
 
 ## 0. 复现环境（本地源码区，工作区之外）
 
@@ -17,7 +17,7 @@
 
 ## 1. 本地 MVP 事实清单 [MVP]
 
-文件：`/storage/emulated/0/bot.py`（1797 行，UTF-8，可读；工作区之外的历史基线）。与 Flowerie 的逐项差异见 [mvp-analysis.md](mvp-analysis.md)。
+文件：`/storage/emulated/0/bot.py`（1797 行，UTF-8，可读；工作区之外的历史基线）。与 Flowerie 的逐项差异见 [mvp-analysis.md](../reports/mvp-analysis.md)。
 
 | 主题 | 事实 | 行号 |
 | :--- | :--- | :--- |
@@ -37,7 +37,7 @@
 | 层 | 文件（当前行数）| 事实 |
 | :--- | :--- | :--- |
 | 协议解析 | `src/adapters/onebot_parser.py`（433 行）| 已类型化：`text / at / image / reply / forward / json / face / mface / poke / shake / file / record / video / xml / markdown / miniapp / node / onlinefile / flashtransfer`；其余段原样进 `segments_summary` |
-| 事件模型 | `src/adapters/proto.py`（149 行）| `InternalEvent` 字段全集与证据见 [protocol-implementation.md](protocol-implementation.md) §3、[message-model.md](message-model.md) §3 与 [adapter-architecture.md](adapter-architecture.md)（本文不再抄一份）|
+| 事件模型 | `src/adapters/proto.py`（149 行）| `InternalEvent` 字段全集与证据见 [protocol-implementation.md](../reference/protocol-implementation.md) §3、[message-model.md](../reference/message-model.md) §3 与 [adapter-architecture.md](../reference/adapter-architecture.md)（本文不再抄一份）|
 | 文件 | `src/services/file_parser.py`（413 行）| `fetch_and_parse_file` → `GET {HTTP_API_BASE}/get_file` → `decode_base64_json_file_response`（L199，旧名 `decode_napcat_file_response` 已按行为改名；base64 → txt/pdf/docx/xlsx/csv，带流式上限）；`extract_forward_messages`（**强于 MVP**：嵌套展开 + `MAX_FORWARD_DEPTH/NODES/MESSAGES/FETCHES` 预算 + 同 id 缓存 + 收集转发内图片 URL）；`extract_json_card_content`（遍历**全部** json 段并去重合并）|
 | 组装 | `src/core/message_assembler.py`（388 行）| `_assemble_faces`（L191）/ `_assemble_media` / `_assemble_quote` / `_assemble_forward`（转发文本 + 转发内图片走 Vision）/ `_assemble_card`（multimsg 卡片按转发拉内层，失败退回卡片文本）/ `_assemble_pending_file`（notice 配对取文件）/ `_describe_images`（**本地 `image_files` 优先，URL 兜底**）|
 | poke 下游 | `src/core/message_router.py` L538 起 | `target_id → actor_id` 回退 + 白名单 + 每人冷却；与 MVP 语义一致 |
@@ -47,12 +47,12 @@
 
 1. **OneBot 11 有 5 个段类型没有类型化字段**：`music / dice / rps / contact / location` —— 台账 `tests/fixtures/segment_inventory.json` 里 `typed=false`、`normalized=""`，解析后只进 `segments_summary`，业务层拿不到语义（Milky 侧 14 个段全部 typed）；
 2. **`segments_summary` 仍无业务消费者**：只有解析器写、测试读；业务层读的是 `message_segments` 与语义字段（因此上面的缺口不会报错，只会静默少语义）；
-3. **真实设备验证全缺**：以下所有结论都是源码 `[CODE]` / 文档 `[DOC]` 级，实机项 BLOCKED（[protocol-gap-closure.md](protocol-gap-closure.md) §6）；
+3. **真实设备验证全缺**：以下所有结论都是源码 `[CODE]` / 文档 `[DOC]` 级，实机项 BLOCKED（[protocol-gap-closure.md](../reports/protocol-gap-closure.md) §6）；
 4. **发送侧不需要** NapCat 的「FILE/VIDEO/ARK/PTT 独占一条消息」拆分（见 §9 C1 —— 那是客户端内部行为，不是调用方约束）。
 
 ## 3. NapCat 逆向结论 [CODE]
 
-源码 `~/proto_src/NapCatQQ`（HEAD `0b4cfe6`）；逐字段档案见 [reverse-engineering/onebot11/napcat.md](reverse-engineering/onebot11/napcat.md)。
+源码 `~/proto_src/NapCatQQ`（HEAD `0b4cfe6`）；逐字段档案见 [reverse-engineering/onebot11/napcat.md](onebot11/napcat.md)。
 
 ### 3.1 内部元素模型
 
@@ -87,7 +87,7 @@
 
 ## 4. LLBot（Milky + OneBot 11 双实现）[CODE]
 
-源码 `~/proto_src/LLBot`（HEAD `9f374f6`，`src/` 796 文件、`test/` 238 文件）。它是**唯一同时实现 OneBot 11 与 Milky 的客户端**，也是 Milky 实现层的最佳可得证据（Lagrange.Milky 独立仓库不可得 → 该列靠 LLBot `[CODE]` + 规范 `[DOC]` 互证）。逐字段档案见 [reverse-engineering/onebot11/llbot.md](reverse-engineering/onebot11/llbot.md) 与 [reverse-engineering/milky/llbot-milky.md](reverse-engineering/milky/llbot-milky.md)。
+源码 `~/proto_src/LLBot`（HEAD `9f374f6`，`src/` 796 文件、`test/` 238 文件）。它是**唯一同时实现 OneBot 11 与 Milky 的客户端**，也是 Milky 实现层的最佳可得证据（Lagrange.Milky 独立仓库不可得 → 该列靠 LLBot `[CODE]` + 规范 `[DOC]` 互证）。逐字段档案见 [reverse-engineering/onebot11/llbot.md](onebot11/llbot.md) 与 [reverse-engineering/milky/llbot-milky.md](milky/llbot-milky.md)。
 
 ### 4.1 Milky 入站映射（`src/milky/transform/message/incoming.ts`，252 行）
 
@@ -169,7 +169,7 @@
 
 ## 6. Lagrange.Milky 实现（协议作者本人实现）[CODE]
 
-**重要更正**（见 §9 C2）：Milky 的**实现**并非不可得 —— 它内嵌在 `Lagrange.Core` 与 `LagrangeV2` 的 `Lagrange.Milky/` 目录里（119 个 .cs），无需单独仓库；`LagrangeDev/Lagrange.Milky` 这个独立仓库确实不存在（`ls-remote` exit 128），但结论是"实现源码在别处且已获得"。档案见 [reverse-engineering/milky/lagrange-milky.md](reverse-engineering/milky/lagrange-milky.md)。
+**重要更正**（见 §9 C2）：Milky 的**实现**并非不可得 —— 它内嵌在 `Lagrange.Core` 与 `LagrangeV2` 的 `Lagrange.Milky/` 目录里（119 个 .cs），无需单独仓库；`LagrangeDev/Lagrange.Milky` 这个独立仓库确实不存在（`ls-remote` exit 128），但结论是"实现源码在别处且已获得"。档案见 [reverse-engineering/milky/lagrange-milky.md](milky/lagrange-milky.md)。
 
 ### 6.1 段类型（作者实现，⚠️ **两份内嵌副本布局不同**，勿混用）
 
@@ -209,7 +209,7 @@
 **原"尚未落地"清单的现状（2026-09 复核）**：
 
 1. **表情进入业务层** —— 已落地：`message_assembler._assemble_faces`（L191-226）把 `faces` 渲染成一句上下文（上限 3 条，逐字段兜底）；
-2. **Milky 侧适配** —— 已落地：G1 `scene/context_group_id`、G3 `records/videos/xmls`、G4 `reply_ref/reply_segments/reply_text` 全部进入正式模型（见 [protocol-gap-closure.md](protocol-gap-closure.md) §4）；
+2. **Milky 侧适配** —— 已落地：G1 `scene/context_group_id`、G3 `records/videos/xmls`、G4 `reply_ref/reply_segments/reply_text` 全部进入正式模型（见 [protocol-gap-closure.md](../reports/protocol-gap-closure.md) §4）；
 3. **多段合并** —— 已落地：卡片文本由 `file_parser.extract_json_card_content` 遍历**全部** json 段去重合并；multimsg 成功时同条消息里的其它卡片**不**再渲染（`_assemble_card` 注释 + `tests/test_multimsg_card.py` 锁定）；
 4. **发送侧「FILE/VIDEO/ARK/PTT 独占一条」** —— 结案为**不需要**（§9 C1），不再列为待办。
 

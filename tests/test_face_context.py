@@ -1,6 +1,6 @@
 """表情进业务层测试：Adapter 归一化字段 → AI 可见的一句话。
 
-证据（见 docs/message-model.md §3）：NapCat face/mface schema、Milky FaceSegment、LLBot market_face。
+证据（见 docs/reference/message-model.md §3）：NapCat face/mface schema、Milky FaceSegment、LLBot market_face。
 """
 import pytest
 

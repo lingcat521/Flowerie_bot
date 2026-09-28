@@ -1,14 +1,14 @@
 # 插件开发者指南（Plugin API v1 · 完整参考）
 
-> 适用版本 **2.4.0** · 协议 `api_version = "1"` · 新手先看 [quick-start.md](quick-start.md)
+> 适用版本 **2.4.0** · 协议 `api_version = "1"` · 新手先看 [quick-start.md](../guides/quick-start.md)
 >
 
 > 这是插件作者的**唯一完整参考**：读完即可写插件，不必读源码。本文所有字段名、方法名、上限与错误码
 > 都与 `src/plugins/{manifest,permissions,protocol,comm,router}.py` 逐条核对。
 >
 
-> 相关文档：[sdk.md](sdk.md)（SDK 模式）· [api.md](api.md)（动作 × 权限速查）·
-> [plugin-protocol.md](plugin-protocol.md)（线协议）· [plugin-communication.md](plugin-communication.md)（插件间通信）·
+> 相关文档：[sdk.md](../reference/sdk.md)（SDK 模式）· [api.md](../reference/api.md)（动作 × 权限速查）·
+> [plugin-protocol.md](../reference/plugin-protocol.md)（线协议）· [plugin-communication.md](plugin-communication.md)（插件间通信）·
 > [plugin-webui.md](plugin-webui.md) / [plugin-webui-protocol.md](plugin-webui-protocol.md)（WebUI）
 
 ---
@@ -53,7 +53,7 @@ def on_startup(context, api=None):
     api.log("info", "启动，数据目录 %s" % context["data_dir"])
 ```
 
-> 想用装饰器模式（`FlowerieBot` + `@command` + `await event.reply`）见 [sdk.md](sdk.md)；两种写法协议层等价。
+> 想用装饰器模式（`FlowerieBot` + `@command` + `await event.reply`）见 [sdk.md](../reference/sdk.md)；两种写法协议层等价。
 **安装启用（4 步）**
 
 | 步骤 | 操作 |

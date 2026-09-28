@@ -646,7 +646,7 @@
   stdin/stdout JSON-Lines 协议，崩溃 / 超时被隔离标记 `crashed`。
   相关配置：`PLUGIN_DIR` / `PLUGIN_PROTECTION` / `PLUGIN_URL_MAX_BYTES` / `PLUGIN_URL_TIMEOUT` /
   `PLUGIN_ZIP_MAX_UNZIPPED_BYTES` / `PLUGIN_ZIP_MAX_FILES` / `PLUGIN_MAX_COUNT`。
-  详见 [docs/plugin-developer-guide.md](docs/plugin-developer-guide.md)。
+  详见 [docs/plugin-developer-guide.md](docs/plugins/plugin-developer-guide.md)。
 - **第三官方人格「艾拉（Isla）」**：内置 persona `id=isla`（《可塑性记忆》风格原创改编，
   不复制原作台词，温柔克制 / 自贬 / 关键时刻决断路线），与 flowerie / atri 并列。`PERSONA_DEFAULT=flowerie` 保持默认。
 - **管理员补充发言规则配置**：`ADMIN_RESPONSE_RULES`（每行一条；Web UI「人格」页编辑；

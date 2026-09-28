@@ -4,7 +4,7 @@
 > 两种形态共用同一套权限与安全边界：**真实 HTML 页面（推荐）** 与 **旧 DSL（deprecated 兼容层）**，
 > 逐页选择、可共存。协议（`webui.page/action/asset` + 受控 context + 6 项权限）见
 > [plugin-webui-protocol.md](plugin-webui-protocol.md)；可复制示例见
-> [../examples/plugins/html_webui_demo/](../examples/plugins/html_webui_demo/README.md)。
+> [../examples/plugins/html_webui_demo/](../../examples/plugins/html_webui_demo/README.md)。
 
 ## 1. 启用（三步）
 

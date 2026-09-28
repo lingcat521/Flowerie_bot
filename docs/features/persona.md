@@ -36,7 +36,7 @@ Group Persona（群聊人格）→ 未设置/已解除 → Global Persona（全�
 
 ## 与人设联动的群特色昵称
 
-群特色昵称按 **群 + 当前人设** 解析（人设精确命中 → 群级 → `BOT_NICKNAME` 默认），因此同一句称呼在绑定不同人设的群里唤对应名字；配置与页面见 [configuration.md](configuration.md) 与 [web-ui.md](web-ui.md)。
+群特色昵称按 **群 + 当前人设** 解析（人设精确命中 → 群级 → `BOT_NICKNAME` 默认），因此同一句称呼在绑定不同人设的群里唤对应名字；配置与页面见 [configuration.md](../guides/configuration.md) 与 [web-ui.md](web-ui.md)。
 
 ## 系统提示组装（`src/services/prompt_builder.py`）
 

@@ -57,7 +57,7 @@ http://127.0.0.1:8080          # 本机（默认只监听 127.0.0.1）
 http://<电脑局域网IP>:8080      # 手机/其他设备访问：需 .env 设 WEB_UI_ALLOW_LAN=true 并重启
 ```
 
-- 首次进入注册管理员账号（用户名 + 密码）；**注册页只在系统未初始化时可用**（Bootstrap Lock，见 [security.md](security.md)）。
+- 首次进入注册管理员账号（用户名 + 密码）；**注册页只在系统未初始化时可用**（Bootstrap Lock，见 [security.md](../reference/security.md)）。
 - 之后可管理：配置 / 人格 / 群聊知识 / 群昵称 / 插件 / 外观 / 日志 / 用户状态。
 
 ## 6. 常见问题

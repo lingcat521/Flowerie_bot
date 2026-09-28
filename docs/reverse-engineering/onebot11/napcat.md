@@ -1,8 +1,8 @@
 # NapCat 逆向（OneBot 11 客户端档案）
 
 > 任务书 `/storage/emulated/0/协议.txt` §三/§七/§八/§十三/§二十三。
-> 归一化侧结论见 [../../message-model.md](../../message-model.md)；逐格矩阵见
-> [../../client-compatibility.md](../../client-compatibility.md) §4 与 §4.2。
+> 归一化侧结论见 [../../message-model.md](../../reference/message-model.md)；逐格矩阵见
+> [../../client-compatibility.md](../../reference/client-compatibility.md) §4 与 §4.2。
 
 ## Source
 

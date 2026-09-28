@@ -2,7 +2,7 @@
 
 > **范围**：本文件只写插件间通信**特有**的东西 —— 五类消息、请求/响应/错误模型、语言无关类型与 DTO、
 > 路由、权限、超时/取消/环保护/trace。**线格式、信封、id 命名空间、反向通道的通用形状只在
-> [plugin-protocol.md](plugin-protocol.md) 定义一次**，本文不重复（下面 JSON 片段都用那里的信封）。
+> [plugin-protocol.md](../reference/plugin-protocol.md) 定义一次**，本文不重复（下面 JSON 片段都用那里的信封）。
 >
 > 单一事实来源：`src/plugins/comm.py`（消息/错误码/类型/DTO）、`src/plugins/router.py`（Core Router +
 > Bus：投递/超时/取消/事件广播/统计）、`src/plugins/permissions.py`（权限键与判定）、
@@ -167,7 +167,7 @@ tuple/set → list；dict 键必须是字符串；NaN/Infinity 拒绝；嵌套�
 | :--- | :--- |
 | `tests/test_plugin_comm_model.py`（**62 passed**） | 五类消息、请求/响应/错误模型、语言无关类型与 DTO、环保护、权限串、超时归一；与 runner 内联常量逐项比对 |
 | `tests/test_plugin_comm_bus.py`（**17 passed**） | 真子进程跑真 Core Router：投递、权限拒绝不投递、超时 + CANCEL、事件广播、A↔B 环保护、实例寻址、生命周期 |
-| `tests/test_plugin_comm_paths.py`（7 条）/ `tests/sdk/`（**46 条**） | 7 条跨语言路径真编译真进程 + 五语言最小插件实测（缺工具链 skip 并打印原因，CI 全跑）；逐语言状态见 [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) |
+| `tests/test_plugin_comm_paths.py`（7 条）/ `tests/sdk/`（**46 条**） | 7 条跨语言路径真编译真进程 + 五语言最小插件实测（缺工具链 skip 并打印原因，CI 全跑）；逐语言状态见 [plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md) |
 
 ```bash
 python3 -m pytest tests/test_plugin_comm_model.py tests/test_plugin_comm_bus.py -q   # 模型层 + 真子进程总线

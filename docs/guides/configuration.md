@@ -50,7 +50,7 @@
 | 变量 | 说明 | 默认 |
 | :--- | :--- | :--- |
 | `QQ_PROTOCOL` | 协议端：`onebot`（NapCat 等）/ `milky`（Lagrange.Milky / Yogurt 等）；**重启** | `onebot` |
-| `CLIENT_PROFILE` | 出站段按哪个客户端档案收敛：空=不收敛（与历史一致）/ `go-cqhttp` / `napcat` / `llbot` / `onebot11:<client>` / `milky:<client>`；取值必须是 [client-profiles.md](client-profiles.md) 登记过的客户端，未调查的名字只记一条日志、不做收敛 | 空 |
+| `CLIENT_PROFILE` | 出站段按哪个客户端档案收敛：空=不收敛（与历史一致）/ `go-cqhttp` / `napcat` / `llbot` / `onebot11:<client>` / `milky:<client>`；取值必须是 [client-profiles.md](../reference/client-profiles.md) 登记过的客户端，未调查的名字只记一条日志、不做收敛 | 空 |
 | `MILKY_API_BASE` | Milky 协议端 HTTP 根（`/api/<action>`）；**重启** | `http://127.0.0.1:8080` |
 | `MILKY_EVENT_URL` | Milky 事件推送 WebSocket；**重启** | `ws://127.0.0.1:8080/event` |
 | `MILKY_ACCESS_TOKEN` | Milky Bearer 鉴权 token；**重启** | 空 |
@@ -173,7 +173,7 @@
 - 访问：`http://127.0.0.1:8080/panel`（八个页签：配置 / 人格 / 群聊知识 / 群昵称 / 插件 / 外观 / 日志 / 用户状态，全部零 JavaScript 服务端渲染）。
 - **Bootstrap Lock**：`WEB_UI_PASSWORD` 允许为空（= UNINITIALIZED，此时拒绝一切登录），公开注册页是创建**第一个**管理员的唯一入口；
   系统一旦初始化（`.env` 或 `settings.db` 已有凭据）注册**永久关闭**，改账号走登录态「用户状态」页（需当前密码），
-  注销 = 显式重置回 UNINITIALIZED 才能重新注册。详见 [security.md](security.md)、[web-ui.md](web-ui.md)。
+  注销 = 显式重置回 UNINITIALIZED 才能重新注册。详见 [security.md](../reference/security.md)、[web-ui.md](../features/web-ui.md)。
 
 ## 插件系统
 
@@ -186,7 +186,7 @@
 | `PLUGIN_ZIP_MAX_UNZIPPED_BYTES` / `PLUGIN_ZIP_MAX_FILES` | ZIP 解压后总大小上限（防 Zip Bomb）/ 包内文件数上限 | `52428800` / `200` |
 
 支持 Python（`plugin.py`）、Node（`index.js`/`package.json`）、任意语言（exec，stdin/stdout JSON-Lines）与 JSON 声明式（`runtime=json`，无代码执行）；
-运行在独立子进程，崩溃/超时被隔离标记 `crashed`。详见 [plugin-developer-guide.md](plugin-developer-guide.md)。
+运行在独立子进程，崩溃/超时被隔离标记 `crashed`。详见 [plugin-developer-guide.md](../plugins/plugin-developer-guide.md)。
 
 ## 表情包、文件解析与资源限制
 
@@ -261,6 +261,6 @@
 `WEB_UI_ALLOW_LAN`、`WEB_UI_PORT`、`LOG_LEVEL`、`LOG_FORMAT`、`ARCHIVE_BASE_DIR`、`SETTINGS_DB_PATH`、
 `MAX_PERSONA_PROMPT_LENGTH`、`PLUGIN_DIR`、`PLUGIN_MAX_COUNT`、`MEME_KNOWLEDGE_DB_PATH`、`MEME_BUFFER_PER_GROUP`。
 
-> 相关文档：[security.md](security.md)（安全边界）、[web-ui.md](web-ui.md)（面板细节）、
-> [client-profiles.md](client-profiles.md)（`CLIENT_PROFILE` 取值）、[memory.md](memory.md)（记忆体系）、
-> [mcp.md](mcp.md)（MCP 配置示例）、[plugin-developer-guide.md](plugin-developer-guide.md)（插件开发）。
+> 相关文档：[security.md](../reference/security.md)（安全边界）、[web-ui.md](../features/web-ui.md)（面板细节）、
+> [client-profiles.md](../reference/client-profiles.md)（`CLIENT_PROFILE` 取值）、[memory.md](../features/memory.md)（记忆体系）、
+> [mcp.md](../features/mcp.md)（MCP 配置示例）、[plugin-developer-guide.md](../plugins/plugin-developer-guide.md)（插件开发）。

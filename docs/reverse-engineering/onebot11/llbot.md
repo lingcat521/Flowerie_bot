@@ -1,7 +1,7 @@
 # LLBot 逆向（OneBot 11 + Milky 双实现客户端档案）
 
-> 任务书 ~/storage/emulated/0/协议.txt §三/§七/§八/§二十三。矩阵见 [../../client-compatibility.md](../../client-compatibility.md)；
-> Milky 侧的段映射见 [../milky/](../../protocol-reverse-engineering.md) §4.1/§4.3（本轮只补 OneBot 11 列）。
+> 任务书 ~/storage/emulated/0/协议.txt §三/§七/§八/§二十三。矩阵见 [../../client-compatibility.md](../../reference/client-compatibility.md)；
+> Milky 侧的段映射见 [../milky/](../protocol-reverse-engineering.md) §4.1/§4.3（本轮只补 OneBot 11 列）。
 
 ## Source
 

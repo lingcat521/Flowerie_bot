@@ -88,7 +88,7 @@ def test_semantics_layers_free_of_endpoints():
 
 def test_docs_api_matches_implementation():
     """api.md 权威速查表方法集 ⊆ PluginApi 方法集（文档不承诺不存在的能力）。"""
-    api_doc = (ROOT / "docs/api.md").read_text(encoding="utf-8")
+    api_doc = (ROOT / "docs/reference/api.md").read_text(encoding="utf-8")
     doc_methods = set(re.findall(r"^\| `(\w+)\(`", api_doc, re.M)) | set(
         re.findall(r"^\| `(\w+)\(", api_doc, re.M))
     tree = ast.parse((ROOT / "src/plugins/runner/python_runner.py").read_text(encoding="utf-8"))

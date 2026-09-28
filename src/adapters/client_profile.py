@@ -124,7 +124,7 @@ GO_CQHTTP = ClientProfile(
 #: NapCat：本仓库 Phase 1 已逆向（client-compatibility.md §1-§3 / protocol-reverse-engineering.md §3）
 NAPCAT = ClientProfile(
     protocol="onebot11", client="napcat", version="0b4cfe6",
-    evidence="[CODE]", source="~/proto_src/NapCatQQ packages/napcat-onebot/（详见 docs/client-compatibility.md §1-§3）",
+    evidence="[CODE]", source="~/proto_src/NapCatQQ packages/napcat-onebot/（详见 docs/reference/client-compatibility.md §1-§3）",
     capabilities={
         "text": SUPPORTED, "at": SUPPORTED, "image": SUPPORTED, "reply": SUPPORTED,
         "face": SUPPORTED, "mface": SUPPORTED,          # NapCat 有真正的 mface 段
@@ -186,11 +186,11 @@ PROFILES: Dict[Tuple[str, str], ClientProfile] = {
 }
 
 
-#: 渲染矩阵用的能力顺序（与 docs/client-compatibility.md §4.2 一致；加能力要同步文档）
+#: 渲染矩阵用的能力顺序（与 docs/reference/client-compatibility.md §4.2 一致；加能力要同步文档）
 #: markdown 行内代码用的反引号（写成常量，避免生成器里出现裸反引号）
 TICK = chr(96)
 
-#: 渲染矩阵用的能力顺序（与 docs/client-compatibility.md §4.2 一致；加能力要同步文档）
+#: 渲染矩阵用的能力顺序（与 docs/reference/client-compatibility.md §4.2 一致；加能力要同步文档）
 MATRIX_CAPABILITIES = (
     "text", "face", "image", "record", "video", "at", "reply", "json", "xml",
     "share", "music", "poke", "dice", "rps", "mface", "file", "markdown",

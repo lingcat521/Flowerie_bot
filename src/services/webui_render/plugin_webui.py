@@ -5,7 +5,7 @@
 - **DSL 页面**（旧，兼容层）：内容由 `plugin_dsl.render_plugin_dsl` 渲染（同样是受控输出）。
 
 本模块只组织页面壳，零 JS；内容统一包在 <div class="flowerie-plugin-webui"> 作用域里，
-插件 CSS 的隔离约定见 docs/plugin-webui.md（选择器应写在该类之下）。
+插件 CSS 的隔离约定见 docs/plugins/plugin-webui.md（选择器应写在该类之下）。
 """
 from src.services.webui_render.util import _esc
 

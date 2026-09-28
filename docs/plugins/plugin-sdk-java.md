@@ -1,6 +1,6 @@
 # Java SDK（dev.flowerie.sdk）
 
-> 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](plugin-sdk-capabilities.md)
+> 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](../reference/plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)
 > 源码 `sdk/java/src/main/java/dev/flowerie/sdk/`（`FloweriePlugin.java` + `Json.java`）· 示例 `examples/multilang-sdk/java/`（最小插件实测）与 `examples/java-plugin/`（契约/WebUI 用例）· CI 实测：`tests/sdk/test_minimal_plugins.py::test_build_load_ready_and_api[java]`、`tests/sdk/test_minimal_paths.py::test_plugin_communication_path[typescript->java]`、`tests/test_plugin_sdk_contract.py::test_handshake_declares_protocol_and_capabilities[java]`、`tests/test_plugin_webui_multilang.py::test_webui_page_receives_engine_context[java]`
 
 ## 1. 安装与引入

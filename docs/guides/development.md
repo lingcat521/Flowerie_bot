@@ -1,7 +1,7 @@
 # 开发
 
-> 当前版本 **v2.4.0**。SDK 三层架构见 [sdk.md](sdk.md)，安全边界见 [security.md](security.md)，
-> 历史审计报告见 [archive/](archive/README.md)。
+> 当前版本 **v2.4.0**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
+> 历史审计报告见 [archive/](../archive/README.md)。
 
 ## 环境
 
@@ -18,7 +18,7 @@ pytest tests/test_config_service.py       # 单文件
 pytest -m "not real_device"               # 排除实机用例
 ```
 
-**四层测试必须分清**（不要把手工测试伪装成 CI 自动测试；分层口径见 [tests/integration/README.md](../tests/integration/README.md)）：
+**四层测试必须分清**（不要把手工测试伪装成 CI 自动测试；分层口径见 [tests/integration/README.md](../../tests/integration/README.md)）：
 
 | 层 | 位置 | 命令 | 当前状态 |
 | :--- | :--- | :--- | :--- |
@@ -43,7 +43,7 @@ PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/ -q            # 最小 stu
 PYTHONPATH=$HOME python3 -m pytest -p stubplug -p stubio tests/ -q  # 追加 aiohttp/websockets stub（跑更宽的导入链）
 ```
 
-> 带 commit 的历史数字：**2.3.0（2026-09-25）发布时记录 1121 个测试**（见 [CHANGELOG](../CHANGELOG.md)）；
+> 带 commit 的历史数字：**2.3.0（2026-09-25）发布时记录 1121 个测试**（见 [CHANGELOG](../../CHANGELOG.md)）；
 > 上表是当前实测（2288 / 46 / 102 / 21 / 22）。
 
 ## 代码检查
@@ -60,7 +60,7 @@ ruff check .        # lint（E/F/W/I/B 规则集，line-length=120）
 | `ci.yml` → **webui-e2e** | 同上 | `continue-on-error`：装 Playwright Chromium 后跑 `pytest -q -rs -s tests/e2e/`（真浏览器证据由 CI 产出） |
 | `acceptance.yml` | push main / PR | `python tests/acceptance_check.py`：起真实 Web UI + 真 HTTP + `.env` round-trip + 零 JS/安全 + pytest + ruff，逐项 `rec()`（37 项），非 0 即失败 |
 | `compiler.yml` | release created | 5 个平台 × builtin/portable 打包 + Termux 源码包 → 上传 Release 资产（见 [install-release-guide.md](install-release-guide.md)） |
-| CodeQL | 仓库默认分析设置（无独立 workflow 文件） | `actions` / `javascript-typescript` / `python`；告警逐条判定见 [security.md](security.md) |
+| CodeQL | 仓库默认分析设置（无独立 workflow 文件） | `actions` / `javascript-typescript` / `python`；告警逐条判定见 [security.md](../reference/security.md) |
 
 **行数护栏**（`tests/test_web_ui_persona_knowledge.py`）：`web_ui.py` ≤430、`web_ui_assets.py` ≤120、
 `ai_client.py` ≤430、`config_service.py` ≤700、`message_router.py` ≤650 —— 超限请继续拆分，而不是提高上限。
@@ -95,7 +95,7 @@ docs/               # 文档（索引见 docs/README.md）
 - 分层方向单一：上层 `plugin_sdk/flowerie_sdk/` → 中层 `src/sdk/`（零 OneBot 命名）→ 下层 `src/adapters/onebot/`。
 - 新增平台能力只改下层（dto / transformer / adapter），中上层不动；协议耦合由 Gate 测试锁基线（只许减少）。
 - 测试：`tests/test_sdk_*.py`、`tests/test_adapter_contract.py`、`tests/test_architecture_gates.py`。
-- 文档：[sdk.md](sdk.md) / [api.md](api.md) / [plugin-developer-guide.md](plugin-developer-guide.md)。
+- 文档：[sdk.md](../reference/sdk.md) / [api.md](../reference/api.md) / [plugin-developer-guide.md](../plugins/plugin-developer-guide.md)。
 
 ## 存储后端扩展（SQLite 默认 / PostgreSQL 可选）
 

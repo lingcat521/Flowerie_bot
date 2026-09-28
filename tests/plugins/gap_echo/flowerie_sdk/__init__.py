@@ -3,7 +3,7 @@
 插件只需：
     from flowerie_sdk import FlowerieBot, command, keyword, regex, prefix, exact, rule
 
-（见 docs/sdk.md 最小示例）
+（见 docs/reference/sdk.md 最小示例）
 """
 from flowerie_sdk.bot import BotAPIError, FlowerieBot
 from flowerie_sdk.event import BotEvent

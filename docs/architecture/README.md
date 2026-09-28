@@ -22,7 +22,7 @@
 
 | 文档 | 内容 |
 | :--- | :--- |
-| [../plugin-final-report.md](../plugin-final-report.md) | **三份（插件 WebUI / 多语言 SDK / 统一 WebUI SDK）任务书的最终报告**：逐条回答各任务书"必答清单"+ 真实数字 + 复核命令 |
+| [../plugin-final-report.md](../reports/plugin-final-report.md) | **三份（插件 WebUI / 多语言 SDK / 统一 WebUI SDK）任务书的最终报告**：逐条回答各任务书"必答清单"+ 真实数字 + 复核命令 |
 | [final-acceptance-report.md](final-acceptance-report.md) | **最终验收报告**（任务书 §36）：真实数字块 + 八项绝对门槛 + BLOCKED 项与证据 + 复现命令 |
 | [acceptance-metrics.md](acceptance-metrics.md) | **验收 Dashboard**：八项绝对门槛 + Gate A–Z 实测值 + 逐提交 CI 真实记录（红色提交也如实保留）|
 | [transport-contract.md](transport-contract.md) | Gate Q 的 8 项契约与两个参考实现的逐项实测（含 N/A 理由）|
@@ -37,6 +37,6 @@
 
 ## 其余架构文档
 
-- [../adapter-architecture.md](../adapter-architecture.md)：Adapter 分层架构的**当前**说明（面向接入者）；
-- [../message-model.md](../message-model.md)：归一化消息模型字段与四协议映射表；
-- [../protocol-gap-closure.md](../protocol-gap-closure.md)：A 部分 G1–G8 缺口封口台账（含 BLOCKED 证据）。
+- [../adapter-architecture.md](../reference/adapter-architecture.md)：Adapter 分层架构的**当前**说明（面向接入者）；
+- [../message-model.md](../reference/message-model.md)：归一化消息模型字段与四协议映射表；
+- [../protocol-gap-closure.md](../reports/protocol-gap-closure.md)：A 部分 G1–G8 缺口封口台账（含 BLOCKED 证据）。

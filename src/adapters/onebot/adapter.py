@@ -102,7 +102,7 @@ class OneBotAdapter(BotAdapter):
         return [{"user_id": e.get("user_id"), "message": str(e.get("message", "")),
                  "is_bot": bool(e.get("is_bot")), "time": e.get("time")} for e in entries]
 
-    # ---------- v1.5 社交/群管语义（端点只在 Sender；支持矩阵见 docs/sdk.md） ----------
+    # ---------- v1.5 社交/群管语义（端点只在 Sender；支持矩阵见 docs/reference/sdk.md） ----------
     async def tap(self, group_id: int, user_id: int) -> dict:
         return await self._call(self._sender.send_poke(int(group_id), int(user_id)))
 

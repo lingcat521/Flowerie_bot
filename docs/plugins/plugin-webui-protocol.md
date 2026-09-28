@@ -2,7 +2,7 @@
 
 > **WebUI 是 Plugin Protocol 的一部分**，不是某个语言 SDK 的附属：插件只负责「内容与业务」，
 > Runtime 负责「托管、路由、权限、校验、净化、隔离」。三个协议方法（`webui.page` / `webui.action` /
-> `webui.asset`）走 [plugin-protocol.md](plugin-protocol.md) 的同一套信封与能力声明，不另开进程、不另开端口。
+> `webui.asset`）走 [plugin-protocol.md](../reference/plugin-protocol.md) 的同一套信封与能力声明，不另开进程、不另开端口。
 >
 > 实现：`src/plugins/manager.py`（三条通道）、`src/plugins/webui_loader.py`（路径校验唯一实现）、
 > `src/plugins/webui_security.py`（HTML/CSS 净化唯一实现）、`src/services/webui_panels/`（HTTP 入口）、

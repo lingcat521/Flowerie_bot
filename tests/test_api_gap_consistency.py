@@ -82,13 +82,13 @@ def test_permissions_all_gap_mapped():
 
 
 def test_api_md_records_gap_methods():
-    text = (ROOT / "docs/api.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs/reference/api.md").read_text(encoding="utf-8")
     missing = [m for m in sorted(_GAP_API) if f"`{m}(payload)`" not in text]
     assert not missing, f"api.md 缺失（生成器未跑？）: {missing}"
 
 
 def test_doc_matrix_entries_exist():
-    text = (ROOT / "docs/sdk.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs/reference/sdk.md").read_text(encoding="utf-8")
     seg = text.split("v2.1 缺口 SDK 矩阵")[-1]
     # 矩阵中 `名字(...)`/`名字` 入口必须出现在 gap_sdk 或 bot（抽样断言代表性 12 项）
     for token in ("MessageSegment", "MessageFilter", "rule_or", "rule_not",

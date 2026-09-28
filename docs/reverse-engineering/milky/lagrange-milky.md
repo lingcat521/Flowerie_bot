@@ -1,7 +1,7 @@
 # Lagrange.Milky 逆向（协议作者本人的实现，内嵌）
 
-> 任务书 ~/storage/emulated/0/协议.txt §四/§十/§二十三。规范基线见 [../../milky-protocol.md](../../milky-protocol.md)；
-> 既有的段/事件对照见 [../../protocol-reverse-engineering.md](../../protocol-reverse-engineering.md) §6。
+> 任务书 ~/storage/emulated/0/协议.txt §四/§十/§二十三。规范基线见 [../../milky-protocol.md](../../reference/milky-protocol.md)；
+> 既有的段/事件对照见 [../../protocol-reverse-engineering.md](../protocol-reverse-engineering.md) §6。
 
 ## Source
 
@@ -59,7 +59,7 @@ public sealed class SendGroupMessageHandler(BotContext lagrange, MilkyConverter 
 
 ## Normalized Behavior（Flowerie 现状 [MVP]）
 
-- 入站：Milky 事件/段归一化见 [../../milky-protocol.md](../../milky-protocol.md) 与 `src/adapters/milky_parser.py`（G1-G4 已 CLOSED）；
+- 入站：Milky 事件/段归一化见 [../../milky-protocol.md](../../reference/milky-protocol.md) 与 `src/adapters/milky_parser.py`（G1-G4 已 CLOSED）；
 - 出站：本轮新增 `src/adapters/milky_serializer.py`（按规范出站联合体），档案 `LAGRANGE_MILKY`；
 - 响应：`src/transport/milky_response.py` 解析 `{status, retcode, data|message}`。
 

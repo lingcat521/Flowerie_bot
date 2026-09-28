@@ -51,7 +51,7 @@ class MessageAssembler:
             full_text += f"\n[用户发送了一张图片，内容如下：]\n{cleaned_descs}\n[图片内容结束]"
             logger.debug(f"Image descriptions: {image_descriptions}")
 
-        # 表情（QQ 表情 / 商城表情）：Adapter 已归一化，这里只做语义化（证据见 docs/message-model.md §3）
+        # 表情（QQ 表情 / 商城表情）：Adapter 已归一化，这里只做语义化（证据见 docs/reference/message-model.md §3）
         full_text += self._assemble_faces(event)
         full_text += self._assemble_media(event)
         full_text += self._assemble_quote(event)

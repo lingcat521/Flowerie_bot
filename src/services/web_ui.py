@@ -258,7 +258,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         }
 
     async def _handle_doc_quickstart(self, request: web.Request) -> web.Response:
-        """新手文档（docs/quick-start.md 本地渲染；零 JS；鉴权同面板）。"""
+        """新手文档（docs/guides/quick-start.md 本地渲染；零 JS；鉴权同面板）。"""
         if not self._check_token(request):
             return web.HTTPFound("/panel")
         from src.services.webui_render.markdown_mini import render_doc

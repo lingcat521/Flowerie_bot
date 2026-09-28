@@ -5,7 +5,7 @@
 （Gate B/O）。行为与重构前**逐字一致**（仅搬移）。
 
 证据：
-- Milky action 名与端点：docs/milky-protocol.md（Milky 规范 api/*.ts + 作者实现）；
+- Milky action 名与端点：docs/reference/milky-protocol.md（Milky 规范 api/*.ts + 作者实现）；
 - 群/私聊撤回是**不同 action**：Lagrange.Milky RecallGroupMessageHandler.cs L36 /
   RecallPrivateMessageHandler.cs L36（入参 message_seq）；SendGroupMessageHandler.cs L41（响应 message_seq）；
 - OneBot 11 撤回：/delete_msg {message_id}。

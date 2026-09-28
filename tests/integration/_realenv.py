@@ -29,7 +29,7 @@ EVIDENCE_DIR = os.environ.get("FLOWERIE_REAL_EVIDENCE_DIR",
 MISSING_CONDITIONS = (
     "缺失条件：① 一个运行中的协议端（NapCat / Lagrange / LLBot）② " + ENV_ONEBOT_HTTP +
     " 或 " + ENV_MILKY_API + " 指向它 ③ " + ENV_GROUP + " 为测试群号 ④ 账号具备发言权限。"
-    "已尝试步骤与真实返回见 docs/protocol-gap-closure.md §6（设备控制授权两条路径均 denied）。"
+    "已尝试步骤与真实返回见 docs/reports/protocol-gap-closure.md §6（设备控制授权两条路径均 denied）。"
 )
 
 

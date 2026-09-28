@@ -48,7 +48,7 @@ Web UI「MCP 工具」页可**卡片式**逐条添加/编辑/删除/启停/测�
 
 ## 与 Native Reply Tool 的关系（同一套工具循环）
 
-开启 `MULTI_REPLY_ENABLED` 后额外挂内部工具 `reply`（AI 自主拆分回复，见 [configuration.md](configuration.md)）：
+开启 `MULTI_REPLY_ENABLED` 后额外挂内部工具 `reply`（AI 自主拆分回复，见 [configuration.md](../guides/configuration.md)）：
 
 - 两者共用 `MCP_MAX_TOOL_CALLS`；MCP 未配置时 `tool_quota.max = max(1, MCP_MAX_TOOL_CALLS)` → 多条回复照常可用；内部工具只捕获文本、不产生网络请求，也不进 MCP 熔断与指标统计；
 - provider 不支持 tool calling（不可重试 4xx）时，**仅当本次只带了内部工具**才在同一请求内降级为纯文本，MCP 语义不受影响。

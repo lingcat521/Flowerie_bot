@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""docs/plugin-developer-guide.md §0「60 秒上手」示例——文档黑盒验证：文档代码可直接运行。"""
+"""docs/plugins/plugin-developer-guide.md §0「60 秒上手」示例——文档黑盒验证：文档代码可直接运行。"""
 from flowerie_sdk import FlowerieBot, command, require_permission
 
 bot = FlowerieBot()

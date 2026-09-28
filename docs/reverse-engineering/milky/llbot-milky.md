@@ -2,7 +2,7 @@
 
 > 任务书 ~/storage/emulated/0/协议.txt §四/§十/§二十三。同一仓库的 OneBot 11 侧见
 > [../onebot11/llbot.md](../onebot11/llbot.md)；Milky 入站映射的既有详细记录见
-> [../../protocol-reverse-engineering.md](../../protocol-reverse-engineering.md) §4.1/§4.3。
+> [../../protocol-reverse-engineering.md](../protocol-reverse-engineering.md) §4.1/§4.3。
 
 ## Source
 

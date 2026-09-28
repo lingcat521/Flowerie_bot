@@ -12,7 +12,7 @@
 | manual real-device | 本 README §manual 步骤 | 需要人工触发（另一账号操作） | 否（永不） | BLOCKED |
 
 **本目录的用例从未在真实客户端上执行过**（设备控制未授权，见
-[../../docs/protocol-gap-closure.md](../../docs/protocol-gap-closure.md) §6），
+[../../docs/protocol-gap-closure.md](../../docs/reports/protocol-gap-closure.md) §6），
 因此它们的状态是 `[UNVERIFIED]`：代码路径本身也未经实机验证 —— 这一点必须如实标注，
 不能因为"写了测试"就当作实机验证完成。
 

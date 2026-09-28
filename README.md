@@ -24,10 +24,10 @@
 
 **花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.4.0**）。
 
-- **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
+- **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/reference/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
-  [插件间通信](docs/plugin-communication.md)（`plugin.call/emit/on`，跨语言经 Core Router，权限/超时/取消/环保护/trace）+
-  [Plugin WebUI](docs/plugin-webui-protocol.md)（插件自带管理页面，零 JavaScript）。
+  [插件间通信](docs/plugins/plugin-communication.md)（`plugin.call/emit/on`，跨语言经 Core Router，权限/超时/取消/环保护/trace）+
+  [Plugin WebUI](docs/plugins/plugin-webui-protocol.md)（插件自带管理页面，零 JavaScript）。
   受控运行时：独立子进程 + 权限批准 + 保护级别 + 资源上限；CI 里 **13 种语言**最小插件真编译真运行。
 - **QQ Bot 是原生场景**：开箱即用的群聊机器人 —— DeepSeek 驱动的人设对话、识图、转发/卡片解析、
   长期记忆、人格系统、表情包、MCP 工具、主动聊天、冷却与预算；OneBot11 / Milky 双协议接入。
@@ -47,9 +47,9 @@
 | 🎲 主动发言概率配置化 | `PROACTIVE_MESSAGE_*` 上下文随机回复概率 + `ACTIVE_CHAT_*` 主动聊天循环，全部可配置 |
 | 🗣️ 发言规则 | 管理员补充规则（人格页，默认 4 行）+ 按群专属覆盖，注入所有人格最高优先级 |
 | 🧩 插件系统（Plugin Protocol v1） | 受控插件运行时：Python / Node / **任意语言（exec，13 种语言 CI 实测：C/C++·Go·Rust·Java·C#·Kotlin·PHP·Lua·Ruby·Perl·R·TypeScript）** / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
-| 🧰 多语言 SDK | **Python / TypeScript / Go / Rust / Java 五套官方 SDK**（零第三方依赖，能力对齐 14 项）；最小插件实测 46 条真跑：[SDK 实测报告](docs/plugin-sdk-minimal-report.md) |
-| 🔗 插件间通信 | `plugin.call()` / `plugin.emit()` / `plugin.on()` 统一抽象：跨语言经 Core Router，权限/超时/取消/环保护/trace 全链路：[插件间通信](docs/plugin-communication.md) |
-| 🖥️ Plugin WebUI | 插件自带管理页面（HTML+CSS，**零 JavaScript**）：`webui.page/action/asset` + 六项 `webui.*` 权限 + 净化/隔离：[WebUI 协议](docs/plugin-webui-protocol.md) |
+| 🧰 多语言 SDK | **Python / TypeScript / Go / Rust / Java 五套官方 SDK**（零第三方依赖，能力对齐 14 项）；最小插件实测 46 条真跑：[SDK 实测报告](docs/reports/plugin-sdk-minimal-report.md) |
+| 🔗 插件间通信 | `plugin.call()` / `plugin.emit()` / `plugin.on()` 统一抽象：跨语言经 Core Router，权限/超时/取消/环保护/trace 全链路：[插件间通信](docs/plugins/plugin-communication.md) |
+| 🖥️ Plugin WebUI | 插件自带管理页面（HTML+CSS，**零 JavaScript**）：`webui.page/action/asset` + 六项 `webui.*` 权限 + 净化/隔离：[WebUI 协议](docs/plugins/plugin-webui-protocol.md) |
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
 | 🖼️ 表情包 | 目录扫描 + Vision 索引缓存，模型按语境选择发送 |
 | 🔧 MCP 工具 | 外部工具调用（如搜索），插件式多 server + 工具白名单 + 独立熔断 |
@@ -60,7 +60,7 @@
 
 ## 快速开始
 
-> 💿 **安装说明**：[Windows exe](docs/install-release-windows.md) · [Linux/macOS/Termux](docs/install-release-guide.md) · [Milky 协议](docs/milky-protocol.md)
+> 💿 **安装说明**：[Windows exe](docs/guides/install-release-windows.md) · [Linux/macOS/Termux](docs/guides/install-release-guide.md) · [Milky 协议](docs/reference/milky-protocol.md)
 
 
 
@@ -81,7 +81,7 @@ cp .env_example .env        # 然后编辑 .env
 ```
 
 > 📱 **安卓 / Termux 用户**  
-> 若在手机上（Termux）安装，请勿使用上述步骤直接装依赖——安卓环境需**绕过 `pydantic` 编译**并依赖预编译库，直接安装会长时间源码编译甚至失败。请务必查看专用安装文档：**[📱 安卓 (Termux) 专用安装](docs/install-termux.md)**。
+> 若在手机上（Termux）安装，请勿使用上述步骤直接装依赖——安卓环境需**绕过 `pydantic` 编译**并依赖预编译库，直接安装会长时间源码编译甚至失败。请务必查看专用安装文档：**[📱 安卓 (Termux) 专用安装](docs/guides/install-termux.md)**。
 
 ### 配置（必填两项）
 
@@ -108,7 +108,7 @@ OneBot WebSocket connected
 
 ## 配置
 
-完整配置见 [配置](docs/configuration.md)，常用项：
+完整配置见 [配置](docs/guides/configuration.md)，常用项：
 
 | 变量 | 说明 | 默认 |
 | :--- | :--- | :--- |
@@ -157,26 +157,26 @@ OneBot WebSocket connected
 - **日志**：最近 200 条运行日志 · **用户状态**：凭据来源 / 改账号 / 注销 / 服务器状态 / MCP / API 厂商连接
 - **插件**：保护级别（normal/relaxed/unsafe）、上传 ZIP / URL 安装、启用（含权限批准）、禁用、卸载
 
-完整功能指南（各页细节 + 安全说明）见 **[Web UI 说明](docs/web-ui.md)**；人格见 [人格系统](docs/persona.md)，
-记忆/知识见 [记忆与知识](docs/memory.md)，插件开发见 **[插件开发指南](docs/plugin-developer-guide.md)**（§12.2 已内联 **13 种语言任意语言插件**完整实现：C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R），
-安全模型见 **[安全模型](docs/security.md)**，变量说明见 [配置](docs/configuration.md)。
+完整功能指南（各页细节 + 安全说明）见 **[Web UI 说明](docs/features/web-ui.md)**；人格见 [人格系统](docs/features/persona.md)，
+记忆/知识见 [记忆与知识](docs/features/memory.md)，插件开发见 **[插件开发指南](docs/plugins/plugin-developer-guide.md)**（§12.2 已内联 **13 种语言任意语言插件**完整实现：C/C++/Go/Rust/Java/Kotlin/C#/TS/PHP/Lua/Ruby/Perl/R），
+安全模型见 **[安全模型](docs/reference/security.md)**，变量说明见 [配置](docs/guides/configuration.md)。
 
 ### 如何开启
 
 **默认已开启**，无需任何配置：浏览器打开 `http://127.0.0.1:8080/panel`，首次进入是注册页，创建管理员即可。
 
 > 改端口 / 预设账号密码（`WEB_UI_PORT` 不能与 `WS_PORT` 相同）、对局域网开放（`WEB_UI_ALLOW_LAN=true`，
-> 绑定 0.0.0.0 并输出安全警告，请设强密码、勿直接暴露公网）→ 见 [Web UI 说明](docs/web-ui.md)。
+> 绑定 0.0.0.0 并输出安全警告，请设强密码、勿直接暴露公网）→ 见 [Web UI 说明](docs/features/web-ui.md)。
 
 ## MCP
 
-默认关闭。配置 `MCP_ENABLED=true` + `MCP_SERVER_URL`（或插件式多 server：`MCP_SERVERS` JSON，可自行添加任意数量的 MCP 服务，支持本地/内网地址）后，模型可调用白名单内的工具获取实时信息。群聊梗知识的每日总结也会在需要时通过 MCP 检索验证新梗。详见 [MCP 工具](docs/mcp.md)。
+默认关闭。配置 `MCP_ENABLED=true` + `MCP_SERVER_URL`（或插件式多 server：`MCP_SERVERS` JSON，可自行添加任意数量的 MCP 服务，支持本地/内网地址）后，模型可调用白名单内的工具获取实时信息。群聊梗知识的每日总结也会在需要时通过 MCP 检索验证新梗。详见 [MCP 工具](docs/features/mcp.md)。
 
 ## Persona（人格系统）
 
 内置三套官方人格：**花璃**（默认）、**亚托莉（ATRI）** 与 **艾拉（Isla）**；管理员可创建完全独立的自定义人格。
 人格优先级：**群聊人格 > 全局人格 > 内置默认**，切换人格不影响记忆与上下文。
-Web UI「人格」页管理；详细设计见 [人格系统](docs/persona.md)。
+Web UI「人格」页管理；详细设计见 [人格系统](docs/features/persona.md)。
 
 ## 插件系统（Plugin System v1）
 
@@ -190,14 +190,14 @@ SDK 模式提供统一 Event / Message / Matcher / Permission 与 Bot Adapter �
 （`normal`/`relaxed`/`unsafe`）只影响运行时限制，**任何级别都不豁免**权限检查 / 进程隔离 / 日志 /
 崩溃保护 / 资源限制 / manifest 校验 / 管理员权限。
 
-开发文档：**[插件开发指南](docs/plugin-developer-guide.md)（完整参考，含 §12.2 十三种语言任意语言插件）** · [快速开始](docs/quick-start.md) ·
-[Plugin WebUI](docs/plugin-webui.md) · [SDK 手册](docs/sdk.md) · [API 速查](docs/api.md) · [文档中心](docs/README.md)
+开发文档：**[插件开发指南](docs/plugins/plugin-developer-guide.md)（完整参考，含 §12.2 十三种语言任意语言插件）** · [快速开始](docs/guides/quick-start.md) ·
+[Plugin WebUI](docs/plugins/plugin-webui.md) · [SDK 手册](docs/reference/sdk.md) · [API 速查](docs/reference/api.md) · [文档中心](docs/README.md)
 
 ## 群聊梗知识（Meme Knowledge）
 
 每个群拥有**完全隔离**的梗/黑话知识库：消息命中时只注入相关词条（不可信上下文知识），
 `MEME_LEARNING_ENABLED=true` 时每 24 小时批量总结一次群聊并写入新梗（必要时经 MCP 检索验证）。
-Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/memory.md)。
+Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/features/memory.md)。
 
 ## 开发
 
@@ -213,8 +213,8 @@ ruff check .        # 代码检查
 
 CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 
-更多工程细节：架构审计见 [架构审计](docs/archive/architecture-audit.md)（历史快照），表情包见 [表情包](docs/stickers.md)，
-安全模型见 [安全模型](docs/security.md)。
+更多工程细节：架构审计见 [架构审计](docs/archive/architecture-audit.md)（历史快照），表情包见 [表情包](docs/features/stickers.md)，
+安全模型见 [安全模型](docs/reference/security.md)。
 
 ## License
 
@@ -225,13 +225,13 @@ CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
 
 - **AI / 长期记忆 / 主动聊天 / 复读 / 防刷 / 戳戳 / 表情包 / MCP / 存档 / 群梗学习**：Web UI「配置」按分类折叠，每分类顶部开关徽标
 - **花语记忆（BlossomMemory，默认关闭）**：语义长期记忆（向量化检索 + 可重排 + 自动提取 + 群隔离）
-- **存储后端**：默认 SQLite；可选 PostgreSQL——两者细节与迁移工具见 [配置说明](docs/configuration.md)
+- **存储后端**：默认 SQLite；可选 PostgreSQL——两者细节与迁移工具见 [配置说明](docs/guides/configuration.md)
 
 ## 📚 文档
 
 完整索引（含阅读顺序与「谁需要」）见 **[文档中心](docs/README.md)**，常用入口：
 
-- **安装上手**：[Windows exe](docs/install-release-windows.md) · [Linux/macOS](docs/install-release-guide.md) · [Termux](docs/install-termux.md) · [配置说明](docs/configuration.md)
-- **功能使用**：[Web UI](docs/web-ui.md) · [人格系统](docs/persona.md) · [记忆与知识](docs/memory.md) · [MCP 工具](docs/mcp.md) · [表情包](docs/stickers.md)
-- **插件开发**：[快速开始](docs/quick-start.md) · [完整指南](docs/plugin-developer-guide.md)（**含任意语言：13 种语言最小实现 §12.2**） · [Plugin WebUI](docs/plugin-webui.md) · [SDK](docs/sdk.md) · [API](docs/api.md)
-- **运维开发**：[安全模型](docs/security.md) · [开发说明](docs/development.md) · [OneBot 兼容](docs/onebot-compatibility.md) · [Milky 协议](docs/milky-protocol.md) · [历史归档](docs/archive/README.md)
+- **安装上手**：[Windows exe](docs/guides/install-release-windows.md) · [Linux/macOS](docs/guides/install-release-guide.md) · [Termux](docs/guides/install-termux.md) · [配置说明](docs/guides/configuration.md)
+- **功能使用**：[Web UI](docs/features/web-ui.md) · [人格系统](docs/features/persona.md) · [记忆与知识](docs/features/memory.md) · [MCP 工具](docs/features/mcp.md) · [表情包](docs/features/stickers.md)
+- **插件开发**：[快速开始](docs/guides/quick-start.md) · [完整指南](docs/plugins/plugin-developer-guide.md)（**含任意语言：13 种语言最小实现 §12.2**） · [Plugin WebUI](docs/plugins/plugin-webui.md) · [SDK](docs/reference/sdk.md) · [API](docs/reference/api.md)
+- **运维开发**：[安全模型](docs/reference/security.md) · [开发说明](docs/guides/development.md) · [OneBot 兼容](docs/reference/onebot-compatibility.md) · [Milky 协议](docs/reference/milky-protocol.md) · [历史归档](docs/archive/README.md)

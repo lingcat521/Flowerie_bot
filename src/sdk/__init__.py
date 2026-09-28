@@ -6,7 +6,7 @@
         ↑ 被实现
     实现层 src/adapters/onebot/（DTO 瘦身 + Transformer + OneBotAdapter；唯一 import OneBot 语义处）
 
-依赖倒置校验：src/sdk/ 顶层模块不得出现 onebot/post_type/sub_type 等字样（见 docs/sdk.md）。
+依赖倒置校验：src/sdk/ 顶层模块不得出现 onebot/post_type/sub_type 等字样（见 docs/reference/sdk.md）。
 """
 from src.sdk.adapter import BotAdapter
 from src.sdk.bot import Bot

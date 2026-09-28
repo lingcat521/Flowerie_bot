@@ -108,7 +108,7 @@ class Bot:
         return await self._permission.check(event, "bot_admin")
 
     async def is_owner(self, event) -> bool:
-        """bot owner（当前与 admin 同源，见 docs/sdk.md 说明）。"""
+        """bot owner（当前与 admin 同源，见 docs/reference/sdk.md 说明）。"""
         return await self._permission.check(event, "bot_owner")
 
     # ---------- 群 ----------

@@ -52,7 +52,7 @@
 
 - **人格页**：全局人格下拉保存；人格列表（内置带「内置」徽标，内置不可删除）支持编辑/设为全局/删除；新建人格填 id/名称/简介/system_prompt；群聊人格按群号绑定与一键解除（自动回退）；默认人格 `PERSONA_DEFAULT` 顶部直接改（热更新）；「管理员补充发言规则」textarea 每行一条；按群自定义 Prompt 用 `<details>` 折叠（与 `/prompt` 同一存储）。详见 [persona.md](persona.md)。
 - **群聊知识页**：按群搜索/新增/编辑（含义/例句/可信度/状态）/删除/清空；`MEME_*` 配置在本页底部管理，不再出现在「配置」页。详见 [memory.md](memory.md)。
-- **插件页**：启用/权限批准/安装/卸载只有管理员能操作；支持 Python（`plugin.py`）、Node（`index.js`/`package.json`）、任意语言（`runtime=exec`）与 JSON 声明式（`runtime=json`）；插件可自带管理页面（真实 HTML 或旧 DSL 兼容层，均需批准 `web_ui` 权限 + 白名单净化 + CSP），详见 [plugin-webui.md](plugin-webui.md) 与 [plugin-developer-guide.md](plugin-developer-guide.md)。
+- **插件页**：启用/权限批准/安装/卸载只有管理员能操作；支持 Python（`plugin.py`）、Node（`index.js`/`package.json`）、任意语言（`runtime=exec`）与 JSON 声明式（`runtime=json`）；插件可自带管理页面（真实 HTML 或旧 DSL 兼容层，均需批准 `web_ui` 权限 + 白名单净化 + CSP），详见 [plugin-webui.md](../plugins/plugin-webui.md) 与 [plugin-developer-guide.md](../plugins/plugin-developer-guide.md)。
 - **插件保护措施**：`Normal`（推荐）/ `Relaxed` / `Unsafe`，只影响运行时资源限制；**任何级别都不豁免** manifest 校验、管理员权限、进程隔离、日志、崩溃保护、资源限制与权限强制。
 - **发现 ≠ 自动执行**：刷新扫描 `PLUGIN_DIR`（默认 `./plugins`）新发现的插件注册为**禁用**，由管理员启用并批准权限（勾选声明权限 → 启用）；导入 ZIP 受 ZIP Slip / Zip Bomb / 符号链接防护，URL 安装受 SSRF 防护（拒内网/回环/重定向 + 大小上限 + 超时 + Content-Type/扩展名检查）。
 
@@ -80,7 +80,7 @@
 - **登录限流与哈希**：密码 scrypt 哈希（永不写明文/日志）；同一 IP 连续失败 5 次锁 60 秒（`_LOGIN_FAIL_LIMIT` / `_LOGIN_FAIL_WINDOW`，`src/services/web_ui.py:67-68`）。
 - **CSRF**：JSON API 走 `Authorization: Bearer <token>`（无 cookie → 天然防 CSRF）；无 JS 面板走 Cookie 会话（`fb_token`，`httponly` + `SameSite=Strict`）。
 - **Secret 掩码**：API Key 只显示 `sk-a****xxxx`，永不回显明文，留空提交不覆盖。
-- **上传与 URL 安全**：图片上传校验大小/扩展名/MIME/真实魔数并拒绝 HTML/SVG/脚本；插件 ZIP 与 URL 安装、MCP 与图片下载各有 SSRF 与资源上限防护（详见 [security.md](security.md)）。
+- **上传与 URL 安全**：图片上传校验大小/扩展名/MIME/真实魔数并拒绝 HTML/SVG/脚本；插件 ZIP 与 URL 安装、MCP 与图片下载各有 SSRF 与资源上限防护（详见 [security.md](../reference/security.md)）。
 
 ## 相关文件
 
@@ -101,5 +101,5 @@
 
 ## 相关文档
 
-[configuration.md](configuration.md)（配置项全量）、[persona.md](persona.md)、[memory.md](memory.md)（群聊知识）、[mcp.md](mcp.md)、[plugin-developer-guide.md](plugin-developer-guide.md)、[security.md](security.md)。
+[configuration.md](../guides/configuration.md)（配置项全量）、[persona.md](persona.md)、[memory.md](memory.md)（群聊知识）、[mcp.md](mcp.md)、[plugin-developer-guide.md](../plugins/plugin-developer-guide.md)、[security.md](../reference/security.md)。
 

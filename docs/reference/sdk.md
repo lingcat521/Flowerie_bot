@@ -1,7 +1,7 @@
 # Flowerie Bot SDK 开发手册（Plugin API v1 · 版本 2.4.0）
 
-> 讲 **`flowerie_sdk` 这一层怎么用**。运行时与协议（Manifest / 生命周期 / 打包 / 任意语言）见 [plugin-developer-guide.md](plugin-developer-guide.md)，
-> 协议本身见 [plugin-protocol.md](plugin-protocol.md)，多语言总览见 [plugin-sdk.md](plugin-sdk.md)。所有 API 名都对着 `plugin_sdk/flowerie_sdk/` 核实过；
+> 讲 **`flowerie_sdk` 这一层怎么用**。运行时与协议（Manifest / 生命周期 / 打包 / 任意语言）见 [plugin-developer-guide.md](../plugins/plugin-developer-guide.md)，
+> 协议本身见 [plugin-protocol.md](plugin-protocol.md)，多语言总览见 [plugin-sdk.md](../plugins/plugin-sdk.md)。所有 API 名都对着 `plugin_sdk/flowerie_sdk/` 核实过；
 > 示例与 `tests/plugins/doc_example/` 同源，由 `tests/test_doc_example_plugin.py`（真加载 + 真路由）与 `tests/test_api_gap_consistency.py`（入口一致性）钉住。
 
 ## 1. 最小插件（可直接复制，跑得起来）
@@ -49,7 +49,7 @@ def on_message(event, api=None):
 
 **跑起来**：放 `plugins/` → `bash run.sh`（或 `python3 main.py`）→ Web UI「插件」页**启用**并批准 `read_message` / `send_message`
 → 群里发 `!hi`（也支持 `/hi`、`.hi`）。不想带 `flowerie_sdk/` 副本也行：经典模式用 runner 给的回调
-（`def on_message(event, api)` + `api.send_message({...})`），见 [plugin-developer-guide.md §3](plugin-developer-guide.md)。
+（`def on_message(event, api)` + `api.send_message({...})`），见 [plugin-developer-guide.md §3](../plugins/plugin-developer-guide.md)。
 
 ### 1.5 30 秒速查（常用 API 一行例）
 
@@ -116,7 +116,7 @@ async def send_file(event):
     await bot.send(("group", event.group_id),
                    BotMessage("文档请查收：").file("https://example.com/report.pdf", name="报告.pdf"))
 ```
-- **本地文件**：插件目录内用 `file_read` / `file_write`（[plugin-developer-guide.md §12](plugin-developer-guide.md)）；图片/语音路径要平台可访问。
+- **本地文件**：插件目录内用 `file_read` / `file_write`（[plugin-developer-guide.md §12](../plugins/plugin-developer-guide.md)）；图片/语音路径要平台可访问。
 - **按钮 / Markdown / 卡片**不在 OneBot11 标准段内，能否生效取决于网关；段被丢弃或整条失败（`BotAPIError`）都属正常，先小范围验证。
 
 ## 4. 完整 Bot API（`FlowerieBot`，全部 await）
@@ -148,7 +148,7 @@ await bot.send_many(123456, ["第一句", "第二句"])   # 群号；私聊用 (
 | `bot.send_many(target, messages)` | target 同 `send`（群号 / 元组）| `list[int]`（message_id）|
 | `bot.reply_many(event, messages)` / `event.reply_many(messages)` | 传 `BotEvent` 自动推导目标 | `list[int]` |
 
-间隔与上限由 `MULTI_REPLY_*` 决定（[configuration.md](configuration.md#多条回复multi-reply)）；每条都计一次连续回复，`MAX_CONSECUTIVE_REPLIES` 依然生效；单条 `event.reply()` 不受影响。AI 侧 `reply` 工具由模型自主拆分，走同一链路与同一套上限。
+间隔与上限由 `MULTI_REPLY_*` 决定（[configuration.md](../guides/configuration.md#多条回复multi-reply)）；每条都计一次连续回复，`MAX_CONSECUTIVE_REPLIES` 依然生效；单条 `event.reply()` 不受影响。AI 侧 `reply` 工具由模型自主拆分，走同一链路与同一套上限。
 
 ## 5. Matcher / Rule
 
@@ -341,7 +341,7 @@ bot.pin(message_id) / bot.unpin(message_id) / bot.like(user_id) / bot.friends()
 插件（plugin_sdk/flowerie_sdk）→ 中层 src/sdk/（零 OneBot 命名）← 下层 src/adapters/onebot/ → NapCat/OneBot
 ```
 - 新增平台能力 → 只改下层 `onebot/`（dto / transformer / adapter）；新增领域能力（如 Session）→ 加在中层，上层只做 wrapper。
-- 依赖倒置验证：`grep -rn "post_type\|sub_type" src/sdk/*.py` 应为空（除注释）；目录与测试约定见 [development.md](development.md)。
+- 依赖倒置验证：`grep -rn "post_type\|sub_type" src/sdk/*.py` 应为空（除注释）；目录与测试约定见 [development.md](../guides/development.md)。
 
 ## 附录 A：能力与兼容矩阵
 

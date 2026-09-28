@@ -80,9 +80,9 @@ tests/test_transport_contract.py     # 传输 8 项契约 + WS/HTTP 行为（进
 
 ## 8. 明确还没做的（如实）
 
-1. **实机验证全缺**：本环境没有可运行的协议端 → 所有客户端行为结论都是源码级 `[CODE]` 或官方文档 `[DOC]`，实机项一律 `BLOCKED BY EXTERNAL DEPENDENCY`（[protocol-gap-closure.md](protocol-gap-closure.md) §6、[client-compatibility.md](client-compatibility.md)）；
+1. **实机验证全缺**：本环境没有可运行的协议端 → 所有客户端行为结论都是源码级 `[CODE]` 或官方文档 `[DOC]`，实机项一律 `BLOCKED BY EXTERNAL DEPENDENCY`（[protocol-gap-closure.md](../reports/protocol-gap-closure.md) §6、[client-compatibility.md](client-compatibility.md)）；
 2. **能力缺口**（`src/adapters/capabilities.py` 的显式声明）：OneBot 11 `forward.send` / Milky `image.send` `file.send` `forward.send` = `unsupported`（upload 管道未接线或协议端明确不支持）；`face.send` / `market_face.send` / OneBot `file.send` = `partial`（只能调用方自拼段数组）；OneBot 12 全部 send = `unsupported`、多数 receive = `unknown`（骨架未接入组合根，`container_wired=False`）；
 3. **传输契约未覆盖旧连接类**：`ws_server.py` / `ws_forward_client.py` / `milky_ws_client.py` 仍是各自一套 API（8 项契约只由 `transports.py` 两个参考实现满足，见 §2）；
 4. **未调查的客户端仍是 UNKNOWN**：onebots / Yogurt / imhelper 等（`docs/client-compatibility.md` §6.2）；查询它们的档案得到空档案（全 UNKNOWN），**没有**任何"应该也能用"的推断；**OpenShamrock 源码不可得**（上游 404）→ Android 端 OneBot11 差异保持 `[UNKNOWN]`；
-5. **Lagrange.OneBot 实现源码不可得**（[source-acquisition.md](source-acquisition.md) C4）→ 该列只有文档级证据（页面自称过时），大量格子保持 UNKNOWN；Milky 侧的 Lagrange 实现（内嵌两份副本）不受影响。
+5. **Lagrange.OneBot 实现源码不可得**（[source-acquisition.md](../reverse-engineering/source-acquisition.md) C4）→ 该列只有文档级证据（页面自称过时），大量格子保持 UNKNOWN；Milky 侧的 Lagrange 实现（内嵌两份副本）不受影响。
 

@@ -27,8 +27,8 @@
 
 # 第一部分：插件 WebUI 从 DSL 迁移到真实 HTML
 
-> 实现：[plugin-webui.md](plugin-webui.md) · 审计：[plugin-webui-migration.md](plugin-webui-migration.md) ·
-> ADR：[architecture/plugin-webui-html.md](architecture/plugin-webui-html.md) · 第 3 份把它协议化的部分见 [plugin-webui-protocol.md](plugin-webui-protocol.md)。
+> 实现：[plugin-webui.md](../plugins/plugin-webui.md) · 审计：[plugin-webui-migration.md](../plugins/plugin-webui-migration.md) ·
+> ADR：[architecture/plugin-webui-html.md](../architecture/plugin-webui-html.md) · 第 3 份把它协议化的部分见 [plugin-webui-protocol.md](../plugins/plugin-webui-protocol.md)。
 
 ## 1.1 §21 定量验收门槛（逐项）
 
@@ -92,9 +92,9 @@
 
 # 第二部分：多语言 Plugin SDK（Plugin Protocol v1）
 
-> 协议：[plugin-protocol.md](plugin-protocol.md) · 指南：[plugin-sdk.md](plugin-sdk.md) ·
-> 矩阵：[plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) · 单语言：typescript / go / rust / java 各一份 ·
-> ADR：[architecture/plugin-sdk-protocol.md](architecture/plugin-sdk-protocol.md)。
+> 协议：[plugin-protocol.md](../reference/plugin-protocol.md) · 指南：[plugin-sdk.md](../plugins/plugin-sdk.md) ·
+> 矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md) · 单语言：typescript / go / rust / java 各一份 ·
+> ADR：[architecture/plugin-sdk-protocol.md](../architecture/plugin-sdk-protocol.md)。
 
 ## 2.1 §十四 验收指标（逐项）
 
@@ -119,13 +119,13 @@
 1. **Plugin Protocol 放在哪里**：`src/plugins/protocol.py`（代码级单一事实来源）+ `docs/plugin-protocol.md`（规范）；runner 内联一份常量并由 `test_runner_inlined_constants_match_engine_module` 逐项比对。
 2. **当前版本**：`PROTOCOL_VERSION = "1"`（`api_version = "1"`）；主版本不同 → 引擎拒绝启动（不猜兼容）。
 3. **通信方式**：**JSON-Lines over stdio**（一行一个 JSON、UTF-8、写完立即 flush；stdout 只放协议，日志走 stderr）。
-4. **为什么选它**：先审计了仓库既有的 exec runner（13 种语言最小插件在 CI 真跑），它已经是"任何语言都能实现"的事实协议；换成 gRPC/HTTP 会引入运行时依赖、端口与生命周期管理、以及"哪来的 HTTP 服务器"这类与任务书 §十 相冲突的问题。JSON-Lines 的取舍写在 [plugin-protocol.md](plugin-protocol.md) §1。
+4. **为什么选它**：先审计了仓库既有的 exec runner（13 种语言最小插件在 CI 真跑），它已经是"任何语言都能实现"的事实协议；换成 gRPC/HTTP 会引入运行时依赖、端口与生命周期管理、以及"哪来的 HTTP 服务器"这类与任务书 §十 相冲突的问题。JSON-Lines 的取舍写在 [plugin-protocol.md](../reference/plugin-protocol.md) §1。
 5. **Python SDK 是否保持兼容**：是。runner 既有钩子（`on_message` / `webui_page` / `health_check` …）与 `PluginApi` 的 160+ 方法一个没删，只做加法。
 6. **TypeScript SDK 完成度**：`SUPPORTED`（14 项可选能力 + 具名钩子 + WebUI 三通道；零 npm 依赖，含无 `@types/node` 的 tsc 路径）。
 7. **Go SDK 完成度**：`SUPPORTED`（零第三方依赖；读/处理分离的运行时模型修掉了反向请求自锁）。
 8. **Rust SDK 完成度**：`SUPPORTED`（零 crate；自带极简 JSON 编解码）。
 9. **Java SDK 完成度**：`SUPPORTED`（零第三方依赖，只用 JDK；自带极简 JSON）。
-10. **Capability Matrix**：[plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) —— 逐能力四态（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN），每个 SUPPORTED 都能指到绿色命令或 CI run。
+10. **Capability Matrix**：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md) —— 逐能力四态（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN），每个 SUPPORTED 都能指到绿色命令或 CI run。
 11. **跨语言 Contract Tests**：`test_plugin_sdk_contract.py` 53 条 + `test_plugin_webui_multilang.py` 31 条，全部真进程 + 真管道（**不 mock 跨语言通信**）。
 12. **Permission Tests**：`test_plugin_permissions.py` + 契约测试里的 `permission.check` 反向通道 + WebUI 六项权限用例。
 13. **是否修改 Core**：没有改消息主链路/协议端适配；只新增插件子系统内的协议层与 WebUI 通道。
@@ -141,7 +141,7 @@
 
 # 第三部分：统一 Plugin WebUI SDK（WebUI Protocol）
 
-> 规范：[plugin-webui-protocol.md](plugin-webui-protocol.md) · 场景：[plugin-webui.md](plugin-webui.md)。
+> 规范：[plugin-webui-protocol.md](../plugins/plugin-webui-protocol.md) · 场景：[plugin-webui.md](../plugins/plugin-webui.md)。
 
 ## 3.1 §十八 验收指标（逐项）
 
@@ -175,14 +175,14 @@ Flowerie Core
 
 ## 3.3 §十二 20 类安全问题的落点
 
-见 [plugin-webui-protocol.md](plugin-webui-protocol.md) §9 的表：每一类都对应 `tests/test_plugin_webui_protocol.py` 里的一条真实用例（真 Manager + 真插件子进程 + 真管道）。
+见 [plugin-webui-protocol.md](../plugins/plugin-webui-protocol.md) §9 的表：每一类都对应 `tests/test_plugin_webui_protocol.py` 里的一条真实用例（真 Manager + 真插件子进程 + 真管道）。
 
 ---
 
 # 已知限制（如实）
 
 1. **实机集成用例 skip**：需要运行中的协议端（NapCat / Lagrange / LLBot）与真实群号 —— 本环境没有；按任务书要求 skip 并打印缺失条件，**不当作通过**（基线 22 条，当前整仓 39 条）。
-2. **本机没有 go / rustc / javac**：本地只有 Python 与 TypeScript 真跑，其余三种语言在 CI 上真编译真跑（本地 skip 会打印原因）；CI 是这三种语言的唯一编译器，所以本轮有三个 bug 只有 CI 能抓到（已修复，记录在 [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md) §2）。
+2. **本机没有 go / rustc / javac**：本地只有 Python 与 TypeScript 真跑，其余三种语言在 CI 上真编译真跑（本地 skip 会打印原因）；CI 是这三种语言的唯一编译器，所以本轮有三个 bug 只有 CI 能抓到（已修复，记录在 [plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md) §2）。
 3. **No-JS 是硬约束**：插件页面不能带 JS，`webui.asset` 的 MIME 白名单也不含 svg/字体，想用 JS 的插件当前不可行（与主 WebUI 政策一致）。
 4. **插件资源上限 256 KiB / 静态 4 MiB**：超限直接拒绝，不截断。
 5. **旧 DSL 兼容层仍在**（任务书要求）：它不会被新插件使用，但会在兼容期内继续存在。

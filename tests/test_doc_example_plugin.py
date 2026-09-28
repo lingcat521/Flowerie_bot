@@ -1,4 +1,4 @@
-"""文档黑盒：docs/plugin-developer-guide.md §0「60 秒上手」示例（原样插件）真实加载+路由。
+"""文档黑盒：docs/plugins/plugin-developer-guide.md §0「60 秒上手」示例（原样插件）真实加载+路由。
 
 事件形态与真实 runner 一致（dict），SDK 路由 → BotEvent → handler → reply 走 api。
 """

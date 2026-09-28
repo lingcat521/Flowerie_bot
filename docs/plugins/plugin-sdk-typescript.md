@@ -1,6 +1,6 @@
 # TypeScript / Node.js SDK（@flowerie/sdk）
 
-> 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)（§1–§9 的通用语义都在那里）｜ 协议：[plugin-protocol.md](plugin-protocol.md) ｜ 能力矩阵：[plugin-sdk-capabilities.md](plugin-sdk-capabilities.md)
+> 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)（§1–§9 的通用语义都在那里）｜ 协议：[plugin-protocol.md](../reference/plugin-protocol.md) ｜ 能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)
 > 源码 `sdk/typescript/flowerie_sdk.ts` · 示例 `examples/multilang-sdk/typescript/`（契约/WebUI 用例另跑 `examples/typescript-plugin/`）· CI 实测：`tests/sdk/test_minimal_plugins.py::test_build_load_ready_and_api[typescript]`、`tests/sdk/test_minimal_paths.py::test_plugin_communication_path[typescript->go]`、`tests/test_plugin_sdk_contract.py`（含 `test_typescript_shim_covers_host_apis`）、`tests/test_plugin_webui_multilang.py::test_webui_action_save_is_identical[typescript]`
 
 ## 1. 安装与引入

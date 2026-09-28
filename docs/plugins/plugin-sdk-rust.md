@@ -1,6 +1,6 @@
 # Rust SDK（flowerie · 零 crate 依赖）
 
-> 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](plugin-sdk-capabilities.md)
+> 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](../reference/plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)
 > 源码 `sdk/rust/src/lib.rs` + `sdk/rust/src/json.rs` · 示例 `examples/multilang-sdk/rust/`（契约/WebUI 用例另跑 `examples/rust-plugin/`）· CI 实测：`tests/sdk/test_minimal_plugins.py::test_build_load_ready_and_api[rust]`、`tests/sdk/test_minimal_paths.py::test_plugin_communication_path[rust->java]`、`tests/test_plugin_sdk_contract.py::test_plugin_call_inbound_matches_vector[rust]`、`tests/test_plugin_webui_multilang.py::test_webui_action_save_is_identical[rust]`
 
 ## 1. 安装与引入

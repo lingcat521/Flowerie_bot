@@ -1,8 +1,8 @@
 # 🚀 花璃插件快速开始（10 分钟写出第一个插件）
 
 > 目标：**10 分钟内**从零写到一个能在群里跑的插件。本文只给最短路径；
-> 完整参考（Manifest 全字段 / 事件 / 权限 / 打包 / 超时 / 资源限制 / 13 种语言）见 [plugin-developer-guide.md](plugin-developer-guide.md)，
-> 方法 × 权限总表见 [api.md](api.md)，SDK 全量见 [sdk.md](sdk.md)。当前版本 **v2.4.0**。
+> 完整参考（Manifest 全字段 / 事件 / 权限 / 打包 / 超时 / 资源限制 / 13 种语言）见 [plugin-developer-guide.md](../plugins/plugin-developer-guide.md)，
+> 方法 × 权限总表见 [api.md](../reference/api.md)，SDK 全量见 [sdk.md](../reference/sdk.md)。当前版本 **v2.4.0**。
 
 ## 0. 准备（1 分钟）
 
@@ -110,11 +110,11 @@ await event.reply_many(["第一句", "第二句"])             # 一次多条（
 | 读写记忆（`api.get_memory` / `api.write_memory`，过记忆安全闸门） | 指南 §8 / §11 |
 | 请求网页（`api.http_request`：主进程代理 + SSRF 防护，**不能自己开 socket**） | 指南 §8 / §12 |
 | 权限清单与运行时强制点 | 指南 §9 |
-| 生命周期 / 多轮对话 / 定时任务 / KV / 错误处理 | 指南 §6 / §13-15 / §17 + [sdk.md](sdk.md) |
-| 一次发多条（`reply_many` / `send_many`） | 指南 §32 + [sdk.md §4.5](sdk.md#45-多条回复reply_many--send_many) |
+| 生命周期 / 多轮对话 / 定时任务 / KV / 错误处理 | 指南 §6 / §13-15 / §17 + [sdk.md](../reference/sdk.md) |
+| 一次发多条（`reply_many` / `send_many`） | 指南 §32 + [sdk.md §4.5](../reference/sdk.md#45-多条回复reply_many--send_many) |
 | 不用 Python（13 种语言 exec 最小实现，照抄即可） | 指南 §31 |
-| 插件自带管理页面（HTML+CSS，零 JS） | [plugin-webui.md](plugin-webui.md) |
-| 两个插件互相调用 | [plugin-communication.md](plugin-communication.md) |
+| 插件自带管理页面（HTML+CSS，零 JS） | [plugin-webui.md](../plugins/plugin-webui.md) |
+| 两个插件互相调用 | [plugin-communication.md](../plugins/plugin-communication.md) |
 | 打包 / 安装方式 / 超时与资源限制 / 保护级别 | 指南 §19 / §21 / §22-24 |
 
 > 可直接跑的示例：`tests/plugins/doc_example/`（本文示例就是它，有黑盒测试锁住）、`examples/`（Python 与多语言）。

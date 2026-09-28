@@ -69,7 +69,7 @@ git ls-remote --heads https://github.com/LagrangeDev/Lagrange.Milky.git
 
 ## C4. Lagrange.OneBot 的实现源码**不可得** —— 此前文档写错了
 
-此前 [client-compatibility.md](client-compatibility.md) §6.1 写的是「Lagrange.OneBot | C# | **SOURCE_OBTAINED**（同 Lagrange.Core 仓库）| 与 Lagrange.Core 同源」。本轮按任务书 §三「不得假装已经调查」复核，**这条是错的**，可复现证据：
+此前 [client-compatibility.md](../reference/client-compatibility.md) §6.1 写的是「Lagrange.OneBot | C# | **SOURCE_OBTAINED**（同 Lagrange.Core 仓库）| 与 Lagrange.Core 同源」。本轮按任务书 §三「不得假装已经调查」复核，**这条是错的**，可复现证据：
 
 ```text
 $ curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" https://api.github.com/repos/LagrangeDev/Lagrange.OneBot

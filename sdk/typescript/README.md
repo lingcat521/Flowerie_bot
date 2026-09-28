@@ -2,7 +2,7 @@
 
 Flowerie **Plugin Protocol v1** 的 TypeScript 实现。零 npm 依赖，只用 node 内置模块。
 
-- 协议规范：[../../docs/plugin-protocol.md](../../docs/plugin-protocol.md)
+- 协议规范：[../../docs/plugin-protocol.md](../../docs/reference/plugin-protocol.md)
 - 可运行示例：[../../examples/typescript-plugin/](../../examples/typescript-plugin/README.md)
 
 ## 运行方式

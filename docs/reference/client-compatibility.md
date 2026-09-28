@@ -104,7 +104,7 @@ L53-60 → `createSendElements`）**没有**任何拆分 `[CODE]`。Flowerie 因
 
 > Milky 列以 **LLBot 的 Milky 实现**（`~/proto_src/LLBot/src/milky/transform/message/incoming.ts`，252 行）+ 规范 `SaltifyDev/milky` 互证；
 > **更权威的第二来源**是协议作者本人的实现 —— 内嵌在 `Lagrange.Core` / `LagrangeV2` 的 `Lagrange.Milky/`（119 个 .cs；两份副本**布局不同**：
-> V2 `Entity/Segment/` 15 文件 / 13 种段，Core `Models/Segments/` 11 文件 / 10 种段），见 [protocol-reverse-engineering.md](protocol-reverse-engineering.md) §6（早期曾误判「Lagrange.Milky 实现仓库不可得」，实为内嵌 —— 见 source-acquisition.md「状态更正」）。
+> V2 `Entity/Segment/` 15 文件 / 13 种段，Core `Models/Segments/` 11 文件 / 10 种段），见 [protocol-reverse-engineering.md](../reverse-engineering/protocol-reverse-engineering.md) §6（早期曾误判「Lagrange.Milky 实现仓库不可得」，实为内嵌 —— 见 source-acquisition.md「状态更正」）。
 
 | 能力 | Milky 段与字段 [CODE] |
 | :--- | :--- |
@@ -183,13 +183,13 @@ Lagrange 列只有 `[DOC]`（实现源码 **SOURCE_UNAVAILABLE**）：文档只�
 <!-- END GENERATED: milky-matrix -->
 
 Lagrange 的 Milky 实现是**协议作者本人的实现**（内嵌 Lagrange.Core/V2，两份副本段集合不同），LLBot 的是第三方实现 —— 两者在 `mention` 私聊行为与段集合上有差异
-（见 [reverse-engineering/milky/](reverse-engineering/milky/)）。**未调查**的 Milky 客户端不登记，查询得到 UNKNOWN。注意 `at`/`json`/`xml` 等格子是**段名**维度：Milky 的 @ 是 Text 元素属性、JSON 卡片走 `light_app`（§4.1），所以显示 UNKNOWN 而非 SUPPORTED。
+（见 [reverse-engineering/milky/](../reverse-engineering/milky/)）。**未调查**的 Milky 客户端不登记，查询得到 UNKNOWN。注意 `at`/`json`/`xml` 等格子是**段名**维度：Milky 的 @ 是 Text 元素属性、JSON 卡片走 `light_app`（§4.1），所以显示 UNKNOWN 而非 SUPPORTED。
 
 ## 6. 生态覆盖清单（Ecosystem Coverage）
 
 > 由用户提供的 OneBot11 / Milky 生态清单整理而成。**分层判定价值**：协议端（实现端）决定**线上 JSON 形态** → 必须逐个核对 `[CODE]`；SDK / 框架绝大多数只是
 > **消费**同一套形态，不新增 wire 信息（只有 imhelper 这类「统一客户端 SDK」与 adapter-onebot 这类兼容层会暴露字段兼容策略，按需抽查）；工具 / 中间件与协议形态无关。
-> 状态词表与逐仓库明细见 [source-acquisition.md](source-acquisition.md)；**未取得源码的一律标 `NOT_INVESTIGATED`，不假装看过**。
+> 状态词表与逐仓库明细见 [source-acquisition.md](../reverse-engineering/source-acquisition.md)；**未取得源码的一律标 `NOT_INVESTIGATED`，不假装看过**。
 
 ### 6.0 一览（截至 2026-08-09）
 **源码获取**：**15 个仓库 / 369M 已取得**，1 个 `SOURCE_UNAVAILABLE`（OpenShamrock）。**能力覆盖的证据密度**（按 message-model.md §3 的 14 行能力表**逐格统计标注** —— 报告的是标注密度，不是重新审计）：

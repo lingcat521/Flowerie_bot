@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs/api.md"
+OUT = ROOT / "docs/reference/api.md"
 
 GROUPS = {
     "消息": ("send_", "delete_message", "get_message", "get_group_history", "get_context"),

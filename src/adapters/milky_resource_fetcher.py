@@ -4,7 +4,7 @@
     [Api("get_resource_temp_url")]
     GetResourceTempUrlParameter{ resource_id }   （[JsonRequired]）
     GetResourceTempUrlResult{ url }
-（Lagrange.Core 同名 handler 一致；docs/milky-protocol.md 已登记该动作 ↔ OneBot `get_group_res`。）
+（Lagrange.Core 同名 handler 一致；docs/reference/milky-protocol.md 已登记该动作 ↔ OneBot `get_group_res`。）
 
 两步里的"下载"复用注入的 `url_fetcher`（`URLFetcher`），所以本模块同样不 import 网络库。
 """

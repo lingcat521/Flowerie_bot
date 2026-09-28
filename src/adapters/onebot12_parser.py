@@ -12,7 +12,7 @@
   video / file / location / reply …
 - 传输四种：websocket / websocket-reverse / http / http-webhook（specs/connect/communication/）。
 
-与 OneBot 11 的关键差异（详见 docs/onebot12-research.md）：
+与 OneBot 11 的关键差异（详见 docs/reference/onebot12-research.md）：
 - 事件判别从 post_type+message_type/notice_type 变为 type + detail_type + sub_type；
 - 所有 ID 都是字符串（user_id/group_id/message_id），时间戳是 float64；
 - 动作是 action+params（send_msg → send_message），响应多一个 status 与人类可读 message；

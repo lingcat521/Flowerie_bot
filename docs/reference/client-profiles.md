@@ -1,7 +1,7 @@
 # 客户端档案（Client Profiles）
 
 > 实现：`src/adapters/client_profile.py`（档案）+ `src/adapters/onebot_serializer.py` / `milky_serializer.py`（出站序列化）+ `src/adapters/outgoing.py`（按 `CLIENT_PROFILE` 收敛的出站路由）。
-> 分层见 [protocol-implementation.md](protocol-implementation.md)；逐客户端逆向记录 [reverse-engineering/](reverse-engineering/)；矩阵 [client-compatibility.md](client-compatibility.md)；源码获取 [source-acquisition.md](source-acquisition.md)。
+> 分层见 [protocol-implementation.md](protocol-implementation.md)；逐客户端逆向记录 [reverse-engineering/](../reverse-engineering/)；矩阵 [client-compatibility.md](client-compatibility.md)；源码获取 [source-acquisition.md](../reverse-engineering/source-acquisition.md)。
 
 ## 1. 为什么是"档案"而不是"每个客户端一套 Adapter"
 - **协议基线**（`spec`）与**客户端实现**分开：`ONEBOT11_SPEC` 只有规范条文支持的能力；某客户端"多做一点"不污染基线，
@@ -16,7 +16,7 @@
 | onebot11 | **go-cqhttp** | `a5923f1`（archived）| **[CODE]** | 发送侧 case 表 + 上报侧逐字段（见 RE 文档）|
 | onebot11 | **napcat** | `0b4cfe6` | [CODE] | 元素模型/段/合并转发（既有逆向，字段级）|
 | onebot11 | **llbot** | `9f374f6` | [CODE] | OneBot 入站 + `shake` 戳一戳段；其余多格 UNKNOWN |
-| onebot11 | **lagrange** | Lagrange.Doc `98e96e5` | [DOC]（页面自称过时）| 实现源码 **SOURCE_UNAVAILABLE**（HTTP 404，见 [source-acquisition.md](source-acquisition.md) C4）→ 只登记文档给出的 File/Node 段 |
+| onebot11 | **lagrange** | Lagrange.Doc `98e96e5` | [DOC]（页面自称过时）| 实现源码 **SOURCE_UNAVAILABLE**（HTTP 404，见 [source-acquisition.md](../reverse-engineering/source-acquisition.md) C4）→ 只登记文档给出的 File/Node 段 |
 | milky | **spec**（基线）| SaltifyDev/milky `151dd90` | [DOC] | 出站段联合体 10 种（`common.ts` L393-445）；入站段另有一套（market_face/xml/markdown 只在入站）|
 | milky | **lagrange**（协议作者实现）| 内嵌 Lagrange.Core `20c2ba0` / LagrangeV2 `7011cdf` | [CODE] | 两份副本段集合不同（11 vs 15 个文件）；发送响应 `{message_seq, time}` |
 | milky | **llbot** | LLBot `9f374f6` | [CODE] | `mention` 仅群聊；`reply` 需可解析 `message_seq`；响应包封 `{status,retcode,data\|message}` |

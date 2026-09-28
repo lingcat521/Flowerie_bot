@@ -2,7 +2,7 @@
 
 > 任务书：`/storage/emulated/0/协议.txt`（OneBot 11 / Milky 多客户端协议级兼容性扩展）。
 > 本报告给出 §二十一/§二十四 要求的全部量化指标，并把每个结论**归到它实际达到的证据等级**。
-> 配套文档：[client-compatibility.md](client-compatibility.md)（矩阵）、[client-profiles.md](client-profiles.md)（档案）、[protocol-implementation.md](protocol-implementation.md)（分层与耦合度量）、[reverse-engineering/](reverse-engineering/)（逐客户端逆向）。
+> 配套文档：[client-compatibility.md](../reference/client-compatibility.md)（矩阵）、[client-profiles.md](../reference/client-profiles.md)（档案）、[protocol-implementation.md](../reference/protocol-implementation.md)（分层与耦合度量）、[reverse-engineering/](../reverse-engineering/)（逐客户端逆向）。
 
 ## 0. 一页速览
 
@@ -19,7 +19,7 @@
 
 ### 1.1 客户端覆盖（目标 / 实际 / 不可得 / 未知）
 
-任务书 §三/§四 点名 + 既有生态清单（[client-compatibility.md](client-compatibility.md) §6）分成三级来数，**不把"点名"当"已调查"**：
+任务书 §三/§四 点名 + 既有生态清单（[client-compatibility.md](../reference/client-compatibility.md) §6）分成三级来数，**不把"点名"当"已调查"**：
 
 | 级别 | OneBot 11 | Milky |
 | :--- | :--- | :--- |
@@ -65,7 +65,7 @@
 
 | 等级 | 本次达到的结论 |
 | :--- | :--- |
-| **SOURCE VERIFIED** | 17 个客户端/规范仓库已获取并记录 HEAD（[source-acquisition.md](source-acquisition.md)）；2 个项目 SOURCE_UNAVAILABLE（附命令）|
+| **SOURCE VERIFIED** | 17 个客户端/规范仓库已获取并记录 HEAD（[source-acquisition.md](../reverse-engineering/source-acquisition.md)）；2 个项目 SOURCE_UNAVAILABLE（附命令）|
 | **CODE VERIFIED** | go-cqhttp / NapCat / LLBot 的段字段与事件字段（逐文件:行）；Lagrange.Milky 的段模型与发送响应；LLBot-Milky 的出站规则 |
 | **FIXTURE VERIFIED** | 40 个 fixture 全部带 provenance 且被 `test_fixtures_corpus.py` 强制校验（client/status/captured/evidence/note），来源精确到行号 |
 | **UNIT VERIFIED** | 解析器/序列化器/响应解析的单元断言（含未知段、非法段、越界取值）|
@@ -138,7 +138,7 @@
 | `tests/integration/test_milky_real.py`（11 + 1 条）| 运行中的 Milky 协议端 + 访问令牌 | Milky 段/事件/响应逆向 + Lagrange.Milky 实现核对 | 同上 |
 | G5（Milky 多媒体发送：upload → resource_id → send）| 同上 + 真实文件 | 规范与两份实现已读；`uri` 三种写法已确认 | 同上 |
 | G6（实机 Integration Test）| 同上 | 见上 | 同上 |
-| Lagrange.OneBot 源码 | —— | 已穷尽：404 + 组织清单 + 本地 grep（[source-acquisition.md](source-acquisition.md) C4）| 上游仓库不存在 |
+| Lagrange.OneBot 源码 | —— | 已穷尽：404 + 组织清单 + 本地 grep（[source-acquisition.md](../reverse-engineering/source-acquisition.md) C4）| 上游仓库不存在 |
 
 未来有环境后要跑的命令：`FLOWERIE_REAL_ONEBOT_HTTP=... FLOWERIE_REAL_GROUP=... pytest tests/integration -q`（缺失条件由用例自身打印，见 CI 的 SKIPPED 行）。
 
@@ -178,4 +178,4 @@ python3 -c "from src.adapters.client_profile import render_matrix; print(render_
 1. ~~把序列化器接进发送热路径~~ **已完成**：`CLIENT_PROFILE` 开关（`src/config.py:52`，默认空 = 关闭）+ 组合根注入 + 静态接线守卫；
 2. 补齐 LLBot record/video/forward 与 Lagrange.Milky 的 Action 面（把 UNKNOWN 变成有证据的格子）；
 3. 有真机环境后跑 `tests/integration/`（22 条）与 G5/G6，把 BLOCKED 转为 INTEGRATION VERIFIED；
-4. 继续按 [client-profiles.md](client-profiles.md) §5 的清单接入未调查客户端（onebots/Yogurt/…）。
+4. 继续按 [client-profiles.md](../reference/client-profiles.md) §5 的清单接入未调查客户端（onebots/Yogurt/…）。

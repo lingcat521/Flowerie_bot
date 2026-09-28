@@ -1,8 +1,8 @@
 # examples/plugin-webui-test —— Plugin WebUI 专用测试插件
 
 > 任务书《plugin_to_webui》§4 / §5 / §10 / §11 / §12 / §14 / §16 / §17 的专用测试插件。
-> 协议与实现说明：[docs/plugin-webui-protocol.md](../../docs/plugin-webui-protocol.md)、
-> [docs/plugin-webui.md](../../docs/plugin-webui.md)、[docs/plugin-webui-test.md](../../docs/plugin-webui-test.md)。
+> 协议与实现说明：[docs/plugin-webui-protocol.md](../../docs/plugins/plugin-webui-protocol.md)、
+> [docs/plugin-webui.md](../../docs/plugins/plugin-webui.md)、[docs/plugin-webui-test.md](../../docs/plugins/plugin-webui-test.md)。
 
 **一句话**：一个零 JavaScript 的三页 WebUI 插件，用真实 HTML 文件 + 受控模板变量 + 表单 POST，
 把 Browser → Plugin WebUI → Plugin Runtime → Plugin SDK → Core Router → 另一个插件 → 回到页面

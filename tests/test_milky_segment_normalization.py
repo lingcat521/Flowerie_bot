@@ -8,7 +8,7 @@
   `LagrangeV2/Lagrange.Milky/Entity/Segment/`（15 个文件 = 13 种 incoming + 基类/接口，
   **含** face / market_face / xml，**无** markdown）与
   `Lagrange.Core/Lagrange.Milky/Models/Segments/`（11 个文件 = 10 种 incoming，
-  无 face / market_face / xml / markdown）—— 见 docs/protocol-reverse-engineering.md §6.1
+  无 face / market_face / xml / markdown）—— 见 docs/reverse-engineering/protocol-reverse-engineering.md §6.1
 - 字段宽度也不同：V2 的 market_face 只有 `url`、face 只有 `face_id`，规范另有 emoji_id/summary/is_large
 - 映射后的键名与 OneBot 侧同形（复用 onebot_parser 的归一化函数），Assembler 共用一条通路
 """

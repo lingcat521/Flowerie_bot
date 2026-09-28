@@ -1,6 +1,6 @@
 """插件侧 Matcher 装饰器：收集元数据（JSON 可序列化），上报主进程注册。
 
-优先级规则（与主进程一致，见 docs/sdk.md）：数字大者先匹配；
+优先级规则（与主进程一致，见 docs/reference/sdk.md）：数字大者先匹配；
 block=True 命中后阻断同插件后续 Matcher。
 """
 from typing import Any, Callable, Dict, List

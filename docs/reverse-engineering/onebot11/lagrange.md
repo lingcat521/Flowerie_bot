@@ -8,7 +8,7 @@
 | 项 | 值 |
 | :--- | :--- |
 | 目标仓库 | `LagrangeDev/Lagrange.OneBot` |
-| 获取结果 | **SOURCE_UNAVAILABLE**（HTTP 404；详见 [../../source-acquisition.md](../../source-acquisition.md) C4）|
+| 获取结果 | **SOURCE_UNAVAILABLE**（HTTP 404；详见 [../../source-acquisition.md](../source-acquisition.md) C4）|
 | 替代证据 | `LagrangeDev/Lagrange.Doc` `98e96e5`（官方文档仓库，**页面自称已过时**并指向 Apifox）|
 | 同组织的其它仓库 | `Lagrange.Core` / `LagrangeV2`（已获取）—— 但它们**只含 Lagrange.Milky**，grep `onebot` 无有效命中 |
 | 第三方实现 | GitHub 搜索只找到 `HornCopper/Lagrange-Python.OneBot`（第三方）与 `Lagrange.OneBot.DatabaseShift`（迁移工具）→ **不作为证据** |

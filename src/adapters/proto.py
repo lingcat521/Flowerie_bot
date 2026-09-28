@@ -74,7 +74,7 @@ class InternalEvent:
     is_reply_to_bot: bool = False
     has_reply_to_other: bool = False
     has_at_others: bool = False
-    # ---- 归一化段载体（证据见 docs/message-model.md §3；Core 只读这些语义字段）----
+    # ---- 归一化段载体（证据见 docs/reference/message-model.md §3；Core 只读这些语义字段）----
     faces: List[Dict[str, Any]] = field(default_factory=list)     # QQ 表情 / 商城表情（kind 区分）
     pokes: List[Dict[str, Any]] = field(default_factory=list)     # 消息段形态的戳一戳（含 shake）
     files: List[Dict[str, Any]] = field(default_factory=list)     # 文件段（file_id/name/size/url/path）

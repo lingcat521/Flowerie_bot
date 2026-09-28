@@ -95,7 +95,7 @@ pytest -q -rs tests/e2e/test_plugin_chain_engine.py
 4. **`examples/multilang-sdk/{python,typescript,go,rust,java}` 都有 `index` 与 `communication` 两个
    `render: "plugin"` 页面** —— §28 的三条链路（Python→Go / TS→Java / Go→Rust）在 CI 上**真跑**：
    `CI / webui-e2e` 装真 Chromium 后 21 passed（含三条链路），日志见
-   [plugin-webui-report.md](../../docs/plugin-webui-report.md) §3/§6。
+   [plugin-webui-report.md](../../docs/reports/plugin-webui-report.md) §3/§6。
 
 ## 6. CI 阶段（已落地）
 

@@ -4,8 +4,8 @@
 > `src/plugins/protocol.py`（常量与校验）、`src/plugins/runtime.py`（连接与 initialize 协商）、
 > `src/plugins/manager.py`（反向 op 策略）、`src/plugins/runner/python_runner.py`（Python 参考实现）。
 >
-> 相关：[plugin-communication.md](plugin-communication.md)（插件间通信：消息模型/路由/权限/环保护）、
-> [plugin-webui-protocol.md](plugin-webui-protocol.md)（WebUI 三条通道）、
+> 相关：[plugin-communication.md](../plugins/plugin-communication.md)（插件间通信：消息模型/路由/权限/环保护）、
+> [plugin-webui-protocol.md](../plugins/plugin-webui-protocol.md)（WebUI 三条通道）、
 > [plugin-sdk-capabilities.md](plugin-sdk-capabilities.md)（逐语言能力矩阵）。
 > 核对基线：Flowerie **2.3.0**；协议版本常量 `PROTOCOL_VERSION = "1"` / `API_VERSION = "1"`。
 
@@ -72,8 +72,8 @@
 | storage | `storage.set` | `{"key":"note","value":<json>}` → `{"ok":true,"size":N}` |
 | storage | `storage.delete` | `{"key":"note"}` → `{"ok":true,"deleted":true/false}` |
 | storage | `storage.list` | `{"prefix":"no"?}` → `{"ok":true,"keys":[…]}` |
-| webui | `webui.page` / `webui.action` / `webui.asset` | 见 [plugin-webui-protocol.md](plugin-webui-protocol.md) §1 |
-| plugin | `plugin.call` / `plugin.event` / `plugin.cancel` | 见 [plugin-communication.md](plugin-communication.md) §2–§3 |
+| webui | `webui.page` / `webui.action` / `webui.asset` | 见 [plugin-webui-protocol.md](../plugins/plugin-webui-protocol.md) §1 |
+| plugin | `plugin.call` / `plugin.event` / `plugin.cancel` | 见 [plugin-communication.md](../plugins/plugin-communication.md) §2–§3 |
 
 **能力声明两种写法等价**（`protocol.normalize_capabilities` 归一）：方法名列表
 `["config.get","storage.set"]`，或能力分组 `{"config":true,"storage":true}`；不在
@@ -106,7 +106,7 @@
 | 操作级失败 | `{"id":N,"result":{"ok":false,"error":"原因"}}` | 方法认识但这次没成功（key 不存在、值超限、权限未批准） |
 
 插件间调用的结构化错误码（12 个，`{code,message,data}`）见
-[plugin-communication.md](plugin-communication.md) §4。
+[plugin-communication.md](../plugins/plugin-communication.md) §4。
 
 ## 7. 版本协商与能力握手（`protocol.negotiate_initialize`）
 
@@ -141,9 +141,9 @@
 ## 10. 与 WebUI / 插件间通信的关系
 
 WebUI 是 Plugin Protocol 的一部分（不是 Python SDK 的附属）：页面/动作/资源三条通道走**同一套信封**
-与同一套能力声明，不另开进程、不另开端口 —— 协议见 [plugin-webui-protocol.md](plugin-webui-protocol.md)。
+与同一套能力声明，不另开进程、不另开端口 —— 协议见 [plugin-webui-protocol.md](../plugins/plugin-webui-protocol.md)。
 插件间通信同样建立在本协议之上（`plugin.call/event/cancel` 三个方法 + 三个反向 op），
-模型见 `src/plugins/comm.py`，说明见 [plugin-communication.md](plugin-communication.md)。
+模型见 `src/plugins/comm.py`，说明见 [plugin-communication.md](../plugins/plugin-communication.md)。
 
 ## 11. 证据与复现命令
 

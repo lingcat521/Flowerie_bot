@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # 出站段按**哪个客户端档案**收敛（空 = 不收敛，行为与历史一致）：
     #   "go-cqhttp" / "napcat" / "llbot"      → 客户端名（协议按通道推断）
     #   "onebot11:llbot" / "milky:llbot"      → 同名客户端出现在两套协议里时显式写协议
-    # 取值必须是 docs/client-profiles.md 里登记过的客户端；未调查的名字不会做任何收敛（只记一条日志）
+    # 取值必须是 docs/reference/client-profiles.md 里登记过的客户端；未调查的名字不会做任何收敛（只记一条日志）
     CLIENT_PROFILE: str = ""
     MILKY_EVENT_URL: str = "ws://127.0.0.1:8080/event"  # Milky 事件推送 WebSocket
     MILKY_ACCESS_TOKEN: str = ""         # Bearer 鉴权（协议端 access_token）

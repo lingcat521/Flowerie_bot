@@ -83,7 +83,7 @@ CI: success（CI + Acceptance + Push on main 三项）
 | **门槛 4b** 实机验证覆盖率 ≥90% | 🚫 BLOCKED（0%）| 同上 | 同上 |
 | **G7** OpenShamrock | ✅ 按任务书允许的分支结案 | 带 token 查询 `GET /repos/whitechi73/OpenShamrock` → **404**；`/users/whitechi73` → **404**（账号与仓库均已不存在，非鉴权问题）→ `SOURCE_UNAVAILABLE` + 真实原因 + 已完成文档研究（docs/source-acquisition.md）| —— |
 
-BLOCKED 的完整证据链（含每次尝试的命令与返回）记录在 [../protocol-gap-closure.md](../protocol-gap-closure.md) §6。
+BLOCKED 的完整证据链（含每次尝试的命令与返回）记录在 [../protocol-gap-closure.md](../reports/protocol-gap-closure.md) §6。
 
 ### 指标口径（任务书 §19 / §20 / §21）
 

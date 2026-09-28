@@ -1,7 +1,7 @@
 # ADR-008：插件 WebUI —— 从 DSL 迁移到真实 HTML
 
 - **状态**：已实施（Phase 1 核心）｜**日期**：2026-09-25｜**对应任务书**：`web_ui&sdk.txt` 第 1 份（§1–§24）
-- 审计底稿：[../plugin-webui-migration.md](../plugin-webui-migration.md)｜使用文档：[../plugin-webui.md](../plugin-webui.md)
+- 审计底稿：[../plugin-webui-migration.md](../plugins/plugin-webui-migration.md)｜使用文档：[../plugin-webui.md](../plugins/plugin-webui.md)
 
 ## 要回答的问题
 

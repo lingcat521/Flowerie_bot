@@ -1,6 +1,6 @@
 # 📱 花璃 · 安卓 (Termux) 专用安装
 
-> 当前版本 **v2.4.0**。本文是 Termux 部署的**唯一权威步骤**（[README](../README.md) 与 [Release 资产说明](install-release-guide.md) 都指向本文）。
+> 当前版本 **v2.4.0**。本文是 Termux 部署的**唯一权威步骤**（[README](../../README.md) 与 [Release 资产说明](install-release-guide.md) 都指向本文）。
 > 安卓与 PC 的差别：`pydantic-core` 在 Termux 没有匹配 wheel（源码编译需 Rust，极易失败），必须走 Termux 专用源拿预编译包；
 > `aiohttp` / `lxml` 等仍需本地用 clang 编译，耗时数分钟属正常。
 
@@ -109,8 +109,8 @@ termux-wake-lock && nohup bash run.sh >/dev/null 2>&1 &   # run.sh = 崩溃自�
 | 端口占用（3001 / 3000 / 8080） | 改 `.env` 对应端口，NapCat 同步改；Web UI 端口不能与 `WS_PORT` 相同 |
 | 群里不回复 | 先 `@` 测试，再看 `logs/bot.log` 的 `message_send_failed` |
 
-> 其余配置项、Web UI、插件与安全说明见 [配置说明](configuration.md) 与 [文档中心](README.md)。
+> 其余配置项、Web UI、插件与安全说明见 [配置说明](configuration.md) 与 [文档中心](../README.md)。
 
 ---
 
-[← 返回 README](../README.md)
+[← 返回 README](../../README.md)

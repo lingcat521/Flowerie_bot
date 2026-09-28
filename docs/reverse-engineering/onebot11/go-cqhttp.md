@@ -1,7 +1,7 @@
 # go-cqhttp 逆向（OneBot 11 客户端档案）
 
 > 任务书：`/storage/emulated/0/协议.txt` §三/§七/§八/§十三/§十四/§十六/§二十三。
-> 本文件是 **go-cqhttp** 这一列的客户端级事实档案；归一化侧结论见 [../../message-model.md](../../message-model.md)。
+> 本文件是 **go-cqhttp** 这一列的客户端级事实档案；归一化侧结论见 [../../message-model.md](../../reference/message-model.md)。
 
 ## Source
 
@@ -192,4 +192,4 @@
 
 > 每个 fixture 都带 `_provenance{client,version,source,evidence,captured:false}`，`source` 精确到文件与行号。
 > 契约测试（Parse/Normalize/Serialize/Action/Response/Unknown×3）在多客户端矩阵测试里统一驱动，见
-> [../../client-compatibility.md](../../client-compatibility.md) §4。
+> [../../client-compatibility.md](../../reference/client-compatibility.md) §4。
