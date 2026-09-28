@@ -51,16 +51,19 @@
 | 新增测试文件 | 4 个：`test_plugin_legacy_channel_hardening.py`（8 例）、`test_audit_log_rotation.py`（7 例）、`test_budget_precheck.py`（8 例）、`test_persona_request_cache.py`（10 例）、`test_context_backup_async.py`（2 例） |
 | 新增用例总数 | **35 例**（另有 `test_router_regression.py` 追加 2 例预算预检集成用例） |
 | 本轮相关测试 | 196 + 34 + 108 + 64 + 11 passed（配置/插件族、记忆、路由族、AI 族、上下文） |
-| 本地全量（不含 e2e） | 见下（本报告提交前实测） |
-| 失败测试 | 同上（逐条归因见 §6） |
+| 本地全量（不含 e2e，`timeout 1500` 兜底） | **2203 passed / 141 skipped / 1 xfailed / 15 failed**，4 分 16 秒（上一轮基线 2170 passed，本轮 +33，与新增用例数吻合） |
+| 失败测试 | 15 项，与上一轮基线**逐条相同**、无新回归：httpx stub 缺 `MockTransport` 7 项、URL 下载安装需真实网络 5 项、缺 ruby/perl 运行时 2 项、另 1 项同类；CI 的 Acceptance（真环境）为 success |
 
 ## 5. CI
 
 | 提交 | CI | Acceptance | Push on main |
 | :--- | :--- | :--- | :--- |
 | `2e2ffed`（① 旧通道加固） | success | success | success |
-| `40e945e`（② 审计轮转） | **failure**（ruff B007）→ `162adfd` 修复 | failure（同因） | success |
-| `2bdd5b2` / `c05cbe7` / `8ed23d0` | 见仓库 Actions（本报告提交前最后一次代码提交为 `8ed23d0`） | 同左 | 同左 |
+| `40e945e`（② 审计轮转） | **failure**（ruff B007 ×4） | failure（同因） | success |
+| `2bdd5b2`（③ 预算前置） | **failure**（同一批 B007 —— 修复提交在它之后） | failure（同因） | success |
+| `162adfd` + `26d242c`（B007 修复 + 检查器补规则） | success | success | success |
+| `c05cbe7`（④ Persona 请求级缓存） | success | success | success |
+| `8ed23d0`（⑤ 上下文备份线程化，本报告前最后一次代码提交） | 见仓库 Actions（撰写时进行中） | 同左 | success |
 
 > 本轮 CI 只红过一次：`40e945e` 的 4 处 ruff B007（`for i in range(N)` 里未使用 `i`）。已修，并把 B007 补进 `scripts/check_imports.py`（第 8 条规则），全仓 363 个文件 0 问题。
 
@@ -89,7 +92,7 @@
 | Persona request-local cache | ✅（`c05cbe7`） |
 | 安全的阻塞 IO 已处理 | ✅（IO-1；其余逐条在 §6 说明为何不动） |
 | keepalive benchmark 完成 | ✅（结论：不改） |
-| CI / Acceptance 全绿 | 见 §5 与仓库 Actions（`2e2ffed` 已三绿；最后一个提交的结果以 Actions 为准） |
+| CI / Acceptance 全绿 | 见 §5 与仓库 Actions（`2e2ffed` / `26d242c` / `c05cbe7` 已三绿；`8ed23d0` 与报告提交本身以 Actions 为准） |
 | 公开 API 无意外变化 / 默认配置语义无变化 | ✅（§2 逐项核对；配置仅新增 3 项且默认等于旧行为） |
 
 ## 最终输出
