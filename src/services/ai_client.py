@@ -13,6 +13,17 @@ from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
 
+#: 连接池配置（fix.txt ⑥，依据本地合成 benchmark）：
+#: 服务端启用 TCP_NODELAY 时（生产 HTTP 服务的默认配置），keepalive 把 20 次串行请求
+#: 从 412.8 ms 降到 125.5 ms（RTT≈0）、从 1914.4 ms 降到 206.8 ms（RTT=80 ms），
+#: 连接数 20 → 1；服务端未设 NODELAY 时反而更慢（延迟 ACK），故保留 keepalive_expiry=30s
+#: 限制复用，并在服务端显式/静默关闭连接的实验里确认 httpx 会自动新建连接（无错误）。
+HTTP_KEEPALIVE_CONNECTIONS = 5
+HTTP_KEEPALIVE_EXPIRY = 30.0
+HTTP_LIMITS = httpx.Limits(max_connections=5,
+                           max_keepalive_connections=HTTP_KEEPALIVE_CONNECTIONS,
+                           keepalive_expiry=HTTP_KEEPALIVE_EXPIRY)
+
 
 class AIClient:
     def __init__(self, config: Settings, memory_manager: MemoryManager):
@@ -27,7 +38,7 @@ class AIClient:
         self.client = httpx.AsyncClient(
             http2=False,
             timeout=httpx.Timeout(connect=20, read=60, write=20, pool=20),
-            limits=httpx.Limits(max_connections=5, max_keepalive_connections=0),
+            limits=HTTP_LIMITS,
         )
         return self
 

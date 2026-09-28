@@ -162,3 +162,11 @@ class TestIsToxicKeywordBoundary(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_http_keepalive_enabled():
+    """fix.txt ⑥：连接池启用 keepalive（benchmark 支撑），且限制复用窗口。"""
+    from src.services.ai_client import HTTP_KEEPALIVE_CONNECTIONS, HTTP_KEEPALIVE_EXPIRY
+
+    assert HTTP_KEEPALIVE_CONNECTIONS == 5        # 原来 0 = 每次请求新建连接
+    assert HTTP_KEEPALIVE_EXPIRY == 30.0          # 限制复用窗口，避免服务端 idle 超时
