@@ -41,7 +41,7 @@ class TestAuditLogRotation(unittest.TestCase):
     # ---------- 1) 0 = 不轮转（默认行为） ----------
     def test_zero_disables_rotation(self):
         mm = self._mm(0)
-        for i in range(200):
+        for _ in range(200):
             mm._audit("WRITE", 1, 10, "x" * 60)
         self.assertFalse(os.path.exists(self.log + ".1"))
         self.assertFalse(os.path.exists(self.log + ".2"))
@@ -50,7 +50,7 @@ class TestAuditLogRotation(unittest.TestCase):
     # ---------- 2) 小阈值触发轮转 ----------
     def test_small_threshold_triggers_rotation(self):
         mm = self._mm(0.001)                     # ≈1 KB
-        for i in range(60):
+        for _ in range(60):
             mm._audit("WRITE", 1, 10, "y" * 80)
         self.assertTrue(os.path.exists(self.log + ".1"))
         self.assertLess(os.path.getsize(self.log), 1024 * 4)
@@ -58,7 +58,7 @@ class TestAuditLogRotation(unittest.TestCase):
     # ---------- 3) 多次轮转只保留 .1 / .2 ----------
     def test_multiple_rotations_keep_two_archives(self):
         mm = self._mm(0.0004)
-        for i in range(300):
+        for _ in range(300):
             mm._audit("WRITE", 1, 10, "z" * 90)
         self.assertTrue(os.path.exists(self.log + ".1"))
         self.assertTrue(os.path.exists(self.log + ".2"))
@@ -90,7 +90,7 @@ class TestAuditLogRotation(unittest.TestCase):
         mm = self._mm(0.006)
 
         def worker(k):
-            for i in range(25):
+            for _ in range(25):
                 mm._audit("WRITE", k, 10, "c" * 120)
 
         threads = [threading.Thread(target=worker, args=(k,)) for k in range(8)]
