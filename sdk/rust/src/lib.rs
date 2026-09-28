@@ -1,11 +1,11 @@
 
 //! Flowerie Plugin Protocol v1 的 Rust SDK（**零 crate 依赖**，只用 std）。
 //!
-//! 协议规范：docs/plugin-protocol.md。与其它语言示例的行为一致性由
+//! 协议规范：docs/reference/plugin-protocol.md。与其它语言示例的行为一致性由
 //! `tests/test_plugin_sdk_contract.py` 用真进程 + 真管道比对（同一批向量）。
 //!
 //! Plugin-to-Plugin 通信（plugin.call / plugin.emit / plugin.on / plugin.expose /
-//! plugin.cancel）见 docs/plugin-communication.md：语义与其它四种语言完全一致，
+//! plugin.cancel）见 docs/plugins/plugin-communication.md：语义与其它四种语言完全一致，
 //! 唯一出口是引擎的反向 op —— SDK 里没有任何绕过 Core 的直连通道。
 
 use std::cell::RefCell;
@@ -725,7 +725,7 @@ pub fn plugin_dir_from(path: &Path) -> PathBuf {
 
 // ==================== Plugin-to-Plugin 通信（任务书《通信》§五–§二十七） ====================
 //
-// 与其它四种语言 SDK 的语义完全一致（docs/plugin-communication.md §8）：
+// 与其它四种语言 SDK 的语义完全一致（docs/plugins/plugin-communication.md §8）：
 //   * 出站：plugin.call / plugin.emit / plugin.cancel —— 反向 op 交给引擎，经 Core Router 转发；
 //     SDK 里没有任何直连通道（没有 socket / http），权限判定在 Core，SDK 跳不过去。
 //   * 入站：plugin.call / plugin.event / plugin.cancel —— 引擎投递进来的三条方法（§十 不混用）。

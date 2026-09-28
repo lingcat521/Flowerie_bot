@@ -31,7 +31,7 @@ PLUGIN_ID_FALLBACK = "plugin_webui_test"
 PLUGIN_VERSION = "1.0.0"
 SDK_VERSION = "v1（Plugin Protocol v1 / Python Runner）"
 
-#: 声明能力组（runner 展开成方法名集合；未声明的能力引擎绝不调用，见 docs/plugin-webui-protocol.md §4）
+#: 声明能力组（runner 展开成方法名集合；未声明的能力引擎绝不调用，见 docs/plugins/plugin-webui-protocol.md §4）
 PLUGIN_CAPABILITIES = ("context", "config", "permission", "storage", "webui", "plugin")
 
 SETTING_KEYS = ("name", "number", "enabled", "mode")

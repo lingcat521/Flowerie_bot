@@ -2,9 +2,9 @@
  * @flowerie/sdk —— Flowerie Plugin Protocol v1 的 TypeScript / Node.js 实现。
  *
  * 零 npm 依赖：只用 node 内置模块（readline / fs / path）。
- * 协议规范见 docs/plugin-protocol.md；与 Python runner 的行为由
+ * 协议规范见 docs/reference/plugin-protocol.md；与 Python runner 的行为由
  * tests/test_plugin_sdk_contract.py + tests/fixtures/plugin_protocol_vectors.json 交叉验证。
- * Plugin-to-Plugin 通信（任务书《通信》§五-§二十七）见 docs/plugin-communication.md：
+ * Plugin-to-Plugin 通信（任务书《通信》§五-§二十七）见 docs/plugins/plugin-communication.md：
  * plugin.call / plugin.emit / plugin.on / plugin.expose / plugin.cancel，跨语言一律经 Core Router。
  *
  * 运行方式（二选一）：

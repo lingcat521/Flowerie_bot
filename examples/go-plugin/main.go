@@ -1,5 +1,5 @@
 // Go 示例插件：与 Python / TypeScript / Rust / Java 示例**语义完全一致**。
-// 编译运行：run.sh（go build → 执行）；协议规范见 docs/plugin-protocol.md。
+// 编译运行：run.sh（go build → 执行）；协议规范见 docs/reference/plugin-protocol.md。
 package main
 
 import (

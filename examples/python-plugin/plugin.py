@@ -1,6 +1,6 @@
 """Python 示例插件：与 TypeScript/Go/Rust/Java 示例**语义完全一致**（跨语言契约测试对照）。
 
-协议与钩子说明见 docs/plugin-protocol.md；本文件只用到最朴素的钩子（无第三方依赖）。
+协议与钩子说明见 docs/reference/plugin-protocol.md；本文件只用到最朴素的钩子（无第三方依赖）。
 """
 
 

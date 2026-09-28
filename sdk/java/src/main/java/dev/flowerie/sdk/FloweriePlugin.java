@@ -25,10 +25,10 @@ import java.util.regex.Pattern;
 /**
  * Flowerie Plugin Protocol v1 的 Java SDK（**零第三方依赖**，只用 JDK）。
  *
- * <p>协议规范：docs/plugin-protocol.md。与 Python / TypeScript / Go / Rust 示例的行为一致性由
+ * <p>协议规范：docs/reference/plugin-protocol.md。与 Python / TypeScript / Go / Rust 示例的行为一致性由
  * {@code tests/test_plugin_sdk_contract.py} 用真进程 + 真管道比对（同一批向量）。
  *
- * <p>Plugin-to-Plugin 通信（任务书《通信》§五–§二十七，规范：docs/plugin-communication.md）：
+ * <p>Plugin-to-Plugin 通信（任务书《通信》§五–§二十七，规范：docs/plugins/plugin-communication.md）：
  * {@link #call} / {@link #emit} / {@link #on} / {@link #expose} / {@link #cancel} 五个入口，
  * 与 Python / TypeScript / Go / Rust SDK 语义完全一致 —— 出站只走引擎反向 op（没有、也不允许
  * 绕过 Core 的直连通道，§十二/§二十六），失败一律是结构化 {@link PluginCommException}。

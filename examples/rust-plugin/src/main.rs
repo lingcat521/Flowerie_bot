@@ -1,5 +1,5 @@
 // Rust 示例插件：与 Python / TypeScript / Go / Java 示例**语义完全一致**。
-// 编译运行：run.sh（rustc，零 crate 依赖）；协议规范见 docs/plugin-protocol.md。
+// 编译运行：run.sh（rustc，零 crate 依赖）；协议规范见 docs/reference/plugin-protocol.md。
 mod flowerie;
 
 use flowerie::{CallOptions, Context, Json, Plugin};

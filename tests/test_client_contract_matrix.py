@@ -178,7 +178,7 @@ def test_doc_matrix_matches_code(protocol, marker):
 
     from src.adapters.client_profile import render_matrix
 
-    doc = open(os.path.join(ROOT, "docs", "client-compatibility.md"), encoding="utf-8").read()
+    doc = open(os.path.join(ROOT, "docs", "reference/client-compatibility.md"), encoding="utf-8").read()
     pattern = ("<!-- BEGIN GENERATED: %s -->\n(.*?)\n<!-- END GENERATED: %s -->"
                % (marker, marker))
     block = re.search(pattern, doc, re.S)

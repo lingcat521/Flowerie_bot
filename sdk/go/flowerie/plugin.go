@@ -1,6 +1,6 @@
 // Package flowerie 是 Flowerie Plugin Protocol v1 的 Go SDK（零第三方依赖，只用标准库）。
 //
-// 协议规范：docs/plugin-protocol.md。与 Python / TypeScript 示例的行为一致性由
+// 协议规范：docs/reference/plugin-protocol.md。与 Python / TypeScript 示例的行为一致性由
 // tests/test_plugin_sdk_contract.py 用**真进程 + 真管道**比对（同一批向量）。
 //
 // 用法：
