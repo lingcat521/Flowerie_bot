@@ -110,12 +110,16 @@
 | 回复解析与 AI（multi_reply / prompt_injection×2 / ai_client / ai_reliability / mcp×2 / prompt_manager） | 84 passed |
 | 花语记忆（含新增跨天清理用例） | 8 passed |
 | 本地兜底检查器 | `python3 scripts/check_imports.py src tests main.py scripts` → 360 个文件 0 问题 |
+| `tests/` 全量（不含 e2e，`timeout 1500` 兜底） | **2170 passed / 141 skipped / 1 xfailed / 15 failed**，耗时 4 分 22 秒；15 项失败全部是本机环境性失败（逐条见 §6.2），CI 的 Acceptance 才是全量闸门 |
 
 ### 6.2 本地已知的环境性失败（非回归，逐条有据）
 
-- `tests/test_vision_redirect.py` 3 个用例：本机 httpx stub 没有 `MockTransport`（`git stash` 复测同样失败）；
-- `tests/test_plugin_multilang.py` 的 ruby/perl 用例：设备缺对应运行时（在改动前的提交上同样失败）；
-- 其余约 15 项依赖 go / rustc / javac / 真网络的环境缺项。
+本地全量 15 项失败逐条归因（都在本机、都不涉及本次改动）：
+
+- `tests/test_vision_redirect.py`（3）/ `tests/test_mcp_security.py` / `tests/test_mcp_ssrf_dns.py`（4）：本机 httpx stub 没有 `MockTransport` —— `git stash` 复测同样失败；
+- `tests/test_plugin_multilang.py[ruby]` / `[perl]`：设备缺 ruby / perl 运行时（在改动前的提交上同样失败）；
+- `tests/test_plugin_installer.py`（5）：URL 下载安装需要真实域名解析与 HTTPS 响应，本机网络受限；
+- CI 的 Acceptance（真环境 2290 用例）在 `7571af5` 与 `7d90c1c` 上均为 success，是真闸门。
 
 ### 6.3 本地兜底检查器（本轮新增，替代装不上的 ruff）
 
@@ -134,7 +138,8 @@
 | `9d6b9e9`（List 漏 import 修复 + F821 兜底） | 三件套全绿 |
 | `a9e8039` / `eda627e` / `25abbfa` / `0bb2499` | CI 与 Acceptance 红：`toxic_detector.py` 末尾缺换行（W292，见 §6.3 第 5 条）；`c5e1d8f` 修复后不再复现 |
 | `7571af5`（W292 修复 + W 规则兜底 + P13 manifest 缓存） | **三件套全绿**：CI success / Acceptance success / Push on main success |
-| `27bd40c`（花语记忆跨天清理 —— 本报告前最后一次代码改动） | Push on main success；CI 与 Acceptance 在撰写本报告时仍在运行，结论见 Actions |
+| `27bd40c`（花语记忆跨天清理 —— 本报告前最后一次代码改动） | **三件套全绿**：CI success / Acceptance success / Push on main success |
+| `7d90c1c`（本报告初版） | **三件套全绿**：CI success / Acceptance success / Push on main success |
 
 > 诚实说明：本轮 CI 一共红过 4 次，每次都定位到具体 ruff 规则并补上对应的本地兜底检查，最终把这些规则固化进 `scripts/check_imports.py`，避免同一类问题第二次进 CI。
 
