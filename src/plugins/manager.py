@@ -41,8 +41,24 @@ from src.sdk.bot import Bot
 from src.sdk.event import BotEvent
 from src.sdk.matcher import Matcher
 from src.utils.logging_setup import get_logger
+from src.utils.metrics import registry
 
 logger = get_logger(__name__)
+
+#: 旧通道（plugin_call / plugin_event / plugin_service）投递结果计数。
+#: 标签只有 result（ok / timeout / loop / rejected / error），不含插件名与 payload。
+_M_LEGACY_CALLS = registry.counter(
+    "plugin_legacy_calls_total",
+    "旧插件通信通道（plugin_call/plugin_event/plugin_service）投递次数",
+    ("result",))
+
+
+def _payload_hop(payload: dict) -> int:
+    """payload 里插件显式回传的 hop_count（缺省/非法按 0）。"""
+    try:
+        return max(0, int(payload.get("hop_count") or 0))
+    except (TypeError, ValueError):
+        return 0
 
 # 事件类型 → 需要权限（未批准则事件不投递）
 _EVENT_PERMISSION = {"message": "read_message", "group_message": "read_message",
@@ -78,6 +94,8 @@ class PluginManager:
         self._manifest_cache: Dict[str, Optional[PluginManifest]] = {}
         #: pid -> 原始 manifest_json：缓存命中时只比字符串，不再重新序列化 manifest（P13）
         self._manifest_raw: Dict[str, str] = {}
+        #: pid -> 旧通道在途调用深度（SDK 不回传 hop_count 时的环保护兜底，见 _ext_plugin）
+        self._legacy_hop: Dict[str, int] = {}
         self._started = False
         # 本实例（bot）已发送的 message_id 记录：插件只能撤回这些消息（防删他人消息）
         self._sent_message_ids: list = []
@@ -1156,6 +1174,32 @@ class PluginManager:
                 return {"ok": False, "error": f"plugin_test: {type(e).__name__}: {e}"}
         return {"ok": False, "error": f"{action}: 未知语义"}
 
+    def _legacy_call_timeout(self, payload: dict) -> float:
+        """旧通道单次投递超时（秒）：默认 3 = 历史硬编码值，配置缺失时逐级回退。
+
+        插件可在 payload 里请求更短/更长的 timeout，但被
+        PLUGIN_LEGACY_CALL_TIMEOUT（默认 3）与 PLUGIN_LEGACY_CALL_TIMEOUT_MAX
+        （默认 30）夹住；两个配置都不存在时行为与旧版逐字一致（3 秒）。
+        """
+
+        def _num(name: str, fallback: float) -> float:
+            try:
+                value = float(getattr(self.config, name, fallback) or fallback)
+            except (TypeError, ValueError):
+                return fallback
+            return value if value > 0 else fallback
+
+        default = _num("PLUGIN_LEGACY_CALL_TIMEOUT", 3.0)
+        cap = _num("PLUGIN_LEGACY_CALL_TIMEOUT_MAX", 30.0)
+        want = default
+        try:
+            requested = float(payload.get("timeout") or 0)
+            if requested > 0:
+                want = requested
+        except (TypeError, ValueError):
+            pass
+        return max(0.1, min(want, cap))
+
     async def _ext_plugin(self, plugin_id: str, action: str, payload: dict) -> dict:
         """插件运行时语义：调用/事件/服务总线（真投递）+ 发现/健康/配置/重载 + 明确 NS。"""
         NS = {"ws", "sse", "http_middleware"}
@@ -1242,25 +1286,58 @@ class PluginManager:
             row = self.get_plugin(target)
             if not row or not row.get("enabled"):
                 return {"ok": False, "error": f"{action}: 目标插件未启用: {target}"}
+            # 环保护：复用 comm 的 hop 机制（与新通道同一套阈值与判定）。
+            # 插件 SDK 目前不回传 hop_count，所以再用本进程在途深度兜底，取两者较大值；
+            # 正常调用深度远低于 MAX_HOP_COUNT，只有递归/环才会累积到被拦。
+            hop = max(_payload_hop(payload), self._legacy_hop.get(plugin_id, 0))
+            if comm.hop_exceeded(hop):
+                _M_LEGACY_CALLS.inc({"result": "loop"})
+                logger.warning(
+                    "plugin_legacy_call_loop channel=legacy caller=%s target=%s action=%s hop=%d",
+                    plugin_id, target, action, hop)
+                return {"ok": False, "error": f"{action}: 调用链超过最大跳数（hop 保护）"}
+            timeout = self._legacy_call_timeout(payload)
             ev = {"kind": "plugin_call", "caller": plugin_id, "action": action,
                   "name": payload.get("name", ""), "data": payload.get("data") or {},
-                  "trace_id": str(payload.get("trace_id") or "")}
+                  "trace_id": str(payload.get("trace_id") or "") or comm.new_trace_id(),
+                  "hop_count": comm.next_hop(hop)}
             tgt_rt = self._runtimes.get(target)
             if tgt_rt is None:
+                _M_LEGACY_CALLS.inc({"result": "rejected"})
                 return {"ok": False, "error": f"{action}: 目标插件未加载: {target}"}
+            prev_hop = self._legacy_hop.get(target)
+            self._legacy_hop[target] = comm.next_hop(hop)
             try:
                 if not hasattr(tgt_rt, "request") and not hasattr(tgt_rt, "_call_hook"):
+                    _M_LEGACY_CALLS.inc({"result": "rejected"})
                     return {"ok": False, "error": f"{action}: 目标插件不支持事件钩子"}
-                import asyncio
                 res = await asyncio.wait_for(
-                    self._runtime_hook_call(tgt_rt, "on_plugin_event", ev), timeout=3.0)
+                    self._runtime_hook_call(tgt_rt, "on_plugin_event", ev), timeout=timeout)
                 if isinstance(res, dict) and res.get("__error__"):
+                    _M_LEGACY_CALLS.inc({"result": "error"})
+                    logger.warning(
+                        "plugin_legacy_call_error channel=legacy caller=%s target=%s action=%s",
+                        plugin_id, target, action)
                     return {"ok": False, "error": f"{action}: 目标插件错误: {res['__error__']}"}
+                _M_LEGACY_CALLS.inc({"result": "ok"})
+                logger.debug(
+                    "plugin_legacy_call channel=legacy caller=%s target=%s action=%s hop=%d timeout=%.1f",
+                    plugin_id, target, action, hop, timeout)
                 return {"ok": True, "delivered": target, "response": res}
             except asyncio.TimeoutError:
+                _M_LEGACY_CALLS.inc({"result": "timeout"})
+                logger.warning(
+                    "plugin_legacy_call_timeout channel=legacy caller=%s target=%s action=%s timeout=%.1f",
+                    plugin_id, target, action, timeout)
                 return {"ok": False, "error": f"{action}: 目标插件超时"}
             except Exception as e:  # noqa: BLE001
+                _M_LEGACY_CALLS.inc({"result": "error"})
                 return {"ok": False, "error": f"{action}: {type(e).__name__}: {e}"}
+            finally:
+                if prev_hop is None:
+                    self._legacy_hop.pop(target, None)
+                else:
+                    self._legacy_hop[target] = prev_hop
         return {"ok": False, "error": f"{action}: 未知语义"}
 
     async def _ext_memory(self, plugin_id: str, action: str, payload: dict) -> dict:

@@ -243,6 +243,8 @@ class Settings(BaseSettings):
     PLUGIN_URL_TIMEOUT: int = 15           # URL 下载超时（秒）
     PLUGIN_ZIP_MAX_UNZIPPED_BYTES: int = 52428800  # 解压后总大小上限（50MB，防 Zip Bomb）
     PLUGIN_ZIP_MAX_FILES: int = 200        # 包内文件数上限
+    PLUGIN_LEGACY_CALL_TIMEOUT: int = 3    # 旧通道（plugin_call/event/service）单次投递超时（秒，默认=历史硬编码值）
+    PLUGIN_LEGACY_CALL_TIMEOUT_MAX: int = 30  # 旧通道超时上限（插件可在 payload 请求，但不超此值）
 
     # ===== NapCat WebSocket（正向 / 反向 二选一） =====
     # reverse：Flowerie 作为 WS 服务端（NapCat 连接过来，即原有行为）
