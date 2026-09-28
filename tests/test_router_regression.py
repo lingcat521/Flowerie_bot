@@ -7,6 +7,7 @@
 - 戳戳每用户冷却
 """
 import asyncio
+import time
 import unittest
 from types import SimpleNamespace
 
@@ -273,3 +274,71 @@ class TestMessageReplyFlow(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestBudgetPrecheckSkipsQueries(unittest.TestCase):
+    """fix.txt ③：被预算拒绝时不再构建上下文 / 表情包上下文；允许路径行为不变。"""
+
+    @staticmethod
+    def _event(message_id):
+        return {
+            "post_type": "message",
+            "message_type": "group",
+            "group_id": 123,
+            "user_id": 456,
+            "message_id": message_id,
+            "time": 1700000000,
+            "message": [
+                {"type": "at", "data": {"qq": "10001"}},
+                {"type": "text", "data": {"text": "在吗"}},
+            ],
+        }
+
+    def _router_with_spies(self):
+        router, config, ai, sender, mm = build_router()
+
+        class FP(FakeFileParser):
+            def extract_mention_and_text(self, message_array, bot_qq):
+                return "在吗", True
+
+        router.file_parser = FP()
+        calls = {"ctx": 0, "sticker": 0}
+        real_ctx = router.policy_engine.get_context_text
+
+        def ctx_spy(group_id, max_messages=150):
+            calls["ctx"] += 1
+            return real_ctx(group_id, max_messages)
+
+        router.policy_engine.get_context_text = ctx_spy
+
+        class Sticker:
+            def is_enabled(self):
+                return True
+
+            def extract_sticker(self, *args, **kwargs):
+                return None
+
+            def build_sticker_context(self):
+                calls["sticker"] += 1
+                return "表情包上下文"
+
+        router.sticker_manager = Sticker()
+        return router, ai, sender, calls
+
+    def test_rejected_request_skips_context_and_sticker(self):
+        router, ai, sender, calls = self._router_with_spies()
+        # 用户聊天限速必然拒绝：把该用户的上次调用时间设为「刚刚」
+        router.budget.global_state.user_ai_last_call.set(456, time.time())
+        run(router.process_event(self._event(900)))
+        self.assertEqual(calls["ctx"], 0)
+        self.assertEqual(calls["sticker"], 0)
+        self.assertEqual(ai.calls, 0)
+        self.assertEqual(sender.sent, [])
+
+    def test_allowed_request_still_builds_context(self):
+        router, ai, sender, calls = self._router_with_spies()
+        run(router.process_event(self._event(901)))
+        self.assertGreaterEqual(calls["ctx"], 1)
+        self.assertEqual(calls["sticker"], 1)
+        self.assertEqual(ai.calls, 1)
+        self.assertEqual(sender.sent[0][1], "回复内容")

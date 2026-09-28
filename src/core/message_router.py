@@ -373,8 +373,12 @@ class MessageRouter(ReplyDispatchMixin):
             self.policy_engine.update_user_time(user_id, group_id)
 
         # ---------- 调用 AI ----------
-        # 注意：这里不再单独预检查预算——guarded_chat 是唯一准入点，
-        # 避免同一条消息被扣两次预算 / 被自己的用户限速二次拦截
+        # guarded_chat 仍是唯一准入/扣减点；上面那次只读预检只为提前结束，
+        # 不扣预算也不发提示，避免被拒的消息白构建上下文与表情包上下文（fix.txt ③）
+        if not await self.ai_gateway.precheck_allowed(group_id, user_id):
+            logger.info("budget_rejected group=%s user=%s", group_id, user_id, extra={"event": "budget_rejected"})
+            _M_REJECTED.inc({"reason": "budget"})
+            return
         context_text = self.policy_engine.get_context_text(group_id, max_messages=150)
         user_prompt = full_text if full_text.strip() else (
             f"用户刚刚发了一张图片，图片内容：{'; '.join(image_descriptions)}" if image_descriptions else "用户刚刚@了你，但没有说话。"

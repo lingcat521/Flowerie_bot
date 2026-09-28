@@ -59,6 +59,27 @@ class BudgetManager:
             self.global_state.user_ai_last_call.set(user_id, time.time())
         return True, ""
 
+    def peek(self, group_id: int, user_id: int, user_interval: bool = True) -> Tuple[bool, str]:
+        """只读预检：与 check 同一套拒绝条件，但**不消耗预算、不更新任何状态**。
+
+        供上层在构建上下文/表情包之前短路；真正的扣减仍只发生在 check()（唯一扣减点）。
+        跨天时按「已归零的新一天」计算 —— check() 会在真正调用时完成跨天重置。
+        拒绝原因与 check 逐条对应：'' / 'user' / 'global' / 'group'。
+        """
+        today = datetime.now().strftime("%Y-%m-%d")
+        same_day = self.global_state.ai_budget_date == today
+        if user_interval and self.config.USER_AI_CALL_MIN_INTERVAL > 0:
+            last = self.global_state.user_ai_last_call.get(user_id, 0.0)
+            if time.time() - last < self.config.USER_AI_CALL_MIN_INTERVAL:
+                return False, "user"
+        budget_count = self.global_state.ai_budget_count if same_day else 0
+        if self.config.DAILY_AI_CALL_BUDGET > 0 and budget_count + 1 > self.config.DAILY_AI_CALL_BUDGET:
+            return False, "global"
+        gcount = (self.global_state.group_ai_budget_count.get(group_id, 0) if same_day else 0) + 1
+        if self.config.GROUP_DAILY_AI_CALL_BUDGET > 0 and gcount > self.config.GROUP_DAILY_AI_CALL_BUDGET:
+            return False, "group"
+        return True, ""
+
     async def notify_exhausted(self, group_id: int) -> None:
         """额度用尽提示：每天每群最多发一次，避免刷屏。"""
         today = datetime.now().strftime("%Y-%m-%d")

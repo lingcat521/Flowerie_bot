@@ -315,6 +315,15 @@ class AiGateway:
             logger.warning(f"AI 预算/限速拦截: group={group_id} user={user_id} reason={reason}")
         return allowed
 
+    async def precheck_allowed(self, group_id: int, user_id: int) -> bool:
+        """只读准入预检：不消耗预算、不发「额度用尽」提示，供上层在构建上下文前短路。
+
+        与 guarded_chat 内的闸门是同一套拒绝条件（BudgetManager.peek 与 check 逐条对应），
+        真正的扣减与提示仍只发生在 guarded_chat 的闸门里（唯一扣减点）。
+        """
+        allowed, _reason = self.budget.peek(group_id, user_id, user_interval=True)
+        return allowed
+
     async def guarded_is_toxic(self, group_id: int, user_id: int, text: str) -> bool:
         """统一引战检测入口：预算放行才调用 is_toxic()；拦截返回 False（放行消息，宁可漏检不烧钱）。
 
