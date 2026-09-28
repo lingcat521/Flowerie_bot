@@ -111,11 +111,26 @@ def _inline(s: str) -> str:
     return s
 
 
+#: 文档按主题分目录后，render_doc 按 basename 依次在这些子目录里找（仍只认 docs 内的文件）
+_DOC_SUBDIRS = ("", "guides", "reference", "plugins", "features", "reports",
+                "architecture", "reverse-engineering", "archive")
+
+
 def render_doc(rel_md: str) -> str:
-    """读 docs 内 markdown 文件并渲染（受控：仅 docs 目录 basename）。"""
+    """读 docs 内 markdown 文件并渲染（受控：仅 docs 目录 basename，不接受路径穿越）。
+
+    调用方只给文件名（如 ~~quick-start.md~~）；函数丢弃 rel_md 里的任何目录成分，
+    再在 docs 及其主题子目录里按 basename 查找 —— 这样文档重排后调用方无需改动。
+    """
     import os
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-    path = os.path.join(root, "docs", os.path.basename(rel_md))
-    if not os.path.isfile(path):
+    base = os.path.basename(rel_md)
+    path = ""
+    for sub in _DOC_SUBDIRS:
+        candidate = os.path.join(root, "docs", sub, base) if sub else os.path.join(root, "docs", base)
+        if os.path.isfile(candidate):
+            path = candidate
+            break
+    if not path:
         return "<p>文档不存在</p>"
     return render_md(open(path, encoding="utf-8").read())
