@@ -109,6 +109,8 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "MEMORY_TTL_DAYS": ("Memory", "int", False, True, "用户原话记忆保留天数（0=永久）"),
     "MODEL_MEMORY_TTL_DAYS": ("Memory", "int", False, True, "AI 推断记忆保留天数（0=跟随）"),
     "AUDIT_LOG_PATH": ("Memory", "str", False, False, "审计日志路径（需重启）"),
+    "AUDIT_LOG_MAX_MB": ("Memory", "int", False, True,
+                         "审计日志轮转上限（MB）；0=不轮转（默认）"),
     "MEMORY_DISABLED_GROUPS": ("Memory", "list-int", False, True, "禁用记忆的群号（逗号分隔）"),
     # ---------- 表情包 ----------
     "STICKER_ENABLED": ("Sticker", "bool", False, True, "表情包功能开关"),
@@ -334,6 +336,7 @@ _RANGES = {
     "PLUGIN_MAX_COUNT": (1, 100000),
     "PLUGIN_URL_MAX_BYTES": (1024, 104857600),
     "PLUGIN_URL_TIMEOUT": (1, 300),
+    "AUDIT_LOG_MAX_MB": (0, 102400),
     "PLUGIN_LEGACY_CALL_TIMEOUT": (1, 300),
     "PLUGIN_LEGACY_CALL_TIMEOUT_MAX": (1, 600),
     "PLUGIN_ZIP_MAX_UNZIPPED_BYTES": (1024, 1048576000),

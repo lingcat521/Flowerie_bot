@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import re
+import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -42,7 +43,7 @@ class MemoryManager:
 
     def __init__(self, memory_path: str, ttl_days: int = 0, audit_log_path: Optional[str] = None,
                  model_memory_ttl_days: int = 30, repository: Optional[MemoryRepository] = None,
-                 memory_enabled: bool = True):
+                 memory_enabled: bool = True, audit_max_mb: float = 0):
         # MEMORY_ENABLED 开关：关=不读/写长期记忆（短期 Context 不受影响）
         self._enabled = bool(memory_enabled)
         self.memory_path = memory_path
@@ -50,6 +51,13 @@ class MemoryManager:
         self.ttl_days = max(0, int(ttl_days or 0))
         self.model_memory_ttl_days = max(0, int(model_memory_ttl_days or 0))
         self.audit_log_path = audit_log_path
+        # 审计日志轮转上限（MB）：0（默认）= 不轮转，行为与历史版本一致
+        try:
+            self.audit_max_mb = max(0.0, float(audit_max_mb or 0))
+        except (TypeError, ValueError):
+            self.audit_max_mb = 0.0
+        #: 轮转与追加互斥（记忆写入可能发生在 to_thread 里，不能只靠 GIL）
+        self._audit_lock = threading.Lock()
         # 存储层注入：默认 SQLite；测试或未来替换可传其他实现
         self.repository: MemoryRepository = repository or SQLiteMemoryRepository(self.db_path)
         self._migrate_from_json()
@@ -158,10 +166,39 @@ class MemoryManager:
                 os.makedirs(dirname, exist_ok=True)
             ts = time.strftime("%Y-%m-%d %H:%M:%S")
             line = f"[{ts}] {action} user={user_id} group={group_id} text={text!r}\n"
-            with open(self.audit_log_path, "a", encoding="utf-8") as f:
-                f.write(line)
+            with self._audit_lock:
+                self._rotate_audit_if_needed()
+                with open(self.audit_log_path, "a", encoding="utf-8") as f:
+                    f.write(line)
         except Exception as e:
             logger.error("审计日志写入失败: %s", e)
+
+    def _rotate_audit_if_needed(self) -> None:
+        """按 AUDIT_LOG_MAX_MB 轮转审计日志；0（默认）= 完全关闭，保持历史行为。
+
+        滚动 audit.log → .1 → .2（最多两份归档），用 os.replace 原子改名，因此不会
+        丢正在写入的记录；超过两份时删除最旧的，磁盘占用有界。
+        轮转失败只记 warning，绝不影响记忆写入主流程（调用方已包在 try 里）。
+        """
+        if self.audit_max_mb <= 0:
+            return
+        path = self.audit_log_path
+        limit = self.audit_max_mb * 1024 * 1024
+        try:
+            if os.path.getsize(path) < limit:
+                return
+        except OSError:
+            return                      # 文件还不存在（首次写入）→ 无需轮转
+        try:
+            oldest = path + ".2"
+            if os.path.exists(oldest):
+                os.remove(oldest)
+            if os.path.exists(path + ".1"):
+                os.replace(path + ".1", oldest)
+            os.replace(path, path + ".1")
+            logger.info("audit_log_rotated path=%s max_mb=%s", path, self.audit_max_mb)
+        except OSError as e:
+            logger.warning("audit_log_rotate_failed path=%s err=%s", path, e)
 
     # ---------- 查询 ----------
     def get_user_memory(self, user_id: int, group_id: int) -> Dict:

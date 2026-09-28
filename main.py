@@ -93,7 +93,7 @@ async def main():
     else:
         memory_repo = None
     memory_manager = MemoryManager(config.MEMORY_PATH, config.MEMORY_TTL_DAYS, config.AUDIT_LOG_PATH, config.MODEL_MEMORY_TTL_DAYS, memory_enabled=config.MEMORY_ENABLED,
-                                   repository=memory_repo)
+                                   repository=memory_repo, audit_max_mb=config.AUDIT_LOG_MAX_MB)
 
     # ---- 花语记忆（BlossomMemory）：默认 OFF——不初始化任何模型资源（embedding/reranker/向量库）
     blossom_memory = None

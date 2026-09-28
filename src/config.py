@@ -185,6 +185,7 @@ class Settings(BaseSettings):
     ARCHIVE_RETENTION_DAYS: int = 0        # 存档保留天数（0=永久；>0 自动清理过期文件）
     ARCHIVE_MAX_SIZE_MB: int = 0           # 每群存档目录总大小上限 MB（0=不限；超出删最旧）
     AUDIT_LOG_PATH: str = "./data/audit.log"
+    AUDIT_LOG_MAX_MB: int = 0                # 审计日志轮转上限（MB）；0=不轮转（默认，保持历史行为）
     # 应用设置库（自定义 Prompt / Web UI 可编辑配置），SQLite
     SETTINGS_DB_PATH: str = "./data/settings.db"
     # 表情包（Sticker）：目录由环境变量指定，空=禁用；Vision 索引缓存于 SQLite
