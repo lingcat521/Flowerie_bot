@@ -1,6 +1,6 @@
 # 安全模型（Security Model）
 
-> 当前版本 **v2.3.0**。本文只列**代码里真实存在的防线**（每条都给实现位置）；插件开发侧的接口规范见
+> 当前版本 **v2.4.0**。本文只列**代码里真实存在的防线**（每条都给实现位置）；插件开发侧的接口规范见
 > [plugin-developer-guide.md](plugin-developer-guide.md)，方法 × 权限总表见 [api.md](api.md)，
 > 2026-09 Code Scanning 逐条判定与证据见 [archive/code-scanning-report.md](archive/code-scanning-report.md)。
 

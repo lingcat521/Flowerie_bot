@@ -1,6 +1,6 @@
 # 配置说明
 
-> 当前版本 **v2.3.0**。优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
+> 当前版本 **v2.4.0**。优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
 > Web UI 保存 = 写回项目根 `.env`（原子更新、保留注释与原有变量）+ 同步 `data/settings.db`，重启后仍优先生效。
 
 - **首次启动**（项目根无 `.env`）自动释放完整模板：`main.ensure_env_template()` → `src/services/env_template.py`，

@@ -1,6 +1,6 @@
 # 插件开发者指南（Plugin API v1 · 完整参考）
 
-> 适用版本 **2.3.0** · 协议 `api_version = "1"` · 新手先看 [quick-start.md](quick-start.md)
+> 适用版本 **2.4.0** · 协议 `api_version = "1"` · 新手先看 [quick-start.md](quick-start.md)
 >
 
 > 这是插件作者的**唯一完整参考**：读完即可写插件，不必读源码。本文所有字段名、方法名、上限与错误码

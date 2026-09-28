@@ -1,4 +1,4 @@
-# Flowerie Bot SDK 开发手册（Plugin API v1 · 版本 2.3.0）
+# Flowerie Bot SDK 开发手册（Plugin API v1 · 版本 2.4.0）
 
 > 讲 **`flowerie_sdk` 这一层怎么用**。运行时与协议（Manifest / 生命周期 / 打包 / 任意语言）见 [plugin-developer-guide.md](plugin-developer-guide.md)，
 > 协议本身见 [plugin-protocol.md](plugin-protocol.md)，多语言总览见 [plugin-sdk.md](plugin-sdk.md)。所有 API 名都对着 `plugin_sdk/flowerie_sdk/` 核实过；

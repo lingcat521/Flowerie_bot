@@ -4,6 +4,73 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.4.0] - 2026-09-29
+
+> 本版为**工程质量版本（MINOR bump）**：一轮结构重构（上帝类拆分 + 死代码清理 + 有证据的
+> 性能优化）与一轮加固（旧插件通道防护 + 审计日志轮转 + 热点路径优化）。
+> 兼容性：默认行为、公开 SDK API、插件权限语义、AI 预算/重试/熔断语义全部保持；
+> 配置项只做加法（新增 3 项，默认值等于旧行为）。
+
+### 修复 —— 用户可见缺陷
+
+- **群特色昵称 / 群专属发言规则恢复生效**：此前判断取的是 `kwargs.get("group_id")`，
+  而 `group_id` 是 `guarded_chat` 的位置参数 → 两处判断恒假，功能实际不可用。
+- **WebUI 4 条断链**：`group_style_rules` 未注入 `WebUIServer`；`POST /panel/nicknames` 与
+  `POST /panel/knowledge/config` 无路由；插件 DSL 的默认 `/panel/plugin-actions` 无路由。
+  同时给两个未鉴权的 panel handler 补上 `_check_token`（此前未登录也能提交表单）。
+- **`received_messages_total` 同名不同 schema 的重复注册**不再吞掉 `post_type` 标签。
+- **`runtime.py` 两处裸 `create_task`** 改为登记引用 + 关闭时 cancel/await
+  （消除 `Task was destroyed but it is pending!`）。
+- `webui_render/__init__.py` 的 `__all__` 补上未导入的 `hex_to_rgb`（`import *` 不再 AttributeError）。
+- 花语记忆每日计数跨天清理：`(group_id, date)` 键不再单调增长。
+
+### 加固 —— 旧插件通信通道
+
+- **hop 环保护**：`plugin_call / plugin_event / plugin_service` 复用 Core Router 同一套 hop 机制
+  （`MAX_HOP_COUNT=8`），不再只有「不能调用自身」一层防护；A→B→A 之类的递归会被拦下。
+- **超时可配置 / 可协商**：`PLUGIN_LEGACY_CALL_TIMEOUT`（默认 **3**，等于历史硬编码值）、
+  `PLUGIN_LEGACY_CALL_TIMEOUT_MAX`（默认 30）；插件可在 payload 里请求更短/更长的超时。
+- **可观测**：`plugin_legacy_calls_total{result}` 指标 + `loop / timeout / error` 三类日志（不含 payload）。
+
+### 新增 —— 配置项
+
+| 配置项 | 默认值 | 说明 |
+| :--- | :--- | :--- |
+| `AUDIT_LOG_MAX_MB` | `0` | 审计日志轮转上限（MB）；0 = 不轮转（与旧版一致），>0 时 `audit.log → .1 → .2` 原子滚动 |
+| `PLUGIN_LEGACY_CALL_TIMEOUT` | `3` | 旧插件通道单次投递超时（秒） |
+| `PLUGIN_LEGACY_CALL_TIMEOUT_MAX` | `30` | 旧插件通道超时上限（秒） |
+
+### 性能 —— 每条都有 benchmark 或调用次数对比
+
+- **上下文崩溃备份移出事件循环**：200 群 × 50 条规模下，同步全表重写 **407.5 ms → 0 ms 阻塞**
+  （改 `asyncio.to_thread` + 串行锁；期间 1 ms ticker 推进 578 次）。
+- **预算闸门前置**：被预算/限速拒绝的请求不再构建上下文与表情包上下文（各 1 次查询 → **0 次**）。
+- **请求级 Persona 缓存**：一次逻辑请求的人格解析由 2 轮降为 **1 轮**（每轮最多 4 次 SQLite），
+  仅请求内复用，Web UI 改人格后下次请求即生效。
+- **HTTP keepalive 启用**（`max_keepalive_connections` 0 → 5，`keepalive_expiry=30s`）：
+  服务端设 `TCP_NODELAY` 时，20 次串行请求 412.8 → **125.5 ms**（RTT≈0）、1914.4 → **206.8 ms**（RTT=80ms）。
+- 引战关键词表预计算（每次检测省 42.9 µs）、`_manifest_of` 缓存命中不再重新序列化（16.82 µs → 0）。
+
+### 重构 —— 结构与死代码（等价性证据见 `docs/architecture/refactor-final-report.md`）
+
+- `PluginManager`：WebUI 宿主搬到 `src/plugins/webui_host.py`（540 行）、定时任务搬到
+  `src/plugins/scheduler.py`；`context_manager.py` 307 → 154 行（备份存储层独立）。
+- 新增 `src/services/reply_parser.py`、`src/services/privacy_archive.py`、`src/core/context_backup.py`。
+- 删除 `old_ai_tmp.py`（762 行，拆分前的旧单体）、`src/utils/logger.py`、`AiGuardMixin` 等
+  一批零引用代码；删除均先查引用链。
+
+### 工具
+
+- 新增 `scripts/check_imports.py`：本地兜底检查器（import 组序 / F401 / F811 / F821 / 行尾与末尾换行 /
+  B007），覆盖本机装不上 ruff 的场景；全仓 363 个文件 0 问题。
+
+### 测试
+
+- 本地全量：**2203 passed / 141 skipped / 1 xfailed**（15 项失败为本机环境缺项：httpx stub、
+  ruby/perl 运行时、需真实网络的 URL 安装，与基线逐条相同）。
+- CI 三件套（`CI` / `Acceptance` / `Push on main`）全绿。
+
+
 ## [2.3.0] - 2026-09-26
 
 > 本版为**功能版本（MINOR bump）**：插件平台第二阶段（多语言 SDK 实测 + 插件间通信 + Plugin WebUI）、

@@ -22,7 +22,7 @@
 ---
 ## 这是什么
 
-**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.3.0**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.4.0**）。
 
 - **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
