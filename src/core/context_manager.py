@@ -1,3 +1,4 @@
+import asyncio
 import random
 import time
 from typing import Dict
@@ -139,15 +140,30 @@ class ContextManager:
         except Exception as e:
             logger.error(f"加载上下文备份失败: {e}")
 
+    def _backup_save_lock(self) -> asyncio.Lock:
+        """备份保存锁（惰性创建：Python 3.9 的 asyncio.Lock 构造时会绑定事件循环）。
+
+        历史实现是同步保存 —— 天然串行；改成线程池后用它保持同样的串行语义，
+        避免两次全表重写交错（SQLite 事务虽然安全，但交错会让中间态不可预测）。
+        """
+        lock = getattr(self, "_backup_lock", None)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._backup_lock = lock
+        return lock
+
     async def save_context_backup(self) -> None:
         """把每群最近 50 条上下文 + 最近 200 条已处理消息 id 写入 SQLite（单事务全量重写）。
 
         已处理消息 id 一起持久化：崩溃重启后 NapCat 重投旧消息时不会重复回复。
+        同步 SQLite 全表重写放线程池执行，事件循环不被阻塞（fix.txt ⑤ IO-1）。
         """
         try:
             snapshot = {gid: (list(st.context)[-50:], list(st.processed_msg_ids)[-200:])
                         for gid, st in self.groups.items()}
-            if self._backup.save(snapshot):
+            async with self._backup_save_lock():
+                written = await asyncio.to_thread(self._backup.save, snapshot)
+            if written:
                 logger.debug(f"上下文备份已保存: {len(self.groups)} 个群")
         except Exception as e:
             logger.error(f"保存上下文备份失败: {e}")
