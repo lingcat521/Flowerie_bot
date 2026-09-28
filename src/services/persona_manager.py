@@ -78,12 +78,26 @@ class PersonaManager:
         return seeded
 
     # ---------- 生效解析（动态决定，不写入任何长期存储） ----------
-    def resolve_persona(self, group_id: Optional[int] = None) -> Optional[dict]:
+    def resolve_persona(self, group_id: Optional[int] = None,
+                        cache: Optional[dict] = None) -> Optional[dict]:
         """解析某群当前生效人格（Group > Global > 内置默认）。
 
         默认人格 id 动态读取：注入 config 时以 PERSONA_DEFAULT 当前值为准
         （Web UI 热更新立即生效），否则用构造时快照。
+
+        cache：**请求作用域**缓存（调用方在一次逻辑请求内传同一个 dict 复用）。
+        它只是一个普通 dict，不跨请求共享 —— 下一次请求仍会重新解析，
+        所以 Web UI 改了人格后「下次请求就生效」的语义完全不变。
         """
+        if cache is not None and group_id in cache:
+            return cache[group_id]
+        persona = self._resolve_persona_uncached(group_id)
+        if cache is not None:
+            cache[group_id] = persona
+        return persona
+
+    def _resolve_persona_uncached(self, group_id: Optional[int] = None) -> Optional[dict]:
+        """实际解析：一次最多 2~4 次 SQLite 查询（结果由 resolve_persona 的请求级缓存复用）。"""
         if group_id is not None:
             pid = self.repository.get_group_persona_id(group_id)
             if pid:
@@ -107,12 +121,14 @@ class PersonaManager:
                 return p
         return None
 
-    def resolve_persona_id(self, group_id: Optional[int] = None) -> Optional[str]:
-        persona = self.resolve_persona(group_id)
+    def resolve_persona_id(self, group_id: Optional[int] = None,
+                           cache: Optional[dict] = None) -> Optional[str]:
+        persona = self.resolve_persona(group_id, cache=cache)
         return persona["id"] if persona else None
 
-    def resolve_persona_name(self, group_id: Optional[int] = None) -> str:
-        persona = self.resolve_persona(group_id)
+    def resolve_persona_name(self, group_id: Optional[int] = None,
+                             cache: Optional[dict] = None) -> str:
+        persona = self.resolve_persona(group_id, cache=cache)
         return (persona or {}).get("name") or self.default_persona_id
 
     # ---------- 组合（人格块 → system prompt 的一部分） ----------

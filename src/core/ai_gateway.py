@@ -137,8 +137,11 @@ class AiGateway:
         )
         _M_AI_REQ.inc()  # logical request 计数
         # 人格解析（动态决定，绝不写入记忆/上下文；Group > Global > 内置默认）
+        # 请求级缓存：一次逻辑请求（含其重试）内只解析一次，避免同一请求重复查 SQLite；
+        # 它是本函数的局部 dict，不跨请求共享，热更新语义不变（fix.txt ④）
+        persona_cache: dict = {}
         if self.persona_manager is not None and group_id:
-            persona = self.persona_manager.resolve_persona(group_id)
+            persona = self.persona_manager.resolve_persona(group_id, cache=persona_cache)
             if persona:
                 persona_text = self.persona_manager.compose_system_prompt(persona)
                 # 管理员补充发言规则（优先级：安全策略 > 人格 > 人格内置规则 > 本条；
@@ -194,7 +197,7 @@ class AiGateway:
             # 必须用上面已回退好的 _gid，不能只看 kwargs["group_id"]（那会让整段恒不生效）。
             if _ns is not None and _gid is not None:
                 _pid = kwargs.pop("persona_id", None) or (
-                    self._persona_manager().resolve_persona_id(_gid)
+                    self._persona_manager().resolve_persona_id(_gid, cache=persona_cache)
                     if callable(getattr(self, "_persona_manager", None)) else None)
                 kwargs["bot_nickname"] = _ns.get(_gid, _pid)
                 kwargs["default_nickname"] = _ns.default
