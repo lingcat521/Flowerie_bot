@@ -19,6 +19,8 @@
 用法：python3 scripts/check_imports.py [文件或目录...]（缺省扫 src/ + tests/ + main.py）
 退出码 1 = 有违规。刻意不检查「同组多余空行」与「import 是否排序」（与 ruff 判定不一致、
 误报率高）；本脚本只挡已知会红的四类。
+7) 行尾空白 / 空行含空白 / 文件末尾缺换行符或多空行（W291 / W293 / W292 / W391）—— 脚本生成的源码最容易踩 W292（2026-09-27 toxic_detector.py 实际踩到）；
+8) 循环变量在循环体内未被使用、且不以 _ 开头（B007）—— 2026-09-28 审计日志轮转用例实际踩到（for i in range(N) 里其实只用 _）。
 """
 import ast
 import builtins
@@ -261,6 +263,30 @@ def whitespace_problems(text: str):
     return problems
 
 
+def unused_loop_vars(tree):
+    """B007：循环变量在循环体内未被使用，且不以 _ 开头。"""
+    problems = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.For, ast.AsyncFor)):
+            continue
+        target = node.target
+        names = []
+        if isinstance(target, ast.Name):
+            names.append(target)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            names.extend(e for e in target.elts if isinstance(e, ast.Name))
+        if not names:
+            continue
+        used = {n.id for n in ast.walk(node)
+                if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+        for name in names:
+            if name.id.startswith("_"):
+                continue
+            if name.id not in used:
+                problems.append("L%d: 循环变量 %s 未被使用（B007）" % (node.lineno, name.id))
+    return problems
+
+
 def main():
     args = sys.argv[1:] or [os.path.join(ROOT, "src"), os.path.join(ROOT, "tests"),
                             os.path.join(ROOT, "main.py"), os.path.join(ROOT, "scripts")]
@@ -286,7 +312,7 @@ def main():
             continue
         for p in (order_problems(tree) + unused_imports(f, tree, text)
                   + scoped_import_problems(f, tree, text) + undefined_name_problems(tree)
-                  + whitespace_problems(text)):
+                  + whitespace_problems(text) + unused_loop_vars(tree)):
             print("%s: %s" % (os.path.relpath(f, ROOT), p))
             bad += 1
     print("检查 %d 个文件；问题 %d 处" % (len(files), bad))
