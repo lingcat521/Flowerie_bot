@@ -277,7 +277,7 @@ def import_sort_problems(tree, source_lines=()):
             continue
         group = kind(module.lstrip("."))
         if prev is not None and group == prev[3]:
-            prev_line, prev_from, prev_module = prev[0], prev[1], prev[2]
+            prev_from, prev_module = prev[1], prev[2]
             bad = None
             if prev_from and not is_from:
                 bad = "straight import 必须排在 from-import 之前"
