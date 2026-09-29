@@ -107,9 +107,14 @@ fail-fast 覆盖：未知 type、缺必填字段、header 名不合法（限 `[A
 
 ## 9. 测试结果
 
-- 本机（真 pydantic 2.12.5 + 真 httpx 0.28.1）：MCP/SDK 族 `192 passed, 12 skipped`（skip = 本机缺 go/rustc/javac 工具链，CI 上全跑）；
-- 全量：见本报告提交时的 CI 快照（`CI` / `Acceptance` 两个 workflow）；
-- CI 修复过程中的三类真回归都被自检脚本补成了规则：I001 组内乱序、重导出块排序 + 注释空行、Rust `as_arr` 访问器（`scripts/check_imports.py` 现在 382 文件 0 问题）。
+| 范围 | 命令 | 结果 |
+| :--- | :--- | :--- |
+| MCP/SDK 族（本机，真 pydantic 2.12.5 + 真 httpx 0.28.1） | `pytest tests/test_mcp*.py tests/test_sdk_mcp.py` | **192 passed, 12 skipped**（skip = 本机缺 go / rustc / javac，CI 上真编译真跑） |
+| 全量（本机） | `pytest -q -rs` | **2340 passed, 2 failed, 169 skipped, 1 xfailed**（346s）——2 个失败是 `test_multilang_minimal_plugin[ruby\|perl]` 的插件启动超时，属本机环境问题（与本次改动无关，CI 绿） |
+| 静态自检 | `scripts/check_imports.py` | 382 文件 0 问题（本次新增 I001 组内乱序 / 重导出注释空行 / from-import 成员排序三条规则） |
+| CI（`eeb42a6`） | workflow `CI` + `Acceptance` | **7/7 success**：Analyze ×3 · test (3.9) · test (3.12) · webui-e2e（五语言示例真编译真跑）· accept（五语言契约 + 多语言链路） |
+
+CI 修复过程中抓出的三类真问题都被补成了本地规则，避免同类再漏：I001 组内乱序；重导出块顺序 + 注释前空行；from-import 成员名排序（order_by_type）。另有 Rust `Json::as_arr` 访问器写错，属编译期错误，由 `webui-e2e` 与 `accept` 的首轮红暴露。
 
 ## 10. 已知缺口
 
