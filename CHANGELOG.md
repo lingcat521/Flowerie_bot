@@ -4,6 +4,60 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.5.0] - 2026-09-30
+
+> 本版为**功能版本（MINOR bump）**：MCP 认证能力升级（五种认证方式 + 全链路脱敏）与一轮
+> 生产接线闭合（Blossom Memory 的 PostgreSQL 后端、多实例适配器装配层）。
+> 兼容性：旧 `MCP_SERVERS` 配置**零迁移继续可用**，`MCP_ENABLED` 与 legacy 单 server 字段不变，
+> 公开 SDK API 只做加法；配置项新增 5 项（默认空 = 旧行为）。
+
+### 新增 —— MCP 认证（五语言 SDK 同步）
+
+- **五种认证**：无认证 / `bearer` / `api_key`（自定义 header 名，缺省 `X-API-Key`）/
+  `header`（自定义 name+value）/ `basic`；每个 server 内嵌 `auth` 对象
+  （`{"type":"bearer","token":"…"}`），缺省或 `null` = 无认证。
+- **fail-fast**：未知 type、缺必填字段、header 名非法、header 值含 CR/LF/NUL、覆盖协议保留头
+  → 启动即报错，绝不静默降级为「无认证照常连」。
+- **注入点唯一**：`initialize` / `tools/list` / `tools/call` 与 session 后续请求全部经
+  `McpClient._rpc` 的 `headers = self._auth.apply(headers)`；认证层覆盖同名普通 header。
+- **单 server 环境变量兼容**：`MCP_AUTH_TYPE` / `MCP_AUTH_TOKEN` / `MCP_AUTH_HEADER` /
+  `MCP_AUTH_USERNAME` / `MCP_AUTH_PASSWORD`（`MCP_SERVERS` 为空时生效）。
+- **五语言 SDK facade**：`bot.mcp`（Python）· `ctx.mcp`（TypeScript）· `ctx.MCP()`（Go）·
+  `ctx.mcp()`（Rust）· `ctx.mcp()`（Java）→ `servers / tools / call / status / auth`；
+  认证状态只回 `none` / `configured` / `error`（运行期 `authenticated` 由 `status` 给出），
+  **任何语言都拿不到 token / password**。
+
+### 安全
+
+- 凭据只出现在请求头：**不进 URL、不进日志与错误信息、不进插件 SDK 返回值**；
+- Web UI 默认掩码 `********`，编辑时**留空 = 保持原值**，显式勾选才删除；
+- 自定义 header 名/值做 CRLF / Header Injection 校验，并禁止覆盖 `Content-Type` /
+  `Accept` / `Content-Length` / `Host` / `Mcp-Session-Id`；
+- SSRF 与权限校验一个都没放松：回环地址仍需 `MCP_ALLOWED_HOSTS` 白名单，
+  `mcp_*` 动作仍需 `http_request` 权限；插件拿不到凭据、也改不了认证配置。
+
+### 修复 —— 生产接线（从生产副作用反向验证）
+
+- **Blossom Memory 的 PostgreSQL 后端接上了**：此前 `STORAGE_BACKEND=postgres` 时花语记忆
+  仍会自建 SQLite（配置项影响不到实现）；现在显式注入 `PostgresBlossomMemoryRepository`，
+  缺 `DATABASE_URL` 或连不上库直接启动失败，**绝不静默回退 SQLite**。
+- **多实例装配层进入生产启动路径**：`InstanceRegistry` / `AdapterInstance` 此前只有测试调用；
+  现在组合根持有 registry 并管理 `connect_all` / `disconnect_all` 生命周期，Core 仍只见
+  `InternalEvent` / `MessageSender`（加第二个实例不需要改 Core，也没有全局单例）。
+- **契约实现的 websockets 兼容**：`src/transport/transports.py` 写死的 `extra_headers` 在
+  websockets 14+（实测 17.1）会直接 `TypeError`；改为新参数优先 + 旧参数回退。
+- **`EventDispatcher` 公开声明**：生命周期与「不是 Plugin Bus」的边界写进模块头，
+  并在 `src/sdk/__all__` 导出。
+
+### 测试与证据
+
+- 新增 **130 条** MCP 认证用例（含真 socket 端到端 + 五语言真进程验收）与 **14 条**接线/契约用例；
+- 本机全量 **2353 passed / 169 skipped**（2 个失败为本机 ruby/perl 插件环境问题，CI 绿）；
+- CI（`CI` + `Acceptance` 七个作业）全部 success；
+- 报告：[MCP 认证最终报告](docs/reports/mcp-auth-final-report.md) ·
+  [生产链路报告](docs/architecture/production-wiring-report.md) ·
+  [接线审计](docs/architecture/production-wiring-audit.md)。
+
 ## [2.4.0] - 2026-09-29
 
 > 本版为**工程质量版本（MINOR bump）**：一轮结构重构（上帝类拆分 + 死代码清理 + 有证据的
