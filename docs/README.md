@@ -1,6 +1,6 @@
 # Flowerie 文档
 
-> 对应 **v2.4.0**（2026-09-29）：**工程质量与加固版本**（上帝类拆分、死代码清理、有证据的性能优化；旧插件通道 hop 保护与可配置超时、审计日志轮转、消息热路径优化）。插件平台化能力（五语言 SDK / 插件间通信 / Plugin WebUI）见 v2.3.0 条目：**多语言 SDK（五语言，46 条最小插件实测）**、
+> 对应 **v2.5.0**（2026-09-30）：**MCP 认证能力升级 + 生产接线闭合**——MCP 支持五种认证方式（无认证 / Bearer / API Key / 自定义 Header / Basic），凭据全程脱敏并贯通 Core API 与五语言 SDK；同时接上两条生产断链（Blossom Memory 的 PostgreSQL 后端、多实例适配器装配层）。工程质量与加固见 v2.4.0 条目；插件平台化能力（五语言 SDK / 插件间通信 / Plugin WebUI）见 v2.3.0 条目。
 > **插件间通信（plugin.call/emit/on + Core Router：权限/超时/取消/环保护/trace）**、
 > **Plugin WebUI 第二阶段（真服务器 + 真浏览器 E2E）**、版本号规范化（SemVer）与文档体系重写。
 > 上一版 v2.2.6 的内容（Code Scanning 整改 / 原生多条回复 / Milky 补齐）见 `CHANGELOG.md`；

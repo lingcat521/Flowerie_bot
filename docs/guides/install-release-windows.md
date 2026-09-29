@@ -1,6 +1,6 @@
 # Windows 可执行文件使用说明（.exe）
 
-> 当前版本 **v2.4.0**。官方 Release 提供：
+> 当前版本 **v2.5.0**。官方 Release 提供：
 > `Flowerie_bot-windows-x64-builtin.exe`（Intel/AMD）与 `Flowerie_bot-windows-arm64-builtin.exe`（Arm 设备 / 越狱 Android 模拟）；
 > 另有目录版 `Flowerie_bot-windows-x64-portable.zip` / `-windows-arm64-portable.zip`（解压即用）。
 > 其他平台见 [install-release-guide.md](install-release-guide.md)。

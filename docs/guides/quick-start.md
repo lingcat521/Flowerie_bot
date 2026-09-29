@@ -2,7 +2,7 @@
 
 > 目标：**10 分钟内**从零写到一个能在群里跑的插件。本文只给最短路径；
 > 完整参考（Manifest 全字段 / 事件 / 权限 / 打包 / 超时 / 资源限制 / 13 种语言）见 [plugin-developer-guide.md](../plugins/plugin-developer-guide.md)，
-> 方法 × 权限总表见 [api.md](../reference/api.md)，SDK 全量见 [sdk.md](../reference/sdk.md)。当前版本 **v2.4.0**。
+> 方法 × 权限总表见 [api.md](../reference/api.md)，SDK 全量见 [sdk.md](../reference/sdk.md)。当前版本 **v2.5.0**。
 
 ## 0. 准备（1 分钟）
 

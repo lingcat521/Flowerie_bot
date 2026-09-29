@@ -1,6 +1,6 @@
 # 开发
 
-> 当前版本 **v2.4.0**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
+> 当前版本 **v2.5.0**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
 > 历史审计报告见 [archive/](../archive/README.md)。
 
 ## 环境
