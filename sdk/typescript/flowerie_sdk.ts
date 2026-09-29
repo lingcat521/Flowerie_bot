@@ -292,6 +292,105 @@ export interface PluginInfo {
 }
 
 /** 传给插件钩子的上下文：storage / config / permission / logger / action。 */
+/** MCP 认证状态（**不含任何密钥**）：type + configured + 语义化 status。 */
+export interface McpAuthInfo {
+  type: string;
+  configured: boolean;
+  /** none | configured | error；authenticated 由 mcpStatus 的运行期结论给出。 */
+  status: "none" | "configured" | "error";
+}
+
+/** 一个 MCP server 的公开视图。 */
+export interface McpServer { name: string; url: string; auth: McpAuthInfo }
+
+/** 某个 server 允许插件调用的工具白名单（空数组 = 放行全部）。 */
+export interface McpTool { server: string; allowedTools: string[] }
+
+/** 工具调用结果。 */
+export interface McpCallResult { ok: boolean; result?: unknown; error?: string }
+
+function _mcpAuthInfo(raw: unknown): McpAuthInfo {
+  const data = (raw && typeof raw === "object") ? (raw as Record<string, unknown>) : {};
+  const type = String(data.type ?? "none");
+  const configured = Boolean(data.configured);
+  const status: McpAuthInfo["status"] =
+    (type === "" || type === "none") ? "none" : (configured ? "configured" : "error");
+  return { type, configured, status };
+}
+
+/**
+ * ctx.mcp：列 server / 查工具白名单 / 查认证状态 / 调用工具。
+ *
+ * 安全边界（与 Python SDK 的 bot.mcp 一致）：认证只暴露 type/configured/status，
+ * **永远不含 token / password**；所有调用都经引擎权限与白名单，本层不做绕过。
+ * 不抛异常：失败折叠成 ok=false 的结果对象。
+ */
+export class McpFacade {
+  // 不用「参数属性」写法：Node 的 type-stripping（>=22.6 直接跑 .ts）不支持它
+  private readonly invoke: (type: string, params?: Record<string, unknown>) => Promise<any>;
+
+  constructor(invoke: (type: string, params?: Record<string, unknown>) => Promise<any>) {
+    this.invoke = invoke;
+  }
+
+  private async send(actionType: string, params: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
+    try {
+      const out = await this.invoke(actionType, params);
+      return (out && typeof out === "object") ? (out as Record<string, unknown>) : { ok: false, error: "引擎返回非法结构" };
+    } catch (e) {
+      const err = e as Error;
+      return { ok: false, error: String(err && err.name ? err.name : "Error") + ": " + String(err && err.message ? err.message : e) };
+    }
+  }
+
+  /** 已配置的 MCP server 列表（含认证状态，不含密钥）。 */
+  async servers(): Promise<McpServer[]> {
+    const out = await this.send("mcp_server");
+    const rows = out.ok ? (out.servers as unknown[]) : [];
+    const result: McpServer[] = [];
+    for (const row of rows || []) {
+      if (!row || typeof row !== "object") continue;
+      const item = row as Record<string, unknown>;
+      result.push({ name: String(item.name ?? ""), url: String(item.url ?? ""), auth: _mcpAuthInfo(item.auth) });
+    }
+    return result;
+  }
+
+  /** 工具白名单（可按 server 过滤）。 */
+  async tools(server = ""): Promise<McpTool[]> {
+    const out = await this.send("mcp_tools");
+    const rows = out.ok ? (out.tools as unknown[]) : [];
+    const result: McpTool[] = [];
+    for (const row of rows || []) {
+      if (!row || typeof row !== "object") continue;
+      const item = row as Record<string, unknown>;
+      if (server && String(item.server ?? "") !== server) continue;
+      const allowed = Array.isArray(item.allowed_tools) ? item.allowed_tools : [];
+      result.push({ server: String(item.server ?? ""), allowedTools: allowed.map((t) => String(t)) });
+    }
+    return result;
+  }
+
+  /** 调用工具（经引擎权限 + 白名单；失败不抛异常）。 */
+  async call(server: string, tool: string, args: Record<string, unknown> = {}): Promise<McpCallResult> {
+    const out = await this.send("mcp_call", { server, tool, arguments: args });
+    if (out.ok) return { ok: true, result: out.result ?? out.data };
+    return { ok: false, error: String(out.error ?? "调用失败") };
+  }
+
+  /** 连通性 + 认证状态（只读；不修改任何凭据）。 */
+  async status(server: string): Promise<Record<string, unknown>> {
+    return this.send("mcp_status", { server });
+  }
+
+  /** 某个 server 的认证状态（不发起连接、不含密钥）。 */
+  async auth(server: string): Promise<McpAuthInfo> {
+    for (const item of await this.servers()) {
+      if (item.name === server) return item.auth;
+    }
+    return _mcpAuthInfo(null);
+  }
+}
 export class PluginContext {
   readonly pluginId: string;
   readonly pluginDir: string;
@@ -446,6 +545,10 @@ export class ProtocolClient {
       this.pending.set(id, resolve);
       this.write({ id, method: "action", params: { action: type, payload: params } });
     });
+  }
+  /** MCP facade：servers() / tools(server) / call(server, tool, args) / status(server) / auth(server)。 */
+  get mcp(): McpFacade {
+    return new McpFacade((type, params) => this.action(type, params));
   }
   get isReady(): boolean { return this.ready; }
 }

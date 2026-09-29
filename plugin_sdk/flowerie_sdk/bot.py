@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from flowerie_sdk.event import BotEvent
 from flowerie_sdk.matcher import collect
+from flowerie_sdk.mcp import McpFacade
 from flowerie_sdk.message import BotMessage
 
 
@@ -482,6 +483,15 @@ class FlowerieBot:
     def mcp_status(self, server):
         """MCP 服务器在线状态。"""
         return self._api.mcp_status({"server": server}) if self._api else self._no_api()
+
+    @property
+    def mcp(self):
+        """MCP facade：servers() / tools(server) / call(server, tool, args) / status(server) / auth(server)。
+
+        与旧动作方法（mcp_server / mcp_tools / mcp_call / mcp_status）共存：
+        老插件照旧，新插件用这个更结构化的入口；认证状态只给 type/configured，不含密钥。
+        """
+        return McpFacade(self._api)
 
     # ---------- v2.1 缺口池：AI ----------
     def ai_stream(self, messages=None, prompt=None):
