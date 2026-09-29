@@ -129,6 +129,12 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "MCP_ALLOWED_HOSTS": ("MCP", "list-str", False, False, "MCP 本地/内网主机白名单（需重启）"),
     "MCP_CIRCUIT_FAILURES": ("MCP", "int", False, True, "MCP 熔断失败阈值"),
     "MCP_CIRCUIT_PAUSE_SECONDS": ("MCP", "int", False, True, "MCP 熔断冷却（秒）"),
+    "MCP_AUTH_TYPE": ("MCP", "str", False, True,
+                      "单 server 认证方式：none / bearer / api_key / header / basic（空=none）"),
+    "MCP_AUTH_TOKEN": ("MCP", "secret", True, True, "单 server 认证密钥（bearer / api_key）"),
+    "MCP_AUTH_HEADER": ("MCP", "str", False, True, "api_key 的 header 名（默认 X-API-Key）或 header 模式的 name"),
+    "MCP_AUTH_USERNAME": ("MCP", "str", False, True, "basic 认证用户名"),
+    "MCP_AUTH_PASSWORD": ("MCP", "secret", True, True, "basic 认证密码"),
     # ---------- Web UI ----------
     "WEB_UI_ENABLED": ("WebUI", "bool", False, False, "Web UI 开关（需重启）"),
     "WEB_UI_HOST": ("WebUI", "str", False, False, "Web UI 监听地址（需重启）"),

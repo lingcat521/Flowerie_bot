@@ -15,7 +15,8 @@ import asyncio
 import time
 from typing import Any, Dict, List, Optional
 
-from src.config import Settings, parse_mcp_servers
+from src.config import Settings, build_legacy_mcp_auth, parse_mcp_servers
+from src.services.mcp_auth import build_auth
 from src.core.sanitizer import sanitize_tool_metadata, sanitize_untrusted_text
 from src.services.mcp_client import McpClient, McpError
 from src.utils.circuit_breaker import CircuitBreaker
@@ -119,6 +120,7 @@ class McpToolManager:
             default_name=(getattr(config, "MCP_SERVER_NAME", "mcp") or "mcp"),
             legacy_url=(getattr(config, "MCP_SERVER_URL", "") or ""),
             legacy_tools=default_tools,
+            legacy_auth=build_legacy_mcp_auth(lambda k, d="": getattr(config, k, d)),
         )
         for idx, s in enumerate(parsed):
             if not s.get("enabled", True):
@@ -130,7 +132,9 @@ class McpToolManager:
             elif injected_client is not None and idx == 0:
                 cli = injected_client       # 兼容旧测试：单 client 注入第一个 server
             if cli is None:
-                cli = McpClient(s["url"], s["name"], timeout=timeout, allowed_hosts=allowed_hosts)
+                # 认证策略在 server 初始化时构造一次（之后每次请求只做 header 注入）
+                cli = McpClient(s["url"], s["name"], timeout=timeout, allowed_hosts=allowed_hosts,
+                                auth=build_auth(s.get("auth")))
             allowlist = [t.strip() for t in (s.get("allowed_tools") or "").split(",") if t.strip()]
             breaker = CircuitBreaker(
                 name=f"mcp:{s['name']}", failure_threshold=failure_threshold, cooldown_seconds=cooldown,

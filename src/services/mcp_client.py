@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from src.core.sanitizer import validate_mcp_resolved_ips, validate_mcp_server_url
+from src.services.mcp_auth import McpAuthStrategy, NoneAuth
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -34,7 +35,8 @@ class McpError(Exception):
 
 class McpClient:
     def __init__(self, url: str, name: str = "mcp", timeout: float = 15.0,
-                 allowed_hosts: Optional[List[str]] = None):
+                 allowed_hosts: Optional[List[str]] = None,
+                 auth: Optional[McpAuthStrategy] = None):
         # SSRF 防线①：构造即校验，非法 URL（内网/回环/私网/非法 scheme/userinfo 等）直接拒绝；
         # allowed_hosts 为用户显式放行的本地/内网主机白名单（管理员明确建立的信任边界）
         ok, reason = validate_mcp_server_url(url, allowed_hosts)
@@ -48,12 +50,18 @@ class McpClient:
         self._client: Optional[httpx.AsyncClient] = None
         self._session_id: Optional[str] = None
         self._initialized = False
+        # 认证策略在构造时注入一次（不在这里解析配置、不读库/env）；None = 无认证
+        self._auth: McpAuthStrategy = auth or NoneAuth()
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
             # follow_redirects=False 显式关闭：3xx 不会二次跳转（redirect SSRF 边界）
             self._client = httpx.AsyncClient(timeout=self.timeout, follow_redirects=False)
         return self._client
+
+    def auth_info(self) -> Dict[str, Any]:
+        """认证状态（供 Core API / 插件 SDK）：只有 type 与 configured，绝不含 secret。"""
+        return self._auth.info()
 
     async def close(self) -> None:
         if self._client is not None and not self._client.is_closed:
@@ -91,6 +99,9 @@ class McpClient:
         headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
         if self._session_id:
             headers["mcp-session-id"] = self._session_id
+        # 认证层统一注入：所有 RPC（initialize / tools/list / tools/call / session 后续请求）
+        # 都走这里，不存在漏掉认证的方法；策略本身不含任何 IO
+        headers = self._auth.apply(headers)
         await self._check_dns()
         try:
             resp = await self._get_client().post(self.url, headers=headers, json=payload)

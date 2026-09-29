@@ -6,6 +6,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.sanitizer import validate_mcp_server_url
+from src.services.mcp_auth import build_auth
 
 
 class Settings(BaseSettings):
@@ -207,6 +208,12 @@ class Settings(BaseSettings):
     MCP_ALLOWED_HOSTS: Optional[List[str]] = None  # 显式放行的本地/内网主机白名单（逗号分隔；仅这些地址可绕过回环/私网拒绝）
     MCP_CIRCUIT_FAILURES: int = 5       # MCP 独立熔断：连续失败阈值（每个 server 各自独立）
     MCP_CIRCUIT_PAUSE_SECONDS: int = 60 # MCP 熔断冷却
+    # 单 server（legacy）认证：多 server 时把 auth 写进每个 MCP_SERVERS 元素里
+    MCP_AUTH_TYPE: str = ""             # none | bearer | api_key | header | basic（空 = 无认证）
+    MCP_AUTH_TOKEN: str = ""            # bearer / api_key 的密钥（敏感）
+    MCP_AUTH_HEADER: str = ""           # api_key 的 header 名 / header 模式的 name
+    MCP_AUTH_USERNAME: str = ""         # basic 用户名
+    MCP_AUTH_PASSWORD: str = ""         # basic 密码（敏感）
     # Web UI（管理后台）：默认关闭；必须认证；端口与反向 WS 端口（WS_PORT）错开
     WEB_UI_ENABLED: bool = True       # 默认开启（只监听 127.0.0.1）；对外需显式 WEB_UI_ALLOW_LAN=true
     WEB_UI_HOST: str = "127.0.0.1"
@@ -400,13 +407,44 @@ def _validate_active_chat_probs(config: Settings) -> Optional[str]:
     return None
 
 
+def build_legacy_mcp_auth(get) -> Optional[dict]:
+    """把单 server 的 MCP_AUTH_* 组装成 auth 配置；未配置/type=none 时返回 None（无认证）。
+
+    get 是一个取值函数（如 settings 的 getattr 包装或 dict.get），便于测试直接喂字典。
+    只做组装，合法性由 build_auth 在 parse_mcp_servers 里 fail-fast 校验。
+    """
+    auth_type = str(get("MCP_AUTH_TYPE", "") or "").strip().lower()
+    if not auth_type or auth_type == "none":
+        return None
+    spec = {"type": auth_type}
+    for key, field in (("MCP_AUTH_TOKEN", "token"), ("MCP_AUTH_HEADER", "header"),
+                       ("MCP_AUTH_USERNAME", "username"), ("MCP_AUTH_PASSWORD", "password")):
+        value = get(key, "")
+        if value not in (None, ""):
+            spec[field] = str(value)
+    return spec
+
+
+def _checked_auth_spec(spec, where: str):
+    """校验并返回 auth 配置（None = 无认证）；非法即抛 ValueError（禁止静默降级）。"""
+    if spec is None:
+        return None
+    try:
+        build_auth(spec)
+    except Exception as e:  # noqa: BLE001 - 统一转成配置错误（错误信息不含 secret）
+        raise ValueError("%s 的 auth 配置非法: %s" % (where, e)) from None
+    return spec
+
+
 def parse_mcp_servers(raw: str, default_timeout: int = 15, default_tools: str = "",
                       default_name: str = "mcp", legacy_url: str = "",
-                      legacy_tools: str = "") -> List[dict]:
+                      legacy_tools: str = "", legacy_auth: Optional[dict] = None) -> List[dict]:
     """解析 MCP_SERVERS（插件式多 server，JSON 数组）；为空时回退 legacy 单 server。
 
     每个元素：{"name": 必填且唯一, "url": 必填, "allowed_tools"?: 逗号分隔,
-              "timeout"?: 秒, "enabled"?: bool}。allowed_tools/timeout 缺省用全局值。
+              "timeout"?: 秒, "enabled"?: bool, "auth"?: 认证配置}。
+    allowed_tools/timeout 缺省用全局值；auth 缺失或 null = 无认证（旧配置零迁移）。
+    auth 非法（未知 type、缺 token/username 等）一律抛 ValueError（禁止静默降级）。
     返回 server dict 列表（含 enabled 标记；禁用项由调用方跳过）。
     """
     servers: List[dict] = []
@@ -439,6 +477,7 @@ def parse_mcp_servers(raw: str, default_timeout: int = 15, default_tools: str = 
                 "allowed_tools": str(tools).strip() if tools is not None else str(default_tools).strip(),
                 "timeout": timeout,
                 "enabled": bool(item.get("enabled", True)),
+                "auth": _checked_auth_spec(item.get("auth"), "MCP_SERVERS 元素 %r" % name),
             })
         if servers:
             return servers
@@ -451,6 +490,7 @@ def parse_mcp_servers(raw: str, default_timeout: int = 15, default_tools: str = 
             "allowed_tools": (legacy_tools or "").strip(),
             "timeout": int(default_timeout),
             "enabled": True,
+            "auth": _checked_auth_spec(legacy_auth, "legacy 单 server"),
         })
     return servers
 
@@ -501,6 +541,8 @@ def validate_config(config: Settings) -> None:
                     default_timeout=int(getattr(config, "MCP_TIMEOUT", 15)),
                     default_tools=(getattr(config, "MCP_ALLOWED_TOOLS", "") or ""),
                     default_name=(getattr(config, "MCP_SERVER_NAME", "mcp") or "mcp"),
+                    legacy_auth=build_legacy_mcp_auth(
+                        lambda k, d="": getattr(config, k, d)),
                 )
             except ValueError as e:
                 raise ValueError(str(e)) from None
