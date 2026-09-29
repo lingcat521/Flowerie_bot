@@ -61,6 +61,34 @@ def ensure_env_template(path: str = ".env") -> bool:
     return True
 
 
+def _storage_backend(config) -> str:
+    """当前存储后端（小写；缺省 sqlite）。只读一次，避免各处重复判断。"""
+    return str(getattr(config, "STORAGE_BACKEND", "sqlite") or "sqlite").lower()
+
+
+def _build_blossom_repository(config):
+    """按 STORAGE_BACKEND 选择 Blossom Memory 的存储后端。
+
+    - sqlite（默认）：返回 None —— 由 BlossomMemoryManager 自己建 SQLite 仓库，行为与升级前完全一致；
+    - postgres：显式构造 PG 仓库交给管理器注入，**绝不静默回退 SQLite**；
+      缺 DATABASE_URL 或构造失败（缺 psycopg / 连不上库）→ 抛错并给出可直接看懂的原因，启动即失败。
+    """
+    if _storage_backend(config) != "postgres":
+        return None
+    from src.repositories.postgres_blossom_repository import PostgresBlossomMemoryRepository
+
+    database_url = str(getattr(config, "DATABASE_URL", "") or "")
+    if not database_url:
+        raise RuntimeError(
+            "STORAGE_BACKEND=postgres 时必须配置 DATABASE_URL（Blossom Memory 不回退 SQLite）")
+    try:
+        return PostgresBlossomMemoryRepository(database_url)
+    except Exception as exc:  # noqa: BLE001 - 启动期 fail-fast：错误信息必须能直接定位
+        raise RuntimeError(
+            "Blossom Memory 的 PostgreSQL 存储初始化失败（STORAGE_BACKEND=postgres，不回退 SQLite）：%s"
+            % exc) from exc
+
+
 async def main():
     ensure_env_template()
     config = load_config()
@@ -87,7 +115,7 @@ async def main():
     logger.info("花璃启动中...", extra={"event": "startup"})
 
     # ---- 存储后端选择（默认 SQLite；STORAGE_BACKEND=postgres 走 PG 平行实现）----
-    if str(getattr(config, "STORAGE_BACKEND", "sqlite") or "sqlite").lower() == "postgres":
+    if _storage_backend(config) == "postgres":
         from src.repositories.postgres_memory_repository import PostgresMemoryRepository
         memory_repo = PostgresMemoryRepository(config.DATABASE_URL)
     else:
@@ -115,7 +143,9 @@ async def main():
                 config.BLOSSOM_MEMORY_RERANKER_API_URL,
                 config.BLOSSOM_MEMORY_RERANKER_API_KEY,
                 top_k=config.BLOSSOM_MEMORY_RERANK_TOP_K)
-        blossom_memory = BlossomMemoryManager(config, embedding=embedding, reranker=reranker)
+        # 存储后端与 MemoryManager 同源：postgres 时显式注入 PG 仓库（绝不静默回退 SQLite）
+        blossom_memory = BlossomMemoryManager(config, repository=_build_blossom_repository(config),
+                                              embedding=embedding, reranker=reranker)
     prompt_manager = PromptManager(settings_repo, max_length=config.MAX_CUSTOM_PROMPT_LENGTH)
 
     # 优雅管理异步资源（HTTP session / AI 客户端）

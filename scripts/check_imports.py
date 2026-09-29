@@ -40,11 +40,23 @@ STDLIB = set(getattr(sys, "stdlib_module_names", ()))
 RUFF_EXCLUDED = {"tests/acceptance_check.py"}
 
 
+def _is_local_top(top: str) -> bool:
+    """仓库根下的模块/包也算 first-party。
+
+    ruff 的 isort 用 src=["."] 解析：根目录存在 main.py 时，import main 就是 first-party。
+    这里对齐同一语义（2026-09-30 tests/test_blossom_backend_wiring.py 首次 import main 时暴露）。
+    """
+    if not top or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", top):
+        return False
+    return (os.path.isfile(os.path.join(ROOT, top + ".py"))
+            or os.path.isdir(os.path.join(ROOT, top)))
+
+
 def kind(name: str) -> str:
     top = (name or "").split(".")[0]
     if top == "__future__":      # 必须单独一组且在最前（ruff/pyflakes 的硬要求）
         return "future"
-    if top in ("src", "tests", "flowerie_sdk", "plugin_sdk"):
+    if top in ("src", "tests", "flowerie_sdk", "plugin_sdk") or _is_local_top(top):
         return "first"
     if top in STDLIB:
         return "std"
