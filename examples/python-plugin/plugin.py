@@ -138,3 +138,35 @@ def webui_asset(path):
     if path == "theme.css":
         return {"content_type": "text/css", "body": "body { color: #1f6feb; }"}
     return {"ok": False, "error": "资源不存在: %s" % path}
+
+
+# ---------------- MCP facade（任务书《MCP 认证》§七 / §九） ----------------
+# 与其它四语言示例**同名同义**：引擎/测试用 hook 真实驱动本插件的 MCP facade。
+# 返回结构逐项同形；认证状态只有 type + configured，**绝不含 token / password**。
+
+
+def mcp_demo(op, server=None, tool=None):
+    """ops: servers / tools / auth / call（args=[op, server, tool]），失败折叠成结构化错误。"""
+    from flowerie_sdk.mcp import McpFacade
+
+    facade = McpFacade(API["api"])
+    try:
+        if op == "servers":
+            return {"ok": True, "servers": [
+                {"name": s.name, "url": s.url,
+                 "auth": {"type": s.auth.type, "configured": bool(s.auth.configured)}}
+                for s in facade.servers()]}
+        if op == "tools":
+            return {"ok": True, "tools": [
+                {"server": t.server, "allowed_tools": list(t.allowed_tools)}
+                for t in facade.tools("")]}
+        if op == "auth":
+            info = facade.auth(str(server or ""))
+            return {"ok": True, "auth": {"type": info.type, "configured": bool(info.configured)}}
+        if op == "call":
+            res = facade.call(str(server or ""), str(tool or ""), {})
+            return {"ok": True, "call": {"ok": bool(res.ok), "result": res.result,
+                                         "error": str(res.error or "")}}
+    except Exception as e:  # noqa: BLE001 - 与其它 hook 一致：不让异常打断协议主循环
+        return {"ok": False, "error": type(e).__name__ + ": " + str(e)}
+    return {"ok": False, "error": "unknown op: " + str(op)}

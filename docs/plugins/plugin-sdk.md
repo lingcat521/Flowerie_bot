@@ -90,7 +90,7 @@ def on_message(event, api=None):
 | 日志（stderr）| `api.log(level, msg)` | `ctx.logger.info/warn/error` | `ctx.Logf(fmt, ...)` | `ctx.log(&str)` | `ctx.log(str)` |
 | WebUI 三通道 | `api.webui_page/action/asset` | `plugin.webui.page/action/asset` | `plugin.WebUI().Page/Action/Asset` | `plugin.webui().page/action/asset` | `plugin.webUI().page/action/asset` |
 | 插件间调用 | `api.plugin.call/emit/on/expose/cancel` | 同左（`plugin.*`）| `p.Call/Emit/On/Expose/Cancel` | `p.call/emit/on/expose/cancel` | `p.call/emit/on/expose/cancel` |
-| MCP（外部工具）| `api.mcp.servers/tools/call/status/auth`（属性；`api.mcp_call` 等动作方法照旧）| `ctx.mcp.servers/tools/call/status/auth`（getter :550）| `ctx.MCP().Servers/Tools/Call/Status/Auth`（:1587）| `ctx.mcp().servers/tools/call/status/auth`（:1416）| `ctx.mcp().servers/tools/call/status/auth`（:385）|
+| MCP（外部工具）| `api.mcp.servers/tools/call/status/auth`（属性；`api.mcp_call` 等动作方法照旧）| `ctx.mcp.servers/tools/call/status/auth`（getter :420）| `ctx.MCP().Servers/Tools/Call/Status/Auth`（:1587）| `ctx.mcp().servers/tools/call/status/auth`（:1416）| `ctx.mcp().servers/tools/call/status/auth`（:385）|
 
 **能力对齐（parity）**：五种语言声明**完全相同**的可选方法集合（14 项：`context.get` · `config.get` · `config.set` · `permission.check` · `storage.get/set/delete/list` · `webui.page/action/asset` · `plugin.call/event/cancel`），由 `tests/test_plugin_sdk_contract.py` 的**相等断言**钉住；
 Python 的 `PluginApi` 另有 160+ 个动作包装方法（`send_message` / `group_ban` / `mcp_call` …），

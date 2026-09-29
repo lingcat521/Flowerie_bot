@@ -127,4 +127,34 @@ plugin.webui.asset((args) => String(args.path) === "theme.css"
   ? { content_type: "text/css", body: "body { color: #1f6feb; }" }
   : { ok: false, error: "资源不存在: " + String(args.path) });
 
+/** 控制面钩子 mcp_demo：[op, server, tool] -> MCP facade（与其它四语言示例同名同义）。
+ *  认证状态只有 type + configured，绝不含 token；失败折叠成结构化错误，不抛出。 */
+plugin.registerHook("mcp_demo", async (op: unknown, server?: unknown, tool?: unknown) => {
+  const mcp = plugin.ctx.mcp;
+  try {
+    if (op === "servers") {
+      const rows = await mcp.servers();
+      return { ok: true, servers: rows.map((s) => ({
+        name: s.name, url: s.url,
+        auth: { type: s.auth.type, configured: Boolean(s.auth.configured) } })) };
+    }
+    if (op === "tools") {
+      const rows = await mcp.tools();
+      return { ok: true, tools: rows.map((t) => ({ server: t.server, allowed_tools: t.allowedTools })) };
+    }
+    if (op === "auth") {
+      const info = await mcp.auth(String(server ?? ""));
+      return { ok: true, auth: { type: info.type, configured: Boolean(info.configured) } };
+    }
+    if (op === "call") {
+      const res = await mcp.call(String(server ?? ""), String(tool ?? ""), {});
+      return { ok: true, call: { ok: Boolean(res.ok), result: res.result ?? null,
+                                 error: String(res.error ?? "") } };
+    }
+  } catch (err) {
+    return { ok: false, error: String(err) };
+  }
+  return { ok: false, error: "unknown op: " + String(op) };
+});
+
 void plugin.run();

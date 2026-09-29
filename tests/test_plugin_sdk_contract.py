@@ -75,6 +75,8 @@ class _Peer:
                                      text=True, bufsize=1)
         self.seq = 0
         self.engine_ops = []
+        self.actions = []               # 插件 -> 引擎的 action（副作用出口）记录
+        self.action_handler = None      # 可选：测试注入的 (action, payload) -> result
 
     # ---- 引擎侧 ----
     def _answer(self, msg):
@@ -105,6 +107,19 @@ class _Peer:
         self.proc.stdin.write(json.dumps({"id": msg["id"], "result": result}) + "\n")
         self.proc.stdin.flush()
 
+    def _answer_action(self, msg):
+        """插件 -> 引擎的 action：默认拒绝；测试可用 action_handler 接真实 Core（不复制逻辑）。"""
+        params = msg.get("params") or {}
+        action = str(params.get("action") or "")
+        payload = params.get("payload") or {}
+        self.actions.append({"action": action, "payload": payload})
+        if self.action_handler is None:
+            result = {"ok": False, "error": "测试未处理 action: %s" % action}
+        else:
+            result = self.action_handler(action, payload)
+        self.proc.stdin.write(json.dumps({"id": msg["id"], "result": result}) + "\n")
+        self.proc.stdin.flush()
+
     def call(self, method, params=None):
         self.seq += 1
         self.proc.stdin.write(json.dumps({"id": self.seq, "method": method,
@@ -116,6 +131,9 @@ class _Peer:
             msg = json.loads(line)
             if msg.get("method") == "engine":
                 self._answer(msg)
+                continue
+            if msg.get("method") == "action":
+                self._answer_action(msg)
                 continue
             assert msg.get("id") == self.seq, msg
             return msg

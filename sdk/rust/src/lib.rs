@@ -1474,7 +1474,11 @@ impl<'a> McpFacade<'a> {
         ])) {
             Ok(out) => {
                 if out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
-                    let result = out.get("result").cloned().or_else(|| out.get("data").cloned());
+                    let result = out
+                .get("result")
+                .or_else(|| out.get("data"))
+                .or_else(|| out.get("content"))
+                .cloned();
                     Ok(McpCallResult { ok: true, result, error: String::new() })
                 } else {
                     let msg = out

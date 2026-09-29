@@ -108,6 +108,61 @@ fn main() {
         }
     });
 
+    // MCP facade：与其它四语言示例同名同义（ops: servers / tools / auth / call）。
+    // 认证状态只有 type + configured，绝不含 token；失败折叠成结构化错误，不 panic。
+    plugin.register_hook("mcp_demo", |ctx: &Context, args: &[Json]| {
+        let op = args.first().and_then(|v| v.as_str()).unwrap_or("");
+        let server = args.get(1).and_then(|v| v.as_str()).unwrap_or("");
+        let tool = args.get(2).and_then(|v| v.as_str()).unwrap_or("");
+        let mcp = ctx.mcp();
+        match op {
+            "servers" => match mcp.servers() {
+                Ok(rows) => {
+                    let list: Vec<Json> = rows.iter().map(|s| Json::obj(vec![
+                        ("name", Json::str(&s.name)),
+                        ("url", Json::str(&s.url)),
+                        ("auth", Json::obj(vec![
+                            ("type", Json::str(&s.auth.auth_type)),
+                            ("configured", Json::Bool(s.auth.configured)),
+                        ])),
+                    ])).collect();
+                    Json::obj(vec![("ok", Json::Bool(true)), ("servers", Json::Arr(list))])
+                }
+                Err(err) => Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(&err))]),
+            },
+            "tools" => match mcp.tools("") {
+                Ok(rows) => {
+                    let list: Vec<Json> = rows.iter().map(|t| Json::obj(vec![
+                        ("server", Json::str(&t.server)),
+                        ("allowed_tools", Json::Arr(t.allowed_tools.iter()
+                            .map(|x| Json::str(x)).collect())),
+                    ])).collect();
+                    Json::obj(vec![("ok", Json::Bool(true)), ("tools", Json::Arr(list))])
+                }
+                Err(err) => Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(&err))]),
+            },
+            "auth" => {
+                let info = mcp.auth(server);
+                Json::obj(vec![("ok", Json::Bool(true)), ("auth", Json::obj(vec![
+                    ("type", Json::str(&info.auth_type)),
+                    ("configured", Json::Bool(info.configured)),
+                ]))])
+            }
+            "call" => match mcp.call(server, tool, &Json::obj(vec![])) {
+                Ok(res) => Json::obj(vec![("ok", Json::Bool(true)), ("call", Json::obj(vec![
+                    ("ok", Json::Bool(res.ok)),
+                    ("result", res.result.unwrap_or(Json::Null)),
+                    ("error", Json::str(&res.error)),
+                ]))]),
+                Err(err) => Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(&err))]),
+            },
+            other => {
+                let msg = format!("unknown op: {}", other);
+                Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(&msg))])
+            }
+        }
+    });
+
     // hook comm_emit：args = [name, payload] -> plugin.emit，返回引擎的投递结果。
     plugin.register_hook("comm_emit", |ctx: &Context, args: &[Json]| {
         let name = args.first().and_then(|v| v.as_str()).unwrap_or("");

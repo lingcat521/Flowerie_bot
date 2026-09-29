@@ -374,7 +374,7 @@ export class McpFacade {
   /** 调用工具（经引擎权限 + 白名单；失败不抛异常）。 */
   async call(server: string, tool: string, args: Record<string, unknown> = {}): Promise<McpCallResult> {
     const out = await this.send("mcp_call", { server, tool, arguments: args });
-    if (out.ok) return { ok: true, result: out.result ?? out.data };
+    if (out.ok) return { ok: true, result: out.result ?? out.data ?? out.content };
     return { ok: false, error: String(out.error ?? "调用失败") };
   }
 
@@ -415,6 +415,10 @@ export class PluginContext {
   /** 发一个 action（唯一副作用出口；引擎侧过 PermissionManager）。 */
   action(type: string, params: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     return this.client.action(type, params);
+  }
+  /** MCP facade：与 Python 的 bot.mcp、Go/Rust/Java 的 ctx.mcp() 语义一致（认证状态不含密钥）。 */
+  get mcp(): McpFacade {
+    return this.client.mcp;
   }
   async permissionCheck(permission: string): Promise<boolean> {
     const res = await this.client.engineOp("permission.check", { permission });

@@ -120,7 +120,7 @@ class McpFacade:
         out = self._call("mcp_call", {"server": server, "tool": tool,
                                       "arguments": arguments or {}})
         if out.get("ok"):
-            return McpCallResult(ok=True, result=out.get("result", out.get("data")))
+            return McpCallResult(ok=True, result=out.get("result", out.get("data", out.get("content"))))
         return McpCallResult(ok=False, error=str(out.get("error") or "调用失败"))
 
     def status(self, server: str) -> Dict[str, Any]:

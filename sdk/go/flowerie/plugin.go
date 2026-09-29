@@ -1671,6 +1671,9 @@ func (f *McpFacade) Call(server, tool string, args map[string]any) (McpCallResul
 		if result == nil {
 			result = out["data"]
 		}
+		if result == nil {
+			result = out["content"]
+		}
 		return McpCallResult{OK: true, Result: result}, nil
 	}
 	msg, _ := out["error"].(string)

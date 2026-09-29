@@ -1236,7 +1236,13 @@ public class FloweriePlugin {
                                                          "arguments", args == null ? Map.of() : args));
             if (Boolean.TRUE.equals(Json.get(out, "ok"))) {
                 Object result = Json.get(out, "result");
-                return new McpCallResult(true, result != null ? result : Json.get(out, "data"), "");
+                if (result == null) {
+                    result = Json.get(out, "data");
+                }
+                if (result == null) {
+                    result = Json.get(out, "content");
+                }
+                return new McpCallResult(true, result, "");
             }
             String msg = str(Json.get(out, "error"));
             return new McpCallResult(false, null, msg.isEmpty() ? "调用失败" : msg);

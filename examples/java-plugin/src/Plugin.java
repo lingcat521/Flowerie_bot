@@ -119,6 +119,48 @@ public final class Plugin {
         });
 
         // 反向 hook：广播插件事件（plugin.emit，需要 manifest 里的 plugin.emit 权限）。
+        // MCP facade：与其它四语言示例同名同义（ops: servers / tools / auth / call）。
+        // 认证状态只有 type + configured，绝不含 token；失败折叠成结构化错误，不抛出。
+        plugin.registerHook("mcp_demo", hookArgs -> {
+            String op = hookArg(hookArgs, 0);
+            String server = hookArg(hookArgs, 1);
+            String tool = hookArg(hookArgs, 2);
+            FloweriePlugin.McpFacade mcp = plugin.context().mcp();
+            try {
+                switch (op) {
+                    case "servers": {
+                        List<Map<String, Object>> rows = new java.util.ArrayList<>();
+                        for (FloweriePlugin.McpServer s : mcp.servers()) {
+                            rows.add(Json.obj("name", s.name, "url", s.url, "auth",
+                                    Json.obj("type", s.auth.type, "configured", s.auth.configured)));
+                        }
+                        return Json.obj("ok", true, "servers", rows);
+                    }
+                    case "tools": {
+                        List<Map<String, Object>> rows = new java.util.ArrayList<>();
+                        for (FloweriePlugin.McpTool t : mcp.tools("")) {
+                            rows.add(Json.obj("server", t.server, "allowed_tools", t.allowedTools));
+                        }
+                        return Json.obj("ok", true, "tools", rows);
+                    }
+                    case "auth": {
+                        FloweriePlugin.McpAuthInfo info = mcp.auth(server);
+                        return Json.obj("ok", true, "auth",
+                                Json.obj("type", info.type, "configured", info.configured));
+                    }
+                    case "call": {
+                        FloweriePlugin.McpCallResult res = mcp.call(server, tool, Map.of());
+                        return Json.obj("ok", true, "call",
+                                Json.obj("ok", res.ok, "result", res.result, "error", res.error));
+                    }
+                    default:
+                        return Json.obj("ok", false, "error", "unknown op: " + op);
+                }
+            } catch (Exception e) {
+                return Json.obj("ok", false, "error", String.valueOf(e.getMessage()));
+            }
+        });
+
         plugin.registerHook("comm_emit", hookArgs -> {
             try {
                 return plugin.emit(hookArg(hookArgs, 0), hookArgs.size() > 1 ? hookArgs.get(1) : null);

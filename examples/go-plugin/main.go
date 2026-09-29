@@ -109,6 +109,50 @@ func main() {
 	// 页面 / 动作 / 资源三条通道；路由、权限、校验、净化、隔离全部由引擎负责。
 
 	// HTML 文件页的模板变量（走 web_ui.entry 数据钩子）
+	// MCP facade：与其它四语言示例同名同义（ops: servers / tools / auth / call）。
+	// 认证状态只有 type + configured，绝不含 token；失败折叠成结构化错误，不 panic。
+	plugin.RegisterHook("mcp_demo", func(args ...any) any {
+		op := commArgString(args, 0)
+		server := commArgString(args, 1)
+		tool := commArgString(args, 2)
+		mcp := plugin.Context().MCP()
+		switch op {
+		case "servers":
+			rows, err := mcp.Servers()
+			if err != nil {
+				return map[string]any{"ok": false, "error": err.Error()}
+			}
+			out := []map[string]any{}
+			for _, s := range rows {
+				out = append(out, map[string]any{"name": s.Name, "url": s.URL,
+					"auth": map[string]any{"type": s.Auth.Type, "configured": s.Auth.Configured}})
+			}
+			return map[string]any{"ok": true, "servers": out}
+		case "tools":
+			rows, err := mcp.Tools("")
+			if err != nil {
+				return map[string]any{"ok": false, "error": err.Error()}
+			}
+			out := []map[string]any{}
+			for _, t := range rows {
+				out = append(out, map[string]any{"server": t.Server, "allowed_tools": t.AllowedTools})
+			}
+			return map[string]any{"ok": true, "tools": out}
+		case "auth":
+			info := mcp.Auth(server)
+			return map[string]any{"ok": true, "auth": map[string]any{"type": info.Type,
+				"configured": info.Configured}}
+		case "call":
+			res, err := mcp.Call(server, tool, map[string]any{})
+			if err != nil {
+				return map[string]any{"ok": false, "error": err.Error()}
+			}
+			return map[string]any{"ok": true, "call": map[string]any{"ok": res.OK,
+				"result": res.Result, "error": res.Error}}
+		}
+		return map[string]any{"ok": false, "error": "unknown op: " + op}
+	})
+
 	plugin.RegisterHook("webui_page", func(args ...any) any {
 		return map[string]any{"vars": map[string]any{"nickname": readNickname(plugin)}}
 	})
