@@ -253,3 +253,64 @@ def test_instance_module_keeps_no_module_level_mutable_state():
             if isinstance(target, ast.Name) and not target.id.isupper():
                 offenders.append("src/adapters/instance.py:%d %s" % (node.lineno, target.id))
     assert offenders == [], "模块级可变状态会造成隐式单例：%s" % offenders
+
+
+
+# ---------- 生产装配层（road.txt §三）：兼容单实例，不引入全局单例 ----------
+
+def test_composition_root_builds_single_instance_registry():
+    """单实例装配：parser 与 make_adapters 同源（不重复解析），发送仍走共享 Sender。"""
+    import types
+
+    from src.adapters.container import make_instance_registry
+
+    parser = object()
+    cfg = types.SimpleNamespace(QQ_PROTOCOL="onebot", BOT_QQ=10001)
+    registry = make_instance_registry(cfg, parser=parser)
+    assert registry.ids() == ["primary"]
+    inst = registry.get("primary")
+    assert inst.parser is parser
+    assert inst.protocol == "onebot" and inst.bot_qq == 10001
+    assert inst.channel is None, "本层不构造发送通道：出口仍是组合根共享的 Sender"
+
+
+def test_registry_lifecycle_is_owned_by_the_composition_root():
+    import asyncio
+    import types
+
+    from src.adapters.container import make_instance_registry
+
+    cfg = types.SimpleNamespace(QQ_PROTOCOL="milky", BOT_QQ=10001)
+    registry = make_instance_registry(cfg, parser=object())
+    assert asyncio.run(registry.connect_all()) == 1
+    assert registry.get("primary").connected
+    assert registry.get("primary").protocol == "milky"
+    assert asyncio.run(registry.disconnect_all()) == 1
+    assert registry.get("primary").state == "closed"
+
+
+def test_second_instance_needs_no_core_change():
+    """加实例 = 再注册一个：各自持有 parser/收发记录，互不可见（串台=0）。"""
+    import types
+
+    from src.adapters.container import make_instance_registry
+    from src.adapters.instance import AdapterInstance
+
+    cfg = types.SimpleNamespace(QQ_PROTOCOL="onebot", BOT_QQ=10001)
+    registry = make_instance_registry(cfg, parser=object())
+    registry.register(AdapterInstance(instance_id="second", protocol="milky", parser=object()))
+    assert registry.ids() == ["primary", "second"]
+    first, second = registry.get("primary"), registry.get("second")
+    assert first.parser is not second.parser
+    first.received += 1
+    assert (second.received, second.sent) == (0, [])
+
+
+def test_composition_root_wires_the_instance_registry():
+    """静态护栏：装配层必须真的进入启动/关闭路径（防止将来又被摘掉）。"""
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parents[1] / "main.py").read_text(encoding="utf-8")
+    assert "make_instance_registry(config, parser=adapters.parser)" in source
+    assert "await instance_registry.connect_all()" in source
+    assert "await instance_registry.disconnect_all()" in source

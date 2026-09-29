@@ -18,7 +18,7 @@ from src.adapters.capabilities import (
     get_descriptor,
 )
 from src.adapters.compat import build_group_message, convert_legacy
-from src.adapters.container import Adapters, make_adapters
+from src.adapters.container import Adapters, make_adapters, make_instance_registry
 from src.adapters.milky_parser import MilkyEventParser
 from src.adapters.onebot_parser import OneBotEventParser
 from src.adapters.proto import EventParser, InternalEvent, MessageSender
@@ -27,5 +27,5 @@ __all__ = ["InternalEvent", "EventParser", "MessageSender",
            "Capability", "CapState", "CapabilitySet", "AdapterDescriptor",
            "descriptors", "get_descriptor", "capability_coverage",
            "OneBotEventParser", "MilkyEventParser",
-           "Adapters", "make_adapters",
+           "Adapters", "make_adapters", "make_instance_registry",
            "build_group_message", "convert_legacy"]

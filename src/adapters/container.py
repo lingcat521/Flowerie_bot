@@ -33,6 +33,36 @@ class Adapters:
     descriptor: Optional[Any] = None
 
 
+def make_instance_registry(config: Any, *, parser: Any, instance_id: str = "primary"):
+    """生产装配层（road.txt §三）：把当前配置装成 InstanceRegistry（当前 = 单实例）。
+
+    约束（与任务书的非目标一致）：
+
+    - `parser` 复用调用方已有的实例（默认与 `make_adapters` 同源）——MessageRouter 看到的
+      InternalEvent 一字不变，本层不重复解析、不复制发送逻辑；
+    - registry 由**组合根持有**，不是全局单例；生命周期由组合根显式 connect_all/disconnect_all；
+    - 将来加第二个实例 = 再注册一个 AdapterInstance（各自的 parser/描述符/配置），
+      Core 仍然只见 InternalEvent / MessageSender，不需要任何改动。
+    """
+    from src.adapters.capabilities import get_descriptor
+    from src.adapters.instance import AdapterInstance, InstanceRegistry
+
+    protocol = str(getattr(config, "QQ_PROTOCOL", "onebot") or "onebot").lower()
+    protocol = "milky" if protocol == "milky" else "onebot"
+    registry = InstanceRegistry()
+    registry.register(AdapterInstance(
+        instance_id=str(instance_id),
+        protocol=protocol,
+        parser=parser,
+        descriptor=get_descriptor("milky" if protocol == "milky" else "onebot11"),
+        config=config,
+        bot_qq=getattr(config, "BOT_QQ", None),
+        # 发送出口仍是组合根共享的那个 Sender：本层不构造通道、不复制发送逻辑
+        channel=None,
+    ))
+    return registry
+
+
 def _missing_sender_methods(sender: Any) -> list:
     """MessageSender 契约方法面逐一核对（Python 3.9 兼容；不用 runtime_checkable）。"""
     missing = []

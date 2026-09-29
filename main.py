@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.adapters import make_adapters
+from src.adapters import make_adapters, make_instance_registry
 from src.adapters.onebot.adapter import OneBotAdapter
 from src.adapters.resource import build_resource_fetcher
 from src.config import load_config, validate_config
@@ -161,6 +161,9 @@ async def main():
         adapters = make_adapters(config.BOT_QQ, sender, protocol=config.QQ_PROTOCOL)
         if adapters.sender is not sender:
             raise RuntimeError("adapters 必须复用现有的 sender 实例")
+        # 多实例装配层（road.txt §三）：当前 = 单实例，parser 与 adapters 同源；
+        # registry 由组合根本地持有（非全局单例），生命周期在启动/关闭处显式管理。
+        instance_registry = make_instance_registry(config, parser=adapters.parser)
         sticker_repo = StickerRepository(config.STICKER_DB_PATH)
         sticker_manager = StickerManager(config, sticker_repo, ai_client)
         tool_manager = McpToolManager(config)
@@ -285,6 +288,7 @@ async def main():
 
         # 启动后台任务（主动聊天 / 上下文备份，经 TaskManager 统一管理）
         await message_router.start()
+        await instance_registry.connect_all()      # 适配器实例生命周期（当前 1 个）
         # 启动插件运行时（enabled 插件；发现新插件默认 disabled）
         await plugin_manager.start_all()
         # Web UI（默认开启，仅监听本机回环；端口已与 WS_PORT 错开校验）
@@ -306,6 +310,7 @@ async def main():
             # ===== 优雅关闭顺序 =====
             # 1) 停止接收新任务、取消后台任务并等待
             logger.info("shutdown_started: 停止后台任务", extra={"event": "shutdown_started"})
+            await instance_registry.disconnect_all()   # 先摘适配器实例，再停路由
             await message_router.stop()
             # 2) 关闭 WebSocket 服务
             await ws_server.shutdown()
