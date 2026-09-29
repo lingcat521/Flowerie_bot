@@ -19,7 +19,7 @@ import pytest
 from src.plugins.manager import PluginManager
 from src.plugins.permissions import PermissionManager
 from tests.test_mcp_auth_e2e import TOKEN, _assert_no_secret, _CoreShim, _FakeMcp, _settings
-from tests.test_plugin_sdk_contract import ROOT, LANGUAGES, _missing_reason, _Peer
+from tests.test_plugin_sdk_contract import LANGUAGES, ROOT, _missing_reason, _Peer
 
 LANG_PARAMS = sorted(LANGUAGES)
 SERVERS = ["apikey_srv", "basic_srv", "bearer_srv", "header_srv", "open_srv"]

@@ -276,6 +276,18 @@ def import_sort_problems(tree, source_lines=()):
         if lines and "noqa" in lines[node.lineno - 1]:
             prev = None
             continue
+        # from-import 的成员名本身也要排序（ruff isort：常量组内 / 其余组内，大小写不敏感，
+        # 前导下划线不参与比较）—— 2026-09-30 test_mcp_auth_multilang.py 实际踩到
+        # （ROOT 排在 LANGUAGES 前面，模块名是对的，成员名不对）。
+        if isinstance(node, ast.ImportFrom) and len(node.names) > 1:
+            members = [a.asname or a.name for a in node.names]
+            # ruff/isort 的 order_by_type：全大写常量(0) -> 首字母大写的类(1) -> 其余函数(2)，
+            # 组内按小写字典序（前导下划线参与比较）—— 用 CI 绿基线校准过。
+            keys = [(0 if m.isupper() else 1 if m[:1].isupper() else 2, m.lower())
+                    for m in members]
+            if keys != sorted(keys):
+                problems.append("L%d: from-import 成员未按序（I001）：%s"
+                                % (node.lineno, ", ".join(members)))
         # import 前紧跟注释、而注释上一行又是 import：ruff 要求注释前留空行（I001 格式化半边）
         # —— 2026-09-30 flowerie_sdk/__init__.py 实际踩到（排序已对，仍被判 I001）
         idx = node.lineno - 2
