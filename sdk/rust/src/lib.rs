@@ -1355,3 +1355,158 @@ fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
     }
     "panic".to_string()
 }
+
+// ---------- MCP facade（认证状态不含密钥；与 Python 的 bot.mcp / TS 的 ctx.mcp 语义一致） ----------
+
+/// MCP server 的认证状态（**不含任何密钥**）。
+#[derive(Debug, Clone, Default)]
+pub struct McpAuthInfo {
+    /// none / bearer / api_key / header / basic
+    pub auth_type: String,
+    pub configured: bool,
+    /// none / configured / error
+    pub status: String,
+}
+
+/// 一个 MCP server 的公开视图。
+#[derive(Debug, Clone, Default)]
+pub struct McpServer {
+    pub name: String,
+    pub url: String,
+    pub auth: McpAuthInfo,
+}
+
+/// 某个 server 允许插件调用的工具白名单（空 = 放行全部）。
+#[derive(Debug, Clone, Default)]
+pub struct McpTool {
+    pub server: String,
+    pub allowed_tools: Vec<String>,
+}
+
+/// 工具调用结果（ok=false 时 error 为原因，不含密钥）。
+#[derive(Debug, Clone, Default)]
+pub struct McpCallResult {
+    pub ok: bool,
+    pub result: Option<Json>,
+    pub error: String,
+}
+
+fn mcp_auth_info(raw: Option<&Json>) -> McpAuthInfo {
+    let kind = raw
+        .and_then(|v| v.get("type"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("none")
+        .to_string();
+    let configured = raw
+        .and_then(|v| v.get("configured"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let status = if kind == "none" {
+        "none"
+    } else if configured {
+        "configured"
+    } else {
+        "error"
+    };
+    McpAuthInfo { auth_type: kind, configured, status: status.to_string() }
+}
+
+impl Context {
+    /// MCP facade：列 server / 查工具 / 查认证状态 / 调用工具（认证不含密钥）。
+    pub fn mcp(&self) -> McpFacade<'_> {
+        McpFacade { ctx: self }
+    }
+}
+
+/// MCP facade（语义与 Python 的 bot.mcp、TS 的 ctx.mcp 一致）。
+pub struct McpFacade<'a> {
+    ctx: &'a Context,
+}
+
+impl<'a> McpFacade<'a> {
+    /// 已配置的 MCP server 列表（含认证状态，不含密钥）。
+    pub fn servers(&self) -> Result<Vec<McpServer>, String> {
+        let out = self.ctx.action("mcp_server", &Json::obj(vec![]))?;
+        let mut result = Vec::new();
+        if let Some(rows) = out.get("servers").and_then(|v| v.as_array()) {
+            for row in rows {
+                result.push(McpServer {
+                    name: row.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                    url: row.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string(),
+                    auth: mcp_auth_info(row.get("auth")),
+                });
+            }
+        }
+        Ok(result)
+    }
+
+    /// 工具白名单（server 为空表示不过滤）。
+    pub fn tools(&self, server: &str) -> Result<Vec<McpTool>, String> {
+        let out = self.ctx.action("mcp_tools", &Json::obj(vec![]))?;
+        let mut result = Vec::new();
+        if let Some(rows) = out.get("tools").and_then(|v| v.as_array()) {
+            for row in rows {
+                let name = row.get("server").and_then(|v| v.as_str()).unwrap_or("");
+                if !server.is_empty() && name != server {
+                    continue;
+                }
+                let allowed = row
+                    .get("allowed_tools")
+                    .and_then(|v| v.as_array())
+                    .map(|list| {
+                        list.iter()
+                            .filter_map(|t| t.as_str().map(|s| s.to_string()))
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                result.push(McpTool { server: name.to_string(), allowed_tools: allowed });
+            }
+        }
+        Ok(result)
+    }
+
+    /// 调用工具（经引擎权限 + 白名单；业务失败折叠进 McpCallResult，不返回 Err）。
+    pub fn call(&self, server: &str, tool: &str, args: &Json) -> Result<McpCallResult, String> {
+        match self.ctx.action("mcp_call", &Json::obj(vec![
+            ("server", Json::str(server)),
+            ("tool", Json::str(tool)),
+            ("arguments", args.clone()),
+        ])) {
+            Ok(out) => {
+                if out.get("ok").and_then(|v| v.as_bool()).unwrap_or(false) {
+                    let result = out.get("result").cloned().or_else(|| out.get("data").cloned());
+                    Ok(McpCallResult { ok: true, result, error: String::new() })
+                } else {
+                    let msg = out
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("调用失败")
+                        .to_string();
+                    Ok(McpCallResult { ok: false, result: None, error: msg })
+                }
+            }
+            Err(e) => Ok(McpCallResult { ok: false, result: None, error: e }),
+        }
+    }
+
+    /// 连通性 + 认证状态（只读；不修改任何凭据）。
+    pub fn status(&self, server: &str) -> Result<Json, String> {
+        self.ctx.action("mcp_status", &Json::obj(vec![("server", Json::str(server))]))
+    }
+
+    /// 某个 server 的认证状态（不发起连接、不含密钥）。
+    pub fn auth(&self, server: &str) -> McpAuthInfo {
+        match self.servers() {
+            Ok(list) => list
+                .into_iter()
+                .find(|s| s.name == server)
+                .map(|s| s.auth)
+                .unwrap_or_default(),
+            Err(_) => McpAuthInfo {
+                auth_type: "none".to_string(),
+                configured: false,
+                status: "none".to_string(),
+            },
+        }
+    }
+}

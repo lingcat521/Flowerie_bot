@@ -1553,3 +1553,148 @@ func validCommName(name string) bool {
 
 // 占位：确保 io 被使用（Scanner 出错时返回 Err）。
 var _ = io.EOF
+
+// ---------- MCP facade（认证状态不含密钥；与 Python 的 bot.mcp / TS 的 ctx.mcp 语义一致） ----------
+
+// McpAuthInfo 是 MCP server 的认证状态（**不含任何密钥**）。
+type McpAuthInfo struct {
+	Type       string `json:"type"`
+	Configured bool   `json:"configured"`
+	Status     string `json:"status"`
+}
+
+// McpServer 是一个 MCP server 的公开视图。
+type McpServer struct {
+	Name string      `json:"name"`
+	URL  string      `json:"url"`
+	Auth McpAuthInfo `json:"auth"`
+}
+
+// McpTool 是某个 server 允许插件调用的工具白名单（空 = 放行全部）。
+type McpTool struct {
+	Server       string   `json:"server"`
+	AllowedTools []string `json:"allowed_tools"`
+}
+
+// McpCallResult 是工具调用结果（OK=false 时 Error 为原因，不含密钥）。
+type McpCallResult struct {
+	OK     bool `json:"ok"`
+	Result any  `json:"result,omitempty"`
+	Error  string `json:"error,omitempty"`
+}
+
+// MCP 返回 MCP facade（认证只暴露 type/configured/status，拿不到密钥）。
+func (c *Context) MCP() *McpFacade { return &McpFacade{c: c} }
+
+// McpFacade 列 server / 查工具白名单 / 查认证状态 / 调用工具。
+type McpFacade struct{ c *Context }
+
+func mcpAuthInfoOf(raw any) McpAuthInfo {
+	data, _ := raw.(map[string]any)
+	kind, _ := data["type"].(string)
+	if kind == "" {
+		kind = "none"
+	}
+	configured, _ := data["configured"].(bool)
+	status := "none"
+	if kind != "none" {
+		if configured {
+			status = "configured"
+		} else {
+			status = "error"
+		}
+	}
+	return McpAuthInfo{Type: kind, Configured: configured, Status: status}
+}
+
+// Servers 列出已配置的 MCP server（含认证状态，不含密钥）。
+func (f *McpFacade) Servers() ([]McpServer, error) {
+	out, err := f.c.Action("mcp_server", map[string]any{})
+	if err != nil {
+		return nil, err
+	}
+	rows, _ := out["servers"].([]any)
+	result := make([]McpServer, 0, len(rows))
+	for _, row := range rows {
+		item, ok := row.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := item["name"].(string)
+		url, _ := item["url"].(string)
+		result = append(result, McpServer{Name: name, URL: url, Auth: mcpAuthInfoOf(item["auth"])})
+	}
+	return result, nil
+}
+
+// Tools 返回工具白名单（server 为空表示不过滤）。
+func (f *McpFacade) Tools(server string) ([]McpTool, error) {
+	out, err := f.c.Action("mcp_tools", map[string]any{})
+	if err != nil {
+		return nil, err
+	}
+	rows, _ := out["tools"].([]any)
+	result := make([]McpTool, 0, len(rows))
+	for _, row := range rows {
+		item, ok := row.(map[string]any)
+		if !ok {
+			continue
+		}
+		name, _ := item["server"].(string)
+		if server != "" && name != server {
+			continue
+		}
+		allowed := []string{}
+		if list, ok := item["allowed_tools"].([]any); ok {
+			for _, t := range list {
+				if s, ok := t.(string); ok {
+					allowed = append(allowed, s)
+				}
+			}
+		}
+		result = append(result, McpTool{Server: name, AllowedTools: allowed})
+	}
+	return result, nil
+}
+
+// Call 调用工具（经引擎权限 + 白名单；业务失败放进 McpCallResult，不返回 error）。
+func (f *McpFacade) Call(server, tool string, args map[string]any) (McpCallResult, error) {
+	if args == nil {
+		args = map[string]any{}
+	}
+	out, err := f.c.Action("mcp_call", map[string]any{"server": server, "tool": tool, "arguments": args})
+	if err != nil {
+		return McpCallResult{OK: false, Error: err.Error()}, nil
+	}
+	if ok, _ := out["ok"].(bool); ok {
+		result := out["result"]
+		if result == nil {
+			result = out["data"]
+		}
+		return McpCallResult{OK: true, Result: result}, nil
+	}
+	msg, _ := out["error"].(string)
+	if msg == "" {
+		msg = "调用失败"
+	}
+	return McpCallResult{OK: false, Error: msg}, nil
+}
+
+// Status 查询连通性与认证状态（只读；不修改任何凭据）。
+func (f *McpFacade) Status(server string) (map[string]any, error) {
+	return f.c.Action("mcp_status", map[string]any{"server": server})
+}
+
+// Auth 返回某个 server 的认证状态（不发起连接、不含密钥）。
+func (f *McpFacade) Auth(server string) McpAuthInfo {
+	servers, err := f.Servers()
+	if err != nil {
+		return McpAuthInfo{Type: "none", Status: "none"}
+	}
+	for _, s := range servers {
+		if s.Name == server {
+			return s.Auth
+		}
+	}
+	return McpAuthInfo{Type: "none", Status: "none"}
+}

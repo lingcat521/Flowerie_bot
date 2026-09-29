@@ -381,6 +381,11 @@ public class FloweriePlugin {
             return reverse("action", Json.obj("action", type, "payload", params));
         }
 
+        /** MCP facade：列 server / 查工具 / 查认证状态 / 调用工具（认证不含密钥）。 */
+        public McpFacade mcp() {
+            return new McpFacade(this);
+        }
+
         private Object engineOp(String op, Map<String, Object> args) throws IOException {
             return reverse("engine", Json.obj("op", op, "args", args));
         }
@@ -1113,5 +1118,143 @@ public class FloweriePlugin {
     public static BiFunction<Context, Map<String, Object>, Object> handler(
             Function<Map<String, Object>, Object> fn) {
         return (ctx, event) -> fn.apply(event);
+    }
+
+    /** MCP 认证状态（**不含任何密钥**）。 */
+    public static final class McpAuthInfo {
+        public final String type;
+        public final boolean configured;
+        /** none / configured / error（authenticated 由 status() 的运行期结论给出）。 */
+        public final String status;
+
+        McpAuthInfo(String type, boolean configured) {
+            String kind = (type == null || type.isEmpty()) ? "none" : type;
+            this.type = kind;
+            this.configured = configured;
+            this.status = kind.equals("none") ? "none" : (configured ? "configured" : "error");
+        }
+
+        static McpAuthInfo from(Object raw) {
+            Object type = Json.get(raw, "type");
+            Object configured = Json.get(raw, "configured");
+            return new McpAuthInfo(type == null ? "none" : String.valueOf(type),
+                                   Boolean.TRUE.equals(configured));
+        }
+    }
+
+    /** 一个 MCP server 的公开视图。 */
+    public static final class McpServer {
+        public final String name;
+        public final String url;
+        public final McpAuthInfo auth;
+
+        McpServer(String name, String url, McpAuthInfo auth) {
+            this.name = name;
+            this.url = url;
+            this.auth = auth;
+        }
+    }
+
+    /** 某个 server 允许插件调用的工具白名单（空 = 放行全部）。 */
+    public static final class McpTool {
+        public final String server;
+        public final List<String> allowedTools;
+
+        McpTool(String server, List<String> allowedTools) {
+            this.server = server;
+            this.allowedTools = allowedTools;
+        }
+    }
+
+    /** 工具调用结果（ok=false 时 error 为原因，不含密钥）。 */
+    public static final class McpCallResult {
+        public final boolean ok;
+        public final Object result;
+        public final String error;
+
+        McpCallResult(boolean ok, Object result, String error) {
+            this.ok = ok;
+            this.result = result;
+            this.error = error;
+        }
+    }
+
+    /** MCP facade：列 server / 查工具 / 查认证状态 / 调用工具（语义与 Python 的 bot.mcp、TS 的 ctx.mcp 一致）。 */
+    public static final class McpFacade {
+        private final Context ctx;
+
+        McpFacade(Context ctx) {
+            this.ctx = ctx;
+        }
+
+        private static String str(Object value) {
+            return value == null ? "" : String.valueOf(value);
+        }
+
+        /** 已配置的 MCP server 列表（含认证状态，不含密钥）。 */
+        public List<McpServer> servers() throws IOException {
+            Object out = ctx.action("mcp_server", Map.of());
+            List<McpServer> result = new ArrayList<>();
+            Object rows = Json.get(out, "servers");
+            if (rows instanceof List) {
+                for (Object row : (List<?>) rows) {
+                    result.add(new McpServer(str(Json.get(row, "name")), str(Json.get(row, "url")),
+                                             McpAuthInfo.from(Json.get(row, "auth"))));
+                }
+            }
+            return result;
+        }
+
+        /** 工具白名单（server 为空表示不过滤）。 */
+        public List<McpTool> tools(String server) throws IOException {
+            Object out = ctx.action("mcp_tools", Map.of());
+            List<McpTool> result = new ArrayList<>();
+            Object rows = Json.get(out, "tools");
+            if (rows instanceof List) {
+                for (Object row : (List<?>) rows) {
+                    String name = str(Json.get(row, "server"));
+                    if (server != null && !server.isEmpty() && !server.equals(name)) {
+                        continue;
+                    }
+                    List<String> allowed = new ArrayList<>();
+                    Object list = Json.get(row, "allowed_tools");
+                    if (list instanceof List) {
+                        for (Object t : (List<?>) list) {
+                            allowed.add(String.valueOf(t));
+                        }
+                    }
+                    result.add(new McpTool(name, allowed));
+                }
+            }
+            return result;
+        }
+
+        /** 调用工具（经引擎权限 + 白名单；业务失败折叠进 McpCallResult，不抛异常）。 */
+        public McpCallResult call(String server, String tool, Map<String, Object> args)
+                throws IOException {
+            Object out = ctx.action("mcp_call", Json.obj("server", server, "tool", tool,
+                                                         "arguments", args == null ? Map.of() : args));
+            if (Boolean.TRUE.equals(Json.get(out, "ok"))) {
+                Object result = Json.get(out, "result");
+                return new McpCallResult(true, result != null ? result : Json.get(out, "data"), "");
+            }
+            String msg = str(Json.get(out, "error"));
+            return new McpCallResult(false, null, msg.isEmpty() ? "调用失败" : msg);
+        }
+
+        /** 连通性 + 认证状态（只读；不修改任何凭据）。 */
+        public Object status(String server) throws IOException {
+            return ctx.action("mcp_status", Json.obj("server", server));
+        }
+
+        /** 某个 server 的认证状态（不发起连接、不含密钥）。 */
+        public McpAuthInfo auth(String server) throws IOException {
+            for (McpServer item : servers()) {
+                if (item.name.equals(server)) {
+                    return item.auth;
+                }
+            }
+            return new McpAuthInfo("none", false);
+        }
     }
 }
