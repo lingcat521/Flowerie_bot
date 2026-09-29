@@ -26,8 +26,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import httpx
 
-from src.core.sanitizer import validate_memory_content
 from src.config import build_legacy_mcp_auth, parse_mcp_servers
+from src.core.sanitizer import validate_memory_content
 from src.plugins import comm
 from src.plugins.http_action import plugin_http_request, redact_url
 from src.plugins.installer import PluginInstaller, PluginInstallError
@@ -37,11 +37,11 @@ from src.plugins.router import PluginBus, PluginRouter
 from src.plugins.runtime import PluginRuntime
 from src.plugins.scheduler import PluginScheduler
 from src.plugins.webui_host import PluginWebUIHost
-from src.services.mcp_auth import McpAuthError, build_auth
 from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
 from src.sdk.event import BotEvent
 from src.sdk.matcher import Matcher
+from src.services.mcp_auth import McpAuthError, build_auth
 from src.utils.logging_setup import get_logger
 from src.utils.metrics import registry
 

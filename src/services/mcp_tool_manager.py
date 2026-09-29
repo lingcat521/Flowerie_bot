@@ -16,8 +16,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 from src.config import Settings, build_legacy_mcp_auth, parse_mcp_servers
-from src.services.mcp_auth import build_auth
 from src.core.sanitizer import sanitize_tool_metadata, sanitize_untrusted_text
+from src.services.mcp_auth import build_auth
 from src.services.mcp_client import McpClient, McpError
 from src.utils.circuit_breaker import CircuitBreaker
 from src.utils.logging_setup import get_logger
