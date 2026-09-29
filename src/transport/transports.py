@@ -438,7 +438,19 @@ def websockets_connector() -> Callable[..., Any]:
     async def _connect(url: str, headers: Optional[Dict[str, str]] = None) -> _WebsocketsConnection:
         import websockets
 
-        ws = await websockets.connect(url, extra_headers=dict(headers or {}))
+        # websockets 14+ 只认 additional_headers（12/13 是 extra_headers）——
+        # 与 src/transport/ws_forward_client.py 用同一套兼容写法，避免契约实现比生产实现更脆。
+        kwargs: Dict[str, Any] = {}
+        if headers:
+            kwargs["additional_headers"] = dict(headers)
+        try:
+            ws = await websockets.connect(url, **kwargs)
+        except TypeError:
+            if not headers:
+                raise
+            kwargs.pop("additional_headers", None)
+            kwargs["extra_headers"] = dict(headers)
+            ws = await websockets.connect(url, **kwargs)
         return _WebsocketsConnection(ws)
 
     return _connect

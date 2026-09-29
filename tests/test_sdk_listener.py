@@ -58,3 +58,16 @@ async def test_shutdown_clears():
     assert d.count == 1
     d.shutdown()
     assert d.count == 0
+
+
+
+def test_dispatcher_is_public_sdk_api_not_dead_code():
+    """road.txt §六：EventDispatcher 是中层 SDK 的公开 API（已在 src/sdk/__all__ 声明），
+    生命周期由构造方负责（register/on -> shutdown），不是 Plugin Bus 的替代品。"""
+    import src.sdk as sdk_pkg
+    from src.sdk import EventDispatcher as PublicDispatcher
+    from src.sdk import EventListener
+
+    assert PublicDispatcher is EventDispatcher
+    assert EventListener is not None
+    assert "EventDispatcher" in sdk_pkg.__all__ and "EventListener" in sdk_pkg.__all__

@@ -9,6 +9,12 @@
 from typing import Callable, List, Optional
 
 
+# 生命周期与边界（road.txt §六）：
+# - 本模块是**进程内**的事件分发器：谁构造谁负责（register/on 后自行 shutdown），
+#   不持有全局注册表，也不跨进程；
+# - 它不是插件间通信通道：跨插件的 call/event 走 Plugin Bus / Core Router
+#   （src/plugins/comm.py + manager 的 _engine_op_comm），插件不得直接互相连接；
+# - 公开面见 src/sdk/__init__.py 的 __all__（BotEvent 语义，零 OneBot 命名）。
 class EventListener:
     def __init__(self, types, handler: Callable, *, priority: int = 0,
                  name: Optional[str] = None, stop: bool = False):

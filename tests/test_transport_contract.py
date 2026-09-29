@@ -396,3 +396,61 @@ def test_real_io_bindings_are_provided_lazily():
     from src.transport import aiohttp_poster
     poster = aiohttp_poster()
     assert callable(poster) and callable(poster.aclose)
+
+
+
+def test_websockets_connector_uses_modern_header_kwarg(monkeypatch):
+    """契约实现必须跟得上 websockets 14+（additional_headers），不能写死 extra_headers。
+
+    2026-09-30 实测：本机/CI 的 websockets 17.1 签名里没有 extra_headers —— 旧写法一旦
+    被生产使用会直接 TypeError。这里用替身模块断言**先**用新参数，且没有多余参数。
+    """
+    import asyncio
+    import sys
+
+    from src.transport import transports
+
+    calls = []
+
+    class _FakeWs:
+        async def close(self):
+            return None
+
+    class _FakeWebsockets:
+        @staticmethod
+        async def connect(url, **kwargs):
+            calls.append((url, kwargs))
+            return _FakeWs()
+
+    monkeypatch.setitem(sys.modules, "websockets", _FakeWebsockets())
+    conn = asyncio.run(transports.websockets_connector()(
+        "ws://127.0.0.1:3001/ws", {"Authorization": "Bearer t"}))
+    assert conn is not None
+    assert calls[0][1] == {"additional_headers": {"Authorization": "Bearer t"}}, calls
+
+
+def test_websockets_connector_falls_back_to_legacy_kwarg(monkeypatch):
+    """老版本（12/13）只认 extra_headers：第一次 TypeError 后必须自动回退。"""
+    import asyncio
+    import sys
+
+    from src.transport import transports
+
+    calls = []
+
+    class _FakeWs:
+        async def close(self):
+            return None
+
+    class _FakeWebsockets:
+        @staticmethod
+        async def connect(url, **kwargs):
+            calls.append(kwargs)
+            if "additional_headers" in kwargs:
+                raise TypeError("connect() got an unexpected keyword argument 'additional_headers'")
+            return _FakeWs()
+
+    monkeypatch.setitem(sys.modules, "websockets", _FakeWebsockets())
+    asyncio.run(transports.websockets_connector()("ws://127.0.0.1:3001/ws", {"X-A": "1"}))
+    assert calls[0] == {"additional_headers": {"X-A": "1"}}, calls
+    assert calls[1] == {"extra_headers": {"X-A": "1"}}, calls
