@@ -145,6 +145,30 @@ def _cat_status_badge(cfgs) -> str:
             badges.append(f'<span class="badge{" warn" if not on else ""}">{_esc(c["key"].replace("_", " ").lower())}: {"ON" if on else "OFF"}</span>')
     return f'<span class="badges">{"".join(badges)}</span>' if badges else ""
 
+#: MCP 认证方式（value → 中文标签）。OAuth 未实现，故不列出。
+_MCP_AUTH_OPTIONS = (
+    ("none", "无认证"),
+    ("bearer", "Bearer Token"),
+    ("api_key", "API Key（自定义 header 名）"),
+    ("header", "自定义 Header"),
+    ("basic", "Basic Auth"),
+)
+
+
+def _mcp_auth_options_html(current: str) -> str:
+    return "".join(
+        '<option value="%s"%s>%s</option>' % (v, " selected" if v == current else "", _esc(label))
+        for v, label in _MCP_AUTH_OPTIONS)
+
+
+def _mcp_auth_label(spec) -> str:
+    """卡片上的认证摘要：只显示类型与是否已配置，绝不含密钥。"""
+    kind = str((spec or {}).get("type") or "none")
+    if kind == "none":
+        return "无认证"
+    return "%s（已配置）" % kind
+
+
 def render_mcp_editor(raw: str, default_timeout: int = 15, edit_index=None, mcp_test_status=None, mcp_tool_counts=None) -> str:
     """把 MCP_SERVERS 的 JSON 渲染成卡片式列表（每个 server 一张卡，零 JS）。
 
@@ -189,7 +213,7 @@ def _mcp_server_card(i, s, test_status=None, tool_count=None) -> str:
     return (
         '<div class="mcp-card">'
         f'<div class="mcp-card-head"><b>{_esc(name)}</b>{status}</div>'
-        f'<div class="mcp-card-meta">{_esc(transport)} · {_esc(tools_label)}</div>'
+        f'<div class="mcp-card-meta">{_esc(transport)} · {_esc(tools_label)} · 认证：{_esc(_mcp_auth_label(s.get("auth")))}</div>'
         f'<div class="mcp-card-url">{_esc(url)}</div>'
         + (_mcp_test_status_html(test_status) if test_status else "")
         + '<div class="actions-row">'
@@ -223,7 +247,37 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
     tools = _esc(s.get("allowed_tools", ""))
     timeout = _esc(s.get("timeout", default_timeout))
     checked = " checked" if s.get("enabled", True) else ""
-    hint = '<span class="hint">名称唯一；地址支持 http(s)/SSE；工具白名单逗号分隔（留空=放行所有工具）；超时秒</span>'
+    # 认证字段：secret（token / password）一律不回显，只给占位提示
+    auth = s.get("auth") if isinstance(s.get("auth"), dict) else {}
+    auth_type = str(auth.get("type") or "none")
+    auth_header_val = _esc(auth.get("header") or auth.get("name") or "")
+    auth_user_val = _esc(auth.get("username") or "")
+    token_ph = ("********（留空保持原值）" if str(auth.get("token") or auth.get("value") or "").strip()
+                else "粘贴 token")
+    pwd_ph = ("********（留空保持原值）" if str(auth.get("password") or "").strip() else "basic 密码")
+    auth_rows = (
+        '<div class="row"><label class="row-info"><span class="row-title">认证方式</span>'
+        '<span class="row-key">auth.type</span></label>'
+        f'<div class="row-control"><select name="mcp_auth_type">{_mcp_auth_options_html(auth_type)}</select></div></div>'
+        '<div class="row"><label class="row-info"><span class="row-title">Token / 值</span>'
+        '<span class="row-key">auth.token</span></label>'
+        f'<div class="row-control"><input type="password" name="mcp_auth_token" value="" placeholder="{token_ph}" autocomplete="new-password"></div></div>'
+        '<div class="row"><label class="row-info"><span class="row-title">Header 名</span>'
+        '<span class="row-key">auth.header</span></label>'
+        f'<div class="row-control"><input type="text" name="mcp_auth_header" value="{auth_header_val}" placeholder="X-API-Key（api_key）或自定义 header 名"></div></div>'
+        '<div class="row"><label class="row-info"><span class="row-title">Basic 用户名</span>'
+        '<span class="row-key">auth.username</span></label>'
+        f'<div class="row-control"><input type="text" name="mcp_auth_username" value="{auth_user_val}" placeholder="basic 用户名（非密钥，可回显）"></div></div>'
+        '<div class="row"><label class="row-info"><span class="row-title">Basic 密码</span>'
+        '<span class="row-key">auth.password</span></label>'
+        f'<div class="row-control"><input type="password" name="mcp_auth_password" value="" placeholder="{pwd_ph}" autocomplete="new-password"></div></div>'
+        '<div class="row"><label class="row-info"><span class="row-title">清除密钥</span>'
+        '<span class="row-key">auth.clear</span></label>'
+        '<div class="row-control"><input type="checkbox" name="mcp_auth_clear" value="1">'
+        '<span class="hint">勾选后保存将删除已保存的密钥</span></div></div>'
+    )
+    hint = ('<span class="hint">名称唯一；地址支持 http(s)/SSE；工具白名单逗号分隔（留空=放行所有工具）；超时秒。'
+            '认证：先选方式再填对应字段；密钥框留空 = 保持原值，勾选「清除密钥」才会删除</span>')
     delete_btn = ('<button type="submit" name="mcp_action" value="delete" class="btn danger">删除</button>'
                   if index is not None else "")
     submit_label = "保存" if index is not None else "添加服务器"
@@ -241,6 +295,7 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
         f'<div class="row-control"><div class="range-row"><input class="w-sm" type="number" name="mcp_timeout" min="1" max="3600" value="{timeout}"></div></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">启用</span><span class="row-key">enabled</span></label>'
         f'<div class="row-control"><input type="checkbox" name="mcp_enabled" value="1"{checked}></div></div>'
+        + auth_rows +
         f'<p class="hint">{hint}</p>'
         '<div class="group-actions">'
         f'<button type="submit" name="mcp_action" value="save" class="btn">{submit_label}</button>'

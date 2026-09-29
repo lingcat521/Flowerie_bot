@@ -177,6 +177,59 @@ class BasicAuth(McpAuthStrategy):
         return out
 
 
+def merge_auth_spec(auth_type: Any, previous: Optional[dict] = None, *,
+                    token: str = "", header: str = "", username: str = "",
+                    password: str = "", clear: bool = False):
+    """把 WebUI 表单输入合并成 auth 配置，返回 (spec_or_None, error_or_None)。
+
+    「留空 = 保持原 secret」的语义在这里落地（任务书 §五.3）：
+
+    - 类型为 none / 空 → 返回 (None, None)（= 无认证）；
+    - clear=True → 丢弃 previous 里的密钥字段（显式清除）；
+    - token / password 只有本次**非空输入**时才覆盖，留空则沿用 previous 的值；
+    - header 名与 username 不是 secret，允许直接覆盖（留空时沿用 previous）；
+    - 合并后统一过 build_auth 校验（fail-fast），非法即返回错误文案（不含 secret）。
+    """
+    kind = str(auth_type or "none").strip().lower()
+    prev = previous if isinstance(previous, dict) else {}
+    if kind in ("", "none"):
+        return None, None
+    spec: Dict[str, Any] = {"type": kind}
+    if kind in ("bearer", "api_key"):
+        value = str(token or "").strip()
+        if not value and not clear:
+            value = str(prev.get("token") or "").strip()
+        if value:
+            spec["token"] = value
+        if kind == "api_key":
+            name = str(header or "").strip() or str(prev.get("header") or "").strip()
+            if name:
+                spec["header"] = name
+    elif kind == "header":
+        name = str(header or "").strip() or str(prev.get("name") or "").strip()
+        value = str(token or "").strip()
+        if not value and not clear:
+            value = str(prev.get("value") or "").strip()
+        if name:
+            spec["name"] = name
+        if value:
+            spec["value"] = value
+    elif kind == "basic":
+        user = str(username or "").strip() or str(prev.get("username") or "").strip()
+        pwd = str(password or "")
+        if not pwd and not clear:
+            pwd = str(prev.get("password") or "")
+        if user:
+            spec["username"] = user
+        if pwd:
+            spec["password"] = pwd
+    try:
+        build_auth(spec)
+    except McpAuthError as e:
+        return None, str(e)
+    return spec, None
+
+
 def build_auth(spec: Optional[dict]) -> McpAuthStrategy:
     """按配置构造认证策略（fail-fast）。
 

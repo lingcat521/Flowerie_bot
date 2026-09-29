@@ -471,6 +471,10 @@ def parse_mcp_servers(raw: str, default_timeout: int = 15, default_tools: str = 
             except (TypeError, ValueError):
                 raise ValueError(f"MCP_SERVERS 元素 timeout 非法: {item!r}") from None
             tools = item.get("allowed_tools")
+            if tools is None:
+                # 兼容历史字段名：MCP_SERVERS 元素曾用 "tools" 表示同一个白名单
+                # （McpToolManager 认 allowed_tools，而 Core API 的 mcp_* 动作历史上认 tools）
+                tools = item.get("tools")
             servers.append({
                 "name": name,
                 "url": url,

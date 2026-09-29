@@ -27,6 +27,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import httpx
 
 from src.core.sanitizer import validate_memory_content
+from src.config import build_legacy_mcp_auth, parse_mcp_servers
 from src.plugins import comm
 from src.plugins.http_action import plugin_http_request, redact_url
 from src.plugins.installer import PluginInstaller, PluginInstallError
@@ -36,6 +37,7 @@ from src.plugins.router import PluginBus, PluginRouter
 from src.plugins.runtime import PluginRuntime
 from src.plugins.scheduler import PluginScheduler
 from src.plugins.webui_host import PluginWebUIHost
+from src.services.mcp_auth import McpAuthError, build_auth
 from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
 from src.sdk.event import BotEvent
@@ -51,6 +53,14 @@ _M_LEGACY_CALLS = registry.counter(
     "plugin_legacy_calls_total",
     "旧插件通信通道（plugin_call/plugin_event/plugin_service）投递次数",
     ("result",))
+
+
+def _public_mcp_auth(spec) -> Dict[str, Any]:
+    """对外暴露的 MCP 认证状态：只有 type / configured（外加非密钥的 header 名），绝不含 secret。"""
+    try:
+        return build_auth(spec).info()
+    except Exception:  # noqa: BLE001 - 非法配置已在解析期拦截，这里兜底为无认证
+        return {"type": "none", "configured": False}
 
 
 def _payload_hop(payload: dict) -> int:
@@ -1372,22 +1382,27 @@ class PluginManager:
     async def _ext_mcp(self, plugin_id: str, action: str, payload: dict) -> dict:
         """MCP 语义：配置列表/工具清单/在线状态 + 工具调用（管理员配置+白名单）。"""
         cfg = self.config
+        # 与 McpToolManager 共用同一套解析：legacy 单 server 回退 + auth fail-fast（不再静默吞配置错误）
         try:
-            servers = json.loads(str(getattr(cfg, "MCP_SERVERS", "") or "[]") or "[]")
-        except (ValueError, TypeError):
-            servers = []
-        single_url = str(getattr(cfg, "MCP_SERVER_URL", "") or "")
-        if single_url and not any(s.get("url") == single_url for s in servers):
-            servers.insert(0, {"name": str(getattr(cfg, "MCP_SERVER_NAME", "") or "default"),
-                               "url": single_url,
-                               "tools": (getattr(cfg, "MCP_TOOLS", "") or "*")})
+            servers = parse_mcp_servers(
+                str(getattr(cfg, "MCP_SERVERS", "") or ""),
+                default_timeout=int(getattr(cfg, "MCP_TIMEOUT", 15) or 15),
+                default_tools=str(getattr(cfg, "MCP_ALLOWED_TOOLS", "") or ""),
+                default_name=str(getattr(cfg, "MCP_SERVER_NAME", "mcp") or "mcp"),
+                legacy_url=str(getattr(cfg, "MCP_SERVER_URL", "") or ""),
+                legacy_tools=str(getattr(cfg, "MCP_ALLOWED_TOOLS", "") or ""),
+                legacy_auth=build_legacy_mcp_auth(lambda k, d="": getattr(cfg, k, d)),
+            )
+        except ValueError as e:
+            return {"ok": False, "error": f"MCP 配置非法: {e}"}
         if action == "mcp_server":
-            out = [{"name": s.get("name", ""), "url": s.get("url", "")} for s in servers]
+            out = [{"name": s.get("name", ""), "url": s.get("url", ""),
+                    "auth": _public_mcp_auth(s.get("auth"))} for s in servers]
             return {"ok": True, "servers": out, "enabled": bool(getattr(cfg, "MCP_ENABLED", False))}
         if action == "mcp_tools":
             out = []
             for s in servers:
-                tools_wildcard = str(s.get("tools") or "*")
+                tools_wildcard = str(s.get("allowed_tools") or "*")
                 out.append({"server": s.get("name", ""),
                             "allowed_tools": [t.strip() for t in tools_wildcard.split(",")]})
             return {"ok": True, "tools": out}
@@ -1400,11 +1415,12 @@ class PluginManager:
                 return {"ok": False, "error": f"未找到 MCP 服务器: {name}"}
             url = str(server.get("url") or "")
             timeout = max(3, min(30, int(getattr(cfg, "MCP_TIMEOUT", 15) or 15)))
-            mcp_headers = {"Content-Type": "application/json"}
-            srv_headers = server.get("headers") if isinstance(server, dict) else None
-            if isinstance(srv_headers, dict):
-                for hk, hv in list(srv_headers.items())[:8]:
-                    mcp_headers[str(hk)[:64]] = str(hv)[:256]
+            # 认证：这条路径不经 McpClient，但同样必须带认证头（任务书 §六：不允许漏掉）
+            try:
+                mcp_headers = build_auth(server.get("auth")).apply(
+                    {"Content-Type": "application/json"})
+            except McpAuthError as e:
+                return {"ok": False, "error": f"MCP 认证配置非法: {e}"}
             if action == "mcp_status":
                 try:
                     async with httpx.AsyncClient(timeout=timeout) as c:
@@ -1412,7 +1428,13 @@ class PluginManager:
                                                        "method": "tools/list", "params": {}},
                                             headers=mcp_headers)
                         ok = resp.status_code == 200
-                        return {"ok": ok, "status": "online" if ok else f"HTTP {resp.status_code}"}
+                        if not ok and resp.status_code in (401, 403):
+                            return {"ok": False,
+                                    "status": "authentication failed",
+                                    "error": f"MCP authentication failed: HTTP {resp.status_code}",
+                                    "auth": _public_mcp_auth(server.get("auth"))}
+                        return {"ok": ok, "status": "online" if ok else f"HTTP {resp.status_code}",
+                                "auth": _public_mcp_auth(server.get("auth"))}
                 except httpx.HTTPError as e:
                     return {"ok": False, "status": "offline",
                             "error": f"{type(e).__name__}: {e}"}
@@ -1420,7 +1442,7 @@ class PluginManager:
             tool = str(payload.get("tool") or "")
             if not tool:
                 return {"ok": False, "error": "mcp_call: 需要 tool"}
-            allow_raw = str(server.get("tools") or "*")
+            allow_raw = str(server.get("allowed_tools") or "*")
             allowed = [t.strip() for t in allow_raw.split(",")]
             if allow_raw != "*" and tool not in allowed:
                 return {"ok": False, "error": f"mcp_call: 工具 {tool} 不在白名单"}

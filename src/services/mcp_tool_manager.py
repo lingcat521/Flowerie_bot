@@ -248,6 +248,23 @@ class McpToolManager:
                            extra={"event": "mcp_call_failed"})
             return f"工具调用失败：{e}"
 
+    def servers_view(self) -> List[Dict[str, Any]]:
+        """运行态 server 视图（供 Core API / WebUI）：名称 / URL / 超时 / 工具数 / 认证状态。
+
+        认证只暴露 auth_info()（type + configured），**绝不含 token / password**。
+        """
+        out: List[Dict[str, Any]] = []
+        for srv in self._servers:
+            client = srv.client
+            out.append({
+                "name": srv.name,
+                "url": str(getattr(client, "url", "") or ""),
+                "timeout": srv.timeout,
+                "allowed_tools": list(srv.allowlist),
+                "auth": client.auth_info() if hasattr(client, "auth_info") else {"type": "none", "configured": False},
+            })
+        return out
+
     async def close(self) -> None:
         for s in self._servers:
             try:

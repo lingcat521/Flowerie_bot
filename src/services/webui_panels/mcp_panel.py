@@ -9,6 +9,7 @@ from urllib.parse import quote
 
 from aiohttp import web
 
+from src.services.mcp_auth import merge_auth_spec
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -95,6 +96,27 @@ class McpPanelMixin:
         except Exception as e:  # noqa: BLE001
             return False, f"连接失败：{e}"
 
+    @staticmethod
+    def _form_flag(form, name: str) -> bool:
+        """表单复选框：真 aiohttp 用 getall，测试桩用 get。"""
+        if hasattr(form, "getall"):
+            return "1" in form.getall(name)
+        return bool(form.get(name, ""))
+
+    def _form_auth(self, form, index, servers):
+        """按表单组装 auth（留空 = 保持原 secret；勾选清除才删除）。返回 (spec, error)。"""
+        prev = None
+        if index is not None and 0 <= index < len(servers):
+            prev = servers[index].get("auth")
+        return merge_auth_spec(
+            form.get("mcp_auth_type", "none"), prev,
+            token=str(form.get("mcp_auth_token", "") or ""),
+            header=str(form.get("mcp_auth_header", "") or ""),
+            username=str(form.get("mcp_auth_username", "") or ""),
+            password=str(form.get("mcp_auth_password", "") or ""),
+            clear=self._form_flag(form, "mcp_auth_clear"),
+        )
+
     async def _handle_panel_mcp_edit(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
             return web.HTTPFound("/panel")
@@ -138,7 +160,11 @@ class McpPanelMixin:
         err = self._mcp_server_error(name, url, tools)
         if err:
             return web.HTTPFound(f"/panel?cat=MCP&msg={quote(err)}&err=1")
-        new_srv = {"name": name, "url": url, "allowed_tools": tools, "timeout": timeout, "enabled": enabled}
+        auth_spec, auth_err = self._form_auth(form, index, servers)
+        if auth_err:
+            return web.HTTPFound(f"/panel?cat=MCP&msg={quote(auth_err)}&err=1")
+        new_srv = {"name": name, "url": url, "allowed_tools": tools, "timeout": timeout,
+                   "enabled": enabled, "auth": auth_spec}
         if action in ("save", "edit") and index is not None and 0 <= index < len(servers):
             servers[index] = new_srv
             local_msg = f"MCP 服务器「{name}」已更新（重启后生效）"
