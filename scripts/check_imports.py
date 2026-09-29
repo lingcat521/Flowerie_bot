@@ -259,6 +259,7 @@ def import_sort_problems(tree, source_lines=()):
     problems = []
     lines = []                      # 供 noqa 判定
     prev = None                     # (lineno, is_from, module_key, group)
+    prev_last = None                # 上一条 import 的末行（注释空行判定用）
     for node in tree.body:
         if isinstance(node, ast.Import):
             is_from = False
@@ -275,6 +276,15 @@ def import_sort_problems(tree, source_lines=()):
         if lines and "noqa" in lines[node.lineno - 1]:
             prev = None
             continue
+        # import 前紧跟注释、而注释上一行又是 import：ruff 要求注释前留空行（I001 格式化半边）
+        # —— 2026-09-30 flowerie_sdk/__init__.py 实际踩到（排序已对，仍被判 I001）
+        idx = node.lineno - 2
+        if lines and idx >= 0:
+            j = idx
+            while j >= 0 and lines[j].strip().startswith("#"):
+                j -= 1
+            if j != idx and prev_last is not None and j + 1 == prev_last:
+                problems.append("L%d: import 前的注释需要空行分隔（I001）" % node.lineno)
         group = kind(module.lstrip("."))
         if prev is not None and group == prev[3]:
             prev_from, prev_module = prev[1], prev[2]
@@ -286,6 +296,7 @@ def import_sort_problems(tree, source_lines=()):
             if bad:
                 problems.append("L%d: %s（I001）" % (node.lineno, bad))
         prev = (node.lineno, is_from, module, group)
+        prev_last = getattr(node, "end_lineno", node.lineno)
     return problems
 
 
