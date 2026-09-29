@@ -17,13 +17,14 @@
 误判成使用过（这正是 4 号规则要抓的形态）。规则 3 保持文本计数（保守、零误报）。
 
 用法：python3 scripts/check_imports.py [文件或目录...]（缺省扫 src/ + tests/ + main.py）
-退出码 1 = 有违规。刻意不检查「同组多余空行」与「import 是否排序」（与 ruff 判定不一致、
-误报率高）；本脚本只挡已知会红的四类。
+退出码 1 = 有违规。刻意不检查「同组内多余空行」（与 ruff 判定不一致）；本脚本只挡已知会红的几类。
 7) 行尾空白 / 空行含空白 / 文件末尾缺换行符或多空行（W291 / W293 / W292 / W391）—— 脚本生成的源码最容易踩 W292（2026-09-27 toxic_detector.py 实际踩到）；
 8) 循环变量在循环体内未被使用、且不以 _ 开头（B007）—— 2026-09-28 审计日志轮转用例实际踩到（for i in range(N) 里其实只用 _）。
 9) 组内排序（ruff I001 的另一半）：同一组里 straight import 必须排在 from-import 之前，
    且相邻同类语句按模块名字母序（忽略大小写）—— 2026-09-29 mcp_tool_manager.py 实际踩到
    （src.services.mcp_auth 被插在 src.core.sanitizer 之前）。
+   显式别名重导出（X as X）同样参与排序：ruff 只是不把它们算作 F401，顺序照查 ——
+   2026-09-30 flowerie_sdk/__init__.py 实际踩到（mcp 块被插到 gap_sdk/matcher 之前）。
 """
 import ast
 import builtins
@@ -262,17 +263,16 @@ def import_sort_problems(tree, source_lines=()):
         if isinstance(node, ast.Import):
             is_from = False
             module = min(a.name.lower() for a in node.names)
-            aliased = any(a.asname for a in node.names)
         elif isinstance(node, ast.ImportFrom):
             is_from = True
             module = ("." * node.level + (node.module or "")).lower()
-            # 显式别名重导出（X as X）与 noqa 行交给 ruff 自己的规则，这里不判顺序
-            aliased = any(a.asname for a in node.names)
         else:
+            # 非 import 语句（如 __all__ = [...]）是块的边界：ruff 只在同一 import 块内排序
+            prev = None
             continue
         if not lines:
             lines = source_lines
-        if aliased or (lines and "noqa" in lines[node.lineno - 1]):
+        if lines and "noqa" in lines[node.lineno - 1]:
             prev = None
             continue
         group = kind(module.lstrip("."))

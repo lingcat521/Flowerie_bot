@@ -22,13 +22,6 @@ __all__ = ["FlowerieBot", "BotEvent", "BotMessage",
            "command", "keyword", "regex", "prefix", "exact", "rule",
            "require_permission", "BotAPIError"]
 
-# MCP facade 与类型（认证状态不含密钥）——重导出
-from flowerie_sdk.mcp import McpAuthInfo as McpAuthInfo
-from flowerie_sdk.mcp import McpCallResult as McpCallResult
-from flowerie_sdk.mcp import McpFacade as McpFacade
-from flowerie_sdk.mcp import McpServer as McpServer
-from flowerie_sdk.mcp import McpTool as McpTool
-
 # v2.1 缺口 SDK（分面/上下文/任务/组合器/明确 NS）——重导出（显式别名满足 F401/可移植）
 from flowerie_sdk.gap_sdk import Conversation as Conversation
 from flowerie_sdk.gap_sdk import FileContext as FileContext
@@ -49,3 +42,9 @@ from flowerie_sdk.gap_sdk import build_sdk as build_sdk
 from flowerie_sdk.matcher import rule_all as rule_all
 from flowerie_sdk.matcher import rule_not as rule_not
 from flowerie_sdk.matcher import rule_or as rule_or
+# MCP facade 与类型（认证状态不含密钥）——重导出
+from flowerie_sdk.mcp import McpAuthInfo as McpAuthInfo
+from flowerie_sdk.mcp import McpCallResult as McpCallResult
+from flowerie_sdk.mcp import McpFacade as McpFacade
+from flowerie_sdk.mcp import McpServer as McpServer
+from flowerie_sdk.mcp import McpTool as McpTool

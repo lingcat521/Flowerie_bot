@@ -368,6 +368,7 @@ Java `java/` 用 `javac` 编译 SDK + 插件（JDK >= 11）→ `run.sh`。
 - **群与用户**：`read_group_info` 读群信息/成员/公告/群文件/精华；`read_user_info` 读用户信息/好友列表/登录信息/设备；`group_manage` 群管理写操作（禁言/踢人/管理员/名片/公告/群文件/精华）；`request_handle` 好友与加群请求处理（approve/deny）。
 - **记忆 / 存储 / 定时**：`read_memory` 读记忆与语义检索；`write_memory` 写记忆（更新/删除/置顶）；`storage` 插件 KV 存储动作与数据域（`kv_*` / `db_*` / `cache_*`）；`scheduler` 定时任务（interval/delay/daily）。
 - **AI / 资料 / 网络 / 文件**：`ai_chat` 受限 AI 对话（独立预算，务必自限频）；`bot_profile` 修改 Bot 自身资料；`http_request` 受限 HTTP 请求（SSRF 防护；MCP 动作同权限）；`filesystem_read` / `filesystem_write` 插件目录内读/写文件。
+- **MCP 认证（敏感）**：MCP server 的 token / password 属**操作员凭据**——插件只能读认证**状态**（`none` / `configured` / `authenticated` / `error`），任何 SDK 入口都拿不到真实凭据，也读不到 `settings.db`；`mcp_*` 动作只做「读取与调用」，改不了认证配置。
 - **插件运行时**：`plugin_admin` 插件管理面（调用/事件/服务/重载/发现/健康/配置/调试）。
 - **WebUI**：`web_ui` 插件自带管理页（旧名，等价 `webui.view` + `webui.action`）；`web_ui.files` 文件上传下载（仅插件自身空间）；`webui.view` 打开页面、读静态/动态资源（只读）；`webui.action` 提交表单动作；`webui.config.read` / `webui.config.write` WebUI 读操作员配置 / 写插件自己的覆盖层；`webui.storage.read` / `webui.storage.write` WebUI 读插件存储快照 / 写插件存储。
 - **插件间通信**：`plugin.emit` 事件广播；`plugin.call` 调用任意插件（等价 `plugin.call.*`；默认不给）。

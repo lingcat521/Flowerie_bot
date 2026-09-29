@@ -48,6 +48,7 @@ void plugin.run();
 | 动作（唯一副作用出口）| `ctx.action(type, params): Promise<Record<string, unknown>>`（:317）|
 | 存储 / 配置 | `ctx.storageGet(key)`（:338）· `storageSet(key, value): number`（:343）· `storageDelete(key): boolean`（:353）· `storageList(prefix?)`（:359）· `await ctx.configGet(keys?)`（:369）· `configSet(values): string[]`（:380）|
 | 权限 / 上下文 / 日志 | `await ctx.permissionCheck(p): boolean`（:320）· `await ctx.refreshContext()`（:324）· `ctx.logger.info/warn/error`（stderr，:309-315）|
+| MCP facade | `ctx.mcp`（getter :550）· `McpFacade.servers()/tools(server)/call(server,tool,args)/status(server)/auth(server)`（:328）· 类型 `McpAuthInfo` :296 · `McpServer` :304 · `McpTool` :307 · `McpCallResult` :310（认证状态不含 token）|
 | 通信 / 错误 | `plugin.call`（:551）· `emit`（:571）· `expose`（:583）· `cancel`（:601）· `commTrace`（:610）· `exposedMethods`（:619）；`PluginCommError{code,message,data}`（:136-149）、12 个 `ERROR_CODES`（:34-38）、`DEFAULT_TIMEOUT_MS=5000`（:40）|
 
 ## 5. 存储 / 配置 / 权限（通用语义见 [plugin-sdk.md §5](plugin-sdk.md#5-存储配置与权限)）

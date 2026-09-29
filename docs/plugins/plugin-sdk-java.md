@@ -49,6 +49,7 @@ public final class Plugin {
 | 生命周期 / 上下文 / 日志 | `onStartup` :446 · `onShutdown` :452 · `run()` :546 · `plugin.context()` :541 · `ctx.pluginId()` :244 · `ctx.log(msg)` :248（stderr）｜ 动作（副作用出口）：`ctx.action("send_message", Map.of("group_id", …, "message", …))` :380；事件钩子里直接 `return Json.obj("type", "send_message", "payload", payload)`（`MinimalPlugin.java:583`）|
 | 存储 / 配置 / 权限 | `storageGet` :265 · `storageSet` :273 · `storageDelete` :290 · `storageList` :294 · `configGet` :331 · `configSet` :343 · `permissionCheck` :366 |
 | 控制面 / WebUI / JSON | `ctx.info()` :373 · `registerHook` :501 · `webUI()` :512-537 · `Json.obj/parse/dump/get`（`Json.java:172/27/39/158`）|
+| MCP facade | `ctx.mcp()` :385 · `McpFacade.servers()` :1195 · `tools(server)` :1209 · `call(server, tool, args)` :1233 · `status(server)` :1246 · `auth(server)` :1251 · 类型 `McpAuthInfo` :1124 / `McpServer` :1146 / `McpTool` :1159 / `McpCallResult` :1170（认证状态不含 token）|
 | 插件间通信 / 错误 | `call` :797 · `callAsync` :842 · `emit` :864 · `cancel` :886 · `on` :903 · `expose` :916 · `commContext` :937 · `PluginCommException` :77 · `CallOptions` :134 |
 
 ## 5. 存储 / 配置 / 权限（通用语义见 [plugin-sdk.md §5](plugin-sdk.md#5-存储配置与权限)）

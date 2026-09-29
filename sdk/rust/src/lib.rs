@@ -1428,7 +1428,7 @@ impl<'a> McpFacade<'a> {
     pub fn servers(&self) -> Result<Vec<McpServer>, String> {
         let out = self.ctx.action("mcp_server", &Json::obj(vec![]))?;
         let mut result = Vec::new();
-        if let Some(rows) = out.get("servers").and_then(|v| v.as_array()) {
+        if let Some(rows) = out.get("servers").and_then(|v| v.as_arr()) {
             for row in rows {
                 result.push(McpServer {
                     name: row.get("name").and_then(|v| v.as_str()).unwrap_or("").to_string(),
@@ -1444,7 +1444,7 @@ impl<'a> McpFacade<'a> {
     pub fn tools(&self, server: &str) -> Result<Vec<McpTool>, String> {
         let out = self.ctx.action("mcp_tools", &Json::obj(vec![]))?;
         let mut result = Vec::new();
-        if let Some(rows) = out.get("tools").and_then(|v| v.as_array()) {
+        if let Some(rows) = out.get("tools").and_then(|v| v.as_arr()) {
             for row in rows {
                 let name = row.get("server").and_then(|v| v.as_str()).unwrap_or("");
                 if !server.is_empty() && name != server {
@@ -1452,7 +1452,7 @@ impl<'a> McpFacade<'a> {
                 }
                 let allowed = row
                     .get("allowed_tools")
-                    .and_then(|v| v.as_array())
+                    .and_then(|v| v.as_arr())
                     .map(|list| {
                         list.iter()
                             .filter_map(|t| t.as_str().map(|s| s.to_string()))

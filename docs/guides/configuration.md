@@ -154,11 +154,13 @@
 | :--- | :--- | :--- |
 | `MCP_ENABLED` | 总开关（`true` 时必须配好 server，否则启动失败，不静默降级） | `false` |
 | `MCP_SERVER_URL` / `MCP_SERVER_NAME` | 单 server 地址 / 名称（`MCP_SERVERS` 为空时回退使用）；名称**重启** | 空 / `mcp` |
-| `MCP_SERVERS` | 多 server JSON 数组：`[{"name","url","allowed_tools"?,"timeout"?,"enabled"?}]`；name 唯一且合法、url 过 SSRF 校验；**重启** | 空 |
+| `MCP_SERVERS` | 多 server JSON 数组：`[{"name","url","allowed_tools"?,"timeout"?,"enabled"?,"auth"?}]`；name 唯一且合法、url 过 SSRF 校验、`auth` 非法（未知 type / 缺字段 / header 注入）**启动即报错**；**重启** | 空 |
 | `MCP_TIMEOUT` / `MCP_MAX_TOOL_CALLS` | 单次调用超时（秒）/ 单轮工具调用次数上限 | `15` / `5` |
 | `MCP_ALLOWED_TOOLS` | 工具 allowlist（逗号分隔；空=放行所有工具） | 空 |
 | `MCP_ALLOWED_HOSTS` | 显式放行的本地/内网主机白名单（仅这些地址可绕过回环/私网拒绝）；**重启** | 空 |
 | `MCP_CIRCUIT_FAILURES` / `MCP_CIRCUIT_PAUSE_SECONDS` | MCP 独立熔断阈值 / 冷却（每 server 各自独立） | `5` / `60` |
+| `MCP_AUTH_TYPE` / `MCP_AUTH_TOKEN` | 单 server 认证方式（`none`/`bearer`/`api_key`/`header`/`basic`）与 token（`MCP_SERVERS` 为空时生效）；凭据不进日志/错误/SDK 返回值 | 空 |
+| `MCP_AUTH_HEADER` / `MCP_AUTH_USERNAME` / `MCP_AUTH_PASSWORD` | api_key 的自定义 header 名（缺省 `X-API-Key`）/ basic 的用户名与密码 | 空 |
 
 ## Web UI
 

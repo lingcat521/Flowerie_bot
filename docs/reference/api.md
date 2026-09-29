@@ -136,6 +136,8 @@
 | `mcp_status(payload)` | MCP 服务器状态（在线探测） | `http_request` |
 | `mcp_tools(payload)` | MCP 工具列表（配置声明与在线工具） | `http_request` |
 
+> `mcp_server` / `mcp_status` / `mcp_tools` 的返回带每个 server 的认证**状态**（`auth.type` / `auth.configured` / `auth.status`），**绝不含 token / password**；认证配置只能由操作员在 Web UI 或 `MCP_SERVERS` 里改。
+
 **其他**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |

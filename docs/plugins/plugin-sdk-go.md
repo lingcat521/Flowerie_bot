@@ -52,6 +52,7 @@ func main() {
 | :--- | :--- |
 | 创建 · 运行 · 上下文 | `flowerie.New() *Plugin` :164 · `(*Plugin).Run() error` :318 · `(*Plugin).Context() *Context` :308 · `Context{PluginID,PluginDir,DataDir}` :156-160 |
 | 动作 · 日志 | `(*Context).Action(actionType string, params map[string]any) (map[string]any, error)` :730 · `(*Context).Logf(format string, args ...any)` :757（stderr）｜ 存储 · 配置 · 权限 · 上下文查询：`StorageGet` :796 · `StorageSet` :813 · `StorageDelete` :840 · `StorageList` :849 · `ConfigGet([]string)` :883 · `ConfigSet(map[string]any)` :907 · `PermissionCheck(string) (bool, error)` :735 · `Info()` :745 |
+| MCP facade | `(*Context).MCP() *McpFacade` :1587 · `Servers()` :1611 · `Tools(server)` :1631 · `Call(server, tool, args)` :1661 · `Status(server)` :1684 · `Auth(server)` :1689 · 类型 `McpAuthInfo` :1560 / `McpServer` :1567 / `McpTool` :1574 / `McpCallResult` :1580（认证状态不含 token）|
 | 插件间通信 | `Expose(method, Handler)` :1025 · `Call(target, method, params, opts...)` :1074 · `Emit(name, payload)` :1140 · `Cancel(requestID, reason)` :1179 · `OnPluginEvent` :1042 · `Handler` :980 · `CommError` :947 · `CommCode(err)` :965 · `WithTimeout/WithRoute/WithRequestID/WithMetadata` :993/:999/:1005/:1010 |
 | WebUI · 常量 | `WebUI().Page/.Action/.Asset` :287/:290/:296/:302 · `ProtocolVersion` :32 · `ErrorCodes` :84 · `Action` :98 · `RouteAuto/RouteCore/RouteLocal` :61-63 |
 
