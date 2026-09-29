@@ -95,7 +95,7 @@ Sender → 协议出口；Core 仍只见 `InternalEvent` / `MessageSender`。
 | 本机静态自检 `scripts/check_imports.py` | 383 文件 **0 问题**（含本次新增规则） |
 | `ruff` | 本机无 ruff（Android aarch64 无 wheel）；由 CI 的 `ruff check .` 把关 |
 | 相关专项 | `tests/test_*postgres* / test_multi_instance / test_transport_contract / test_sdk_listener / test_blossom*` 全绿 |
-| CI | 未全绿: Analyze (javascript-typescript)=success, Analyze (python)=success, Analyze (actions)=success, test (3.9)=in_progress, test (3.12)=in_progress, webui-e2e=success, accept=in_progress |
+| CI | 全部 success（7/7）：Analyze (actions) · Analyze (javascript-typescript) · Analyze (python) · accept · test (3.12) · test (3.9) · webui-e2e |
 
 ## 6. 不要把 OneBot12 算进问题
 
