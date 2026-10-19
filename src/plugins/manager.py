@@ -27,6 +27,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import httpx
 
 from src.config import build_legacy_mcp_auth, parse_mcp_servers
+from src.core.reply_splitter import split_by_boundary
 from src.core.sanitizer import validate_memory_content
 from src.plugins import comm
 from src.plugins.http_action import plugin_http_request, redact_url
@@ -1566,10 +1567,19 @@ class PluginManager:
             if not messages:
                 return {"ok": False, "error": "ai_stream: 需要 messages 或 prompt"}
             try:
-                reply = await ai.chat_with_messages(messages)
-                if reply is None:
+                # Layer B 透出：真实 SSE 流式 + 句子缓冲分句（替代旧的 64 字假切片）；
+                # chunks 为按句尾边界刷出的整段，text 为完整文本（响应 shape 保持兼容）
+                # messages → user_message（末条 user）+ context（其余轮次），语义等价
+                user_msgs = [m for m in messages if m.get("role") == "user"]
+                hist = [m for m in messages if m.get("role") != "user"]
+                prompt = str(user_msgs[-1].get("content", "")) if user_msgs else ""
+                context = "\n".join(f"{m.get('role')}: {m.get('content', '')}" for m in hist)
+                chunks: list = []
+                async for segs in ai.chat_stream(prompt, context):
+                    chunks.extend(segs)
+                reply = "".join(chunks)
+                if not reply:
                     return {"ok": False, "error": "ai_stream: 请求失败（限流/密钥/超时）"}
-                chunks = [reply[i:i + 64] for i in range(0, len(reply), 64)] or [""]
                 return {"ok": True, "text": reply, "chunks": chunks,
                         "chunk_count": len(chunks), "streamed": True}
             except Exception as e:  # noqa: BLE001
@@ -1713,6 +1723,16 @@ class PluginManager:
             if gid:
                 return await self._sender_forward(plugin_id, "group_forward", p2)
             return await self._sender_forward(plugin_id, "user_forward", p2)
+        if action == "split_reply":
+            # Layer A 透出：边界感知切分（换行→句尾标点→逗号→空格→硬切），内容零丢失
+            text = str(payload.get("text") or "")
+            if not text.strip():
+                return {"ok": False, "error": "split_reply: text 不能为空"}
+            limit = max(1, min(2000, int(payload.get("limit", 40) or 40)))
+            segs = split_by_boundary(text, limit)
+            if not segs:
+                return {"ok": False, "error": "split_reply: 切分结果为空"}
+            return {"ok": True, "segments": segs, "count": len(segs), "limit": limit}
         if action == "split_message":
             text = str(payload.get("text") or "")
             limit = max(1, min(200, int(payload.get("limit", 2000) or 2000)))

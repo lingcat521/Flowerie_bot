@@ -4,6 +4,55 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.6.0] - 2026-10-20
+
+> 本版为**功能版本（MINOR bump）**：长回复处理对齐 dsh-qq-bridge——Layer A 边界感知
+> 切分替代「超长截断 + 省略号」，Layer B 流式分句缓冲（边生成边按句发送）。
+> 兼容性：全部新能力**默认关闭**（SPLIT_REPLY_ENABLED / STREAM_REPLY_ENABLED 均默认
+> false），旧路径行为零变化；插件 SDK API 只做加法（新增 split_reply 动作）。
+
+### 新增 —— 长回复边界切分（Layer A）
+
+- **替代 40 字硬截断**：SPLIT_REPLY_ENABLED=true 时，超过段长上限的回复按
+  「换行 → 句尾标点 → 逗号 → 空格 → 硬切」优先级切多条独立消息发送，**内容零丢失**、
+  不再附加「...」；默认 false = 旧行为（截断 + 省略号）。
+- 新增配置：SPLIT_REPLY_SEGMENT_LIMIT（段长上限，默认对齐 MAX_REPLY_LENGTH）、
+  SPLIT_REPLY_MAX_MESSAGES（最大条数，防爆屏，默认 8）。
+- 切分段不受 MULTI_REPLY_ENABLED 门控与 clamped(1) 影响（切分已是正确形态）；
+  发送层 Sender 感知 SPLIT 段长上限，不再二次截断。
+
+### 新增 —— 流式分句缓冲（Layer B）
+
+- STREAM_REPLY_ENABLED=true 时，AI 回复走 SSE 流式：token 增量进句子缓冲，
+  命中句尾标点/换行且达最小长度（或达上限）刷出整段，逐段发送；逐 token 到达
+  不会在聊天框刷出单词碎片。
+- 新增配置：STREAM_REPLY_MIN_FLUSH（默认 8）/ STREAM_REPLY_MAX_FLUSH（默认 200）。
+- 流式与整轮请求共用 guarded 准入（预算 / 熔断 / 退避）；流式任何异常自动降级到
+  原整轮路径（复用重试体系，不吞错）。
+
+### 新增 —— 插件 SDK 能力透出与最小认证
+
+- **split_reply 动作**：插件可调用 Layer A 边界感知切分（与 split_message 的
+  硬切互补）；SDK 方法 bot.split_reply(text, limit)。
+- **ai_stream 升级**：从「整轮拿完按 64 字假切片」改为**真实 SSE 流式 + 句子缓冲**，
+  chunks 为按句刷出的整段（响应 shape 保持兼容）。
+- **最小化插件认证**：split_reply 归入 read_message 权限（与 split_message 同级，
+  纯本地语义）；ai_stream 保持 ai_chat；动作→权限映射由运行时校验，manifest 声明。
+
+### 工程护栏（不提高上限，超限即拆分）
+
+- message_router.py 通过抽出 stream_reply / memory_hook 模块压回 **650 行**；
+  ai_client.py 408 行（≤430）；新增模块：core/reply_splitter.py、
+  core/stream_reply.py、core/memory_hook.py、services/ai_streaming.py。
+- 单测 +32：tests/test_reply_splitter.py（16）、test_reply_stream.py（14）、
+  test_sdk_split_reply.py（7，SDK 动作与权限映射），含用户实测 case（85 字三行
+  日记）零丢失回归。
+
+### 修复
+
+- 发送层截断上限统一为 _reply_limit()：SPLIT 开关下取段长上限，避免对已切分的
+  段二次截断。
+
 ## [2.5.0] - 2026-09-30
 
 > 本版为**功能版本（MINOR bump）**：MCP 认证能力升级（五种认证方式 + 全链路脱敏）与一轮

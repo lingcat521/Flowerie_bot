@@ -95,6 +95,23 @@ class AiGateway:
     @property
     def meme_manager(self):
         return self._meme_manager()
+
+    async def guarded_stream(self, group_id: int, user_id: int, **kwargs):
+        """流式分句入口（Layer B）：与 guarded_chat 同一套预算闸门前置，逐段产出。
+
+        与 guarded_chat 的区别：
+        - 走 ai_client.chat_stream（SSE 增量 + 句子缓冲），每段 yield List[str]
+        - 任何异常（网络/非 200/解析失败）→ 由调用方降级到 guarded_chat（复用其重试体系）
+        - 已消耗的预算不退（与重试语义一致：一次真实 API 尝试 = 一次预算）
+        开关 STREAM_REPLY_ENABLED=False 时不应被调用（router 层门控）。
+        """
+        if not await self._ai_allowed(group_id, user_id, user_interval=True):
+            _M_REJECTED.inc({"reason": "budget"})
+            return
+        _M_AI_ATTEMPTS.inc()
+        async for segments in self.ai_client.chat_stream(**kwargs):
+            yield segments
+
     async def guarded_chat(self, group_id: int, user_id: int, **kwargs) -> Tuple[Optional[str], Optional[str], bool]:
         """统一 AI 对话入口（logical request 层）。
 

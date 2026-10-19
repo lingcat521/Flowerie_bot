@@ -1,7 +1,12 @@
 # 开发
 
-> 当前版本 **v2.5.0**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
+> 当前版本 **v2.6.0**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
 > 历史审计报告见 [archive/](../archive/README.md)。
+
+> **v2.6.0 新增（默认全关，旧行为零变化）**：Layer A 长回复边界感知切分
+> （SPLIT_REPLY_ENABLED，替代 40 字硬截断，内容零丢失）与 Layer B 流式分句缓冲
+> （STREAM_REPLY_ENABLED，SSE 边生成边按句发送）；插件 SDK 新增 split_reply 动作、
+> ai_stream 升级为真实流式。详见 [CHANGELOG](../../CHANGELOG.md)。
 
 ## 环境
 
@@ -64,6 +69,9 @@ ruff check .        # lint（E/F/W/I/B 规则集，line-length=120）
 
 **行数护栏**（`tests/test_web_ui_persona_knowledge.py`）：`web_ui.py` ≤430、`web_ui_assets.py` ≤120、
 `ai_client.py` ≤430、`config_service.py` ≤700、`message_router.py` ≤650 —— 超限请继续拆分，而不是提高上限。
+v2.6.0 为 Layer A/B 在护栏内落盘，抽出薄模块：`core/reply_splitter.py`（切分核心）、
+`core/stream_reply.py`（流式编排）、`core/memory_hook.py`（记忆更新 hook）、`services/ai_streaming.py`
+（句子缓冲 + SSE）；`message_router.py` 650、`ai_client.py` 408 均在上限内。
 
 ## 目录结构
 

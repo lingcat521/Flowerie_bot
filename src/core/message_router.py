@@ -16,6 +16,8 @@ from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
 from src.core.reply_dispatch import ReplyDispatchMixin
 from src.core.reply_plan import first_text
+from src.core.memory_hook import apply_memory_update
+from src.core.stream_reply import collect_stream_segments
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
@@ -391,36 +393,34 @@ class MessageRouter(ReplyDispatchMixin):
                 user_prompt = f"{user_prompt}\n\n{sticker_ctx}"
         # 输入截断已统一收敛到 AIClient.chat_once（覆盖主动聊天等所有路径）
         logger.info("policy_pass group=%s user=%s", group_id, user_id, extra={"event": "policy_pass"})
-        reply, memory_update, denied = await self.guarded_chat(
-            group_id,
-            user_id,
-            user_message=user_prompt,
-            context=context_text,
-            is_mentioned=is_mentioned or is_reply_to_bot,
-        )
+        # 流式分句（Layer B，默认关=旧行为零变化）：逐段产出，失败降级到下方 guarded_chat
+        reply, memory_update, denied = None, None, False
+        if getattr(self.config, "STREAM_REPLY_ENABLED", False):
+            try:
+                reply = await collect_stream_segments(self.ai_gateway, group_id, user_id,
+                                                      user_prompt, context_text,
+                                                      is_mentioned or is_reply_to_bot)
+            except Exception as e:  # noqa: BLE001 - 流式失败降级到整轮请求，保留原语义
+                logger.warning("stream_reply_fallback group=%s err=%s", group_id, e,
+                               extra={"event": "stream_reply_fallback"})
+        if reply is None:
+            reply, memory_update, denied = await self.guarded_chat(
+                group_id,
+                user_id,
+                user_message=user_prompt,
+                context=context_text,
+                is_mentioned=is_mentioned or is_reply_to_bot,
+            )
         if denied:
             # 预算/限速拦截：静默跳过（不发送"喵？"兜底）
             logger.info("budget_rejected group=%s user=%s", group_id, user_id, extra={"event": "budget_rejected"})
             _M_REJECTED.inc({"reason": "budget"})
             return
 
-        # 处理记忆更新（P1 权限边界：target 恒为当前用户；P3 隐私：禁用群不写记忆）
-        if memory_update and user_id and not self._memory_disabled(group_id):
-            target_uid, mem_content = self.policy_engine.parse_memory_update(memory_update, user_id)
-            if mem_content:
-                # 代码层闸门：校验记忆内容（长度/QQ号/指令句式），拒绝即丢弃并记日志
-                mem_content = validate_memory_content(mem_content)
-                if mem_content is None:
-                    logger.warning(f"记忆写入被代码层校验拒绝（疑似注入）: {memory_update[:60]}")
-                else:
-                    await self.memory_manager.append_memory_text(
-                        target_uid, group_id, mem_content,
-                        source_user=user_id,
-                        source_group=group_id,
-                        source_message_id=msg_id,
-                        confidence="model",
-                    )
-                    logger.info("memory_updated user=%s group=%s len=%d", target_uid, group_id, len(mem_content or ""), extra={"event": "memory_updated"})
+        # 处理记忆更新（memory_hook 模块：P1 权限边界 / P3 隐私 / 代码层闸门校验）
+        await apply_memory_update(
+            self.memory_manager, self.policy_engine, memory_update, user_id, group_id, msg_id,
+            self._memory_disabled(group_id))
 
         # 兜底：guarded_chat 已内部重试过（每次重试过预算），仍空则给个兜底回复
         if is_mentioned and not first_text(reply):

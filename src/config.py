@@ -115,6 +115,20 @@ class Settings(BaseSettings):
     BOT_COOLDOWN: int = 2
     MAX_REPLY_LENGTH: int = 40
     MAX_CONSECUTIVE_REPLIES: int = 3
+    # 长回复边界切分（Layer A，对齐 dsh-qq-bridge splitText）：默认 False=旧行为
+    # （超 MAX_REPLY_LENGTH 截断 + "..."，行为零变化）；True=按「换行→句尾标点→
+    # 逗号→空格→硬切」优先级切多条独立消息发送，内容零丢失，条数受 clamped 限制。
+    SPLIT_REPLY_ENABLED: bool = False
+    # 切分单条段长上限（默认与 MAX_REPLY_LENGTH 对齐；可独立调大）
+    SPLIT_REPLY_SEGMENT_LIMIT: int = 40
+    # 切分最大条数（防爆屏；超过的尾部段被丢弃，不再截断成 "..."）
+    SPLIT_REPLY_MAX_MESSAGES: int = 8
+    # 流式分句回复（Layer B，对齐 dsh-qq-bridge 流式缓冲）：默认 False=整轮完成后
+    # 单条回复（旧行为零变化）；True=边生成边按句发送。需要 Provider 支持 SSE。
+    STREAM_REPLY_ENABLED: bool = False
+    # 句子缓冲参数：累积达 MIN_FLUSH 且命中句尾标点/换行才发；无边界时 MAX_FLUSH 强制发
+    STREAM_REPLY_MIN_FLUSH: int = 8
+    STREAM_REPLY_MAX_FLUSH: int = 200
     # 多条回复（Multi-Reply）：一次回复拆成 1~N 条独立消息，按间隔策略逐条发送
     MULTI_REPLY_ENABLED: bool = False
     MULTI_REPLY_MAX_MESSAGES: int = 3

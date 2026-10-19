@@ -96,7 +96,7 @@ class Sender:
             return False
         segments = []
         if text and text.strip():
-            segments.append({"type": "text", "data": {"text": text[: self.config.MAX_REPLY_LENGTH]}})
+            segments.append({"type": "text", "data": {"text": text[: self._reply_limit()]}})
         segments.append({"type": "image", "data": {"file": f"file://{image_path}"}})
         segments = self._prepare_outgoing(segments, is_group=True)
         payload = {"group_id": group_id, "message": segments}
@@ -122,11 +122,19 @@ class Sender:
                 await asyncio.sleep(2)
         return False
 
+    def _reply_limit(self) -> int:
+        """单条消息上限：SPLIT_REPLY_ENABLED 时取 SPLIT_REPLY_SEGMENT_LIMIT，否则 MAX_REPLY_LENGTH。"""
+        if getattr(self.config, "SPLIT_REPLY_ENABLED", False):
+            return int(getattr(self.config, "SPLIT_REPLY_SEGMENT_LIMIT",
+                               getattr(self.config, "MAX_REPLY_LENGTH", 40)) or 40)
+        return int(getattr(self.config, "MAX_REPLY_LENGTH", 40) or 40)
+
     async def send_group_message(self, group_id: int, message: str, retries: int = 2) -> bool:
         if not message:
             return False
-        if len(message) > self.config.MAX_REPLY_LENGTH:
-            message = message[:self.config.MAX_REPLY_LENGTH] + "..."
+        limit = self._reply_limit()
+        if len(message) > limit:
+            message = message[:limit] + "..."
         payload = {"group_id": group_id, "message": message}
         logger.info("message_send_started group=%s", group_id, extra={"event": "message_send_started"})
         # 统一入口（任务书 §13）：WS / HTTP / Milky 由 _post 内部分流；

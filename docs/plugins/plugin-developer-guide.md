@@ -384,9 +384,9 @@ plugin.call.weather.get_status  >  plugin.call.weather  >  plugin.call.*  >  plu
 
 ### 5.2 动作到权限的映射（`ACTION_PERMISSIONS`，181 个动作）
 
-**`ACTION_PERMISSIONS` 共 181 个动作**，按所需权限分组；`无需权限` 是内建无副作用动作，未知动作一律拒绝（白名单外，不是默认放行）：
+**`ACTION_PERMISSIONS` 共 182 个动作**，按所需权限分组；`无需权限` 是内建无副作用动作，未知动作一律拒绝（白名单外，不是默认放行）：
 
-- `send_message`：send_message, send_reply, send_many, send_private_message, forward_message, merge_message, poke, reaction, emoji；`read_message`：matcher_register, react, split_message。
+- `send_message`：send_message, send_reply, send_many, send_private_message, forward_message, merge_message, poke, reaction, emoji；`read_message`：matcher_register, react, split_message, split_reply。
 - `read_message_history`：get_message, get_group_history, get_context, search_message, quote_chain, favorite_message, read_status, emoji_list；`read_group_info`：get_group, get_group_info, get_group_member, get_group_members, group_info, group_list, group_admins, group_member_search, group_mute_status, group_config, group_files, group_files_in, group_file_url, group_res, group_notice_get, group_essence, essence_list, group_honor, is_group_admin, is_group_owner, tap。
 - `read_user_info`：get_user, friends, friend_detail, friend_remark, friend_delete, friend_group, friend_category, friend_online, like, login_info, devices, status, user_history, user_forward, user_poke；`group_manage`：group_ban, group_kick, group_admin, group_member_update, group_card, group_title, group_rename, group_whole_ban, group_notice_create, group_notice_update, group_notice_send, group_notice_delete, group_portrait, group_essence, group_invite, group_file_upload, group_file_rename, group_file_delete, group_file_move, group_folder_create, group_folder_delete, group_folder_rename, group_forward, pin, unpin。
 - `request_handle`：handle_friend_request, handle_group_request, group_apply；`scheduler`：schedule_register, schedule_cancel, schedule_list；`storage`：kv_get, kv_set, kv_delete, kv_list, db_query, db_transaction, db_migration, db_index, cache_get, cache_set, cache_delete, memory_tag；`read_memory`：get_memory, mem_update, mem_clear, memory_get, memory_search, memory_semantic, memory_expire；`write_memory`：write_memory, memory_update, memory_delete, memory_pin。

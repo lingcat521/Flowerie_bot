@@ -189,6 +189,7 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "edit_message": "delete_message",      # 编辑消息（同撤回级敏感）
     "forward_message": "send_message",     # 转发（发送动作）
     "split_message": "read_message",       # 拆段（纯本地）
+    "split_reply": "read_message",        # 边界感知切分（Layer A，纯本地，同拆段）
     "merge_message": "send_message",       # 合并（发送动作）
     "favorite_message": "read_message_history",
     "mark_message": "delete_message",      # 标记（同消息管理级）

@@ -226,6 +226,14 @@ class FlowerieBot:
         """把长文本按 limit 拆段（纯本地；返回 segments 列表）。"""
         return self._api.split_message({"text": str(text), "limit": limit}) if self._api else self._no_api()
 
+    def split_reply(self, text, limit=40):
+        """长回复边界感知切分（Layer A，内容零丢失；返回 segments 列表）。
+
+        与 split_message 的差别：split_message 按长度硬切，split_reply 优先在
+        换行/句尾标点/逗号/空格处切，尽量保持每段是完整语义单元。
+        """
+        return self._api.split_reply({"text": str(text), "limit": limit}) if self._api else self._no_api()
+
     def merge_message(self, segments):
         """段列表合并为文本。"""
         return self._api.merge_message({"segments": list(segments)}) if self._api else self._no_api()

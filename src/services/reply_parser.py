@@ -7,6 +7,7 @@
 import json
 from typing import Any, List, Optional, Tuple
 
+from src.core.reply_splitter import split_by_boundary
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -74,6 +75,12 @@ def parse_reply_content(content: str, config) -> Tuple[Optional[Any], Optional[s
             logger.debug("multi_reply_detected count=%d", len(capped))
             return capped, memory_update
     if len(reply_content) > config.MAX_REPLY_LENGTH:
+        if getattr(config, "SPLIT_REPLY_ENABLED", False):
+            limit = int(getattr(config, "SPLIT_REPLY_SEGMENT_LIMIT", config.MAX_REPLY_LENGTH) or config.MAX_REPLY_LENGTH)
+            segments = split_by_boundary(reply_content, limit)
+            if segments:
+                logger.debug("split_reply count=%d", len(segments))
+                return segments, memory_update
         reply_content = reply_content[:config.MAX_REPLY_LENGTH] + "..."
     logger.debug("api_reply len=%d", len(reply_content))
     if memory_update:

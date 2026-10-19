@@ -50,6 +50,47 @@ class AIClient:
         if self.client:
             await self.client.aclose()
 
+    async def chat_stream(self, user_message: str, context: str, **kwargs):
+        """流式分句回复（Layer B）：对齐 dsh-qq-bridge 的流式分段发送。
+
+        与 chat_once 同一请求体（同一 system prompt / 记忆 / 人设链路），差别仅：
+        - payload 加 stream=True，SSE 增量消费
+        - 经 stream_reply_segments 句子缓冲，逐段 yield 完整句子（List[str]）
+        - 异常抛出（由上层 guarded_stream 降级到非流式重试，不吞错）
+
+        kwargs 透传 persona/meme/nickname 等与 chat_once 同名的可选参数。
+        """
+        from src.services.ai_streaming import stream_reply_segments
+        if not context or len(context.strip()) < 5:
+            context = "（暂无历史聊天记录）"
+        user_message, system_prompt = self._prepare_chat_inputs(
+            user_message, context, kwargs.get("user_id"), kwargs.get("group_id"),
+            kwargs.get("custom_prompt", ""), kwargs.get("is_mentioned", False),
+            persona_text=kwargs.get("persona_text", ""),
+            meme_context=kwargs.get("meme_context", ""),
+            retrieved_memory=kwargs.get("retrieved_memory", ""),
+            bot_nickname=kwargs.get("bot_nickname", ""),
+            default_nickname=kwargs.get("default_nickname", "花璃"),
+            group_style_rules=kwargs.get("group_style_rules", ""),
+        )
+        payload = {
+            "model": self.config.DEEPSEEK_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            "temperature": 0.7,
+            "max_tokens": 1024,
+            "top_p": 0.9,
+        }
+        headers = {"Authorization": f"Bearer {self.config.DEEPSEEK_API_KEY}",
+                   "Content-Type": "application/json"}
+        async for segments in stream_reply_segments(
+                self.client, self.config.DEEPSEEK_API_URL, headers, payload,
+                min_flush=int(getattr(self.config, "STREAM_REPLY_MIN_FLUSH", 8) or 8),
+                max_flush=int(getattr(self.config, "STREAM_REPLY_MAX_FLUSH", 200) or 200)):
+            yield segments
+
     async def chat_once(
         self,
         user_message: str,

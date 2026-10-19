@@ -116,6 +116,10 @@ def plan_from_config(reply, config, *, from_ai: bool = False) -> ReplyPlan:
     hi = float(getattr(config, "MULTI_REPLY_MAX_INTERVAL", 4.0) or 0.0)
     plan = ReplyPlan.of(reply, interval_mode=mode, min_interval=lo, max_interval=hi, from_ai=from_ai)
     plan.normalize_mode()
+    if getattr(config, "SPLIT_REPLY_ENABLED", False):
+        # 切分回复：不受 MULTI_REPLY_ENABLED 门控与 clamped(1) 影响，
+        # 条数由 SPLIT_REPLY_MAX_MESSAGES 约束（切分已是正确形态，截断反而丢内容）
+        return plan.clamped(int(getattr(config, "SPLIT_REPLY_MAX_MESSAGES", 8) or 8))
     if not enabled:
         # 未启用：只发第一条（多条能力对现有行为零影响）
         plan = plan.clamped(1)

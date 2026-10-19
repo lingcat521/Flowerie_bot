@@ -284,6 +284,10 @@ class PluginApi:
         """消息拆段（payload.text；按段/长度拆分，纯本地语义）"""
         return self._send_action("split_message", payload)
 
+    def split_reply(self, payload):
+        """长回复边界感知切分（Layer A：换行→句尾标点→逗号→空格→硬切，内容零丢失）"""
+        return self._send_action("split_reply", payload)
+
     def merge_message(self, payload):
         """消息合并（payload 段列表 → 单条消息负载；纯本地语义）"""
         return self._send_action("merge_message", payload)
