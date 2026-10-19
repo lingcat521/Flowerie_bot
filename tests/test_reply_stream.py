@@ -3,15 +3,14 @@
 覆盖：句子缓冲（边界/最小刷出/强制刷出）、SSE 解析、router 降级路径。
 全部用假对象（无真实网络），符合 CI 单元层口径。
 """
-import sys
 import os
+import sys
 
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.services.ai_streaming import StreamingSentenceBuffer, stream_chat_completion
-
 
 # ---------- StreamingSentenceBuffer ----------
 
@@ -168,15 +167,9 @@ async def test_stream_chat_completion_sets_stream_flag():
 
 # ---------- router 降级（假 gateway） ----------
 
-class _BoomGateway:
-    """guarded_stream 抛异常的假网关：router 应降级到 guarded_chat。"""
-
-    async def guarded_stream(self, *a, **kw):
-        raise ConnectionError("boom")
-        yield  # pragma: no cover - 生成器函数标记
-
-
 class _ErrorGateway:
+    """guarded_stream 抛异常的假网关：collect 透传异常，router 据此降级。"""
+
     def __init__(self):
         self.chat_calls = 0
 
@@ -189,81 +182,14 @@ class _ErrorGateway:
         return "降级成功", None, False
 
 
-class _FakeSender:
-    def __init__(self):
-        self.sent = []
-
-    async def send_group_message(self, gid, msg, retries=2):
-        self.sent.append(msg)
-        return True
-
-
-class _FakePolicy:
-    def __init__(self):
-        self.replies = []
-
-    def is_duplicate_reply(self, gid, reply):
-        return False
-
-    def record_bot_reply(self, gid):
-        self.replies.append(gid)
-
-    def add_context(self, gid, uid, text, is_bot=False):
-        pass
-
-    def add_recent_reply(self, gid, text):
-        pass
-
-
-class _StreamCfg:
-    STREAM_REPLY_ENABLED = True
-    SPLIT_REPLY_ENABLED = False
-    MAX_REPLY_LENGTH = 40
-    SPLIT_REPLY_SEGMENT_LIMIT = 40
-    SPLIT_REPLY_MAX_MESSAGES = 8
-    MULTI_REPLY_ENABLED = False
-    MULTI_REPLY_MAX_MESSAGES = 3
-    MULTI_REPLY_INTERVAL_MODE = "none"
-    MULTI_REPLY_MIN_INTERVAL = 0.0
-    MULTI_REPLY_MAX_INTERVAL = 0.0
-
-
 @pytest.mark.asyncio
-async def test_router_fallback_to_guarded_chat():
-    """流式网关抛异常 → router 降级到 guarded_chat，单条回复正常发送。"""
-    from src.core.message_router import MessageRouter
+async def test_collect_stream_segments_raises_on_gateway_error():
+    """collect_stream_segments 透传网关异常（router 侧据此降级到 guarded_chat）。"""
+    from src.core.stream_reply import collect_stream_segments
     gw = _ErrorGateway()
-    sender = _FakeSender()
-    policy = _FakePolicy()
-
-    class _R(MessageRouter):
-        def __init__(self):
-            self.config = _StreamCfg()
-            self.ai_gateway = gw
-            self.sender = sender
-            self.policy_engine = policy
-            self.sticker_manager = None
-
-    router = _R()
-    segments = await collect(gw)
-    assert segments is None  # _BoomGateway 无产出
-    # 直接调用 router 内部降级分支模拟
-    reply = None
-    try:
-        from src.core.stream_reply import collect_stream_segments
-        reply = await collect_stream_segments(gw, 1, 2, "hi", "ctx", True)
-    except ConnectionError:
-        reply = None
-    assert reply is None
+    with pytest.raises(ConnectionError):
+        await collect_stream_segments(gw, 1, 2, "hi", "ctx", True)
     # 降级路径仍能拿到回复
     r2, _, _ = await gw.guarded_chat(1, 2)
     assert r2 == "降级成功"
-
-
-async def collect(gw):
-    from src.core.stream_reply import collect_stream_segments
-    try:
-        return await collect_stream_segments(gw, 1, 2, "hi", "ctx", True)
-    except ConnectionError:
-        return None
 

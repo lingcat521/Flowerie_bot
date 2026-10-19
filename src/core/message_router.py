@@ -12,13 +12,13 @@ from src.core import name_mention as _name_mention
 from src.core.ai_gateway import AiGateway
 from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
+from src.core.memory_hook import apply_memory_update
 from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
 from src.core.reply_dispatch import ReplyDispatchMixin
 from src.core.reply_plan import first_text
-from src.core.memory_hook import apply_memory_update
-from src.core.stream_reply import collect_stream_segments
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
+from src.core.stream_reply import collect_stream_segments
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
 from src.services.file_parser import FileParser

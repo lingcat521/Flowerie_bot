@@ -3,14 +3,13 @@
 验收口径（CI 单元层）：不启动真插件进程，直接对 manager 的动作分支与
 permissions 动作→权限映射做断言；SDK 侧 wrapper 方法签名一致性一并锁定。
 """
-import sys
 import os
+import sys
 
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.core.reply_splitter import split_by_boundary
 from src.plugins.permissions import ACTION_PERMISSIONS
 
 

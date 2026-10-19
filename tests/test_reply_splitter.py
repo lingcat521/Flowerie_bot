@@ -3,15 +3,13 @@
 覆盖：长度不变性、边界优先级（换行>句尾标点>逗号>空格>硬切）、
 内容零丢失、段长上限、碎片段防护、旧路径（SPLIT_REPLY_ENABLED=False）行为零变化。
 """
-import sys
 import os
-
-import pytest
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.core.reply_splitter import split_by_boundary, needs_split
 from src.core.reply_plan import plan_from_config
+from src.core.reply_splitter import needs_split, split_by_boundary
 from src.services.reply_parser import parse_reply_content
 
 
