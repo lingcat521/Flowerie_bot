@@ -23,6 +23,8 @@ class BudgetManager:
         self.config = config
         self.global_state = global_state
         self.sender = sender
+        # check() 调用前的用户限速时间戳快照，供 refund() 回退（W5：流式失败降级不二次扣费）
+        self._prev_user_call: dict = {}
 
     def check(self, group_id: int, user_id: int, user_interval: bool = True) -> Tuple[bool, str]:
         """返回 (是否允许, 拒绝原因)。原因: ''(允许) / 'user'(用户限速) / 'global'(全局预算) / 'group'(群预算)。
@@ -56,8 +58,24 @@ class BudgetManager:
             return False, "group"
 
         if user_interval:
+            self._prev_user_call[user_id] = self.global_state.user_ai_last_call.get(user_id, 0.0)
             self.global_state.user_ai_last_call.set(user_id, time.time())
         return True, ""
+
+    def refund(self, group_id: int, user_id: int, user_interval: bool = True) -> None:
+        """回退一次 check() 的扣减（W5：流式失败降级到 guarded_chat 不二次扣费）。
+
+        - 全局/群级计数各减一（不会减到负数；跨天重置后的新计数同样安全）
+        - user_interval=True 时恢复 check() 之前的用户限速时间戳——否则降级路径的
+          首个 attempt 会被流式刚更新的限速拦掉（USER_AI_CALL_MIN_INTERVAL 场景下降级永不生效）
+        仅回退本次进程内由 check() 造成的增量，语义上「一次用户消息只扣一次预算」。
+        """
+        self.global_state.ai_budget_count = max(0, int(self.global_state.ai_budget_count) - 1)
+        gcount = int(self.global_state.group_ai_budget_count.get(group_id, 0))
+        if gcount > 0:
+            self.global_state.group_ai_budget_count[group_id] = gcount - 1
+        if user_interval and user_id in self._prev_user_call:
+            self.global_state.user_ai_last_call.set(user_id, self._prev_user_call.pop(user_id))
 
     def peek(self, group_id: int, user_id: int, user_interval: bool = True) -> Tuple[bool, str]:
         """只读预检：与 check 同一套拒绝条件，但**不消耗预算、不更新任何状态**。

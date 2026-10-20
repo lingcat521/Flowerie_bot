@@ -1,7 +1,7 @@
 """回复分发 mixin：统一处理「单条 / 多条」回复的发送（防上帝类：从 MessageRouter 拆出）。
 
-任务书 §7/§9/§10：条数与间隔由 Core 配置决定，AI 无权绕过；每条都计一次连续回复，
-于是 MAX_CONSECUTIVE_REPLIES 依然生效。协议无关：只调用 sender 的既有方法。
+条数与间隔由 Core 配置决定，AI 无权绕过；默认每条计一次连续回复（MAX_CONSECUTIVE_REPLIES
+生效），切分/流式段按 count_as_one 整轮只计一次（C1）。协议无关：只调用 sender 既有方法。
 """
 from typing import Optional
 
@@ -28,13 +28,20 @@ class ReplyDispatchMixin:
             return await self.sender.send_private_message(user_id, msg)
 
         def after_sent(_idx, _res):
-            """每条都记一次：连续回复计数 + 上下文 + 最近回复（任务书 §10/§11）。
+            """成功发出后的记账：连续回复计数 + 上下文 + 最近回复。
 
-            只在成功发出后记录，且**一条记一次** —— 调用点不要再重复记录，
-            否则连续回复会被双倍计数、冷却提前触发。
+            默认**一条记一次**（调用点不要再重复记录，否则连续回复会被双倍计数）。
+            count_as_one（切分/流式段，C1）：一轮分段回复 = 一次逻辑发言 ——
+            只在首条发出后记一次合并文本：上下文不再出现「半句 半句」碎片，
+            MAX_CONSECUTIVE_REPLIES 也不会被同一轮分段提前触发（用户下一句被吞）。
             """
             target = group_id if group_id else user_id
-            text = plan.messages[_idx] if _idx < len(plan.messages) else ""
+            if plan.count_as_one:
+                if _idx != 0:
+                    return
+                text = chr(10).join(m for m in plan.messages if m)[:200]
+            else:
+                text = plan.messages[_idx] if _idx < len(plan.messages) else ""
             try:
                 self.policy_engine.record_bot_reply(target)
                 self.policy_engine.add_context(target, 0, text, is_bot=True)

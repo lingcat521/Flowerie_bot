@@ -1,6 +1,6 @@
 # 协议缺口封口台账（Protocol Gap Closure）
 
-> 现行版本 **v2.3.0**（`pyproject.toml:3`）。任务书 `complete&expand.txt` A 部分 §2/§11/§12 要求：**先建台账，再改代码**；每个 Gap 必须走完 DoD 九段链（Source → Model → Fixture → Unit → Round-trip/Reverse → Real → Docs → CI → CLOSED），缺任何一段都不许标 `CLOSED`。本文件是缺口状态的**唯一权威表**，数字必须来自真实测试输出。
+> 台账建立时的版本是 **v2.3.0**（当前版本见 `pyproject.toml`）；本文件的缺口状态随实际封口更新，历史数字保留。任务书 `complete&expand.txt` A 部分 §2/§11/§12 要求：**先建台账，再改代码**；每个 Gap 必须走完 DoD 九段链（Source → Model → Fixture → Unit → Round-trip/Reverse → Real → Docs → CI → CLOSED），缺任何一段都不许标 `CLOSED`。本文件是缺口状态的**唯一权威表**，数字必须来自真实测试输出。
 >
 > 外部引用锚点（**勿改编号**）：`tests/integration/_realenv.py:32`、`tests/integration/README.md:15`、`docs/architecture/acceptance-metrics.md:19`、`docs/architecture/final-acceptance-report.md:86` 引用本文件 **§6 / §6.5**。
 

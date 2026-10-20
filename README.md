@@ -22,7 +22,7 @@
 ---
 ## 这是什么
 
-**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.6.0**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.7.0**）。
 
 - **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/reference/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
@@ -37,7 +37,7 @@
 
 | 功能 | 说明 |
 | :--- | :--- |
-| 💬 AI 对话 | DeepSeek 驱动，小恶魔系人设，@ 或群聊接话 |
+| 💬 AI 对话 | DeepSeek 或任意 OpenAI 兼容厂商驱动，小恶魔系人设，@ 或群聊接话；**也支持本机自建模型**（Ollama / vLLM / llama.cpp / LM Studio，回环地址免填 Key、免发鉴权头） |
 | 👁️ 识图 | 图片/表情包/转发内图片，视觉模型描述后自然回复（`VISION_ENABLED` 总开关可关闭）|
 | 📦 转发/卡片解析 | 合并转发递归展开（含图片）、JSON 卡片 |
 | 🧠 记忆库 | 按用户×群隔离，SQLite 持久化，自动去重，用户可查/删 |

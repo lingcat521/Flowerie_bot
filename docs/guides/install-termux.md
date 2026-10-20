@@ -99,7 +99,28 @@ termux-wake-lock && nohup bash run.sh >/dev/null 2>&1 &   # run.sh = 崩溃自�
 - NapCat 在另一台设备时：`.env` 把 `WS_HOST=127.0.0.1` 改成那台设备 IP，并在防火墙放行 3001。
 - Web UI 默认 `http://127.0.0.1:8080/panel`（首次进注册页创建管理员）。
 
-## 六、排查
+## 六、插件运行环境变量（v2.7.0）
+
+插件子进程的执行环境默认只放行白名单变量（见 `src/plugins/runtime.py` 的
+`_ENV_WHITELIST`）。在 Termux/Android 上，某些语言运行时要靠下面的变量才能启动；
+它们已经**默认放行**，不需要额外配置，但出问题时按此对照：
+
+| 变量 | 为什么需要 | 典型症状 |
+| :--- | :--- | :--- |
+| `LD_PRELOAD` | termux-exec 的 `execve` 钩子（让子进程能找到 Termux 的 `$PREFIX/bin`） | `env: 'ruby': Permission denied`（exit 126） |
+| `TERMUX_APP__LEGACY_DATA_DIR` | 同一钩子判断「允许执行 /data/data/... 下的程序」 | 同上；缺它时任何 `$PREFIX/bin` 程序都起不来 |
+| `PERL5LIB` | Perl 的 `@INC` 在打包时写死为 `com.termux` 前缀，本机实际前缀不同 | `Can't locate strict.pm in @INC` |
+
+`PERL5LIB` 需要按**你机器的实际前缀**取值：
+
+```bash
+export PERL5LIB="$PREFIX/lib/perl5/5.42.2:$PREFIX/lib/perl5/site_perl/5.42.2"
+```
+
+> 说明：这些变量只影响**插件子进程**，不改变主进程行为；非 Termux 环境（CI/Linux）
+> 通常都未设置，白名单放行是无副作用的空转（不影响任何既有用例）。
+
+## 七、排查
 
 | 现象 | 处理 |
 | :--- | :--- |

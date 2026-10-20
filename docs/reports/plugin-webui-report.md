@@ -2,6 +2,11 @@
 
 > 任务书：`/storage/emulated/0/plugin_to_webui.txt`　·　测试说明：`docs/plugin-webui-test.md`
 > 结论口径：只写 **PASS / FAIL / BLOCKED / SKIPPED / UNKNOWN**（任务书 §35）。
+>
+> **数字口径（重要）**：本报告 §5–§8 出现的 `2288 passed / 39 skipped`、`2136 passed`、
+> `46`、`102`、`21` 都是**该阶段基线的历史证据**，不是当前值。
+> 当前实测一律见 [development.md](../guides/development.md)（v2.7.0：unit 2300 passed / 112 skipped，
+> 全量 2416 passed）。本报告不再逐版回填——它是当时交付的事实记录。
 
 ## 1. 环境（§33.1）
 

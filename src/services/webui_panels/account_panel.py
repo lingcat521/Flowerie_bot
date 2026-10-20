@@ -11,6 +11,7 @@ from urllib.parse import quote
 
 from aiohttp import web
 
+from src.config import is_loopback_url
 from src.services.system_status import collect as collect_system_status
 from src.services.web_ui_assets import render_account_tab
 
@@ -66,12 +67,16 @@ class AccountPanelMixin:
             v = values.get(key) or ""
             return (v[:4] + "****" + v[-4:]) if len(v) > 8 else ("****" if v else "")
 
+        # 本机回环模型（Ollama/vLLM 等）：不校验密钥，状态页标注出来，避免"密钥没填=没配好"的误解
+        _chat_url = values.get("DEEPSEEK_API_URL") or ""
+        _loopback = is_loopback_url(_chat_url)
         out["deepseek"] = {
-            "url": values.get("DEEPSEEK_API_URL") or "N/A",
+            "url": _chat_url or "N/A",
             "model": values.get("DEEPSEEK_MODEL") or "N/A",
             "key": _masked("DEEPSEEK_API_KEY"),
             "key_set": bool(values.get("DEEPSEEK_API_KEY")),
-            "label": "DeepSeek（聊天主厂商）",
+            "label": "本机回环模型（免密钥）" if _loopback else "第三方厂商（聊天主厂商）",
+            "loopback": _loopback,
         }
         out["vision"] = {
             "url": values.get("VISION_API_URL") or "回退 DeepSeek",

@@ -9,6 +9,7 @@ from src.services.memory_manager import MemoryManager
 from src.services.prompt_builder import build_system_prompt
 from src.services.toxic_detector import ToxicDetector
 from src.services.vision import VisionService
+from src.utils.llm_headers import auth_headers
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -83,8 +84,8 @@ class AIClient:
             "max_tokens": 1024,
             "top_p": 0.9,
         }
-        headers = {"Authorization": f"Bearer {self.config.DEEPSEEK_API_KEY}",
-                   "Content-Type": "application/json"}
+        # 本机回环模型免密钥：空 key 时不发 Authorization（见 utils/llm_headers）
+        headers = auth_headers(self.config.DEEPSEEK_API_KEY)
         async for segments in stream_reply_segments(
                 self.client, self.config.DEEPSEEK_API_URL, headers, payload,
                 min_flush=int(getattr(self.config, "STREAM_REPLY_MIN_FLUSH", 8) or 8),
@@ -159,10 +160,7 @@ class AIClient:
             "frequency_penalty": 0.5,
             "presence_penalty": 0.5
         }
-        headers = {
-            "Authorization": f"Bearer {self.config.DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        headers = auth_headers(self.config.DEEPSEEK_API_KEY)
 
         try:
             logger.debug("api_call_started user=%s group=%s msg_len=%d", user_id, group_id, len(user_message))
@@ -271,7 +269,7 @@ class AIClient:
         - 任意请求失败返回 None（调用方按降级策略处理）
         供 MemeSummaryService（每日梗总结的 MCP 辅助检索）等复用。
         """
-        headers = {"Authorization": f"Bearer {self.config.DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+        headers = auth_headers(self.config.DEEPSEEK_API_KEY)
 
         async def _request(include_tools: bool = True) -> dict:
             payload = {
@@ -380,8 +378,8 @@ class AIClient:
     def extract_multi_messages(text: str) -> Optional[List[str]]:
         """从模型输出提取「多条消息」结构；不合法一律 None（调用方降级单条）。
 
-        只认完整 JSON 对象（形如 {"messages": [...]}，允许外层带 json 代码围栏），
-        不做换行/标点猜测 —— 任务书 §6 明确要求。
+        只认完整 JSON 对象（形如 {"messages": [...]}，允许外层带 json 代码围栏）。
+        换行/标点切分见 reply_splitter（v2.6.0 Layer A）；多条结构只认完整 JSON。
         """
         return reply_parser.extract_multi_messages(text)
 

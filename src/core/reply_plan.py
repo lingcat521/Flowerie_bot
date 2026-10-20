@@ -1,6 +1,6 @@
 """ReplyPlan：一次回复产生的「多条消息 + 发送策略」（核心层，协议无关）。
 
-设计要点（对齐任务书 §2/§3/§7/§9）：
+设计要点：
 - 单条回复 100% 向后兼容：ReplyPlan.of("你好") 自动包装成单条计划；
 - AI 只能决定「发几条、每条说什么」，间隔/上限/限流一律由 Core 配置决定；
 - 本文件里不出现 OneBot / Milky / WebSocket / HTTP —— 协议细节在适配层之下。
@@ -8,6 +8,8 @@
 import random
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
+
+from src.core.reply_splitter import SplitSegments
 
 # 间隔模式
 INTERVAL_NONE = "none"       # 不留间隔，连续发（仍受连续回复限制约束）
@@ -27,6 +29,8 @@ class ReplyPlan:
     max_interval: float = 4.0
     # 供上层记录/审计：本条计划是否来自 AI 的多条结构化输出
     from_ai: bool = False
+    # C1：整轮分段（切分/流式段）= 一次逻辑发言：记账只发生一次（见 reply_dispatch）
+    count_as_one: bool = False
 
     # ---------- 构造 ----------
     @classmethod
@@ -56,7 +60,7 @@ class ReplyPlan:
             return self
         return ReplyPlan(messages=self.messages[:max_messages], interval_mode=self.interval_mode,
                          min_interval=self.min_interval, max_interval=self.max_interval,
-                         from_ai=self.from_ai)
+                         from_ai=self.from_ai, count_as_one=self.count_as_one)
 
     def delay_before(self, index: int, rng: Optional[random.Random] = None) -> float:
         """第 index 条（0 基）发送前的等待秒数；第 0 条不等待。"""
@@ -116,9 +120,13 @@ def plan_from_config(reply, config, *, from_ai: bool = False) -> ReplyPlan:
     hi = float(getattr(config, "MULTI_REPLY_MAX_INTERVAL", 4.0) or 0.0)
     plan = ReplyPlan.of(reply, interval_mode=mode, min_interval=lo, max_interval=hi, from_ai=from_ai)
     plan.normalize_mode()
-    if getattr(config, "SPLIT_REPLY_ENABLED", False):
-        # 切分回复：不受 MULTI_REPLY_ENABLED 门控与 clamped(1) 影响，
-        # 条数由 SPLIT_REPLY_MAX_MESSAGES 约束（切分已是正确形态，截断反而丢内容）
+    if isinstance(reply, SplitSegments):
+        # 切分/流式段（C1/C3/C5）：独立上限与间隔，不受 MULTI_REPLY 门控影响——
+        # 切分段不是 AI 自主多条，防刷屏上限各归各；整轮记一次连续回复，零段间隔保流式及时性。
+        # （SPLIT_REPLY_ENABLED 关闭也可能收到 SplitSegments：流式路径的段同属此类）
+        plan.count_as_one = True
+        split_mode = str(getattr(config, "SPLIT_REPLY_INTERVAL_MODE", INTERVAL_NONE) or INTERVAL_NONE)
+        plan.interval_mode = split_mode if split_mode in VALID_INTERVAL_MODES else INTERVAL_NONE
         return plan.clamped(int(getattr(config, "SPLIT_REPLY_MAX_MESSAGES", 8) or 8))
     if not enabled:
         # 未启用：只发第一条（多条能力对现有行为零影响）

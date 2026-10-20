@@ -59,6 +59,24 @@ def _multi_reply_hint(config) -> str:
     )
 
 
+def _split_reply_hint(config) -> str:
+    """切分回复的编辑提示（仅 SPLIT_REPLY_ENABLED 时注入；C2：让模型输出与切分上限对齐）。
+
+    人设全局风格是「15~20 字短聊」，与切分天然冲突：开启切分时明确告诉模型
+    「这条可以写长、分段输出」，否则模型仍只输出短句，切分功能事实休眠。
+    段间用换行分隔 —— 换行是 split_by_boundary 的最高优先级边界（对齐 dsh 按行成段）。
+    """
+    if not getattr(config, "SPLIT_REPLY_ENABLED", False):
+        return ""
+    limit = int(getattr(config, "SPLIT_REPLY_SEGMENT_LIMIT", 200) or 200)
+    max_msgs = int(getattr(config, "SPLIT_REPLY_MAX_MESSAGES", 8) or 8)
+    return (
+        "【长回复切分】" + chr(10) +
+        "这条回复可以写得长一些：最多分 %d 段，每段不超过 %d 字。" % (max_msgs, limit) +
+        "段与段之间用换行分隔（换行处会被切成独立消息）；不要输出 JSON、不要解释。" + chr(10)
+    )
+
+
 def build_system_prompt(config, memory_manager, user_message: str, context: str,
                     user_id: Optional[int], group_id: Optional[int],
                     custom_prompt: str, is_mentioned: bool,
@@ -158,7 +176,7 @@ def build_system_prompt(config, memory_manager, user_message: str, context: str,
     system_prompt = (
         f"{persona_block}"
         f"{nickname_block}"
-        f"{group_style_rules or GLOBAL_STYLE_RULES}\n{_multi_reply_hint(config)}"
+        f"{group_style_rules or GLOBAL_STYLE_RULES}\n{_multi_reply_hint(config)}{_split_reply_hint(config)}"
         "\n【记忆功能】\n"
         "你必须主动记住群友的特点和喜好，例如：某人喜欢喝奶茶、某人怕黑、某人昵称叫XX等。\n"
         "**重要：无论你是否被 @，只要用户在群聊中说出“我喜欢...”、“我讨厌...”、“我害怕...”、“我是...”、“我的...是...”等明确表达个人偏好或特征的句子，你必须在回复中主动记录。\n"

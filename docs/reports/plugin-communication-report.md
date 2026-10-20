@@ -2,7 +2,9 @@
 
 > 任务书：`/storage/emulated/0/通信.txt`《Flowerie_bot 多语言 Plugin SDK + Plugin-to-Plugin 通信》 · 协议说明：`docs/plugin-communication.md` · 能力矩阵：`docs/plugin-sdk-capabilities.md` §4
 > 一句话结论：**跨语言插件通信默认经 Flowerie Core Router；同语言保留 Local Runtime 通道但对外暴露同一套 `plugin.call()` / `plugin.emit()` / `plugin.on()` 抽象 —— 插件用什么语言写，不改变 Plugin API 的语义。**
-> **当前状态（v2.3.0）**：整仓 **2288 passed / 39 skipped**、`tests/webui` 102、`tests/e2e` 21（真浏览器）；下文 §3 的本地与 CI 数字是各自提交当时的历史记录。
+> **数字口径**：本报告的 `2288 passed / 39 skipped` 是 **v2.3.0 基线（2026-09）的历史记录**，不代表当前值；
+> 当前实测见 [development.md](../guides/development.md)（v2.7.0 本机 unit 2300 passed / 112 skipped）。
+> 下文 §3 的本地与 CI 数字同样是各自提交当时的历史记录。
 
 ## 1. 交付物
 

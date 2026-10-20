@@ -18,7 +18,7 @@ from src.core.policy_engine import PolicyEngine
 from src.core.reply_dispatch import ReplyDispatchMixin
 from src.core.reply_plan import first_text
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
-from src.core.stream_reply import collect_stream_segments
+from src.core.stream_reply import handle_stream_reply
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
 from src.services.file_parser import FileParser
@@ -393,17 +393,16 @@ class MessageRouter(ReplyDispatchMixin):
                 user_prompt = f"{user_prompt}\n\n{sticker_ctx}"
         # 输入截断已统一收敛到 AIClient.chat_once（覆盖主动聊天等所有路径）
         logger.info("policy_pass group=%s user=%s", group_id, user_id, extra={"event": "policy_pass"})
-        # 流式分句（Layer B，默认关=旧行为零变化）：逐段产出，失败降级到下方 guarded_chat
+        # 流式分句（Layer B，默认关=旧行为零变化）：真·流式边生成边发，失败降级到下方 guarded_chat
         reply, memory_update, denied = None, None, False
+        stream_handled = False
         if getattr(self.config, "STREAM_REPLY_ENABLED", False):
-            try:
-                reply = await collect_stream_segments(self.ai_gateway, group_id, user_id,
-                                                      user_prompt, context_text,
-                                                      is_mentioned or is_reply_to_bot)
-            except Exception as e:  # noqa: BLE001 - 流式失败降级到整轮请求，保留原语义
-                logger.warning("stream_reply_fallback group=%s err=%s", group_id, e,
-                               extra={"event": "stream_reply_fallback"})
-        if reply is None:
+            reply, memory_update, stream_handled = await handle_stream_reply(
+                gateway=self.ai_gateway, sender=self.sender, config=self.config,
+                policy_engine=self.policy_engine, sticker_manager=self.sticker_manager,
+                group_id=group_id, user_id=user_id, user_message=user_prompt,
+                context=context_text, is_mentioned=is_mentioned or is_reply_to_bot)
+        if not stream_handled:
             reply, memory_update, denied = await self.guarded_chat(
                 group_id,
                 user_id,
@@ -423,7 +422,8 @@ class MessageRouter(ReplyDispatchMixin):
             self._memory_disabled(group_id))
 
         # 兜底：guarded_chat 已内部重试过（每次重试过预算），仍空则给个兜底回复
-        if is_mentioned and not first_text(reply):
+        # （流式分支自行兜底：stream_handled=True 时 reply 已是最终形态，不再追加）
+        if is_mentioned and not stream_handled and not first_text(reply):
             reply = "喵？"
 
         if reply:

@@ -1,6 +1,7 @@
 import json
 import re
 from typing import List, Optional
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -56,6 +57,10 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: str = Field(...)  # 环境变量名 = 字段名（pydantic-settings）
     DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
     DEEPSEEK_MODEL: str = "deepseek-flash"      # 官方模型列表：deepseek-flash / deepseek-v4-pro
+    # 本机回环模型免 key（v2.7.0）：DEEPSEEK_API_URL 指向 127.0.0.1 / localhost / ::1 时
+    # 允许 DEEPSEEK_API_KEY 为空（自建 Ollama / llama.cpp / vLLM / LM Studio 等）。
+    # 默认开：只放宽启动校验，不改动任何已有部署；设 false 可恢复「必须填 key」的严格模式。
+    AI_ALLOW_LOOPBACK_NO_KEY: bool = True
 
     # 引战检测 AI（可选；留空则回退用 DeepSeek 的 key/网址/模型）
     TOXIC_API_KEY: Optional[str] = None
@@ -119,10 +124,14 @@ class Settings(BaseSettings):
     # （超 MAX_REPLY_LENGTH 截断 + "..."，行为零变化）；True=按「换行→句尾标点→
     # 逗号→空格→硬切」优先级切多条独立消息发送，内容零丢失，条数受 clamped 限制。
     SPLIT_REPLY_ENABLED: bool = False
-    # 切分单条段长上限（默认与 MAX_REPLY_LENGTH 对齐；可独立调大）
-    SPLIT_REPLY_SEGMENT_LIMIT: int = 40
+    # 切分单条段长上限（v2.7.0 C2：默认 200，与人设短聊风格解耦——40=MAX_REPLY_LENGTH
+    # 时模型输出几乎都低于上限，切分功能事实休眠；开启切分时模型被允许写长回复分段发出）
+    SPLIT_REPLY_SEGMENT_LIMIT: int = 200
     # 切分最大条数（防爆屏；超过的尾部段被丢弃，不再截断成 "..."）
     SPLIT_REPLY_MAX_MESSAGES: int = 8
+    # 切分/流式段的发送间隔（v2.7.0 C5：none=立即发送保流式及时性；
+    # AI 自主多条仍用 MULTI_REPLY_INTERVAL_MODE，两者互不影响）
+    SPLIT_REPLY_INTERVAL_MODE: str = "none"   # none / fixed / random
     # 流式分句回复（Layer B，对齐 dsh-qq-bridge 流式缓冲）：默认 False=整轮完成后
     # 单条回复（旧行为零变化）；True=边生成边按句发送。需要 Provider 支持 SSE。
     STREAM_REPLY_ENABLED: bool = False
@@ -512,15 +521,46 @@ def parse_mcp_servers(raw: str, default_timeout: int = 15, default_tools: str = 
         })
     return servers
 
+def is_loopback_url(url: str) -> bool:
+    """URL 是否指向本机回环（127.0.0.0/8、localhost、::1）。
+
+    用途：本机自建模型服务（Ollama / llama.cpp / vLLM / LM Studio 等）通常不校验
+    密钥，回环端点免除 API key 强制校验，避免「本地跑模型还要填个假 key」。
+    其它私网地址（192.168.x.x 等）不算回环：局域网服务仍可能校验密码。
+    """
+    raw = str(url or "").strip()
+    if not raw:
+        return False
+    try:
+        host = urlsplit(raw if "//" in raw else "//" + raw).hostname or ""
+    except ValueError:
+        return False
+    host = host.strip("[]").lower()
+    if host in ("localhost", "::1", "0:0:0:0:0:0:0:1"):
+        return True
+    parts = host.split(".")
+    if len(parts) == 4 and all(p.isdigit() for p in parts):
+        return parts[0] == "127"
+    return False
+
+
 def validate_config(config: Settings) -> None:
     """启动阶段配置校验：必填项缺失/取值非法时直接抛错（进程不启动）。
 
     - API Key 只检查"已配置"，不打印任何值（敏感保护）
     - 取值范围问题在此集中报错，避免运行期才炸
     """
-    if not getattr(config, "DEEPSEEK_API_KEY", "") or getattr(config, "DEEPSEEK_API_KEY", "").startswith("sk-your"):
-        raise ValueError(
-            "DEEPSEEK_API_KEY 未配置或仍为占位值（已生成 .env 模板的，请填入真实 Key 后重启）")
+    _key = str(getattr(config, "DEEPSEEK_API_KEY", "") or "").strip()
+    _key_missing = (not _key) or _key.startswith("sk-your")
+    if _key_missing:
+        # 本机回环模型（自建 Ollama/vLLM 等）通常不校验密钥：URL 指向 loopback 时免填。
+        # 开关可关（严格模式），默认开——只放宽校验，不改变任何既有部署的行为。
+        _loopback_ok = (bool(getattr(config, "AI_ALLOW_LOOPBACK_NO_KEY", True))
+                        and is_loopback_url(getattr(config, "DEEPSEEK_API_URL", "")))
+        if not _loopback_ok:
+            raise ValueError(
+                "DEEPSEEK_API_KEY 未配置或仍为占位值（已生成 .env 模板的，请填入真实 Key 后重启；"
+                "接本机回环模型时把 DEEPSEEK_API_URL 指向 127.0.0.1/localhost 即可免填）")
     if getattr(config, "BOT_QQ", 0) <= 0:
         raise ValueError(f"BOT_QQ 必须为正整数，当前: {getattr(config, 'BOT_QQ', 0)}")
     if not (0 < getattr(config, "WS_PORT", 0) < 65536):

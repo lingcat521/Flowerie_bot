@@ -123,10 +123,18 @@ class Sender:
         return False
 
     def _reply_limit(self) -> int:
-        """单条消息上限：SPLIT_REPLY_ENABLED 时取 SPLIT_REPLY_SEGMENT_LIMIT，否则 MAX_REPLY_LENGTH。"""
+        """单条消息上限（C7）：段已在各自上限内成型，不再二次截断。
+
+        - SPLIT_REPLY_ENABLED：切分段上限 SPLIT_REPLY_SEGMENT_LIMIT
+        - STREAM_REPLY_ENABLED：流式段上限 STREAM_REPLY_MAX_FLUSH（句子缓冲已按上限成型，
+          再按 MAX_REPLY_LENGTH 截断会把流式段二次腰斩且带省略号）
+        - 其余：MAX_REPLY_LENGTH（旧行为）
+        """
         if getattr(self.config, "SPLIT_REPLY_ENABLED", False):
             return int(getattr(self.config, "SPLIT_REPLY_SEGMENT_LIMIT",
                                getattr(self.config, "MAX_REPLY_LENGTH", 40)) or 40)
+        if getattr(self.config, "STREAM_REPLY_ENABLED", False):
+            return int(getattr(self.config, "STREAM_REPLY_MAX_FLUSH", 200) or 200)
         return int(getattr(self.config, "MAX_REPLY_LENGTH", 40) or 40)
 
     async def send_group_message(self, group_id: int, message: str, retries: int = 2) -> bool:

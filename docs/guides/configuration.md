@@ -12,16 +12,23 @@
 
 | 变量 | 说明 |
 | :--- | :--- |
-| `DEEPSEEK_API_KEY` | DeepSeek 密钥（仍为 `sk-your...` 占位值会在启动时报错） |
+| `DEEPSEEK_API_KEY` | 对话模型密钥（仍为 `sk-your...` 占位值会在启动时报错；**接本机回环模型时可留空**，见下） |
 | `BOT_QQ` | 机器人 QQ 号（正整数） |
+
+> **本机回环模型免密钥（v2.7.0）**：把 `DEEPSEEK_API_URL` 指向 `127.0.0.1` / `localhost` / `::1`
+> 时，`DEEPSEEK_API_KEY` 可以留空——自建 Ollama / llama.cpp / vLLM / LM Studio 等通常不校验密钥，
+> 此时客户端**不发送** `Authorization` 头（不再发 `Bearer ` 这种非法空令牌）。
+> 第三方厂商地址仍然强制要求密钥；只放宽回环这一种情况。
+> 想恢复严格模式（回环也必须填 key）：`AI_ALLOW_LOOPBACK_NO_KEY=false`。
 
 ## AI / Provider
 
 | 变量 | 说明 | 默认 |
 | :--- | :--- | :--- |
 | `AI_ENABLED` | AI 回复总开关（关=不请求 Provider，普通功能不受影响） | `true` |
-| `DEEPSEEK_API_URL` | DeepSeek 接口地址 | `https://api.deepseek.com/chat/completions` |
-| `DEEPSEEK_MODEL` | 群聊对话模型 | `deepseek-flash` |
+| `DEEPSEEK_API_URL` | 对话模型接口地址（第三方厂商 或 本机回环模型的 `/v1/chat/completions`） | `https://api.deepseek.com/chat/completions` |
+| `DEEPSEEK_MODEL` | 群聊对话模型名（以服务端 `/v1/models` 列为准） | `deepseek-flash` |
+| `AI_ALLOW_LOOPBACK_NO_KEY` | 本机回环免密钥开关（地址为 loopback 时允许密钥留空） | `true` |
 | `TOXIC_API_KEY` / `TOXIC_API_URL` / `TOXIC_MODEL` | 引战检测 AI（留空回退 DeepSeek 的 key/网址） | 空 / 空 / `deepseek-flash` |
 | `VISION_API_KEY` / `VISION_API_URL` | 识图视觉模型（留空回退 DeepSeek） | 空 |
 | `VISION_MODEL` / `VISION_TIMEOUT` | 识图模型 / 超时（秒） | `deepseek-flash` / `30` |
@@ -262,6 +269,33 @@
 `STICKER_DB_PATH`、`MCP_SERVER_NAME`、`MCP_SERVERS`、`MCP_ALLOWED_HOSTS`、`WEB_UI_ENABLED`、`WEB_UI_HOST`、
 `WEB_UI_ALLOW_LAN`、`WEB_UI_PORT`、`LOG_LEVEL`、`LOG_FORMAT`、`ARCHIVE_BASE_DIR`、`SETTINGS_DB_PATH`、
 `MAX_PERSONA_PROMPT_LENGTH`、`PLUGIN_DIR`、`PLUGIN_MAX_COUNT`、`MEME_KNOWLEDGE_DB_PATH`、`MEME_BUFFER_PER_GROUP`。
+
+
+## 接入本机自建模型（v2.7.0）
+
+Web UI「配置 → AI」与 `.env` 都支持；下面两种填法二选一（关键在地址必须是 loopback）：
+
+```bash
+# 例 1：Ollama（默认 11434，OpenAI 兼容路径 /v1）
+DEEPSEEK_API_URL=http://127.0.0.1:11434/v1/chat/completions
+DEEPSEEK_MODEL=qwen2.5:7b
+DEEPSEEK_API_KEY=
+
+# 例 2：vLLM / llama.cpp server（OpenAI 兼容）
+DEEPSEEK_API_URL=http://127.0.0.1:8000/v1/chat/completions
+DEEPSEEK_MODEL=your-local-model
+DEEPSEEK_API_KEY=
+```
+
+要点：
+
+- 只有 `127.0.0.1` / `localhost` / `[::1]` 算回环；局域网地址（`192.168.x.x`、`10.x`）**不算**，
+  仍要求密钥——局域网服务通常设了密码。
+- 流式分句（`STREAM_REPLY_ENABLED`）需要服务端支持 SSE；Ollama / vLLM / llama.cpp 都支持。
+- 视觉识图 / 引战检测 / 花语记忆（向量、重排）各有独立地址配置，留空会**回退用对话模型的
+  地址与密钥**——本机部署通常只需配对话模型一处。
+- 服务没起来时启动校验仍会失败（那是连不通，不是密钥问题），按日志查端口。
+- Web UI 的「用户状态」页会把这类模型显示为「本机回环 · 免密钥」，不会误报「未配置 Key」。
 
 > 相关文档：[security.md](../reference/security.md)（安全边界）、[web-ui.md](../features/web-ui.md)（面板细节）、
 > [client-profiles.md](../reference/client-profiles.md)（`CLIENT_PROFILE` 取值）、[memory.md](../features/memory.md)（记忆体系）、

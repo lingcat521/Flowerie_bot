@@ -8,6 +8,7 @@ import re
 import unicodedata
 from typing import Tuple
 
+from src.utils.llm_headers import auth_headers
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -131,7 +132,8 @@ class ToxicDetector:
                 "max_tokens": 5,
                 "top_p": 0.9,
             }
-            headers = {"Authorization": f"Bearer {toxic_key}", "Content-Type": "application/json"}
+            # 本机回环模型免密钥：空 key 时不发 Authorization（见 utils/llm_headers）
+            headers = auth_headers(toxic_key)
             r = await self.client.post(
                 toxic_url,
                 headers=headers,

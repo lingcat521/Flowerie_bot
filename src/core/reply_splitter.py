@@ -9,6 +9,16 @@ Flowerie 人设「用空格代替逗号、不用句号问号感叹号」，因�
 import re
 from typing import List
 
+
+class SplitSegments(list):
+    """标记类：来自「边界切分 / 流式分句」的段列表（v2.6.0 Layer A/B）。
+
+    用来与 AI 自主多条（MULTI_REPLY 的 messages[]）区分来源，plan_from_config
+    据此施加各自的上限与发送策略（v2.7.0 C3：切分段不再接管 AI 多条的 clamped；
+    C1：整轮分段记一次连续回复；C5：零段间隔）。
+    是 list 子类：所有 isinstance(reply, list) 的既有消费者无需改动。
+    """
+
 # 句尾标点（强边界）：句号/问号/感叹号（中英全角）+ 分号
 _SENTENCE_PUNCT = "。！？!?；;"
 # 弱边界：逗号（中英）与顿号

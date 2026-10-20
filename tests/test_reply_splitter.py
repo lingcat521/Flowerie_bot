@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.core.reply_plan import plan_from_config
-from src.core.reply_splitter import needs_split, split_by_boundary
+from src.core.reply_splitter import SplitSegments, needs_split, split_by_boundary
 from src.services.reply_parser import parse_reply_content
 
 
@@ -137,9 +137,10 @@ def test_plan_clamped_one_when_disabled():
 
 
 def test_plan_keeps_split_segments_when_enabled():
+    """C3 修复后：识别来源靠 SplitSegments 标记，而不是 SPLIT 开关劫持任意 list。"""
     cfg = _Cfg()
     cfg.SPLIT_REPLY_ENABLED = True
-    plan = plan_from_config(["一", "二", "三", "四"], cfg)
+    plan = plan_from_config(SplitSegments(["一", "二", "三", "四"]), cfg)
     assert len(plan.messages) == 4
 
 
@@ -147,7 +148,7 @@ def test_plan_split_max_messages_cap():
     cfg = _Cfg()
     cfg.SPLIT_REPLY_ENABLED = True
     cfg.SPLIT_REPLY_MAX_MESSAGES = 2
-    plan = plan_from_config(["一", "二", "三", "四"], cfg)
+    plan = plan_from_config(SplitSegments(["一", "二", "三", "四"]), cfg)
     assert len(plan.messages) == 2
 
 
@@ -156,4 +157,58 @@ def test_plan_single_string_unchanged_when_enabled():
     cfg.SPLIT_REPLY_ENABLED = True
     plan = plan_from_config("你好", cfg)
     assert plan.messages == ["你好"]
+
+
+# ---------- C1/C3/C5：SplitSegments 的 plan 语义（v2.7.0） ----------
+
+def test_split_segments_use_own_max_messages_not_multi_reply_cap():
+    """C3：两开关同开，AI 多条防刷屏上限（3）不再被切分段上限（8）接管。"""
+    cfg = _Cfg()
+    cfg.MULTI_REPLY_ENABLED = True
+    cfg.MULTI_REPLY_MAX_MESSAGES = 3
+    cfg.SPLIT_REPLY_ENABLED = True
+    cfg.SPLIT_REPLY_MAX_MESSAGES = 8
+    split_plan = plan_from_config(SplitSegments(["一", "二", "三", "四", "五", "六", "七", "八", "九"]), cfg)
+    assert len(split_plan.messages) == 8
+    multi_plan = plan_from_config(["一", "二", "三", "四", "五"], cfg)
+    assert len(multi_plan.messages) == 3
+    assert multi_plan.count_as_one is False
+
+
+def test_split_segments_count_as_one_and_no_interval():
+    """C1/C5：分段轮只计一次连续回复、零段间隔；AI 自主多条保持 random。"""
+    cfg = _Cfg()
+    cfg.SPLIT_REPLY_INTERVAL_MODE = "none"
+    split_plan = plan_from_config(SplitSegments(["一", "二"]), cfg)
+    assert split_plan.count_as_one is True
+    assert split_plan.interval_mode == "none"
+    multi_plan = plan_from_config(["一", "二"], cfg)
+    assert multi_plan.count_as_one is False
+    assert multi_plan.interval_mode == "random"
+
+
+def test_split_segments_invalid_interval_mode_falls_back_none():
+    cfg = _Cfg()
+    cfg.SPLIT_REPLY_INTERVAL_MODE = "bogus"
+    plan = plan_from_config(SplitSegments(["一"]), cfg)
+    assert plan.interval_mode == "none"
+
+
+def test_parse_reply_returns_split_segments():
+    """C3 标记链：parser 切分分支产出 SplitSegments。"""
+    cfg = _Cfg()
+    cfg.SPLIT_REPLY_ENABLED = True
+    long = "今天天气真不错。我们出去玩吧，记得带伞喔，别忘了带水壶，记得带伞喔，别忘了带水壶，记得带伞喔"
+    reply, _ = parse_reply_content(long, cfg)
+    assert isinstance(reply, SplitSegments)
+    assert len(reply) >= 2
+
+
+def test_clamped_preserves_count_as_one():
+    """clamped 不丢 count_as_one 标记（C1 在截断后仍生效）。"""
+    cfg = _Cfg()
+    cfg.SPLIT_REPLY_MAX_MESSAGES = 2
+    plan = plan_from_config(SplitSegments(["一", "二", "三", "四"]), cfg)
+    assert len(plan.messages) == 2
+    assert plan.count_as_one is True
 

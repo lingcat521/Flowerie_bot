@@ -38,7 +38,15 @@ _ACTION_ID_BASE = 1_000_000
 _MAX_CONCURRENT_ACTIONS = 8
 
 _ENV_WHITELIST = ("PATH", "HOME", "LANG", "TMPDIR", "TEMP", "TMP", "NODE_PATH",
-                  "LD_LIBRARY_PATH")
+                  "LD_LIBRARY_PATH",
+                  # Termux 兼容层（termux-exec）：exec runtime 插件脚本的 shebang 常写
+                  # #!/usr/bin/env <lang>，需要 LD_PRELOAD 拦截 execve 并把 /usr/bin
+                  # 重写到 $PREFIX/bin；TERMUX_APP__LEGACY_DATA_DIR 是 hook 放行
+                  # /data/data 执行路径的依据。非 Termux 环境这些变量为空，透传无副作用。
+                  "LD_PRELOAD", "TERMUX_APP__LEGACY_DATA_DIR",
+                  # Perl：移动前缀的 Termux 环境里 perl 的 @INC 可能指向不存在的旧路径，
+                  # PERL5LIB 让部署方显式补模块搜索路径；常规环境为空，透传无副作用。
+                  "PERL5LIB")
 
 
 class PluginTimeoutError(Exception):

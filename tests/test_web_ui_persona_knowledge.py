@@ -658,8 +658,10 @@ async def test_account_tab_renders_all_status():
         page = await server._handle_panel(FakeRequest(query={"tab": "account"},
                                                      cookies={"fb_token": cookie}))
         text = _resp_text(page)
+        # 注：聊天厂商标签随配置变化（第三方厂商 / 本机回环模型免密钥），
+        # 探针只断言稳定的分类标题，不锁定具体厂商文案
         for probe in ("当前管理员", "admin2", "注销账号", "服务器状态",
-                      "内存占用", "API 厂商连接状态", "DeepSeek（聊天主厂商）"):
+                      "内存占用", "API 厂商连接状态"):
             assert probe in text, f"用户状态页缺少 {probe}"
         # 注销表单 /panel/account/unregister 在 account 页
         assert 'action="/panel/account/unregister"' in text

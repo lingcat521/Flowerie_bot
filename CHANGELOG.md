@@ -4,6 +4,71 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.7.0] - 2026-10-24
+
+> 本版为**修复 + 能力版本（MINOR bump）**：按 v2.6.0 的两份审计（语义冲突 C1–C8、架构链路 W1–W9）
+> 把分段/流式链路补齐到真正可用；新增「本机回环模型免密钥」。兼容性：全部新开关默认值与
+> v2.6.0 一致或更宽松（只放宽启动校验），旧路径行为零变化。
+
+### 修复 —— P0（丢消息 / 记忆泄漏）
+
+- **C1 冷却计数 × 分段发送**：一轮分段回复 = 一次逻辑发言。此前每段各记一次连续回复，
+  第 3 段发完后群被静默 60 秒，**用户下一句话被吞**。现在整轮只计一次（`ReplyPlan.count_as_one`），
+  上下文也记合并文本一条，不再出现「半句 半句」碎片。AI 自主多条（MULTI_REPLY）保持原语义。
+- **C4/W3 流式绕过 parse_reply_content**：`MEMORY_JSON:` 行此前会**原样发给用户**且记忆不落库。
+  新增 `reply_parser.split_memory_lines`，流式逐段剥离，记忆照常写回。
+
+### 修复 —— P1（功能休眠 / 上限被放宽）
+
+- **C2 段长默认 40 = MAX_REPLY_LENGTH**：切分功能事实上从不触发。默认改为 **200**，并在
+  `SPLIT_REPLY_ENABLED=true` 时给人设注入「可以写长、用换行分段」提示，让模型输出与切分上限对齐。
+- **C3 MULTI_REPLY 上限被 SPLIT 接管**：两开关同开时 AI 多条防刷屏上限从 3 被放宽到 8。
+  引入 `SplitSegments`（list 子类）区分来源，两条链各用各的上限。
+- **C5 段间隔消解流式及时性**：分段/流式段此前仍按 1.5~4 秒随机间隔发送，8 段要等 12~32 秒。
+  新增 `SPLIT_REPLY_INTERVAL_MODE`（默认 `none` = 立即发送）。
+- **C7 sender 二次截断**：只开 STREAM 时，最长 200 字的流式段被按 40 再砍一刀并加「...」。
+  `Sender._reply_limit()` 现在感知 STREAM。
+- **C6 查重/表情包只看首段**：列表回复的 `[STICKER:]` 标记出现在第 2 段会当正文发出去。
+  流式与整轮路径都改为逐段处理。
+
+### 修复 —— 架构链路（W 系列）
+
+- **W1 Layer B 实为「攒完再发」**：`collect_stream_segments` 把全部段收齐才返回，
+  首句早到的时间被完全丢弃。重写为真·流式：每刷出一段**立即发送**，收尾不再补发。
+- **W2 流式绕过人格/群梗/花语记忆/熔断**：`guarded_stream` 此前只有预算闸门。现在与
+  `guarded_chat` 共用 `_enrich_base_kwargs` / `_enrich_attempt_kwargs`（人格、管理员规则、
+  群梗、自定义 prompt、花语记忆、群昵称、群风格规则全在），并补上 provider/群级熔断的准入与回写。
+- **W4 流式空产出自罚双倍预算**：三态结果（ok/empty/error）区分处理——成功但空走兜底，
+  不再触发第二次完整请求。
+- **W5 流式失败 + 降级双扣预算**：新增 `BudgetManager.refund`（含用户限速时间戳回退），
+  流式失败时回退，降级路径只扣一次。
+- **W1 半途失败重复刷屏**：已发出部分段后异常，现在只补记账、**不**降级重发整轮。
+- **W6 一致性门禁盲区**：新增 `_LOCAL_ACTIONS` 表（split_reply / split_message / merge_message）
+  与 permissions 对账测试，本地动作也受门禁约束。
+- **W8 SDK 夹具副本**：新增断言「插件夹具副本的公开方法 ⊂ 本体」，防止幻影 API。
+- **W9 Termux 环境变量未文档化**：`LD_PRELOAD` / `TERMUX_APP__LEGACY_DATA_DIR` / `PERL5LIB`
+  的用途与症状写进 install-termux.md 与插件开发指南。
+
+### 新增 —— 本机回环模型免密钥
+
+- `DEEPSEEK_API_URL` 指向 `127.0.0.1` / `localhost` / `::1` 时，`DEEPSEEK_API_KEY` **可留空**：
+  自建 Ollama / llama.cpp / vLLM / LM Studio 等通常不校验密钥，不再强制填假 Key。
+- 空密钥时**不发送** `Authorization` 头（此前会发非法的 `Bearer `）。有密钥时行为与历史完全一致。
+- 新开关 `AI_ALLOW_LOOPBACK_NO_KEY`（默认 `true`）：设为 `false` 恢复「回环也必须填 Key」的严格模式。
+- 三入口齐备：`config.py` 默认值 / `.env_example` 与首次释放的模板 / Web UI 配置项与用户状态页
+  （后者把这类模型显示为「本机回环 · 免密钥」，不再误报「未配置 Key」）。
+- 覆盖范围：聊天、流式、工具调用、视觉识图、引战检测统一走 `utils/llm_headers.auth_headers`。
+- 局域网地址（`192.168.x.x` 等）**不算**回环，仍要求密钥。
+
+### 工程护栏
+
+- message_router.py 仍为 **650 行**（护栏上限），ai_client.py 408 行（≤430）；
+  新增模块：`utils/llm_headers.py`，`core/stream_reply.py` 重写为真流式编排。
+- 四层测试分离不变；新增 `tests/test_loopback_model.py`（24 项，覆盖 URL 判定 / 请求头 /
+  启动校验 / 模板 / Web UI 状态），`tests/test_reply_stream.py` 扩到 27 项（真流式时序 / 三态 /
+  记忆剥离 / 逐段表情包），`tests/test_reply_splitter.py` 21 项（C1/C3/C5 语义）。
+- 文档回填：本次改动后 CI 实测数字见 `docs/guides/development.md`（数字来自真实测试输出）。
+
 ## [2.6.0] - 2026-10-20
 
 > 本版为**功能版本（MINOR bump）**：长回复处理对齐 dsh-qq-bridge——Layer A 边界感知

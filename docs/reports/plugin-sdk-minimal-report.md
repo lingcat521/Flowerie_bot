@@ -2,7 +2,8 @@
 
 > 任务书：`/storage/emulated/0/插件测试.txt`　·　契约：`docs/plugin-sdk-minimal-test.md`
 > 核心要求：**不要证明"SDK 代码存在"，要证明"开发者真的可以用这个 SDK 写出一个能运行的插件"。**
-> **当前状态（v2.3.0）**：整仓 **2288 passed / 39 skipped**、`tests/webui` 102、`tests/e2e` 21（真浏览器）；§3 的本机结果本轮复核一致，§6 的 CI 数字是提交 `54dfe97` 当时的记录。
+> **数字口径**：`2288 passed` 属 **v2.3.0 基线**的历史记录，当前值见 [development.md](../guides/development.md)；
+> §3 的本机结果本轮复核一致，§6 的 CI 数字是提交 `54dfe97` 当时的记录。
 
 ## 1. 交付物
 

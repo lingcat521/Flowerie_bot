@@ -2348,6 +2348,15 @@ _SENDER_ACTIONS: Dict[str, tuple] = {
     "group_res": ("get_group_res", [("group_id", "int", "group_id"), ("res_type", "str", "res_type")]),
 }
 
+# ---------- v2.7.0：本地动作（不经 Sender 的网关内实现）→ 权限名 ----------
+# 与 _SENDER_ACTIONS 一起受 tests/test_api_consistency.py 对账门禁约束
+# （W6：split_reply 走 _ext_msg_friend 分支曾脱离四向一致性门禁，删映射不会报红）。
+_LOCAL_ACTIONS: Dict[str, str] = {
+    "split_reply": "read_message",    # 边界感知切分（Layer A，纯本地）
+    "split_message": "read_message",  # 等长拆段（纯本地）
+    "merge_message": "send_message",  # 合并文本（与 permissions 表的既有映射一致）
+}
+
 
 def _rule_from(conditions: dict):
     """SDK rule 条件 dict → Rule 对象（用户/群/机器人角色条件）。"""

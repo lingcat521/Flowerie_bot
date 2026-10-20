@@ -11,6 +11,7 @@ from typing import Optional
 import httpx
 
 from src.core.sanitizer import check_image_url
+from src.utils.llm_headers import auth_headers
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -184,7 +185,8 @@ class VisionService:
             "temperature": 0.3,
             "max_tokens": 200,
         }
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        # 本机回环模型免密钥：空 key 时不发 Authorization（见 utils/llm_headers）
+        headers = auth_headers(api_key)
         try:
             r = await self.client.post(api_url, headers=headers, json=payload, timeout=timeout)
             if r.status_code != 200:

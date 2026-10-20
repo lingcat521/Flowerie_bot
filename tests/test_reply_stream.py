@@ -1,7 +1,8 @@
 """Layer B 流式分句单元测试。
 
-覆盖：句子缓冲（边界/最小刷出/强制刷出）、SSE 解析、router 降级路径。
-全部用假对象（无真实网络），符合 CI 单元层口径。
+覆盖：句子缓冲（边界/最小刷出/强制刷出）、SSE 解析、真流式编排（W1 边生成边发、
+W4 三态、C1 整轮一次记账、C4 记忆剥离、C6 逐段查重/表情包）。
+全部用假对象（无真实网络/协议），符合 CI 单元层口径。
 """
 import os
 import sys
@@ -165,31 +166,219 @@ async def test_stream_chat_completion_sets_stream_flag():
     assert payload["stream"] is True
 
 
-# ---------- router 降级（假 gateway） ----------
+# ---------- handle_stream_reply（假 gateway/sender/policy/sticker） ----------
+# 真流式时序（W1）：段到即发；三态结果（W4）；C1 整轮一次记账；C4 记忆剥离。
 
-class _ErrorGateway:
-    """guarded_stream 抛异常的假网关：collect 透传异常，router 据此降级。"""
+import types
+
+from src.core.stream_reply import handle_stream_reply
+
+
+class _FakePolicy:
+    """策略引擎替身：查重 / 记账收集（不依赖真实 PolicyEngine/SQLite）。"""
+
+    def __init__(self, duplicates=()):
+        self._duplicates = set(duplicates)
+        self.replies, self.contexts, self.recent = [], [], []
+
+    def is_duplicate_reply(self, group_id, reply):
+        return reply in self._duplicates
+
+    def record_bot_reply(self, group_id):
+        self.replies.append(group_id)
+
+    def add_context(self, group_id, user_id, message, is_bot=False):
+        self.contexts.append(message)
+
+    def add_recent_reply(self, group_id, reply):
+        self.recent.append(reply)
+
+
+class _FakeSender:
+    """sender 替身：记录发出的文本与图片对。"""
 
     def __init__(self):
-        self.chat_calls = 0
+        self.sent, self.images = [], []
+
+    async def send_group_message(self, group_id, message, retries=2):
+        self.sent.append(message)
+        return True
+
+    async def send_group_message_with_image(self, group_id, text, image_path, retries=2):
+        self.images.append((text, image_path))
+        return True
+
+
+class _FakeStickers:
+    def __init__(self, path=None):
+        self._path = path
+        self.marks = 0
+
+    def is_enabled(self):
+        return True
+
+    def extract_sticker(self, text):
+        return self._path
+
+    def strip_sticker_marker(self, text):
+        return text.replace("[STICKER:x.png]", " ").strip()
+
+    def can_send(self, group_id):
+        return True
+
+    def mark_sent(self, group_id):
+        self.marks += 1
+
+
+class _StreamGateway:
+    """受控 guarded_stream：按给定片段序列逐段 yield；fail_at=N 时在第 N 段前抛异常。"""
+
+    def __init__(self, chunks, fail_at=None):
+        self._chunks = chunks
+        self._fail_at = fail_at
+        self.kwargs_seen = None
+
+    async def guarded_stream(self, group_id, user_id, **kwargs):
+        self.kwargs_seen = kwargs
+        for i, c in enumerate(self._chunks):
+            if self._fail_at is not None and i == self._fail_at:
+                raise ConnectionError("mid-stream boom")
+            yield c
+
+
+class _ErrorGateway:
+    """guarded_stream 立即抛异常（未产出任何段）的假网关。"""
 
     async def guarded_stream(self, *a, **kw):
         raise ConnectionError("boom")
         yield  # pragma: no cover
 
-    async def guarded_chat(self, group_id, user_id, **kw):
-        self.chat_calls += 1
-        return "降级成功", None, False
+
+async def _run(chunks, *, mentioned=True, duplicates=(), sticker_path=None, fail_at=None, gateway=None):
+    gw = gateway or _StreamGateway(chunks, fail_at=fail_at)
+    sender = _FakeSender()
+    stickers = _FakeStickers(sticker_path)
+    policy = _FakePolicy(duplicates=duplicates)
+    result = await handle_stream_reply(
+        gateway=gw, sender=sender, config=types.SimpleNamespace(),
+        policy_engine=policy, sticker_manager=stickers,
+        group_id=1, user_id=2, user_message="hi", context="ctx",
+        is_mentioned=mentioned)
+    return result, gw, sender, stickers, policy
 
 
 @pytest.mark.asyncio
-async def test_collect_stream_segments_raises_on_gateway_error():
-    """collect_stream_segments 透传网关异常（router 侧据此降级到 guarded_chat）。"""
-    from src.core.stream_reply import collect_stream_segments
-    gw = _ErrorGateway()
-    with pytest.raises(ConnectionError):
-        await collect_stream_segments(gw, 1, 2, "hi", "ctx", True)
-    # 降级路径仍能拿到回复
-    r2, _, _ = await gw.guarded_chat(1, 2)
-    assert r2 == "降级成功"
+async def test_segments_sent_immediately_in_order():
+    """W1：段到了就发（handle 返回时已全部发出），而不是攒完再发。"""
+    result, _, sender, _, _ = await _run([["第一段。"], ["第二段。"], ["第三段。"]])
+    assert sender.sent == ["第一段。", "第二段。", "第三段。"]
+    assert result == (None, None, True)
 
+
+@pytest.mark.asyncio
+async def test_gateway_receives_prompt_and_context():
+    _, gw, _, _, _ = await _run([["x。"]])
+    assert gw.kwargs_seen["user_message"] == "hi"
+    assert gw.kwargs_seen["context"] == "ctx"
+    assert gw.kwargs_seen["is_mentioned"] is True
+
+
+@pytest.mark.asyncio
+async def test_records_one_turn_with_merged_text():
+    """C1：整轮一次记账（连续回复/上下文/最近回复），上下文为合并文本一条。"""
+    result, _, _, _, policy = await _run([["第一段。"], ["第二段。"]])
+    assert policy.replies == [1]
+    assert policy.contexts == ["第一段。" + chr(10) + "第二段。"]
+    assert policy.recent == ["第一段。" + chr(10) + "第二段。"]
+
+
+@pytest.mark.asyncio
+async def test_memory_json_line_never_sent():
+    """C4/W3：MEMORY_JSON 行剥离不发送，记忆写回（流式路径不再泄漏记忆指令）。"""
+    chunks = [["说正事。" + chr(10) + 'MEMORY_JSON:{"text":"喜欢奶茶"}']]
+    result, _, sender, _, _ = await _run(chunks)
+    assert sender.sent == ["说正事。"]
+    assert result[1] == "喜欢奶茶"
+
+
+@pytest.mark.asyncio
+async def test_chinese_memory_prefix_stripped():
+    chunks = [["说正事。" + chr(10) + "【记忆】怕黑"]]
+    result, _, sender, _, _ = await _run(chunks)
+    assert sender.sent == ["说正事。"]
+    assert result[1] == "【记忆】怕黑"
+
+
+@pytest.mark.asyncio
+async def test_memory_only_segment_sends_nothing():
+    """整段都是记忆行：不发送，记忆仍写回（empty 态由 is_mentioned 决定兜底）。"""
+    result, _, sender, _, _ = await _run([['MEMORY_JSON:{"text":"怕黑"}']], mentioned=False)
+    assert sender.sent == []
+    assert result == (None, "怕黑", True)
+
+
+@pytest.mark.asyncio
+async def test_sticker_only_segment_sent_as_image():
+    """C6：表情包标记不一定出现在首段 —— 逐段识别，标记段发图片。"""
+    result, _, sender, stickers, _ = await _run([["[STICKER:x.png]"]], sticker_path="x.png")
+    assert sender.sent == []
+    assert sender.images == [(None, "x.png")]
+    assert stickers.marks == 1
+
+
+@pytest.mark.asyncio
+async def test_sticker_with_text_sends_image_plus_text():
+    result, _, sender, stickers, _ = await _run([["配文[STICKER:x.png]"]], sticker_path="x.png")
+    assert sender.images == [("配文", "x.png")]
+    assert stickers.marks == 1
+
+
+@pytest.mark.asyncio
+async def test_duplicate_segment_skipped_but_new_one_sent():
+    """C6：逐段查重；重复段跳过，新段照发。"""
+    result, _, sender, _, _ = await _run([["复读。"], ["新内容。"]], duplicates=("复读。",))
+    assert sender.sent == ["新内容。"]
+
+
+@pytest.mark.asyncio
+async def test_error_before_any_send_falls_back():
+    """W4/error：未发出任何段 → handled=False，router 降级到 guarded_chat。"""
+    sender = _FakeSender()
+    policy = _FakePolicy()
+    result = await handle_stream_reply(
+        gateway=_ErrorGateway(), sender=sender, config=types.SimpleNamespace(),
+        policy_engine=policy, sticker_manager=_FakeStickers(),
+        group_id=1, user_id=2, user_message="hi", context="ctx", is_mentioned=True)
+    assert result == (None, None, False)
+    assert policy.replies == []  # 降级路径的记账由 guarded_chat 承担
+
+
+@pytest.mark.asyncio
+async def test_partial_send_does_not_re_fall_back():
+    """W1 关键：已发出部分段后异常 → 只补记账，不降级重发（否则重复刷屏）。"""
+    result, _, sender, _, policy = await _run([["第一段。"], ["第二段。"]], fail_at=1)
+    assert sender.sent == ["第一段。"]
+    assert result[2] is True
+    assert policy.replies == [1]
+    assert policy.contexts == ["第一段。"]
+
+
+@pytest.mark.asyncio
+async def test_empty_stream_mentioned_gets_fallback_reply():
+    """W4：流式成功但空产出 → @场景给兜底回复，不再二次请求（双倍预算）。"""
+    result, _, sender, _, _ = await _run([["   "]])
+    assert result == ("喵？", None, True)
+    assert sender.sent == []
+
+
+@pytest.mark.asyncio
+async def test_empty_stream_not_mentioned_stays_silent():
+    result, _, sender, _, _ = await _run([["   "]], mentioned=False)
+    assert result == (None, None, True)
+    assert sender.sent == []
+
+
+def test_stream_outcome_status_constants():
+    """W5 的 budget refund 在网关层（ai_gateway.guarded_stream）；编排层只暴露三态。"""
+    from src.core.stream_reply import STREAM_EMPTY, STREAM_ERROR, STREAM_OK
+    assert (STREAM_OK, STREAM_EMPTY, STREAM_ERROR) == ("ok", "empty", "error")

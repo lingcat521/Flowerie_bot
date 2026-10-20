@@ -7,7 +7,8 @@
 > **证据基线**：commit `42427a0` · CI run [36132261166](https://github.com/lingcat521/Flowerie_bot/actions/runs/36132261166)
 > —— 三项工作流（`CI` / `Acceptance` / `Push on main`）**全绿**，整仓 **1829 passed / 22 skipped**
 > （22 条全是缺协议端环境的实机集成用例：按任务书要求 skip 并打印原因，**不当作通过**）。
-> 下文所有数字都是该基线的历史证据；**当前状态（v2.3.0）**：整仓 **2288 passed / 39 skipped**、`tests/sdk` 46、`tests/webui` 102、`tests/e2e` 21（真浏览器）。
+> 下文所有数字都是该基线的历史证据。**数字口径**：`2288 passed` 属 **v2.3.0 基线**，
+> 当前实测一律见 [development.md](../guides/development.md)（v2.7.0 unit 2300 passed / 112 skipped）。
 
 ## 0. 一页速览
 

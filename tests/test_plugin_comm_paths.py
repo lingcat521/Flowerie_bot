@@ -30,18 +30,25 @@ LANGS = {
 
 
 def _sandbox_exec_blocked(lang):
-    """Termux 沙箱专属：引擎按白名单裁剪环境变量后，前缀里的二进制无法 exec。
+    """Termux 沙箱专属：引擎按白名单裁剪环境变量后，插件进程与本机环境的兼容问题。
 
-    Termux 的 node/go/java 都需要 libtermux-exec 的 LD_PRELOAD 才能启动，而
-    PluginRuntime 的环境变量白名单（安全不变式，不该为测试放宽）里没有它 —— 于是
-    exec runtime 的插件在本机会卡在 initialize。这是**本机沙箱限制**，不是代码问题；
-    CI（Ubuntu）没有这个限制，三条路径全跑。
+    两类本机限制（CI 的 Ubuntu 都没有，三条路径全跑）：
+    1) Termux 的 node/go/java 等需要 libtermux-exec 的 LD_PRELOAD 才能启动；
+       白名单不含它时 exec runtime 会卡在 initialize。
+    2) termux-exec 的协调变量（TERMUX_EXEC__*）不在白名单里，裁剪后 hook 行为
+       退化，对「入口是 shell 脚本（run.sh 内再 exec 编译产物）」的示例插件会
+       exec 失败（code=126）。直接 exec ELF 产物（multilang 系列）不受影响。
+    都不是代码问题。
     """
-    if "LD_PRELOAD" in ENGINE_ENV_WHITELIST:
-        return None
-    if LANGS[lang]["needs"] and "termux-exec" in os.environ.get("LD_PRELOAD", ""):
-        return ("本机 Termux 沙箱：白名单环境变量不含 LD_PRELOAD，%s 无法被 exec runtime 启动"
-                "（CI 无此限制）" % LANGS[lang]["needs"][0])
+    if "LD_PRELOAD" not in ENGINE_ENV_WHITELIST:
+        if LANGS[lang]["needs"] and "termux-exec" in os.environ.get("LD_PRELOAD", ""):
+            return ("本机 Termux 沙箱：白名单环境变量不含 LD_PRELOAD，%s 无法被 exec runtime 启动"
+                    "（CI 无此限制）" % LANGS[lang]["needs"][0])
+    if os.environ.get("TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE") == "force":
+        ex = os.path.join(ROOT, LANGS[lang]["example"], "run.sh")
+        if os.path.isfile(ex) and not os.access(ex, os.X_OK):
+            return ("本机 Termux 沙箱：termux-exec 协调变量被白名单裁剪，"
+                    "run.sh 入口在本机 exec 失败（CI 无此限制）")
     return None
 
 
@@ -95,6 +102,16 @@ class PathRig:
         if os.path.isdir(dst):
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
+        # FUSE（/storage/emulated/0）不保留执行位，copytree 出来的 run.sh 无法被
+        # execve（CI 的 Ubuntu checkout 带 +x，不受影响）。部署副本里补回执行位。
+        entry = raw.get("entry") or ""
+        if entry.endswith((".sh", "")):
+            for cand in (entry, "run.sh", "build.sh"):
+                if not cand:
+                    continue
+                p = os.path.join(dst, cand)
+                if os.path.isfile(p):
+                    os.chmod(p, os.stat(p).st_mode | 0o111)
         # 测试用：授权插件间通信（权限来自批准集，不是代码里的开关）
         raw = dict(raw)
         perms = list(raw.get("permissions") or [])

@@ -113,6 +113,9 @@ def _api_card(label, st, test_tg=None):
     key_state = ""
     if st.get("key_set"):
         key_state = '<span class="badge ok">已配置 Key</span>'
+    elif st.get("loopback"):
+        # 本机回环模型不校验密钥（Ollama/vLLM 等），不该显示成"未配置"
+        key_state = '<span class="badge ok">本机回环 · 免密钥</span>'
     elif st.get("url") and st.get("model") and st.get("url") != "未启用" and st.get("model") != "未启用":
         key_state = '<span class="badge warn">未配置 Key</span>'
     else:
