@@ -6,11 +6,13 @@ W4 三态、C1 整轮一次记账、C4 记忆剥离、C6 逐段查重/表情包�
 """
 import os
 import sys
+import types
 
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.core.stream_reply import handle_stream_reply
 from src.services.ai_streaming import StreamingSentenceBuffer, stream_chat_completion
 
 # ---------- StreamingSentenceBuffer ----------
@@ -167,13 +169,6 @@ async def test_stream_chat_completion_sets_stream_flag():
 
 
 # ---------- handle_stream_reply（假 gateway/sender/policy/sticker） ----------
-# 真流式时序（W1）：段到即发；三态结果（W4）；C1 整轮一次记账；C4 记忆剥离。
-
-import types
-
-from src.core.stream_reply import handle_stream_reply
-
-
 class _FakePolicy:
     """策略引擎替身：查重 / 记账收集（不依赖真实 PolicyEngine/SQLite）。"""
 
