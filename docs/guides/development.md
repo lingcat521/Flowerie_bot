@@ -26,7 +26,7 @@ pytest -m "not real_device"               # 排除实机用例
 
 | 层 | 位置 | 命令 | 当前状态 |
 | :--- | :--- | :--- | :--- |
-| unit / 静态（含架构 Gate） | `tests/test_*.py` | `pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e` | **v2.7.0 本机实测 2300 passed / 112 skipped**（CI 的 pytest 步骤就是这个口径；数字口径见下方注） |
+| unit / 静态（含架构 Gate） | `tests/test_*.py` | `pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e` | **v2.7.0 CI 实测 2414 passed / 22 skipped**（CI 的 pytest 步骤就是这个口径；数字口径见下方注） |
 | 多语言 SDK 最小插件实测 | `tests/sdk/` | `pytest -q -s tests/sdk/` | **46**：真 build（go/rustc/javac/tsc…）→ 真加载 → ping/echo/event/call/权限/关机 |
 | Plugin WebUI（真服务器 + 真插件进程） | `tests/webui/` | `pytest -q -s tests/webui/` | **102**：HTTP / 静态 / 安全 / 隔离 / 动作 / 插件间通信 |
 | 真浏览器 E2E（Playwright Chromium） | `tests/e2e/` | `pytest -q -rs -s tests/e2e/` | **21**：真 WebUI 服务器 + 真插件进程 + 真 Chromium；缺浏览器即 `BLOCKED BY ENVIRONMENT` skip（**绝不写 PASS**） |
@@ -47,10 +47,10 @@ PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/ -q            # 最小 stu
 PYTHONPATH=$HOME python3 -m pytest -p stubplug -p stubio tests/ -q  # 追加 aiohttp/websockets stub（跑更宽的导入链）
 ```
 
-> **数字口径**（重要）：上表 unit 行是 **v2.7.0（2026-10-24）本机实测**
-> `2300 passed / 112 skipped`；全量 `pytest tests/` 为 `2416 passed`（含 sdk/webui/e2e）。
-> skip 数随本机装了哪些工具链而变（本节多语言实测项缺工具链即 skip），**不是失败**。
-> CI 的 pytest 步骤口径与本机不同（CI 装了 go/rustc/javac/tsc 等），以 CI 日志的实际汇总行为准。
+> **数字口径**（重要）：上表 unit 行是 **v2.7.0（commit 6d3ef2c）CI 实测**
+> `2414 passed / 22 skipped`（CI 装 go/rustc/javac/tsc 等工具链，skip 更少）。
+> 本机（Termux）同口径为 `2300 passed / 112 skipped`，全量 `pytest tests/` 为 `2494 passed`；
+> skip 数随本机装了哪些工具链而变，**不是失败**。以 CI 日志的实际汇总行为准。
 >
 > 带 commit 的历史数字：**2.3.0（2026-09-25）发布时记录 1121 个测试**；
 > **2.3.0–2.6.0 期间长期沿用 2288**（见 [CHANGELOG](../../CHANGELOG.md)）——那是当时的基线，
