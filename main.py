@@ -286,8 +286,36 @@ async def main():
             ws_server = WebSocketServer(config, message_router)
             sender._ws_sender = ws_server.send_action  # SEND_VIA_WS=true 时经 WS 发送
 
+        # 每日群聊摘要（DIGEST_ENABLED 默认关）：构造服务 + 恢复历史 checkpoint
+        # （跨重启连续性）+ 把缓冲钩子注进 ContextManager；后台任务在下面注册
+        daily_digest = None
+        digest_store = None
+        if bool(getattr(config, "DIGEST_ENABLED", False)):
+            from src.services.daily_digest import DailyDigestService, DigestStore
+            digest_store = DigestStore(getattr(config, "DIGEST_DB_PATH", "./data/digest.db"))
+            tz_name = str(getattr(config, "DIGEST_TIMEZONE", "Asia/Shanghai") or "Asia/Shanghai")
+            daily_digest = DailyDigestService(
+                config, ai_client, digest_store,
+                context_manager=policy_engine.context, tz_name=tz_name)
+            try:
+                rows = digest_store.load_all()
+                if rows:
+                    policy_engine.context.restore_digest_checkpoints(
+                        {gid: r[1] for gid, r in rows.items()})
+                    logger.info("digest_restored groups=%d", len(rows))
+            except Exception as exc:  # noqa: BLE001 - 恢复失败不影响启动
+                logger.warning("digest_restore_failed: %s", exc)
+            policy_engine.context.digest_feed = daily_digest.record_message
+
         # 启动后台任务（主动聊天 / 上下文备份，经 TaskManager 统一管理）
         await message_router.start()
+        if daily_digest is not None:
+            # 挂在 TaskManager 上统一取消；run_loop 自己算到下一个 00:00 的秒数
+            message_router.task_manager.register("daily_digest", daily_digest.run_loop())
+            logger.info("Daily digest loop started (at %02d:%02d %s)",
+                        int(getattr(config, "DIGEST_AT_HOUR", 0)),
+                        int(getattr(config, "DIGEST_AT_MINUTE", 0)),
+                        str(getattr(config, "DIGEST_TIMEZONE", "Asia/Shanghai")))
         await instance_registry.connect_all()      # 适配器实例生命周期（当前 1 个）
         # 启动插件运行时（enabled 插件；发现新插件默认 disabled）
         await plugin_manager.start_all()

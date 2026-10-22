@@ -300,3 +300,43 @@ DEEPSEEK_API_KEY=
 > 相关文档：[security.md](../reference/security.md)（安全边界）、[web-ui.md](../features/web-ui.md)（面板细节）、
 > [client-profiles.md](../reference/client-profiles.md)（`CLIENT_PROFILE` 取值）、[memory.md](../features/memory.md)（记忆体系）、
 > [mcp.md](../features/mcp.md)（MCP 配置示例）、[plugin-developer-guide.md](../plugins/plugin-developer-guide.md)（插件开发）。
+
+---
+
+## 每日群聊摘要（长期挂机不重启）
+
+花璃的群上下文是固定容量的（`CONTEXT_SIZE`，默认 300 条）——以前超过就被
+静默丢弃，挂机几天后早期的群聊记忆就彻底没了。开启每日摘要后，花璃每天
+凌晨把当天的对话压缩成一份**滚动摘要**，连续运行几个月也能记住群里
+约过什么、谁和谁什么关系、花璃自己翻过什么车。
+
+设计移植自 DeepSeek Harness 的会话压缩模块（compaction）：
+
+- **嵌套合并**：新摘要会把旧摘要作为 PRIOR checkpoint merge 进来，而不是
+  堆叠——上下文里永远只有一份摘要
+- **既定背景**：模型被要求把摘要当背景、不复述，所以花璃不会"背课文"
+- **收敛检查**：摘要比原文还长就拒写，防止越压越胖
+- 摘要落在三处：内存上下文（重启可从 SQLite 恢复）、摘要库、
+  txt 文件（`DIGEST_EXPORT_DIR`，可以直接打开看）
+
+### 开启
+
+```ini
+DIGEST_ENABLED=true
+DIGEST_AT_HOUR=0            # 本地时区触发时刻（0 = 00:00）
+DIGEST_AT_MINUTE=0
+DIGEST_TIMEZONE=Asia/Shanghai
+DIGEST_EXPORT_DIR=./data/digests   # 留空则只存库不导出 txt
+```
+
+### 行为边界
+
+- 默认**关**，不开就是以前的完全行为；开了也只影响摘要与文本输出
+- 安静的群（一天不足 `DIGEST_MIN_MESSAGES` 条，默认 10）**自动跳过**，不烧额度
+- 摘要调用计入共享 AI 预算（`DAILY_AI_CALL_BUDGET`），不会绕过三层预算
+- 摘要失败保留当天缓冲，下一轮重试
+- 摘要条目是独立的 checkpoint，不挤占主动聊天的近 5 条概率窗口
+
+> 相关：[memory.md](../features/memory.md)（记忆体系——摘要属于会话内连续性，
+> 花语记忆属于跨会话人格记忆，二者互补）。
+

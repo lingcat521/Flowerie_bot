@@ -1,7 +1,7 @@
 import asyncio
 import random
 import time
-from typing import Dict
+from typing import Dict, Optional
 
 from src.config import Settings
 from src.core.context_backup import ContextBackupStore
@@ -20,6 +20,8 @@ class ContextManager:
         self.groups = groups
         self.global_state = global_state
         self._backup = ContextBackupStore(config)
+        # 每日摘要的缓冲喂入钩子（main.py 注入；None=摘要功能未启用，零开销）
+        self.digest_feed = None
 
     def get_group_state(self, group_id: int) -> GroupState:
         if group_id not in self.groups:
@@ -35,17 +37,45 @@ class ContextManager:
             "is_bot": is_bot,
             "time": time.time()
         })
+        if self.digest_feed is not None:
+            try:
+                self.digest_feed(group_id, user_id, message)
+            except Exception as exc:  # noqa: BLE001 - 缓冲失败不影响主链路
+                logger.warning("digest_feed_failed group=%s: %s", group_id, exc)
 
     def get_context_text(self, group_id: int, max_messages: int = 150) -> str:
         state = self.get_group_state(group_id)
         msgs = list(state.context)[-max_messages:]
         lines = []
+        head = ""
+        cp = getattr(state, "digest_checkpoint", None)
+        if cp:
+            # 摘要是跨天持久内容：同样按不可信数据清洗后再进上下文
+            cp_text, _ = sanitize_untrusted_text(str(cp))
+            if cp_text.strip():
+                head = "[近期群聊摘要（既定背景，不用复述）]\n" + cp_text + "\n\n"
+
         for idx, m in enumerate(msgs, 1):
             who = "机器人(花璃)" if m.get("is_bot", False) else f"用户{m.get('user_id', 0)}"
             # 代码层防注入：历史消息按不可信数据处理，清洗后再进上下文
             msg_text, _ = sanitize_untrusted_text(str(m.get("message", "")))
             lines.append(f"[{idx}] {who}: {msg_text}")
-        return "\n".join(lines)
+        return head + "\n".join(lines)
+
+
+
+    # ---------- 每日摘要 checkpoint（deque 之外，独立属性；零扫描污染） ----------
+    def set_digest_checkpoint(self, group_id: int, checkpoint: str) -> None:
+        """覆盖式写入本群摘要（merge 语义：旧摘要被新摘要取代，永远只有一份）。"""
+        self.get_group_state(group_id).digest_checkpoint = checkpoint
+
+    def get_digest_checkpoint(self, group_id: int) -> Optional[str]:
+        return getattr(self.get_group_state(group_id), "digest_checkpoint", None)
+
+    def restore_digest_checkpoints(self, rows: Dict[int, str]) -> None:
+        """启动时从 DigestStore 恢复各群摘要（跨重启连续性）。"""
+        for gid, text in rows.items():
+            self.get_group_state(gid).digest_checkpoint = text
 
     # ---------- 回复概率（主动发言概率全部配置化，默认值=原硬编码，行为零变化） ----------
     @staticmethod
@@ -64,7 +94,8 @@ class ContextManager:
     def should_reply_by_context(self, group_id: int) -> bool:
         state = self.get_group_state(group_id)
         cfg = self.config
-        recent_msgs = list(state.context)[-5:]
+        recent_msgs = [m for m in list(state.context)[-5:]
+                       if m.get("type") != "compact"]
         if not recent_msgs:
             prob = self._prob(
                 getattr(cfg, "PROACTIVE_MESSAGE_EMPTY_CONTEXT_PROBABILITY", 0.02), 0.02)

@@ -98,6 +98,18 @@ class Settings(BaseSettings):
     # 上下文崩溃持久化：周期备份最近 50 条上下文（SQLite），意外去世后重启自动恢复
     CONTEXT_BACKUP_PATH: str = "./data/context_backup.db"
     CONTEXT_BACKUP_INTERVAL: int = 60
+    # 每日群聊摘要（移植 DSH compaction：凌晨定点把当天对话压缩成滚动摘要，
+    # merge 进 deque 独立 checkpoint + SQLite 持久化 + txt 导出。默认关=零变化）
+    DIGEST_ENABLED: bool = False
+    DIGEST_DB_PATH: str = "./data/digest.db"  # 摘要持久化库（checkpoint / last_date）
+    DIGEST_AT_HOUR: int = 0            # 触发时刻（本地时区），0=00:00
+    DIGEST_AT_MINUTE: int = 0
+    DIGEST_TIMEZONE: str = "Asia/Shanghai"
+    DIGEST_MIN_MESSAGES: int = 10      # 缓冲不足该条数的安静群跳过
+    DIGEST_MAX_CHARS: int = 12000      # 单群喂给摘要的字符上限
+    DIGEST_BUFFER_PER_GROUP: int = 1000  # 每群消息缓冲上限（内存态，重启丢失）
+    DIGEST_MAX_GROUPS_PER_RUN: int = 20  # 单轮最多处理群数（防爆额度）
+    DIGEST_EXPORT_DIR: str = "./data/digests"  # 摘要 txt 导出目录（空=不导出）
 
     # Bot
     BOT_QQ: int = Field(...)  # 环境变量名 = 字段名
