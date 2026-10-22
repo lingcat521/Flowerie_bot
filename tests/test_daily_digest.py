@@ -4,6 +4,8 @@
 deqne checkpoint 落地与渲染、txt 导出、失败保留缓冲、quiet 群跳过。
 全部用假对象（无真实网络），符合 CI 单元层口径。"""
 import os
+import pathlib
+import tempfile
 import time
 from types import SimpleNamespace
 
@@ -49,10 +51,8 @@ class _FakeCtx:
 
 
 def _make(tmp_path=None, ai=None, export_dir=""):
-    import tempfile as _tf
-    import pathlib as _pl
     if tmp_path is None:
-        tmp_path = _pl.Path(_tf.mkdtemp())
+        tmp_path = pathlib.Path(tempfile.mkdtemp())
     cfg = SimpleNamespace(**{k: v for k, v in vars(_FakeCfg).items()
                              if not k.startswith("_")})
     cfg.DIGEST_EXPORT_DIR = export_dir or ""
@@ -69,17 +69,19 @@ def _feed(svc, group_id=100, n=5, prefix="msg"):
 # ---------- 纯函数 ----------
 
 def test_seconds_to_next_returns_positive():
-    # 12:34:56 到下一个 00:00 必为正数且小于 86400
-    now = time.mktime(time.strptime("2026-10-23 12:34:56", "%Y-%m-%d %H:%M:%S"))
+    # 固定 UTC 时刻（北京 12:34:56），到下一个 00:00 应差 11h25m4s
+    # 用固定时间戳而非 mktime，使断言与 CI 机器时区无关
+    now = 1792730096  # 2026-10-23T04:34:56Z == 北京时间 12:34:56
     d = _seconds_to_next(0, 0, "Asia/Shanghai", now=now)
     assert 0 < d < 86400
-    # 差 11 小时 25 分 4 秒（北京时间）
     assert abs(d - (11 * 3600 + 25 * 60 + 4)) < 3
 
 
 def test_seconds_to_next_already_passed_rolls_to_tomorrow():
-    now = time.mktime(time.strptime("2026-10-23 00:00:01", "%Y-%m-%d %H:%M:%S"))
-    assert _seconds_to_next(0, 0, "Asia/Shanghai", now=now) > 3600 * 23
+    # 北京时间 00:00:01（刚过触发点），下一个 00:00 约 24h 后
+    now = 1792684801  # 2026-10-22T16:00:01Z == 北京时间 2026-10-23 00:00:01
+    d = _seconds_to_next(0, 0, "Asia/Shanghai", now=now)
+    assert d > 3600 * 23
 
 
 def test_frame_summary_wraps_tags():
