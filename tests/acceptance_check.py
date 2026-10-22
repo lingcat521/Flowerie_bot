@@ -454,7 +454,7 @@ async def main():
     tail = (pt.stdout or pt.stderr).strip()
     rec(pt.returncode == 0, "pytest", tail[-160:] if pt.returncode == 0 else tail[-4000:])
     rf = subprocess.run([sys.executable, "-m", "ruff", "check", "."], capture_output=True, text=True)
-    rec(rf.returncode == 0, "ruff check", (rf.stdout or rf.stderr).strip()[-160:] or "通过")
+    rec(rf.returncode == 0, "ruff check", (rf.stdout or rf.stderr).strip()[-800:] or "通过")
 
     # 收尾
     try:
