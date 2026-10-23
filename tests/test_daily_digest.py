@@ -9,8 +9,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 
-from src.services.daily_digest import (DigestStore, DailyDigestService,
-                                       _seconds_to_next, frame_summary, is_shrunk)
+from src.services.daily_digest import DailyDigestService, DigestStore, _seconds_to_next, frame_summary, is_shrunk
 
 
 class _FakeAI:
