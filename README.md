@@ -14,7 +14,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-2414%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-2580%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -204,7 +204,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/featu
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 2414 个测试（CI：Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
+pytest              # 2580 个测试（CI：Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
 pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（46 条：五语言真 build / 真调用 / 真关闭）
 pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
 pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）

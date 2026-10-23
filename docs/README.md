@@ -84,7 +84,8 @@
 | [protocol-gap-closure.md](reports/protocol-gap-closure.md) | **协议缺口台账**：A 部分 G1–G8 封口状态 / DoD 九段链 / BLOCKED 与证据 | 开发者 |
 | [v2.6.0-semantic-conflicts.md](reports/v2.6.0-semantic-conflicts.md) | **v2.6.0 语义冲突审计**（C1–C8：冷却计数 / 段长休眠 / 上限劫持 / 流式绕过记忆 / 段间隔 / 查重首段 / 二次截断 / 陈旧注释），v2.7.0 已全部修复 | 开发者 |
 | [v2.6.0-wiring-audit.md](reports/v2.6.0-wiring-audit.md) | **v2.6.0 架构链路审计**（W1–W9：攒完再发 / 绕过注入链 / 记忆断联 / 双倍预算 / 门禁盲区 / 文档陈旧），v2.7.0 已全部修复 | 开发者 |
-| [v2.7.0-loopback-model.md](reports/v2.7.0-loopback-model.md) | **本机回环模型接入**：免密钥判定规则 / 三入口配置 / 覆盖范围 / 局域网为何不放行 | 运维 |
+| [v2.7.0-loopback-model.md](reports/v2.7.0-loopback-model.md)
+| [v2.8.0-daily-digest.md](reports/v2.8.0-daily-digest.md) | **每日凌晨群聊摘要**（移植 DSH compaction）：嵌套合并 / 既定背景 / 收敛检查 / 定点触发 / 三处落地 / 集成暗坑 | 运维 | | **本机回环模型接入**：免密钥判定规则 / 三入口配置 / 覆盖范围 / 局域网为何不放行 | 运维 |
 
 ## 归档
 

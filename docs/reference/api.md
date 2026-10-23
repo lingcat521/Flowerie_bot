@@ -2,7 +2,7 @@
 
 > 由 scripts/gen_api_md.py 生成（AST from PluginApi）；端点名（OneBot）不出现在此。
 > 语义方法若网关无对应端点，运行时返回 `not supported in v1`（绝不静默）。
-> 插件间通信（PluginCommApi：`plugin.call/emit/on/expose/cancel`）不在本索引，见 [plugin-developer-guide.md](../plugins/plugin-developer-guide.md) §8。
+> 插件间通信（PluginCommApi：`plugin.call/emit/on/expose/cancel`）不在本索引，见 [plugin-developer-guide.md](plugin-developer-guide.md) §8。
 
 
 **消息**
@@ -119,7 +119,7 @@
 | `ai_model_info(payload)` | 模型信息（名称/地址/类型） | `ai_chat` |
 | `ai_models(payload)` | 模型列表（已配置 AI 模型） | `ai_chat` |
 | `ai_rerank(payload)` | AI 重排（query+documents→相关性得分） | `ai_chat` |
-| `ai_stream(payload)` | AI 流式对话（真实 SSE 流式 + 句子缓冲分句，chunks 为按句刷出的整段；v2.6.0 前为整轮 64 字假切片；本机回环模型同样适用） | `ai_chat` |
+| `ai_stream(payload)` | AI 流式对话（收集 chunks 返回；主进程流式请求） | `ai_chat` |
 | `ai_token(payload)` | Token 统计（文本→token 估算） | `ai_chat` |
 | `ai_usage(payload)` | 用量统计（调用次数/费用指标） | `ai_chat` |
 | `ai_vision(payload)` | AI 视觉识图（图片地址/描述；主进程 vision 客户端，敏感图不可见跳转） | `ai_chat` |
@@ -135,8 +135,6 @@
 | `mcp_server(payload)` | MCP 服务器列表（已配置；含测试状态） | `http_request` |
 | `mcp_status(payload)` | MCP 服务器状态（在线探测） | `http_request` |
 | `mcp_tools(payload)` | MCP 工具列表（配置声明与在线工具） | `http_request` |
-
-> `mcp_server` / `mcp_status` / `mcp_tools` 的返回带每个 server 的认证**状态**（`auth.type` / `auth.configured` / `auth.status`），**绝不含 token / password**；认证配置只能由操作员在 Web UI 或 `MCP_SERVERS` 里改。
 
 **其他**
 | 方法 | 作用 | 权限 |
@@ -192,7 +190,7 @@
 | `runtime_status(payload)` | 运行状态（pid/uptime/版本） | `plugin_admin` |
 | `search_message(payload)` | 消息搜索（user_id/group_id + query + count：拉取历史并在本地过滤） | `read_message_history` |
 | `split_message(payload)` | 消息拆段（payload.text；按段/长度拆分，纯本地语义） | `read_message` |
-| `split_reply(payload)` | 长回复边界感知切分（v2.6.0 引入；换行→句尾标点→逗号→空格→硬切，内容零丢失，limit 上限 2000，与 split_message 硬切互补） | `read_message` |
+| `split_reply(payload)` | 长回复边界感知切分（Layer A：换行→句尾标点→逗号→空格→硬切，内容零丢失） | `read_message` |
 | `sse(payload)` | SSE 通道（v1 明确不支持→not supported） | `plugin_admin` |
 | `static_file(payload)` | 静态文件（插件 WebUI 空间；列/取链接） | `plugin_admin` |
 | `storage_delete(payload)` | 删除本插件私有存储的一个键（键不存在也算成功）。 | `—` |
