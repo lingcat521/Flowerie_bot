@@ -54,6 +54,7 @@ from src.services.webui_panels import (
     PersonaPanelMixin,
     PluginPanelMixin,
     PluginWebUIStaticMixin,
+    ProfilePanelMixin,
     PromptPanelMixin,
 )
 
@@ -70,12 +71,14 @@ _LOGIN_FAIL_WINDOW = 60
 
 class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, AppearancePanelMixin,
                   McpPanelMixin, PromptPanelMixin, PersonaPanelMixin,
-                  KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin, NicknamePanelMixin):
+                  KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin,
+                  NicknamePanelMixin, ProfilePanelMixin):
 
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
                  persona_manager=None, meme_manager=None, prompt_manager=None,
-                 plugin_manager=None, group_nicknames=None, group_style_rules=None):
+                 plugin_manager=None, group_nicknames=None, group_style_rules=None,
+                 profile_service=None):
         self.config = config
         self.group_nicknames = group_nicknames
         # 群专属发言规则 store（与 MessageRouter 共享同一实例；按 群+人设 解析）
@@ -98,6 +101,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         self._prompt_manager = prompt_manager
         # 插件系统（受控插件运行时；未注入时插件页提示不可用）
         self._plugin_manager = plugin_manager
+        # 群友画像（未注入/未开启时画像页提示不可用）
+        self._profile_service = profile_service
 
     def _issue_token(self) -> str:
         now = time.time()
@@ -213,6 +218,11 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/knowledge/delete", self._handle_panel_knowledge_delete)
         app.router.add_post("/panel/knowledge/clear", self._handle_panel_knowledge_clear)
         app.router.add_post("/panel/knowledge/config", self._handle_panel_knowledge_config)
+        # 群友画像管理（零 JS 表单：按群查看 / 手工修正 / 删除 / 清空）
+        app.router.add_post("/panel/profile/view", self._handle_panel_profile_view)
+        app.router.add_post("/panel/profile/save", self._handle_panel_profile_save)
+        app.router.add_post("/panel/profile/delete", self._handle_panel_profile_delete)
+        app.router.add_post("/panel/profile/clear", self._handle_panel_profile_clear)
         # 插件管理（零 JS 表单：保护级别 / 扫描 / 上传 / URL / 启用 / 禁用 / 卸载）
         app.router.add_post("/panel/plugins/refresh", self._handle_panel_plugins_refresh)
         app.router.add_post("/panel/plugins/upload", self._handle_panel_plugins_upload)
@@ -272,7 +282,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         err = request.query.get("err", "") == "1"
         tab = request.query.get("tab", "")
         if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins",
-                       "nicknames"):
+                       "nicknames", "profiles"):
             tab = "config"
         cat = request.query.get("cat", "")
         if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
@@ -354,6 +364,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             body_html = self._render_nicknames_page()
         elif tab == "knowledge":
             body_html = self._render_knowledge_page(gid, search)
+        elif tab == "profiles":
+            body_html = self._render_profile_page(gid)
         elif tab == "plugins":
             body_html = self._render_plugin_page()
         else:

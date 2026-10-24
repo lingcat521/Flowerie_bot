@@ -290,13 +290,27 @@ async def main():
         # （跨重启连续性）+ 把缓冲钩子注进 ContextManager；后台任务在下面注册
         daily_digest = None
         digest_store = None
+        # 群友画像（PROFILE_ENABLED 默认关）：性格/喜好/个人生活/特点的长期记忆。
+        # 构造轻量（一个 SQLite 库）；提取挂在中 digest 之后，注入由 AiGateway 按群读取。
+        profile_service = None
+        if bool(getattr(config, "PROFILE_ENABLED", False)):
+            from src.services.profile_manager import MemberProfileService, ProfileStore
+            profile_service = MemberProfileService(
+                config, ai_client, ProfileStore(getattr(config, "PROFILE_DB_PATH", "./data/profiles.db")))
+            logger.info("Member profile service started (db=%s)",
+                        getattr(config, "PROFILE_DB_PATH", "./data/profiles.db"))
+        message_router.profile_service = profile_service
+        message_router.commands.profile_service = profile_service
+        if web_ui is not None:
+            web_ui._profile_service = profile_service
         if bool(getattr(config, "DIGEST_ENABLED", False)):
             from src.services.daily_digest import DailyDigestService, DigestStore
             digest_store = DigestStore(getattr(config, "DIGEST_DB_PATH", "./data/digest.db"))
             tz_name = str(getattr(config, "DIGEST_TIMEZONE", "Asia/Shanghai") or "Asia/Shanghai")
             daily_digest = DailyDigestService(
                 config, ai_client, digest_store,
-                context_manager=policy_engine.context, tz_name=tz_name)
+                context_manager=policy_engine.context, tz_name=tz_name,
+                profile_service=profile_service)
             try:
                 rows = digest_store.load_all()
                 if rows:
@@ -354,6 +368,8 @@ async def main():
             settings_repo.close()
             sticker_manager.close()
             meme_manager.close()
+            if profile_service is not None:
+                profile_service.close()
             await tool_manager.close()
             # 4) 输出进程内 metrics 摘要
             logger.info(

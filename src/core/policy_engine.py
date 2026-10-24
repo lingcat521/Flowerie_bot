@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from src.config import Settings
 from src.core.active_chat_manager import ActiveChatManager
@@ -45,8 +45,9 @@ class PolicyEngine:
     def get_group_state(self, group_id: int) -> GroupState:
         return self.context.get_group_state(group_id)
 
-    def add_context(self, group_id: int, user_id: int, message: str, is_bot: bool = False) -> None:
-        return self.context.add_context(group_id, user_id, message, is_bot)
+    def add_context(self, group_id: int, user_id: int, message: str, is_bot: bool = False,
+                    digest_text: Optional[str] = None) -> None:
+        return self.context.add_context(group_id, user_id, message, is_bot, digest_text=digest_text)
 
     def get_context_text(self, group_id: int, max_messages: int = 150) -> str:
         return self.context.get_context_text(group_id, max_messages)

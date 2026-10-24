@@ -106,8 +106,7 @@ class MessageRouter(ReplyDispatchMixin):
         # 后台任务统一管理（TaskManager：注册/跟踪/异常记录/优雅关闭）
         self.task_manager = task_manager or BackgroundTaskManager()
         # AI 准入层（熔断/预算/人格/知识/重试）→ AiGateway（防上帝类）。
-        # 可变依赖以 provider 传入：gateway 动态读取 router 当前属性
-        # （测试常直接替换 router.ai_client / router.tool_manager，快照会失效）
+        # 可变依赖以 provider 传入：gateway 动态读取 router 当前属性（测试可热替换）
         self.ai_gateway = AiGateway(
             config, lambda: self.ai_client, lambda: self.budget,
             prompt_manager=lambda: self.prompt_manager,
@@ -117,6 +116,7 @@ class MessageRouter(ReplyDispatchMixin):
             blossom_memory=lambda: getattr(self, "blossom_memory", None),
             nicknames=lambda: getattr(self, "group_nicknames", None),
             style_rules=lambda: getattr(self, "group_style_rules", None),
+            profile_manager=lambda: getattr(self, "profile_service", None),
         )
         # 群特色昵称：由 main 创建并注入（与 Web UI 共享同一实例；gateway provider 动态读）
         # 花语记忆（可写 provider：测试可热替换）
@@ -324,7 +324,7 @@ class MessageRouter(ReplyDispatchMixin):
         )
 
         # 更新上下文
-        self.policy_engine.add_context(group_id, user_id, full_text[:200], is_bot=False)
+        self.policy_engine.add_context(group_id, user_id, full_text[:200], is_bot=False, digest_text=full_text)
 
         # 梗知识消息缓冲（每日总结的数据源；MEME_LEARNING_ENABLED 时才有总结任务，
         # 但缓冲记录始终启用有界保护，避免开关切换瞬间丢数据）

@@ -29,7 +29,10 @@ class ContextManager:
         return self.groups[group_id]
 
     # ---------- 上下文 ----------
-    def add_context(self, group_id: int, user_id: int, message: str, is_bot: bool = False) -> None:
+    def add_context(self, group_id: int, user_id: int, message: str, is_bot: bool = False,
+                    digest_text: Optional[str] = None) -> None:
+        """message 进工作 deque；digest_text 默认=message——
+        摘要数据源（digest_feed）拿 digest_text，工作上下文仍存截断的 message。"""
         state = self.get_group_state(group_id)
         state.context.append({
             "user_id": user_id,
@@ -39,7 +42,7 @@ class ContextManager:
         })
         if self.digest_feed is not None:
             try:
-                self.digest_feed(group_id, user_id, message)
+                self.digest_feed(group_id, user_id, digest_text if digest_text is not None else message)
             except Exception as exc:  # noqa: BLE001 - 缓冲失败不影响主链路
                 logger.warning("digest_feed_failed group=%s: %s", group_id, exc)
 

@@ -17,11 +17,13 @@ class CommandHandler:
     """
 
     def __init__(self, config: Settings, sender: Sender, memory_manager: MemoryManager,
-                 prompt_manager: PromptManager = None):
+                 prompt_manager: PromptManager = None, profile_service=None):
         self.config = config
         self.sender = sender
         self.memory_manager = memory_manager
         self.prompt_manager = prompt_manager
+        # 群友画像服务（/profile 命令的数据源；main 按开关在构造后注入）
+        self.profile_service = profile_service
 
     async def handle(self, text: str, user_id: int, group_id: int) -> bool:
         """处理指令，返回 True 表示已处理（不再走正常聊天流程）。"""
@@ -50,6 +52,9 @@ class CommandHandler:
             return True
         if cmd == "/prompt":
             await self._cmd_prompt(arg, user_id, group_id, is_admin)
+            return True
+        if cmd == "/profile":
+            await self._cmd_profile(user_id, group_id)
             return True
         return False
 
@@ -129,6 +134,7 @@ class CommandHandler:
             "/memory 看看我记住了你什么",
             "/forget 关键词 删掉包含该词的记忆",
             "/forget_me 清空我对你的全部记忆",
+            "/profile 看看我对你的群友画像",
         ]
         if is_admin:
             lines.append("/memory_clear 清空本群所有记忆（管理员）")
@@ -167,6 +173,17 @@ class CommandHandler:
             if gid == group_id:
                 group_cleared += await self.memory_manager.clear_user_memory(uid, group_id)
         await self.sender.send_group_message(group_id, f"已清空本群 {group_cleared} 条记忆")
+
+    async def _cmd_profile(self, user_id: int, group_id: int) -> None:
+        """/profile：查看花璃对自己的群友画像（性格/喜好/个人生活/特点）。"""
+        if self.profile_service is None or not self.profile_service.enabled():
+            await self.sender.send_group_message(group_id, "群友画像功能没有开启哦（PROFILE_ENABLED）")
+            return
+        desc = self.profile_service.describe(group_id, user_id)
+        if not desc:
+            await self.sender.send_group_message(group_id, "我还没有记住你的画像，多在群里聊聊吧～")
+            return
+        await self.sender.send_group_message(group_id, desc[:300])
 
     async def _cmd_memory_dump(self, group_id: int) -> None:
         lines = []

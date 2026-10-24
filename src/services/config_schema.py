@@ -134,8 +134,18 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "DIGEST_MAX_CHARS": ("Context", "int", False, True, "单群喂给摘要的字符上限"),
     "DIGEST_BUFFER_PER_GROUP": ("Context", "int", False, False, "每群消息缓冲上限（需重启）"),
     "DIGEST_MAX_GROUPS_PER_RUN": ("Context", "int", False, True, "单轮最多处理群数（防爆额度）"),
+    "DIGEST_SOURCE": ("Context", "str", False, True,
+                      "摘要数据源：buffer=内存缓冲（默认）/ archive=隐私存档 txt（需开 ARCHIVE_ENABLED；archive 无料时自动回落 buffer）"),
     "DIGEST_EXPORT_DIR": ("Context", "str", False, True,
                           "摘要 txt 导出目录（人读副本；留空=只存 SQLite 不导出）"),
+    # ---------- 群友画像（性格/喜好/个人生活/特点；默认关） ----------
+    "PROFILE_ENABLED": ("Context", "bool", False, True,
+                        "群友画像（每日摘要后提炼群友性格/喜好/个人生活/特点并注入对话；默认关）"),
+    "PROFILE_DB_PATH": ("Context", "str", False, False, "画像持久化库路径（需重启）"),
+    "PROFILE_MAX_TOKENS": ("Context", "int", False, True, "画像提取输出上限（token）"),
+    "PROFILE_MAX_MEMBERS": ("Context", "int", False, True, "注入对话的活跃成员画像上限"),
+    "PROFILE_SECTION_TTL_DAYS": ("Context", "int", False, True,
+                                 "画像字段多少天没更新就淘汰（0=永久保留）"),
     # ---------- 记忆库 ----------
     "MEMORY_PATH": ("Memory", "str", False, False, "记忆库路径（需重启）"),
     "MEMORY_TTL_DAYS": ("Memory", "int", False, True, "用户原话记忆保留天数（0=永久）"),

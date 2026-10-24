@@ -110,6 +110,32 @@ def frame_summary(text: str) -> str:
         + (text or "").strip() + "\n" + SUMMARY_CLOSE_TAG
 
 
+
+
+def load_archive_day(base_dir: str, group_id: int, day_key: str) -> List[Tuple[float, int, str]]:
+    """从隐私存档 txt 读回某群某天的消息（与内存缓冲同构）。
+
+    存档格式（privacy_archive.archive_message）：每行 [HH:MM:SS] 用户<uid>：text。
+    时间只有时分秒，日期由文件名给出，拼成当天零点 + 偏移的 epoch。
+    """
+    import re as _re
+    path = os.path.join(base_dir, str(group_id), day_key + ".txt")
+    if not os.path.isfile(path):
+        return []
+    tz = ZoneInfo("Asia/Shanghai")
+    base = datetime.strptime(day_key, "%Y-%m-%d").replace(tzinfo=tz)
+    out: List[Tuple[float, int, str]] = []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                m = _re.match(r"^\[(\d{1,2}):(\d{2}):(\d{2})\] 用户(\d+)[：:](.*)$", line.rstrip("\n"))
+                if not m:
+                    continue
+                h, mi, s, uid, text = int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)), m.group(5)
+                out.append((base.timestamp() + h * 3600 + mi * 60 + s, uid, text.strip()))
+    except OSError:
+        return []
+    return out
 def is_shrunk(summary_text: str, source_chars: int) -> bool:
     """收敛检查（DSH 同款护栏）：摘要不得比被压缩的原文还长。"""
     return len((summary_text or "").strip()) < max(1, int(source_chars))
@@ -171,7 +197,7 @@ class DailyDigestService:
     """每日凌晨滚动摘要：缓冲 → 一次 AI/群 → merge → 落地三处（deque/SQLite/txt）。"""
 
     def __init__(self, config: Settings, ai_client, store: DigestStore,
-                 context_manager=None, tz_name: str = ""):
+                 context_manager=None, tz_name: str = "", profile_service=None):
         self.config = config
         self.ai = ai_client
         self.store = store
@@ -183,6 +209,8 @@ class DailyDigestService:
         self.max_chars = int(getattr(config, "DIGEST_MAX_CHARS", 12000) or 12000)
         self.max_groups = int(getattr(config, "DIGEST_MAX_GROUPS_PER_RUN", 20) or 20)
         self.export_dir: Optional[str] = getattr(config, "DIGEST_EXPORT_DIR", "") or None
+        # 群友画像服务（可选）：摘要成功后复用当天文本跑一次画像提取
+        self.profile_service = profile_service
         self._buffers: Dict[int, Deque[Tuple[float, int, str]]] = {}
         self._running = False
 
@@ -233,7 +261,8 @@ class DailyDigestService:
         user_message = "\n\n".join(parts)
         try:
             reply, _ = await self.ai.chat_once(
-                user_message, context="（摘要任务，无历史上下文）", custom_prompt="digest")
+                user_message, context="（摘要任务，无历史上下文）", custom_prompt="digest",
+                max_tokens=int(getattr(self.config, "DIGEST_MAX_TOKENS", 4096) or 4096))
         except Exception as exc:  # noqa: BLE001 - 调用失败按"放弃本轮"处理
             logger.warning("digest_ai_failed group=%s: %s", group_id, exc,
                            extra={"event": "digest_ai_failed", "group": group_id})
@@ -294,13 +323,29 @@ class DailyDigestService:
         return result
 
     async def _digest_group(self, group_id: int, now: float) -> Optional[bool]:
-        """单群摘要：True=完成 / None=跳过 / False=失败（缓冲保留）。"""
+        """单群摘要：True=完成 / None=跳过 / False=失败（缓冲保留）。
+
+        数据源（DIGEST_SOURCE）：
+        - buffer：内存缓冲（默认；重启丢当天）
+        - archive：隐私存档 txt（ARCHIVE_ENABLED 开启时跨重启完整），内存缓冲兜底
+        """
+        day_key = _digest_day_key(now, self.tz)
+        source = str(getattr(self.config, "DIGEST_SOURCE", "buffer") or "buffer").lower()
+        rows = None
+        if source == "archive":
+            base = getattr(self.config, "ARCHIVE_BASE_DIR", "./data/archive") or "./data/archive"
+            rows = load_archive_day(base, group_id, day_key)
         buf = self._buffers.get(group_id)
-        if buf is None or len(buf) < self.min_messages:
+        # archive 没料（开关没开/没写成功）时回落内存缓冲（双层设计，不硬耦合存档）
+        if not rows:
+            if buf is None or len(buf) < self.min_messages:
+                return None
+            rows = list(buf)
+        elif len(rows) < self.min_messages:
             return None
         # 快照选择区间（对应 DSH 语义）：取走期间群照常收新消息，
         # 新消息不进本轮摘要、留在缓冲下一轮——绝不锁群
-        day_text, chars = self._render_day(buf)
+        day_text, chars = self._render_day(rows)
         if chars < self.min_messages * 2:
             return None
         prior_row = self.store.load(group_id)
@@ -320,6 +365,14 @@ class DailyDigestService:
         logger.info("digest_done group=%s chars=%d->%d export=%s",
                     group_id, chars, len(digest), exported or "(off)",
                     extra={"event": "digest_done", "group": group_id})
+        # 群友画像：复用同一段当天文本多跑一次提取（PROFILE_ENABLED 时才真正执行）。
+        # 放在摘要成功之后：摘要永远是主流程，画像失败/未配置都不影响它。
+        if self.profile_service is not None and self.profile_service.enabled():
+            try:
+                await self.profile_service.extract_from_day(group_id, day_text)
+            except Exception as exc:  # noqa: BLE001 - 画像失败不影响摘要主流程
+                logger.warning("profile_hook_failed group=%s: %s", group_id, exc,
+                               extra={"event": "profile_hook_failed", "group": group_id})
         return True
 
     def catch_up_pending(self, now: Optional[float] = None) -> List[int]:

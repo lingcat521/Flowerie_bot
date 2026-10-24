@@ -11,6 +11,7 @@ _TABS = [
     ("config", "/panel", "配置"),
     ("persona", "/panel?tab=persona", "人格"),
     ("knowledge", "/panel?tab=knowledge", "群聊知识"),
+    ("profiles", "/panel?tab=profiles", "群友画像"),
     ("nicknames", "/panel?tab=nicknames", "群昵称"),
     ("plugins", "/panel?tab=plugins", "插件"),
     ("appearance", "/panel?tab=appearance", "外观"),
@@ -21,7 +22,7 @@ _TABS = [
 _TITLES = {
     "config": "配置管理", "appearance": "外观美化", "logs": "日志",
     "persona": "人格管理", "knowledge": "群聊知识管理", "account": "用户状态",
-    "plugins": "插件管理", "nicknames": "群特色昵称",
+    "plugins": "插件管理", "nicknames": "群特色昵称", "profiles": "群友画像",
 }
 
 

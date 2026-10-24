@@ -44,7 +44,8 @@ class AiGateway:
 
     def __init__(self, config, ai_client, budget, prompt_manager=None,
                  tool_manager=None, persona_manager=None, meme_manager=None,
-                 blossom_memory=None, nicknames=None, style_rules=None):
+                 blossom_memory=None, nicknames=None, style_rules=None,
+                 profile_manager=None):
         """ai_client/tool_manager 等可变依赖以 provider（可调用）传入：
         动态读取宿主（MessageRouter）当前属性，支持测试/运行期热替换。"""
         self.config = config
@@ -59,6 +60,9 @@ class AiGateway:
         # 花语记忆（BlossomMemory）：默认 None（不含重资源；main 按开关注入）
         self._blossom_memory = blossom_memory if callable(blossom_memory) or blossom_memory is None \
             else (lambda: blossom_memory)
+        # 群友画像（MemberProfileService）：默认 None（main 按开关注入）
+        self._profile_manager = profile_manager if callable(profile_manager) or profile_manager is None \
+            else (lambda: profile_manager)
 
         # ---- Circuit Breaker（双层：provider 级全局 + 群级有界）----
         self.provider_breaker = CircuitBreaker(
@@ -96,6 +100,25 @@ class AiGateway:
     def meme_manager(self):
         return self._meme_manager()
 
+    def _with_profile_context(self, group_id: int, kwargs: dict) -> dict:
+        """注入本群活跃成员画像块（不可信上下文知识；未启用/为空时原样返回）。
+
+        画像块由 MemberProfileService.build_context_block 生成，PromptBuilder 里
+        会再清洗一次并声明优先级低于安全规则。故障绝不影响主 AI 流程。
+        """
+        pm = self._profile_manager() if callable(self._profile_manager) else self._profile_manager
+        if pm is None or not group_id:
+            return kwargs
+        try:
+            ctx = pm.build_context_block(group_id)
+        except Exception as exc:  # noqa: BLE001 - 画像故障绝不影响主 AI 流程
+            logger.warning("profile_inject_fail group=%s: %s", group_id, exc,
+                           extra={"event": "profile_inject_fail", "group": group_id})
+            return kwargs
+        if ctx:
+            return {**kwargs, "profile_context": ctx}
+        return kwargs
+
     async def guarded_stream(self, group_id: int, user_id: int, **kwargs):
         """流式分句入口（Layer B）：与 guarded_chat 同一套预算闸门前置，逐段产出。
 
@@ -109,6 +132,7 @@ class AiGateway:
             _M_REJECTED.inc({"reason": "budget"})
             return
         _M_AI_ATTEMPTS.inc()
+        kwargs = self._with_profile_context(group_id, kwargs)
         async for segments in self.ai_client.chat_stream(**kwargs):
             yield segments
 
@@ -175,6 +199,8 @@ class AiGateway:
             meme_ctx = self.meme_manager.build_context_block(group_id, user_message)
             if meme_ctx:
                 kwargs = {**kwargs, "meme_context": meme_ctx}
+        # 群友画像注入（本群活跃成员画像块；开关/故障/为空都不影响主流程）
+        kwargs = self._with_profile_context(group_id, kwargs)
         reply, memory_update = None, None
         retryable_failure = False  # 是否发生了可重试的瞬时失败（用于熔断计数）
         # P2-1：MCP 工具额度是一次 logical request 的硬上限——在重试循环前创建，

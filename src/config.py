@@ -106,10 +106,17 @@ class Settings(BaseSettings):
     DIGEST_AT_MINUTE: int = 0
     DIGEST_TIMEZONE: str = "Asia/Shanghai"
     DIGEST_MIN_MESSAGES: int = 10      # 缓冲不足该条数的安静群跳过
-    DIGEST_MAX_CHARS: int = 12000      # 单群喂给摘要的字符上限
-    DIGEST_BUFFER_PER_GROUP: int = 1000  # 每群消息缓冲上限（内存态，重启丢失）
+    DIGEST_MAX_CHARS: int = 400000     # 单群喂给摘要的字符上限（1M 上下文，全量喂）
+    DIGEST_BUFFER_PER_GROUP: int = 12000  # 每群消息缓冲上限（覆盖日均七八千条的活跃群）
     DIGEST_MAX_GROUPS_PER_RUN: int = 20  # 单轮最多处理群数（防爆额度）
     DIGEST_EXPORT_DIR: str = "./data/digests"  # 摘要 txt 导出目录（空=不导出）
+    DIGEST_SOURCE: str = "buffer"    # 摘要数据源：buffer=内存缓冲 / archive=隐私存档 txt（ARCHIVE_ENABLED 开启时可用）
+    # 群友画像（长期记忆：性格/喜好/个人生活/特点；默认关=零变化）
+    PROFILE_ENABLED: bool = False          # 画像总开关（开=每日摘要后提炼并注入对话）
+    PROFILE_DB_PATH: str = "./data/profiles.db"  # 画像持久化库（按群×用户隔离）
+    PROFILE_MAX_TOKENS: int = 2048         # 画像提取的输出上限（token）
+    PROFILE_MAX_MEMBERS: int = 8           # 注入对话的活跃成员画像上限
+    PROFILE_SECTION_TTL_DAYS: int = 30     # 单字段多少天没更新就淘汰（0=永久保留）
 
     # Bot
     BOT_QQ: int = Field(...)  # 环境变量名 = 字段名

@@ -225,3 +225,20 @@ def test_should_reply_skips_compact_entries():
                           "is_bot": True, "time": time.time()})
     recent = [m for m in list(state.context)[-5:] if m.get("type") != "compact"]
     assert all(m.get("type") != "compact" for m in recent)
+
+def test_add_context_digest_text_full():
+    """router 传 digest_text=full_text：摘要数据源拿全文，工作 deque 仍存截断。"""
+    from src.core.context_manager import ContextManager
+    from src.models import GlobalState
+    cfg_gstate = SimpleNamespace(CONTEXT_SIZE=50, CONTEXT_BACKUP_PATH="")
+    cm = ContextManager(cfg_gstate, {}, GlobalState())
+    seen = []
+    cm.digest_feed = lambda gid, uid, text: seen.append((gid, uid, text))
+    long_text = "x" * 500
+    cm.add_context(100, 123, long_text[:200], is_bot=False, digest_text=long_text)
+    # 工作 deque 存截断
+    state = cm.get_group_state(100)
+    assert state.context[0]["message"] == long_text[:200]
+    # digest 拿全文
+    assert seen and seen[0][2] == long_text
+
