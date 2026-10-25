@@ -4,6 +4,28 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.9.1] - 2026-10-25
+
+### 修复（架构审计四项）
+
+- **摘要/画像接入共享 AI 预算**：兑现 v2.8.0「摘要调用计入共享 AI 预算」的承诺——
+  `BudgetManager` 新增 `spend()`（后台任务专用：计入全局/群级计数、不通知）；
+  `DailyDigestService` 与 `MemberProfileService.extract_from_day` 加预算闸门
+  （全局/群级额度耗尽时跳过、缓冲保留，与 MemeSummary 同款），调用后 `spend()` 计入
+- **AiGateway nicknames provider 缺陷**：第三分支此前返回 persona_manager，
+  传裸 store 实例时 `_ns.get(...)` 崩溃；改为与 style_rules 同款的单层包装
+- **跨记忆协调**：画像注入按当前发言人过滤与其长期记忆矛盾的字段
+  （复用 `MemoryManager._is_contradiction`：记忆「戒奶茶了」⇔ 画像「喜好: 奶茶」
+  时以记忆为准剔除该字段；记忆读取失败不阻塞注入）
+- **存档日界与摘要时区**：`archive_message` 文件名改用 `raw_time` 定日界
+  （午夜跨秒消息不再进错日期文件）；`load_archive_day` 接受调用方传入的
+  `DIGEST_TIMEZONE`（此前硬编码 Asia/Shanghai）
+
+### 测试
+
+- 新增 12 个单元测试：预算耗尽跳过/计入、群级额度、无预算兜底、
+  记忆矛盾过滤（含他群成员不受影响）、存档日界、nicknames provider 修复回归
+
 ## [2.9.0] - 2026-10-25
 
 ### 新增：群友画像（PROFILE_*，默认关）——性格/喜好/个人生活/特点的长期记忆

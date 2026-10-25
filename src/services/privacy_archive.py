@@ -27,8 +27,10 @@ def archive_message(config, group_id: int, user_id: int, text: str, raw_time: in
         group_dir = os.path.join(base, str(group_id))
         if not os.path.exists(group_dir):
             os.makedirs(group_dir, exist_ok=True)
-        filename = os.path.join(group_dir, f"{datetime.now().strftime('%Y-%m-%d')}.txt")
-        time_str = datetime.fromtimestamp(raw_time).strftime("%H:%M:%S")
+        # 日界与行内时间戳同源（raw_time）：午夜前后到达的消息不会进错日期文件
+        msg_time = datetime.fromtimestamp(raw_time)
+        filename = os.path.join(group_dir, f"{msg_time.strftime('%Y-%m-%d')}.txt")
+        time_str = msg_time.strftime("%H:%M:%S")
         line = f"[{time_str}] 用户{user_id}：{text}\n"
         with open(filename, "a", encoding="utf-8") as f:
             f.write(line)

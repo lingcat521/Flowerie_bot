@@ -54,7 +54,7 @@ class AiGateway:
         self._prompt_manager = prompt_manager if callable(prompt_manager) else (lambda: prompt_manager)
         self._tool_manager = tool_manager if callable(tool_manager) else (lambda: tool_manager)
         self._persona_manager = persona_manager
-        self._nicknames = nicknames if callable(nicknames) else (lambda: nicknames) if callable(persona_manager) else (lambda: persona_manager)
+        self._nicknames = nicknames if callable(nicknames) else (lambda: nicknames)
         self._style_rules = style_rules if callable(style_rules) else (lambda: style_rules)
         self._meme_manager = meme_manager if callable(meme_manager) else (lambda: meme_manager)
         # 花语记忆（BlossomMemory）：默认 None（不含重资源；main 按开关注入）
@@ -109,8 +109,9 @@ class AiGateway:
         pm = self._profile_manager() if callable(self._profile_manager) else self._profile_manager
         if pm is None or not group_id:
             return kwargs
+        uid = kwargs.get("user_id")
         try:
-            ctx = pm.build_context_block(group_id)
+            ctx = pm.build_context_block(group_id, user_id=uid if isinstance(uid, int) else None)
         except Exception as exc:  # noqa: BLE001 - 画像故障绝不影响主 AI 流程
             logger.warning("profile_inject_fail group=%s: %s", group_id, exc,
                            extra={"event": "profile_inject_fail", "group": group_id})

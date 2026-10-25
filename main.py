@@ -296,7 +296,8 @@ async def main():
         if bool(getattr(config, "PROFILE_ENABLED", False)):
             from src.services.profile_manager import MemberProfileService, ProfileStore
             profile_service = MemberProfileService(
-                config, ai_client, ProfileStore(getattr(config, "PROFILE_DB_PATH", "./data/profiles.db")))
+                config, ai_client, ProfileStore(getattr(config, "PROFILE_DB_PATH", "./data/profiles.db")),
+                memory_manager=memory_manager, budget=budget_manager)
             logger.info("Member profile service started (db=%s)",
                         getattr(config, "PROFILE_DB_PATH", "./data/profiles.db"))
         message_router.profile_service = profile_service
@@ -310,7 +311,7 @@ async def main():
             daily_digest = DailyDigestService(
                 config, ai_client, digest_store,
                 context_manager=policy_engine.context, tz_name=tz_name,
-                profile_service=profile_service)
+                profile_service=profile_service, budget=budget_manager)
             try:
                 rows = digest_store.load_all()
                 if rows:

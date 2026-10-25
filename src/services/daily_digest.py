@@ -112,7 +112,8 @@ def frame_summary(text: str) -> str:
 
 
 
-def load_archive_day(base_dir: str, group_id: int, day_key: str) -> List[Tuple[float, int, str]]:
+def load_archive_day(base_dir: str, group_id: int, day_key: str,
+                  tz_name: str = "Asia/Shanghai") -> List[Tuple[float, int, str]]:
     """从隐私存档 txt 读回某群某天的消息（与内存缓冲同构）。
 
     存档格式（privacy_archive.archive_message）：每行 [HH:MM:SS] 用户<uid>：text。
@@ -122,7 +123,7 @@ def load_archive_day(base_dir: str, group_id: int, day_key: str) -> List[Tuple[f
     path = os.path.join(base_dir, str(group_id), day_key + ".txt")
     if not os.path.isfile(path):
         return []
-    tz = ZoneInfo("Asia/Shanghai")
+    tz = ZoneInfo(tz_name or "Asia/Shanghai")
     base = datetime.strptime(day_key, "%Y-%m-%d").replace(tzinfo=tz)
     out: List[Tuple[float, int, str]] = []
     try:
@@ -197,10 +198,13 @@ class DailyDigestService:
     """每日凌晨滚动摘要：缓冲 → 一次 AI/群 → merge → 落地三处（deque/SQLite/txt）。"""
 
     def __init__(self, config: Settings, ai_client, store: DigestStore,
-                 context_manager=None, tz_name: str = "", profile_service=None):
+                 context_manager=None, tz_name: str = "", profile_service=None,
+                 budget=None):
         self.config = config
         self.ai = ai_client
         self.store = store
+        # 共享 AI 预算（可选）：摘要属于后台批量任务，耗尽时跳过、计入不通知
+        self.budget = budget
         self.context = context_manager  # 落地 deque 头部 compact 标记条目
         self.tz = tz_name or "Asia/Shanghai"
         self.at_hour = int(getattr(config, "DIGEST_AT_HOUR", 0) or 0)
@@ -250,6 +254,31 @@ class DailyDigestService:
             total += len(line)
         return "\n".join(lines), total
 
+    def budget_allowed(self, group_id: int) -> bool:
+        """预算闸门：全局/群级预算耗尽时返回 False（缓冲保留，下轮再试）。
+
+        与 MemeSummary 同款（复用 BudgetManager 计数，不消耗、不通知）：
+        后台批量任务不该在聊天已用尽额度时继续烧 API。
+        """
+        if self.budget is None:
+            return True
+        try:
+            bcfg = self.budget.config
+            gs = self.budget.global_state
+            from datetime import datetime
+            today = datetime.now().strftime("%Y-%m-%d")
+            if gs.ai_budget_date != today:
+                return True  # 跨天未计数（BudgetManager 会在下次 check 时重置）
+            cap = max(0, int(getattr(bcfg, "DAILY_AI_CALL_BUDGET", 1000)))
+            if cap > 0 and gs.ai_budget_count >= cap:
+                return False
+            gcap = max(0, int(getattr(bcfg, "GROUP_DAILY_AI_CALL_BUDGET", 300)))
+            if gcap > 0 and gs.group_ai_budget_count.get(group_id, 0) >= gcap:
+                return False
+        except Exception:  # noqa: BLE001 - 预算读取异常按放行处理（不阻塞摘要）
+            return True
+        return True
+
     async def _summarize(self, group_id: int, day_text: str,
                    prior: Optional[str]) -> Optional[str]:
         """一次 AI 调用生成摘要（prior 存在则作为既往 checkpoint 一并 merge）。"""
@@ -263,6 +292,8 @@ class DailyDigestService:
             reply, _ = await self.ai.chat_once(
                 user_message, context="（摘要任务，无历史上下文）", custom_prompt="digest",
                 max_tokens=int(getattr(self.config, "DIGEST_MAX_TOKENS", 4096) or 4096))
+            if self.budget is not None:
+                self.budget.spend(group_id)  # 计入共享预算（不通知）
         except Exception as exc:  # noqa: BLE001 - 调用失败按"放弃本轮"处理
             logger.warning("digest_ai_failed group=%s: %s", group_id, exc,
                            extra={"event": "digest_ai_failed", "group": group_id})
@@ -334,7 +365,7 @@ class DailyDigestService:
         rows = None
         if source == "archive":
             base = getattr(self.config, "ARCHIVE_BASE_DIR", "./data/archive") or "./data/archive"
-            rows = load_archive_day(base, group_id, day_key)
+            rows = load_archive_day(base, group_id, day_key, self.tz)
         buf = self._buffers.get(group_id)
         # archive 没料（开关没开/没写成功）时回落内存缓冲（双层设计，不硬耦合存档）
         if not rows:
@@ -347,6 +378,12 @@ class DailyDigestService:
         # 新消息不进本轮摘要、留在缓冲下一轮——绝不锁群
         day_text, chars = self._render_day(rows)
         if chars < self.min_messages * 2:
+            return None
+        # 预算闸门：全局/群级预算耗尽时跳过本群（缓冲保留，预算恢复后下轮处理；
+        # 不计重试——预算拒绝不是 AI 故障）。计入共享 AI 预算，不绕过三层额度。
+        if not self.budget_allowed(group_id):
+            logger.info("digest_budget_skipped group=%s", group_id,
+                        extra={"event": "digest_budget_skipped", "group": group_id})
             return None
         prior_row = self.store.load(group_id)
         prior = prior_row[1] if prior_row else None

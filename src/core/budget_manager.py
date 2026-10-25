@@ -77,6 +77,26 @@ class BudgetManager:
         if user_interval and user_id in self._prev_user_call:
             self.global_state.user_ai_last_call.set(user_id, self._prev_user_call.pop(user_id))
 
+    def spend(self, group_id: int) -> None:
+        """后台批量任务（每日摘要 / 群友画像）计入预算：消耗全局+群级计数，不通知。
+
+        与 check() 的差别：
+        - 不检查用户限速（后台任务无触发对象）
+        - 额度已超限时**不拦**——调用方应先用 peek/自有闸门判断是否跳过；
+          本方法只负责「这次调用确实花了」的记账
+        - 不发「额度用尽」群提示（凌晨任务禁止打扰；拒绝由调用方静默跳过）
+        调用方约定：先闸门（耗尽则跳过、保留缓冲下轮再试）→ 本方法记账 → 发请求。
+        """
+        today = datetime.now().strftime("%Y-%m-%d")
+        if self.global_state.ai_budget_date != today:
+            self.global_state.ai_budget_date = today
+            self.global_state.ai_budget_count = 0
+            self.global_state.group_ai_budget_count.clear()
+            self.global_state.budget_notified_groups.clear()
+        self.global_state.ai_budget_count += 1
+        gcount = self.global_state.group_ai_budget_count.get(group_id, 0)
+        self.global_state.group_ai_budget_count[group_id] = gcount + 1
+
     def peek(self, group_id: int, user_id: int, user_interval: bool = True) -> Tuple[bool, str]:
         """只读预检：与 check 同一套拒绝条件，但**不消耗预算、不更新任何状态**。
 

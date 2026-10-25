@@ -271,12 +271,38 @@ def build_profile_block(rows: List[Tuple[int, Dict]]) -> str:
 class MemberProfileService:
     """群友画像服务：提取（digest 复用当天文本）+ 存储 + 注入 + 管理。"""
 
-    def __init__(self, config, ai_client, store: ProfileStore):
+    def __init__(self, config, ai_client, store: ProfileStore,
+                 memory_manager=None, budget=None):
         self.config = config
         self.ai = ai_client
         self.store = store
+        # 记忆库（可选）：注入时按当前发言人的记忆做矛盾过滤（跨系统协调）
+        self.memory_manager = memory_manager
+        # 共享 AI 预算（可选）：画像提取属于后台批量任务，耗尽时跳过
+        self.budget = budget
         self.max_members = int(getattr(config, "PROFILE_MAX_MEMBERS", 8) or 8)
         self.ttl_days = int(getattr(config, "PROFILE_SECTION_TTL_DAYS", 0) or 0)
+
+    def budget_allowed(self, group_id: int) -> bool:
+        """预算闸门：全局/群级预算耗尽时返回 False（与 DailyDigest/MemeSummary 同款）。"""
+        if self.budget is None:
+            return True
+        try:
+            bcfg = self.budget.config
+            gs = self.budget.global_state
+            from datetime import datetime
+            today = datetime.now().strftime("%Y-%m-%d")
+            if gs.ai_budget_date != today:
+                return True  # 跨天未计数（BudgetManager 会在下次 check 时重置）
+            cap = max(0, int(getattr(bcfg, "DAILY_AI_CALL_BUDGET", 1000)))
+            if cap > 0 and gs.ai_budget_count >= cap:
+                return False
+            gcap = max(0, int(getattr(bcfg, "GROUP_DAILY_AI_CALL_BUDGET", 300)))
+            if gcap > 0 and gs.group_ai_budget_count.get(group_id, 0) >= gcap:
+                return False
+        except Exception:  # noqa: BLE001 - 预算读取异常按放行处理（不阻塞提取）
+            return True
+        return True
 
     # ---------- 提取（digest 同管线，复用当天文本） ----------
     async def extract_from_day(self, group_id: int, day_text: str) -> int:
@@ -287,11 +313,18 @@ class MemberProfileService:
         """
         if not day_text or not day_text.strip():
             return 0
+        # 预算闸门：耗尽时跳过本轮画像提取（不影响摘要主流程，下轮再试）
+        if not self.budget_allowed(group_id):
+            logger.info("profile_budget_skipped group=%s", group_id,
+                        extra={"event": "profile_budget_skipped", "group": group_id})
+            return 0
         prompt = day_text + "\n\n" + PROFILE_INSTRUCTION
         try:
             reply, _ = await self.ai.chat_once(
                 prompt, context="（画像任务，无历史上下文）", custom_prompt="profile",
                 max_tokens=int(getattr(self.config, "PROFILE_MAX_TOKENS", 2048) or 2048))
+            if self.budget is not None:
+                self.budget.spend(group_id)  # 计入共享预算（不通知）
         except Exception as exc:  # noqa: BLE001 - 画像失败不影响摘要主流程
             logger.warning("profile_ai_failed group=%s: %s", group_id, exc,
                            extra={"event": "profile_ai_failed", "group": group_id})
@@ -358,10 +391,50 @@ class MemberProfileService:
         return data if isinstance(data, dict) else None
 
     # ---------- 注入 ----------
-    def build_context_block(self, group_id: int) -> str:
-        """注入用：本群最近活跃成员画像块（空=不注入）。"""
+    def build_context_block(self, group_id: int, user_id: Optional[int] = None) -> str:
+        """注入用：本群最近活跃成员画像块（空=不注入）。
+
+        user_id 给出时做**跨记忆协调**：当前发言人的画像字段若与其长期记忆
+        矛盾（例如记忆里「戒奶茶了」而画像是「喜好: 奶茶」），该字段会被剔除——
+        记忆库是即时的、画像是每日批量提炼的，两者冲突时以记忆为准。
+        """
         rows = self.store.group_profiles(group_id, limit=self.max_members)
-        return build_profile_block(rows)
+        if user_id is None or self.memory_manager is None:
+            return build_profile_block(rows)
+        try:
+            notes = self.memory_manager.get_user_notes(user_id, group_id)
+        except Exception:  # noqa: BLE001 - 记忆读取失败不阻塞画像注入
+            return build_profile_block(rows)
+        if not notes:
+            return build_profile_block(rows)
+        filtered = []
+        for uid, profile in rows:
+            if uid == user_id:
+                profile = self._drop_contradicted(uid, profile, notes)
+            filtered.append((uid, profile))
+        return build_profile_block(filtered)
+
+    @staticmethod
+    def _drop_contradicted(uid: int, profile: Dict, notes: List[str]) -> Dict:
+        """剔除与该用户长期记忆矛盾的字段（复用 MemoryManager 的矛盾判定）。"""
+        from src.services.memory_manager import MemoryManager
+        secs = profile.get("sections") or {}
+        kept = {}
+        for label, value in secs.items():
+            text = str((value or {}).get("text") or "") if isinstance(value, dict) else str(value or "")
+            drop = False
+            if text:
+                for note in notes:
+                    if MemoryManager._is_contradiction(text, note):
+                        drop = True
+                        logger.info("profile_field_dropped user=%s label=%s vs note=%s",
+                                    uid, label, note[:30],
+                                    extra={"event": "profile_field_dropped", "user": uid,
+                                           "label": label})
+                        break
+            if not drop:
+                kept[label] = value
+        return {"nickname": profile.get("nickname"), "sections": kept}
 
     # ---------- 管理（Web UI / 命令） ----------
     def enabled(self) -> bool:
