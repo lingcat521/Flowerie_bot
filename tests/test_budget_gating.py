@@ -162,7 +162,7 @@ def test_profile_block_other_members_unaffected(tmp_path):
     assert '用户123' in block and '用户456' in block
     # 只有当前发言人 456 会被过滤：他的奶茶剔除、traits 保留；123 的画像行原样保留
     assert '用户123 — 喜好: 奶茶' in block
-    line_456 = next(l for l in block.splitlines() if l.startswith('用户456'))
+    line_456 = next(line for line in block.splitlines() if line.startswith('用户456'))
     assert '奶茶' not in line_456 and '特点: 会画画' in line_456
 
 
