@@ -10,8 +10,8 @@ from types import SimpleNamespace
 import pytest
 
 from src.services.daily_digest import DailyDigestService, DigestStore
-from src.services.profile_manager import MemberProfileService, ProfileStore
 from src.services.privacy_archive import archive_message
+from src.services.profile_manager import MemberProfileService, ProfileStore
 
 
 class _FakeAI:
