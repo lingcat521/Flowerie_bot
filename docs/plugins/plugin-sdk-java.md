@@ -79,7 +79,7 @@ plugin.webUI()                                                      // Plugin.ja
 ## 9. 常见错误
 | 症状 | 原因 → 处理（出处）|
 | :--- | :--- |
-| 动作被拒（理由「未知 action，不允许执行（白名单外）」）| 把动作写成 `{"type":"send_group_msg","params":{…}}`：引擎只执行白名单动作，且只读 `action["payload"]`（`src/plugins/manager.py:1327-1329`、`src/plugins/permissions.py:363-379`）→ 写 `Json.obj("type","send_message","payload", payload)`（`examples/multilang-sdk/java/src/MinimalPlugin.java:583`）|
+| 动作被拒（理由「未知 action，不允许执行（白名单外）」）| 把动作写成 `{"type":"send_group_msg","params":{…}}`：引擎只执行白名单动作，且只读 `action["payload"]`（`src/plugins/manager.py::_run_action`、`src/plugins/permissions.py:363-379`）→ 写 `Json.obj("type","send_message","payload", payload)`（`examples/multilang-sdk/java/src/MinimalPlugin.java:583`）|
 | `onEvent("message", …)` 收不到消息 | 源码只把 `message` 投给 `onMessage` 注册的钩子（:656-657）→ 用 `plugin.onMessage(...)`，`onEvent(name, …)` 接其它事件 |
 | javac 报「变量 args 已定义」| lambda 形参不能与 `main(String[] args)` 重名（CI 抓到）→ 形参改名，仓库示例统一用 `hookArgs` / `webuiArgs`（`Plugin.java:42,64`）；报 unreported exception `IOException` 则因为 `storageGet/Set`、`configGet/Set`、`permissionCheck` 都是 checked `IOException`（:265-366）而 `LifecycleHandler.handle` 不声明 throws（:197-199）→ 在 lambda 内 try/catch（`Plugin.java:44-51`）|
 | 插件「启动了但引擎说协议错误 / 没有响应」| 往 stdout 打了非协议内容（stdout 是协议通道，日志走 stderr）→ 一律 `ctx.log(...)` 或 `System.err`（:216-218,:248-250）|

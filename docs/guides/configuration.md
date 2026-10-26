@@ -1,6 +1,6 @@
 # 配置说明
 
-> 当前版本 **v2.5.0**。优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
+> 当前版本 **v2.10.0**。优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
 > Web UI 保存 = 写回项目根 `.env`（原子更新、保留注释与原有变量）+ 同步 `data/settings.db`，重启后仍优先生效。
 
 - **首次启动**（项目根无 `.env`）自动释放完整模板：`main.ensure_env_template()` → `src/services/env_template.py`，
@@ -179,7 +179,7 @@
 | `WEB_UI_TOKEN_TTL_SECONDS` | 登录 token 有效期（秒，区间 60~604800） | `3600` |
 | `WEB_UI_USERNAME` / `WEB_UI_PASSWORD` | 初始管理账号；**不在 SCHEMA/配置表单中**——由 `/panel/register` 注册页管理，密码只存 scrypt 哈希 | `admin` / 空 |
 
-- 访问：`http://127.0.0.1:8080/panel`（八个页签：配置 / 人格 / 群聊知识 / 群昵称 / 插件 / 外观 / 日志 / 用户状态，全部零 JavaScript 服务端渲染）。
+- 访问：`http://127.0.0.1:8080/panel`（十一个页签：配置 / 人格 / 群聊知识 / 群友画像 / 群管理 / QQ空间 / 群昵称 / 插件 / 外观 / 日志 / 用户状态，全部零 JavaScript 服务端渲染）。
 - **Bootstrap Lock**：`WEB_UI_PASSWORD` 允许为空（= UNINITIALIZED，此时拒绝一切登录），公开注册页是创建**第一个**管理员的唯一入口；
   系统一旦初始化（`.env` 或 `settings.db` 已有凭据）注册**永久关闭**，改账号走登录态「用户状态」页（需当前密码），
   注销 = 显式重置回 UNINITIALIZED 才能重新注册。详见 [security.md](../reference/security.md)、[web-ui.md](../features/web-ui.md)。

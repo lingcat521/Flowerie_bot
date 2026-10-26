@@ -13,7 +13,7 @@
 
 Web UI 在「配置 → 记忆库 / 数据路径」；默认值以 src/config.py 为准。
 表：`memory(user_id, group_id, note_id, text, source_user, source_group, source_message_id, created_at, confidence)` + `memory_kv`（`src/repositories/sqlite_repository.py:60`；PG 见 `src/repositories/postgres_memory_repository.py`）。
-TTL 分级：`confidence=model`（AI 推断，低信任）走 `MODEL_MEMORY_TTL_DAYS`，其余（用户原话）走 `MEMORY_TTL_DAYS`；该级为 `0` 表示不过期（`src/services/memory_manager.py:127-132`）。
+TTL 分级：`confidence=model`（AI 推断，低信任）走 `MODEL_MEMORY_TTL_DAYS`，其余（用户原话）走 `MEMORY_TTL_DAYS`；该级为 `0` 表示不过期（`src/services/memory_manager.py::_ttl_for`）。
 
 | 变量 | 默认 | 说明 |
 | :--- | :--- | :--- |
@@ -34,10 +34,10 @@ TTL 分级：`confidence=model`（AI 推断，低信任）走 `MODEL_MEMORY_TTL_
 
 - 默认关闭（`BLOSSOM_MEMORY_ENABLED=false`）＝零模型资源：`main` 门控不构造对象，模块入口另有开关检查（双保险，`src/services/blossom_memory.py:1-15`）。
 - 治理：MAX_ENTRIES / TTL_DAYS / DAILY_EXTRACT_LIMIT + 自动清理；索引 `(group_id, kind, target_id)`（`src/repositories/blossom_memory_repository.py:84-96`），仅 `kind='group'` 参与检索。
-- 配置缺失 fail-fast（同 MCP 策略，`src/config.py:543-551`）；API URL 复用 MCP 同款 SSRF 校验（`validate_mcp_server_url`）；记忆文本与检索结果按不可信数据 sanitize。
+- 配置缺失 fail-fast（同 MCP 策略，`src/config.py::_validate_blossom_required`）；API URL 复用 MCP 同款 SSRF 校验（`validate_mcp_server_url`）；记忆文本与检索结果按不可信数据 sanitize。
 - 指标（低基数）：`memory_embedding_total` / `memory_retrieval_total` / `memory_rerank_total` / `memory_extraction_total`。
 
-### 配置项（共 18 键，「配置 → 花语记忆」，`src/services/config_schema.py:18-36`）
+### 配置项（共 18 键，「配置 → 花语记忆」，`src/services/config_schema.py`（`BlossomMemory` 分类））
 
 | 类别 | 键（默认） |
 | :--- | :--- |
@@ -48,7 +48,7 @@ TTL 分级：`confidence=model`（AI 推断，低信任）走 `MODEL_MEMORY_TTL_
 | 参数 | `..._VECTOR_DIMENSION`=1024 / `..._RETRIEVAL_TOP_K`=5 / `..._RERANK_TOP_K`=3 / `..._SIMILARITY_THRESHOLD`=0.6 / `..._MAX_ENTRIES`=2000 / `..._TTL_DAYS`=90 / `..._DAILY_EXTRACT_LIMIT`=20 |
 
 `...` = `BLOSSOM_MEMORY` 前缀；库路径 `BLOSSOM_MEMORY_DB_PATH` 不在 SCHEMA 内（Web UI 不可改）。
-**总开关 OFF 时该分组只渲染总开关本身 + 一行提示**：其余 17 个键一律不渲染（服务端门控，`src/services/webui_render/config_panel.py:80-90`），开启并保存后整组展开。模型行自带链路徽标 `未启用` / `⚠️ 缺模型或地址` / `已配置`；「用户状态」页另有向量/重排两张链路卡（`src/services/webui_panels/account_panel.py:95-105`）。
+**总开关 OFF 时该分组只渲染总开关本身 + 一行提示**：其余 17 个键一律不渲染（服务端门控，`src/services/webui_render/config_panel.py::_render_config_row`），开启并保存后整组展开。模型行自带链路徽标 `未启用` / `⚠️ 缺模型或地址` / `已配置`；「用户状态」页另有向量/重排两张链路卡（`src/services/webui_panels/account_panel.py::_render_account_page`）。
 
 ## 群知识（Knowledge，原 knowledge.md 并入）
 
@@ -102,5 +102,22 @@ TTL 分级：`confidence=model`（AI 推断，低信任）走 `MODEL_MEMORY_TTL_
 | `MEME_MAX_SUMMARY_CANDIDATES` | `20` | 单群单轮最多写入候选梗数 |
 
 测试：`tests/test_memory_manager.py`、`test_memory_gate.py`、`test_blossom_memory.py`、`test_webui_blossom.py`、`test_config_blossom_off_chain.py`、`test_meme_knowledge.py`、`test_meme_summary.py`、`test_web_ui_persona_knowledge.py`（均在 `tests/`）。
-插件接口：`get_memory` 动作（需 `read_memory` 权限，`src/plugins/permissions.py:241`）。
+插件接口：`get_memory` 动作（需 `read_memory` 权限，见 `src/plugins/permissions.py::ACTION_PERMISSIONS`）。
+
+## 群友画像（Profile，默认关闭，v2.9.0）
+
+每日摘要后从群聊提炼**群友维度**的长期记忆（性格 / 喜好 / 个人生活 / 特点），与「用户记忆」「群知识」并列但作用域不同：
+
+| 维度 | 记忆（Memory） | 群知识（Knowledge） | 群友画像（Profile） |
+| :--- | :--- | :--- | :--- |
+| 作用域 | 用户 × 群 | 群 | 用户 × 群 |
+| 写入时机 | 实时（对话中） | 24h 批量 + 手工 | 每日摘要后批量 |
+| 内容 | 用户原话 / AI 推断 | 群梗与黑话 | 性格/喜好/生活/特点（字段级 TTL） |
+| 注入 | 对话前按相关度 | 按消息命中 | 本群活跃成员画像摘要 |
+
+- **配置**：`PROFILE_ENABLED`（默认关）、`PROFILE_DB_PATH`、`PROFILE_MAX_TOKENS`、`PROFILE_MAX_MEMBERS`、`PROFILE_SECTION_TTL_DAYS`（0=永久）
+- **存储**：SQLite `profiles(group_id, user_id, nickname, sections JSON, updated_at)`，按 群×用户 严格隔离
+- **更新语义**：新字段覆盖旧值、未提到的旧字段保留、超过 TTL 的字段淘汰（`merge_sections`）
+- **跨记忆协调**：注入时按当前发言人的实时记忆过滤与其矛盾的画像字段（例：记忆「戒奶茶了」⇔ 画像「喜好: 奶茶」→ 以记忆为准剔除）
+- **入口**：Web UI「群友画像」页（按群查看/手工修正/删除/清空）与 `/profile` 命令
 

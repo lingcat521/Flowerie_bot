@@ -28,7 +28,7 @@ fn main() {
             return None;                                  // 不匹配回 None = 无动作
         }
         Some(Json::obj(vec![
-            ("type", Json::str("send_message")),          // 引擎只读 action["payload"]（manager.py:1329）
+            ("type", Json::str("send_message")),          // 引擎只读 action["payload"]（`manager.py::_run_action` 只读 `action["payload"]`）
             ("payload", Json::obj(vec![
                 ("group_id", ev.get("group_id").cloned().unwrap_or(Json::Null)),
                 ("message", Json::str("pong")),
@@ -80,6 +80,6 @@ fn main() {
 ## 9. 常见错误
 | 症状 | 原因 → 处理（出处）|
 | :--- | :--- |
-| 写成 `{"type":"send_group_msg","params":{…}}`，引擎不执行任何动作 | `send_group_msg` 不是插件动作类型，且引擎只读 `action["payload"]`、从不读 `params`（`src/plugins/manager.py:1327-1329`）→ 用 `{"type":"send_message","payload":{…}}`（`examples/multilang-sdk/rust/src/main.rs:696-702`）|
+| 写成 `{"type":"send_group_msg","params":{…}}`，引擎不执行任何动作 | `send_group_msg` 不是插件动作类型，且引擎只读 `action["payload"]`、从不读 `params`（`src/plugins/manager.py::_run_action`）→ 用 `{"type":"send_message","payload":{…}}`（`examples/multilang-sdk/rust/src/main.rs:696-702`）|
 | `hook status` 返回 `{"counter":null}` | 早期 `register_hook` 闭包只拿到 args、读不到 storage（CI 抓到的真问题）→ 现签名是 `Fn(&Context, &[Json]) -> Json`，用 `ctx.storage_get`（`lib.rs:429`）|
 | 页面里 `{{ nickname }}` 没被替换，或 `format!` 直接编译不过 | `format!` 把花括号当自己的占位符 → 写四层花括号 `{{{{ nickname }}}}`（`examples/rust-plugin/src/main.rs:245-247`）；编译报 `file not found for module flowerie` 则是 `mod flowerie;` 同级缺 `flowerie/mod.rs`（要连 `flowerie/json.rs` 一起）→ 按 `examples/rust-plugin/run.sh:7-10` 的布局拷 SDK |

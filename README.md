@@ -14,7 +14,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-2635%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-2484%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -40,6 +40,8 @@
 | 💬 AI 对话 | DeepSeek 或任意 OpenAI 兼容厂商驱动，小恶魔系人设，@ 或群聊接话；**也支持本机自建模型**（Ollama / vLLM / llama.cpp / LM Studio，回环地址免填 Key、免发鉴权头） |
 | 🌙 每日摘要 | 长期挂机不重启：每天凌晨把当天群聊压缩成滚动摘要（嵌套合并、既定背景、收敛检查），跨周/跨月连续记忆；`DIGEST_ENABLED` 默认关，摘要可导出 txt；`DIGEST_SOURCE` 可选隐私存档 txt 作数据源 |
 | 🧑‍🤝‍🧑 群友画像 | 性格/喜好/个人生活/特点的长期记忆：每日摘要后自动提炼（merge 语义更新、字段级 TTL 淘汰），群聊时注入本群活跃成员画像；`PROFILE_ENABLED` 默认关，Web UI 画像页 + `/profile` 命令可查可改 |
+| 👑 群管理控制台（v2.10.0） | Web UI「群管理」页 12 个操作：设/取消管理员、禁言/解除、踢人（可拒绝再加群）、改群名片、改群名、专属头衔、全员禁言、禁言列表、退群（群主可解散）；SDK `set_group_admin` 等 10 个 Bot 方法 + 插件 API 同步 |
+| 🌏 QQ空间（v2.10.0） | Web UI「QQ空间」页：发表说说（正文 + 最多 9 图，file:// / http(s):// / base64://；权限 1/4/16/64/128）、按 tid 删除、本机发布历史；SDK `qzone_publish` / `qzone_delete`；底层 NapCat 扩展动作 |
 | 👁️ 识图 | 图片/表情包/转发内图片，视觉模型描述后自然回复（`VISION_ENABLED` 总开关可关闭）|
 | 📦 转发/卡片解析 | 合并转发递归展开（含图片）、JSON 卡片 |
 | 🧠 记忆库 | 按用户×群隔离，SQLite 持久化，自动去重，用户可查/删 |
@@ -57,7 +59,7 @@
 | 🔧 MCP 工具 | 外部工具调用（如搜索），插件式多 server + 工具白名单 + 独立熔断 |
 | ⚔️ 引战检测 | 关键词 + AI 双重确认 |
 | 🎯 冷却/预算 | 用户/机器人冷却、全局+群+用户三层 AI 预算、复读检测、主动聊天 |
-| 🖥️ Web UI | 管理后台：配置/人格/群昵称/群聊知识/外观/日志/用户状态/插件，全零 JS，热更新 |
+| 🖥️ Web UI | 管理后台：配置/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/外观/日志/用户状态/插件（十一个页签），全零 JS，热更新 |
 | 🛡️ 安全 | SSRF 防护、Prompt 注入多层防线、知识防污染、日志脱敏、双层熔断、Web UI 注册 Bootstrap Lock、插件权限强制 |
 
 ## 快速开始
@@ -149,11 +151,16 @@ OneBot WebSocket connected
 也可提前在 `.env` 设 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD`。
 想彻底关闭：`WEB_UI_ENABLED=false`；想让局域网设备访问：`WEB_UI_ALLOW_LAN=true`（默认关闭）。
 
-八个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
+十一个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
 
 - **配置**：全部变量按功能分组（bool/int/secret/文本/列表/JSON 各有控件），每组独立保存，
   修改**真正写入项目根 `.env`**（原子更新、保留注释与原变量），Secret 只显示掩码、留空不覆盖
 - **人格**：人格库 CRUD、群聊绑定与解除、`PERSONA_*` 配置 · **群聊知识**：按群查看/搜索/增删改，严格隔离
+- **群友画像**：按群查看/手工修正/删除群友画像（每日摘要提炼的性格/喜好/个人生活/特点）
+- **群管理**（v2.10.0）：12 个群管操作——管理员设/取消、禁言、踢人、群名片、群名、专属头衔、
+  全员禁言、禁言列表、退群；结果就地回显
+- **QQ空间**（v2.10.0）：发表说说（正文 + 最多 9 图，支持 file:// / http(s):// / base64://；
+  权限 1/4/16/64/128）、按 tid 删除、本机发布历史
 - **群昵称**：按群专属称呼（× 人设隔离，留空恢复默认）
 - **外观**：7 套主题（默认/深色/浅色/Sakura/Ocean/Forest/AMOLED）、背景图上传（≤5MB，魔数校验）、透明度与显示方式
 - **日志**：最近 200 条运行日志 · **用户状态**：凭据来源 / 改账号 / 注销 / 服务器状态 / MCP / API 厂商连接
@@ -205,7 +212,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/featu
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 2635 个测试（CI：Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
+pytest              # 2484 个测试（CI pytest 步骤实测，Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
 pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（46 条：五语言真 build / 真调用 / 真关闭）
 pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
 pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）

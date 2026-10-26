@@ -79,7 +79,7 @@
 
 ## 6. 已解决的缺口（原 `[UNKNOWN]`，保留结论与回归测试）
 
-- **G1 temp 会话**：`InternalEvent.scene` + `context_group_id` 已建模；Milky `temp` 与 OneBot `private/sub_type=group` 归一为同一形态；Core 只处理群会话（`src/core/message_router.py:238`）——`tests/test_temp_scene.py`。
+- **G1 temp 会话**：`InternalEvent.scene` + `context_group_id` 已建模；Milky `temp` 与 OneBot `private/sub_type=group` 归一为同一形态；Core 只处理群会话（`src/core/message_router.py::_handle_message`）——`tests/test_temp_scene.py`。
 - **G2 请求类字段**：`request_scene` / `request_id` / `request_uid` / `request_filtered` / `comment` 进入 `InternalEvent`；`group_invitation` 由 notice 纠正为 request；两协议都不存在的字段保持空——`tests/test_request_events.py`。
 - **G3 record/video/xml**：三个段载体（未知字段进各载体 `extra`）；XML 只保真 `raw_xml` **不解析**，组装层只报存在与长度——`tests/test_media_segments.py`。
 - **G4 Milky 内联引用**：`reply_ref` / `reply_segments` / `reply_text` 三字段；`reply_id`（= Milky `message_seq`）不变；仅在有内联文本时渲染引用，OneBot 侧为空——`tests/test_reply_inline.py`。

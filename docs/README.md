@@ -1,10 +1,10 @@
 # Flowerie 文档
 
-> 对应 **v2.5.0**（2026-09-30）：**MCP 认证能力升级 + 生产接线闭合**——MCP 支持五种认证方式（无认证 / Bearer / API Key / 自定义 Header / Basic），凭据全程脱敏并贯通 Core API 与五语言 SDK；同时接上两条生产断链（Blossom Memory 的 PostgreSQL 后端、多实例适配器装配层）。工程质量与加固见 v2.4.0 条目；插件平台化能力（五语言 SDK / 插件间通信 / Plugin WebUI）见 v2.3.0 条目。
-> **插件间通信（plugin.call/emit/on + Core Router：权限/超时/取消/环保护/trace）**、
-> **Plugin WebUI 第二阶段（真服务器 + 真浏览器 E2E）**、版本号规范化（SemVer）与文档体系重写。
-> 上一版 v2.2.6 的内容（Code Scanning 整改 / 原生多条回复 / Milky 补齐）见 `CHANGELOG.md`；
-> 更早版本见 [archive/](archive/README.md)。
+> 对应 **v2.10.0**（2026-10-27）：**Bot 群管理控制台 + QQ空间**——Web UI 新增「群管理」「QQ空间」两个页签
+> （12 个群管操作 / 发说说·删除·本地历史，均为零 JavaScript 表单）；SDK 与插件 API 同步扩展
+> （`set_group_admin` / `qzone_publish` 等 10 个 Bot 方法 + 4 个插件 API），NapCat v4.18.41 实测对照见
+> [napcat-admin-qzone.md](reference/napcat-admin-qzone.md)。上一版 v2.9.x 的内容（群友画像 / 每日摘要 /
+> 架构审计四项修复）见 `CHANGELOG.md`；更早版本见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走
 
@@ -59,7 +59,7 @@
 | [sdk.md](reference/sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ + **附录 A 能力与兼容矩阵**（端点映射 / 网关兼容 / v2.1 缺口台账） | 插件开发者 |
 | [api.md](reference/api.md) | **API 权威速查总表**（方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |
 | [configuration.md](guides/configuration.md) | 全部配置项 / `.env` / 优先级 / 功能开关表 / **多条回复与 Native Reply Tool** / 存储后端与迁移工具 | 运维 |
-| [web-ui.md](features/web-ui.md) | Web UI 八个页签 / 如何开启 / 零 JavaScript / 注册与登录 / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
+| [web-ui.md](features/web-ui.md) | Web UI 十一个页签（含 **群管理** / **QQ空间**）/ 如何开启 / 零 JavaScript / 注册与登录 / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
 | [security.md](reference/security.md) | **安全规则权威**：SSRF / 注入 / 权限 / 资源上限 / 指标 / 已知边界 | 运维 + 开发者 |
 | [memory.md](features/memory.md) | 记忆体系：Context / Memory / 群知识 / 花语记忆（BlossomMemory） | 运维 + 开发者 |
 | [persona.md](features/persona.md) | 人格系统（内置三套 / 群 / 全局 / 管理员补充规则） | 运维 |
@@ -84,8 +84,9 @@
 | [protocol-gap-closure.md](reports/protocol-gap-closure.md) | **协议缺口台账**：A 部分 G1–G8 封口状态 / DoD 九段链 / BLOCKED 与证据 | 开发者 |
 | [v2.6.0-semantic-conflicts.md](reports/v2.6.0-semantic-conflicts.md) | **v2.6.0 语义冲突审计**（C1–C8：冷却计数 / 段长休眠 / 上限劫持 / 流式绕过记忆 / 段间隔 / 查重首段 / 二次截断 / 陈旧注释），v2.7.0 已全部修复 | 开发者 |
 | [v2.6.0-wiring-audit.md](reports/v2.6.0-wiring-audit.md) | **v2.6.0 架构链路审计**（W1–W9：攒完再发 / 绕过注入链 / 记忆断联 / 双倍预算 / 门禁盲区 / 文档陈旧），v2.7.0 已全部修复 | 开发者 |
-| [v2.7.0-loopback-model.md](reports/v2.7.0-loopback-model.md)
-| [v2.8.0-daily-digest.md](reports/v2.8.0-daily-digest.md) | **每日凌晨群聊摘要**（移植 DSH compaction）：嵌套合并 / 既定背景 / 收敛检查 / 定点触发 / 三处落地 / 集成暗坑 | 运维 | | **本机回环模型接入**：免密钥判定规则 / 三入口配置 / 覆盖范围 / 局域网为何不放行 | 运维 |
+| [v2.7.0-loopback-model.md](reports/v2.7.0-loopback-model.md) | **本机回环模型接入**：免密钥判定规则 / 三入口配置 / 覆盖范围 / 局域网为何不放行 | 运维 |
+| [v2.8.0-daily-digest.md](reports/v2.8.0-daily-digest.md) | **每日凌晨群聊摘要**（移植 DSH compaction）：嵌套合并 / 既定背景 / 收敛检查 / 定点触发 / 三处落地 / 集成暗坑 | 运维 |
+| [napcat-admin-qzone.md](reference/napcat-admin-qzone.md) | **NapCat 群管理 / QQ空间 动作对照**：12 个群管动作与 QQ空间三接口的参数·底层实现·认证链·协议结构（v4.18.41 实测，含文档缺口） | 开发者 |
 
 ## 归档
 

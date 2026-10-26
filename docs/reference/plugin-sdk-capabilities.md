@@ -4,7 +4,7 @@
 > **UNSUPPORTED**（明确不支持）/ **UNKNOWN**（未验证）。**禁止为了让表格「全绿」而虚假声明**：
 > 每一格 SUPPORTED 都必须能指到下面某条绿色输出或 CI 记录，指不到就降级。
 >
-> 核对基线：Flowerie **2.3.0** · 协议 `PROTOCOL_VERSION = "1"`：必需 4 方法 + 可选 **14** 方法
+> 核对基线：Flowerie **2.10.0**（矩阵自 2.3.0 起未变，证据测试持续在 CI 运行）· 协议 `PROTOCOL_VERSION = "1"`：必需 4 方法 + 可选 **14** 方法
 > （8 核心 + 3 WebUI + 3 插件间，`src/plugins/protocol.py` 的 `REQUIRED_METHODS` /
 > `OPTIONAL_METHODS`）。SDK 语言：Python（内置 runner）/ TypeScript / Go / Rust / Java。
 

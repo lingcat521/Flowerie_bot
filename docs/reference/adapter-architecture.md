@@ -72,7 +72,7 @@ Plugin SDK → Core / Event / Session → Adapter → OneBot 11 / Milky / 具体
 
 ## 5. 发送方向
 
-- 统一入口：`Sender.send_msg_raw()`（`src/services/sender.py:229`），由 `MessageSender` Protocol 约束；
+- 统一入口：`Sender.send_msg_raw()`（`src/services/sender.py::send_msg_raw`），由 `MessageSender` Protocol 约束；
 - 上层只表达"发给谁 + 发什么（段/文本/图片路径）"，**不判断客户端类型**；
 - 发送侧**不存在**客户端专属拆分规则：曾以为 NapCat 要求 "FILE/VIDEO/ARK/PTT 独占一条"，
   复核后确认该逻辑位于 NapCat `handleForwardedNodes`（合并转发路径）内部，普通发送路径不涉及

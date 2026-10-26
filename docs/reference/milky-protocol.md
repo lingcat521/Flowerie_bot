@@ -64,7 +64,7 @@ Authorization: Bearer <access_token>
 | `stranger` | `scope=private`, `scene=stranger` | 陌生人（LLBot 侧实现）|
 | ~~`group_temp`~~ | 别名归一成 `temp`（旧样例名）| 规范枚举只有 `friend/group/temp`（L266-291）|
 
-> ⚠️ **Core 边界**：`src/core/message_router.py:238` 首行是 `if event.scope != "group": return` ——
+> ⚠️ **Core 边界**：`src/core/message_router.py::_handle_message` 首行是 `if event.scope != "group": return` ——
 > 私聊/临时会话**不进入群业务**（插件事件投递在此之前，仍可收到）。
 
 ## 事件类型（当前映射，`milky_parser.py::_event_kind`）

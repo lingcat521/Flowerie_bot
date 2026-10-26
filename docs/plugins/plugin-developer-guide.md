@@ -360,12 +360,13 @@ Java `java/` 用 `javac` 编译 SDK + 插件（JDK >= 11）→ `run.sh`。
 每次动作执行前经 `PermissionManager.check()` → 未批准即拒绝并记 `plugin_permission_denied` 日志。
 **插件永远无法自己决定权限**（唯一检查点在引擎）。
 
-### 5.1 全部权限键（`ALL_PERMISSIONS`，共 31 项）
+### 5.1 全部权限键（`ALL_PERMISSIONS`，共 32 项）
 
-**31 个权限键与语义**（按能力分组）：
+**32 个权限键与语义**（按能力分组）：
 
 - **消息**：`send_message` 发群/私聊消息（含转发、戳一戳、表情回应等发送类动作）；`read_message` 接收消息事件（未批准则**事件根本不投递**）与 matcher 注册；`read_message_history` 读消息详情/群历史/上下文/搜索/引用链；`delete_message` 撤回（仅本 bot 发送过的消息）/编辑/标记。
 - **群与用户**：`read_group_info` 读群信息/成员/公告/群文件/精华；`read_user_info` 读用户信息/好友列表/登录信息/设备；`group_manage` 群管理写操作（禁言/踢人/管理员/名片/公告/群文件/精华）；`request_handle` 好友与加群请求处理（approve/deny）。
+- **QQ空间（v2.10.0）**：`qzone` 发表/删除 QQ空间说说（`qzone_publish` / `qzone_delete`；默认不给，需管理员批准；底层 NapCat 扩展动作）。
 - **记忆 / 存储 / 定时**：`read_memory` 读记忆与语义检索；`write_memory` 写记忆（更新/删除/置顶）；`storage` 插件 KV 存储动作与数据域（`kv_*` / `db_*` / `cache_*`）；`scheduler` 定时任务（interval/delay/daily）。
 - **AI / 资料 / 网络 / 文件**：`ai_chat` 受限 AI 对话（独立预算，务必自限频）；`bot_profile` 修改 Bot 自身资料；`http_request` 受限 HTTP 请求（SSRF 防护；MCP 动作同权限）；`filesystem_read` / `filesystem_write` 插件目录内读/写文件。
 - **MCP 认证（敏感）**：MCP server 的 token / password 属**操作员凭据**——插件只能读认证**状态**（`none` / `configured` / `authenticated` / `error`），任何 SDK 入口都拿不到真实凭据，也读不到 `settings.db`；`mcp_*` 动作只做「读取与调用」，改不了认证配置。
@@ -374,7 +375,7 @@ Java `java/` 用 `javac` 编译 SDK + 插件（JDK >= 11）→ `run.sh`。
 - **插件间通信**：`plugin.emit` 事件广播；`plugin.call` 调用任意插件（等价 `plugin.call.*`；默认不给）。
 - **保留（v1 无实现，批准也会拒绝）**：`execute_process`、`webhook`（`webhook` 动作会转发成 `http_request`，需 `http_request` 权限）。
 
-**动态权限键** `plugin.call.<target>[.<method>]` 不受 31 项列举限制，只要形状合法即可声明
+**动态权限键** `plugin.call.<target>[.<method>]` 不受 32 项列举限制，只要形状合法即可声明
 （target `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`，method `^[A-Za-z_][A-Za-z0-9_.]{0,95}$`）。
 匹配是**从细到粗的精确串匹配，不做 glob**（只有两个字面通配键）：
 

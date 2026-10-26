@@ -81,7 +81,7 @@ plugin.WebUI().
 ## 9. 常见错误
 | 症状 | 原因 → 处理（出处）|
 | :--- | :--- |
-| 动作不报错但消息发不出去 | 写了 `"params"` 或 `send_group_msg`：引擎只读 `action["payload"]`（`src/plugins/manager.py:1329`），未知动作直接 `{"ok":false,"error":"未知 action"}`（`manager.py:2450`）。→ 用 §2 的 `send_message` + `payload` |
+| 动作不报错但消息发不出去 | 写了 `"params"` 或 `send_group_msg`：引擎只读 `action["payload"]`（`src/plugins/manager.py::_run_action`），未知动作直接 `{"ok":false,"error":"未知 action"}`（`manager.py` 的未知动作分支）。→ 用 §2 的 `send_message` + `payload` |
 | 钩子「注册了」却毫无反应 | `On` 的 handler 签名不认识时只往 stderr 打一行、**不注册**（:262-264）；`RegisterHook` 名字含大写/`.`/超 64 字符报「hook 名非法」（:501-503,:615-626）|
 | WebUI 回「插件未注册 webui.page 处理器」/「没有返回内容」 | 没注册对应通道（:519-525），或 handler 返回 `nil` / 非法类型（:649-652）；`storage.set` 报「值超过上限」/「键数量超过上限」则是值 >64 KiB、键数 ≥200（:37-38,:822-835），键非法（非字母数字开头、含其它字符、>64）见 :763-777 |
 | 本机跑不动 `tests/sdk/`（SKIP）| 缺 `go`，或 Termux 下引擎按白名单裁剪环境（不含 `LD_PRELOAD`）→ 测试 skip 并打印原因（`tests/sdk/harness.py:42-55`、`src/plugins/runtime.py:40-41`）|

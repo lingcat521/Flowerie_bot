@@ -19,7 +19,7 @@
 - 证据：`src/core/message_assembler.py::_describe_images`（file 先入队列，url 仅补齐）
 
 ## 动作能力
-- **37 个**语义动作走标准端点（`send_group_msg` 等），全实现一致：`_SENDER_ACTIONS` 表（`src/plugins/manager.py:2674`）；实现特有点（如 Lagrange `get_group_res`）标注在表内，不支持的端点返回**明确错误**
+- **41 个**语义动作走标准端点（`send_group_msg` 等），全实现一致：`_SENDER_ACTIONS` 表（`src/plugins/manager.py::_SENDER_ACTIONS`）；实现特有点（如 Lagrange `get_group_res`）标注在表内，不支持的端点返回**明确错误**。v2.10.0 新增 4 个：`group_shut_list` / `group_leave` / `qzone_publish` / `qzone_delete`（后两者 NapCat 扩展，Milky 上明确报不支持）
 - ⚠️ **能力是静态声明，不是运行时探测**：`src/adapters/capabilities.py` 按协议登记 18 项能力（`AdapterDescriptor`），只由组合根（`src/adapters/container.py`、`instance.py`）与测试消费，**服务层不查询** —— 不存在"连接后自动探测能力 / NS 降级"
 - **Multi-Reply / Native Reply Tool 协议无关**：只产出 `ReplyPlan`（`src/core/reply_plan.py`），经同一 `Sender` 逐条发送，OneBot 与 Milky 同链路（Milky 映射见 [milky-protocol.md](milky-protocol.md)）
 

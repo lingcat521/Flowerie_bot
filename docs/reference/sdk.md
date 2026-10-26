@@ -253,7 +253,7 @@ async def on_request(event):
         bot.handle_group_request(flag, approve=False, reason="暂不加群")
 ```
 > ⚠️ **已知缺口（已核实）**：批准动作需要网关的 `flag`，但引擎投递给插件的事件负载里没有 `flag`/`request_id`
-> （`src/core/message_router.py:209-230`；`flag` 在解析期存进了 `event.request_id`）。所以上面两行拿不到 `flag`：
+> （`src/core/message_router.py::_handle_request`；`flag` 在解析期存进了 `event.request_id`）。所以上面两行拿不到 `flag`：
 > `request` 事件能正常收到，但批准暂不可用（要批准得等引擎补齐投递或走插件外的人工路径）。
 
 ## 11. AI / 记忆 / KV / 网络扩展

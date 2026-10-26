@@ -8,7 +8,7 @@
 Group Persona（群聊人格）→ 未设置/已解除 → Global Persona（全局）→ 未设置 → PERSONA_DEFAULT（兜底，默认 flowerie）
 ```
 
-- 群聊人格删除后自动回退全局；全局未设置回退内置默认；群/全局引用了已删除人格（悬挂引用）同样回退下一级，不崩溃（`PersonaManager.resolve_persona`，`src/services/persona_manager.py:81-104`）。
+- 群聊人格删除后自动回退全局；全局未设置回退内置默认；群/全局引用了已删除人格（悬挂引用）同样回退下一级，不崩溃（`PersonaManager.resolve_persona`，`src/services/persona_manager.py`）。
 - **每次请求动态解析**，绝不写入长期记忆 / 上下文——切换人格不污染记忆；Memory / Context / Persona 严格分离。
 
 ## 人格是独立资源
