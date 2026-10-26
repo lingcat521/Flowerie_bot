@@ -148,6 +148,42 @@ class OneBotAdapter(BotAdapter):
     async def group_title(self, group_id: int, user_id: int, title: str) -> dict:
         return await self._call(self._sender.set_group_special_title(int(group_id), int(user_id), title))
 
+    # ---------- v2.10 群管理员扩展 ----------
+    async def set_group_admin(self, group_id: int, user_id: int, enable: bool = True) -> dict:
+        """设置/取消群管理员（OneBot set_group_admin）。"""
+        try:
+            ok = await self._call(self._sender.set_group_admin(int(group_id), int(user_id), bool(enable)))
+        except Exception as e:  # noqa: BLE001 —— 统一收敛为 dict，供服务层判定
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        return {"ok": bool(ok)}
+
+    async def kick_with_reject(self, group_id: int, user_id: int) -> dict:
+        """移出群成员并拒绝再次加群。"""
+        try:
+            ok = await self._call(self._sender.set_group_kick(int(group_id), int(user_id), True))
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        return {"ok": bool(ok)}
+
+    async def get_group_shut_list(self, group_id: int) -> dict:
+        """当前被禁言成员列表。"""
+        return await self._call(self._sender.get_group_shut_list(int(group_id)))
+
+    async def quit_group(self, group_id: int, dismiss: bool = False) -> dict:
+        """Bot 退出群聊（群主且 dismiss=True 时解散）。"""
+        return await self._call(self._sender.set_group_leave(int(group_id), bool(dismiss)))
+
+    # ---------- v2.10 QQ空间 ----------
+    async def qzone_publish(self, content: str, images: list,
+                            ugc_right: int = 1, target_uins=None) -> dict:
+        """发表 QQ空间说说（NapCat send_qzone_msg；返回 {ok, tid}）。"""
+        return await self._call(self._sender.send_qzone_msg(
+            str(content), list(images or []), int(ugc_right), list(target_uins or [])))
+
+    async def qzone_delete(self, tid: str) -> dict:
+        """删除 QQ空间说说（NapCat delete_qzone_msg）。"""
+        return await self._call(self._sender.delete_qzone_msg(str(tid)))
+
     async def group_notice(self, group_id: int, content: str, image: str = "") -> dict:
         return await self._call(self._sender.send_group_notice(int(group_id), content, image))
 

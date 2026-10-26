@@ -2237,6 +2237,8 @@ class PluginManager:
                 val = int(val)
             elif typ == "bool":
                 val = bool(val)
+            elif typ == "any":
+                pass  # 结构化参数（列表/字典）原样透传
             else:
                 val = str(val)
             kw[backend_key] = val
@@ -2346,6 +2348,12 @@ _SENDER_ACTIONS: Dict[str, tuple] = {
     "group_config": ("get_group_config", [("group_id", "int", "group_id")]),
     "group_config_set": ("set_group_config", [("group_id", "int", "group_id")]),  # 其余键透传
     "group_res": ("get_group_res", [("group_id", "int", "group_id"), ("res_type", "str", "res_type")]),
+    # v2.10：群管理扩展 + QQ空间（NapCat 实测动作，见 docs/reference/napcat-admin-qzone.md）
+    "group_shut_list": ("get_group_shut_list", [("group_id", "int", "group_id")]),
+    "group_leave": ("set_group_leave", [("group_id", "int", "group_id"), ("is_dismiss", "bool", "is_dismiss")]),
+    "qzone_publish": ("send_qzone_msg", [("content", "str", "content"), ("images", "any", "images"),
+                                         ("ugc_right", "int", "ugc_right"), ("target_uins", "any", "target_uins")]),
+    "qzone_delete": ("delete_qzone_msg", [("tid", "str", "tid")]),
 }
 
 # ---------- v2.7.0：本地动作（不经 Sender 的网关内实现）→ 权限名 ----------

@@ -146,6 +146,16 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "PROFILE_MAX_MEMBERS": ("Context", "int", False, True, "注入对话的活跃成员画像上限"),
     "PROFILE_SECTION_TTL_DAYS": ("Context", "int", False, True,
                                  "画像字段多少天没更新就淘汰（0=永久保留）"),
+    # ---------- 群管理控制台 / QQ空间（v2.10；专属页签在 Web UI「群管理」「QQ空间」） ----------
+    "ADMIN_CONSOLE_ENABLED": ("Admin", "bool", False, True,
+                              "群管理控制台开关（关=「群管理」页提示不可用；SDK 直接调用不受限）"),
+    "QZONE_ENABLED": ("Qzone", "bool", False, True,
+                      "QQ空间功能开关（关=「QQ空间」页提示不可用）"),
+    "QZONE_DEFAULT_UGC_RIGHT": ("Qzone", "int", False, True,
+                                "默认查看权限：1 所有人 / 4 好友 / 16 部分好友 / 64 仅自己 / 128 部分好友不可见"),
+    "QZONE_HISTORY_PATH": ("Qzone", "str", False, False,
+                           "本机发布历史路径（需重启；含 tid 与摘要，用于面板删除）"),
+    "QZONE_MAX_HISTORY": ("Qzone", "int", False, True, "发布历史最大条数（超出淘汰最旧）"),
     # ---------- 记忆库 ----------
     "MEMORY_PATH": ("Memory", "str", False, False, "记忆库路径（需重启）"),
     "MEMORY_TTL_DAYS": ("Memory", "int", False, True, "用户原话记忆保留天数（0=永久）"),

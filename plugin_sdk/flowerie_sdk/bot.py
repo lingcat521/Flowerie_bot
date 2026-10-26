@@ -665,6 +665,27 @@ class FlowerieBot:
         return self._api.group_honor({"group_id": group_id,
                                       "honor_type": honor_type}) if self._api else self._no_api()
 
+    # ---------- v2.10：群管理扩展 + QQ空间 ----------
+    def group_shut_list(self, group_id):
+        """当前被禁言成员列表（group_id）。"""
+        return self._api.group_shut_list({"group_id": group_id}) if self._api else self._no_api()
+
+    def group_leave(self, group_id, is_dismiss=False):
+        """Bot 退出群聊（群主且 is_dismiss=True 时解散）。"""
+        return self._api.group_leave({"group_id": group_id,
+                                      "is_dismiss": bool(is_dismiss)}) if self._api else self._no_api()
+
+    def qzone_publish(self, content, images=None, ugc_right=1, target_uins=None):
+        """发表 QQ空间说说（images 支持 file:// / http(s):// / base64://）。"""
+        return self._api.qzone_publish({
+            "content": str(content), "images": list(images or []),
+            "ugc_right": int(ugc_right), "target_uins": list(target_uins or []),
+        }) if self._api else self._no_api()
+
+    def qzone_delete(self, tid):
+        """删除 QQ空间说说（tid）。"""
+        return self._api.qzone_delete({"tid": str(tid)}) if self._api else self._no_api()
+
     def sdk(self, base_dir: str = "") -> dict:
         """缺口 SDK 分面（ai/memory/mcp/db/cache/task/i18n/config/...）。"""
         from flowerie_sdk.gap_sdk import build_sdk

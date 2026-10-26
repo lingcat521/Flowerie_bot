@@ -4,6 +4,35 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.10.0] - 2026-10-27
+
+### 新功能
+
+- **Bot 群管理控制台**（Web UI「群管理」页签 + SDK 群管扩展）：
+  12 个操作——设为/取消管理员、禁言/解禁、踢人（可选拒绝再加群）、改群名片、
+  改群名称、设专属头衔、全员禁言开关、禁言列表、退出群聊（群主可解散）。
+  服务层 `GroupAdminService`（`src/services/group_admin.py`）统一参数校验与错误收敛，
+  面板零 JavaScript；对应 NapCat 实测动作见 `docs/reference/napcat-admin-qzone.md`
+- **QQ空间**（Web UI「QQ空间」页签 + SDK `qzone_*`）：
+  发说说（正文 + 最多 9 图，支持 file:// / http(s):// / base64://；权限 1/4/16/64/128，
+  16/128 需权限对象）、按 tid 删除、本机发布历史（`data/qzone_history.json`，原子落盘）。
+  底层为 NapCat `send_qzone_msg` / `delete_qzone_msg` 扩展动作
+- **SDK 扩展**：`Bot.set_group_admin / kick_with_reject / get_group_shut_list / leave_group /
+  set_group_whole_ban / set_group_card / set_group_name / set_group_special_title /
+  qzone_publish / qzone_delete`；`BotAdapter` 新增对应能力接口（默认 UnsupportedOperationError）
+- **插件 API 扩展**：`group_shut_list / group_leave / qzone_publish / qzone_delete`
+  （新权限 `qzone`；`group_leave` 走 `group_manage`），插件 SDK 门面同步补齐
+
+### 配置
+
+- 新增 `ADMIN_CONSOLE_ENABLED` / `QZONE_ENABLED` / `QZONE_DEFAULT_UGC_RIGHT` /
+  `QZONE_HISTORY_PATH` / `QZONE_MAX_HISTORY`（全部进 SCHEMA，配置页可改）
+
+### 测试
+
+- 新增 18 个单元测试：群管操作分发/校验/异常收敛、空间权限校验/发布/删除/历史、
+  Adapter 能力映射、两个新面板的零 JavaScript 契约
+
 ## [2.9.1] - 2026-10-25
 
 ### 修复（架构审计四项）

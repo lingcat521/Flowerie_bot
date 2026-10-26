@@ -225,6 +225,12 @@ async def main():
             getattr(config, "BOT_NICKNAME", "花璃"))
         group_style_rules = GroupStyleRuleStore(
             getattr(config, "GROUP_STYLE_RULES_PATH", "./data/style_rules.json"))
+        # v2.10：群管理控制台 + QQ空间（服务层只依赖 Adapter 能力接口，协议差异不在 core/services）
+        from src.services.group_admin import GroupAdminService
+        from src.services.qzone import QzoneService
+        admin_adapter = OneBotAdapter(sender, context_manager=policy_engine.context)
+        admin_service = GroupAdminService(admin_adapter, config)
+        qzone_service = QzoneService(admin_adapter, config)
         if config.WEB_UI_ENABLED:
             def _status_provider():
                 return {
@@ -238,6 +244,7 @@ async def main():
                 meme_manager=meme_manager, prompt_manager=prompt_manager,
                 plugin_manager=plugin_manager, group_nicknames=group_nicknames,
                 group_style_rules=group_style_rules,
+                admin_service=admin_service, qzone_service=qzone_service,
             )
         file_parser = FileParser(config)
         # 资源取数（Gate R）：三种资源形态一次接上；协议差异（OneBot /get_file、Milky 临时 URL）在 Adapter 层，

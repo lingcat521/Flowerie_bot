@@ -71,6 +71,11 @@ _MILKY_UNSUPPORTED = frozenset({
     "set_group_add_request",
     "set_group_config",
     "set_self_profile",
+    # v2.10：群管理扩展 / QQ空间——Milky 侧无对应能力（NapCat 扩展动作），明确报不支持
+    "get_group_shut_list",
+    "set_group_leave",
+    "send_qzone_msg",
+    "delete_qzone_msg",
 })
 
 

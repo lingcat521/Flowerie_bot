@@ -10,6 +10,7 @@
 零 JavaScript 保证：所有渲染函数只输出 HTML/CSS，无任何脚本。
 """
 from src.services.webui_render.account import render_account_tab
+from src.services.webui_render.admin import render_admin_tab
 from src.services.webui_render.appearance import render_appearance
 from src.services.webui_render.assets import asset_path, read_asset, render_template
 from src.services.webui_render.config_panel import (
@@ -25,6 +26,7 @@ from src.services.webui_render.pages import (
 from src.services.webui_render.persona import render_persona_tab
 from src.services.webui_render.plugins import render_plugin_tab
 from src.services.webui_render.profiles import render_profile_tab
+from src.services.webui_render.qzone import render_qzone_tab
 from src.services.webui_render.theme import (
     DEFAULT_THEME,
     PANEL_ASSET_VER,
@@ -45,9 +47,9 @@ __all__ = [
     "DEFAULT_THEME", "PANEL_ASSET_VER", "PANEL_CSS", "PANEL_CSS_REV", "THEMES", "THEME_ORDER", "asset_path",
     "background_rules", "panel_asset_body", "read_asset", "render_template",
     "hex_to_rgb", "theme_body_class", "theme_css_block", "theme_default_alpha",
-    "theme_default_bg", "render_appearance", "render_config_sections",
+    "theme_default_bg", "render_admin_tab", "render_appearance", "render_config_sections",
     "render_knowledge_tab", "render_login_page", "render_mcp_editor",
-    "render_profile_tab",
+    "render_profile_tab", "render_qzone_tab",
     "render_panel_page", "render_persona_tab", "render_plugin_tab", "render_register_page",
     "render_account_tab",
 ]

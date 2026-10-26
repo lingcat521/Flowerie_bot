@@ -74,6 +74,8 @@ def test_unsupported_endpoints_are_the_known_gaps():
         "send_group_forward_msg", "send_private_forward_msg",
         "set_friend_add_request", "set_group_add_request",
         "set_group_config", "set_self_profile",
+        # v2.10：群管理扩展 / QQ空间（NapCat 扩展动作，Milky 官方 API 无对应能力）
+        "get_group_shut_list", "set_group_leave", "send_qzone_msg", "delete_qzone_msg",
     }
 
 

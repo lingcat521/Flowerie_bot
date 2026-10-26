@@ -137,6 +137,51 @@ class Bot:
     async def kick(self, group_id: int, user_id: int) -> None:
         await self._adapter.kick(int(group_id), int(user_id))
 
+    # ---------- 群管理员扩展（v2.10） ----------
+    async def set_group_admin(self, group_id: int, user_id: int, enable: bool = True) -> Any:
+        """设置/取消群管理员。"""
+        return await self._adapter.set_group_admin(int(group_id), int(user_id), bool(enable))
+
+    async def kick_with_reject(self, group_id: int, user_id: int) -> Any:
+        """移出群成员并拒绝再次加群。"""
+        return await self._adapter.kick_with_reject(int(group_id), int(user_id))
+
+    async def get_group_shut_list(self, group_id: int) -> Any:
+        """当前被禁言成员列表。"""
+        return await self._adapter.get_group_shut_list(int(group_id))
+
+    async def leave_group(self, group_id: int, dismiss: bool = False) -> Any:
+        """Bot 退出群聊（群主且 dismiss=True 时解散）。"""
+        return await self._adapter.quit_group(int(group_id), bool(dismiss))
+
+    async def set_group_whole_ban(self, group_id: int, enable: bool) -> Any:
+        """全员禁言开关。"""
+        return await self._adapter.group_whole_ban(int(group_id), bool(enable))
+
+    async def set_group_card(self, group_id: int, user_id: int, card: str = "") -> Any:
+        """修改群名片（空=清除）。"""
+        return await self._adapter.group_card(int(group_id), int(user_id), str(card))
+
+    async def set_group_name(self, group_id: int, name: str) -> Any:
+        """修改群名称。"""
+        return await self._adapter.group_rename(int(group_id), str(name))
+
+    async def set_group_special_title(self, group_id: int, user_id: int, title: str = "") -> Any:
+        """设置专属头衔（空=清除）。"""
+        return await self._adapter.group_title(int(group_id), int(user_id), str(title))
+
+    # ---------- QQ空间（v2.10） ----------
+    async def qzone_publish(self, content: str, images: Optional[List[str]] = None,
+                            ugc_right: int = 1, target_uins: Optional[List[int]] = None) -> Any:
+        """发表 QQ空间说说（ugc_right：1 所有人 / 4 好友 / 16 部分好友 / 64 仅自己 / 128 部分好友不可见）。"""
+        return await self._adapter.qzone_publish(
+            str(content), list(images or []), int(ugc_right),
+            [int(x) for x in (target_uins or [])])
+
+    async def qzone_delete(self, tid: str) -> Any:
+        """删除 QQ空间说说（按 tid）。"""
+        return await self._adapter.qzone_delete(str(tid))
+
     # ---------- 权限检查（require_permission 装饰器配套） ----------
     async def check_permission(self, event, kind: str) -> bool:
         return await self._permission.check(event, kind)

@@ -45,9 +45,17 @@
 | `group_notice_delete(payload)` | 删除群公告。 | `group_manage` |
 | `group_notice_update(payload)` | 更新群公告（删除旧公告+发送新公告组合） | `group_manage` |
 | `group_portrait(payload)` | 修改群头像。 | `group_manage` |
+| `group_shut_list(payload)` | 当前被禁言成员列表（group_id）。 | `read_group_info` |
+| `group_leave(payload)` | Bot 退出群聊（group_id + is_dismiss；群主且 is_dismiss=true 时解散）。 | `group_manage` |
 | `group_title(payload)` | 群成员头衔（group_id/user_id/title；等价 set_group_special_title） | `group_manage` |
 | `is_group_admin(payload)` | 判断成员是否群管理员（group_id + user_id）。 | `read_group_info` |
 | `is_group_owner(payload)` | 判断成员是否群主（group_id + user_id）。 | `read_group_info` |
+
+**QQ空间（v2.10；底层 NapCat send_qzone_msg / delete_qzone_msg）**
+| 方法 | 作用 | 权限 |
+| --- | --- | --- |
+| `qzone_publish(payload)` | 发表说说（content + images[]；ugc_right 1/4/16/64/128；target_uins 权限对象） | `qzone` |
+| `qzone_delete(payload)` | 删除说说（tid）。 | `qzone` |
 
 **关系/用户**
 | 方法 | 作用 | 权限 |

@@ -354,6 +354,8 @@ bot.pin(message_id) / bot.unpin(message_id) / bot.like(user_id) / bot.friends()
 | `group_forward` → `/send_group_forward_msg`；`group_notice_delete` → `/_del_group_notice`；`group_portrait` → `/set_group_portrait`；`group_folder_create` / `group_file_delete` / `group_folder_delete` / `group_file_move` / `group_folder_rename` → `/create_group_file_folder` 等 5 个 | group_manage | ✅ |
 | `essence_list` → `/get_essence_msg_list`；`group_honor` → `/get_group_honor_info`；`group_info` / `group_list` → `/get_group_info` / `/get_group_list` | read_group_info | ✅ |
 | `react`（表情回应）→ `set_react`（NapCat 主）→ `set_group_reaction`（Lagrange 回退，自动激活）| read_message | ✅ |
+| v2.10 群管扩展：`group_shut_list` → `/get_group_shut_list`；`group_leave` → `/set_group_leave`；`group_whole_ban` / `group_card` / `group_title` 已在网关扩展 | read_group_info（列表）/ group_manage | ✅ |
+| v2.10 QQ空间：`qzone_publish` → `/send_qzone_msg`；`qzone_delete` → `/delete_qzone_msg`（NapCat 扩展动作）| qzone | ✅（NapCat；Lagrange 无） |
 
 **网关回退机制**：动作值可为端点方法列表，按 sender 可用方法自动选择（换网关无需改代码）。**A.2 网关兼容矩阵**（OneBot11 标准优先）：
 

@@ -26,6 +26,7 @@ KNOWN_SERVICES_AIOHTTP = {
     "src/services/web_ui.py",
     "src/services/webui_static.py",
     "src/services/webui_panels/account_panel.py",
+    "src/services/webui_panels/admin_panel.py",
     "src/services/webui_panels/appearance_panel.py",
     "src/services/webui_panels/auth_panel.py",
     "src/services/webui_panels/config_panel.py",
@@ -39,6 +40,7 @@ KNOWN_SERVICES_AIOHTTP = {
     # 不是协议传输；与上面 12 个面板文件同类。
     "src/services/webui_panels/plugin_webui_static.py",
     "src/services/webui_panels/prompt_panel.py",
+    "src/services/webui_panels/qzone_panel.py",
 }
 
 

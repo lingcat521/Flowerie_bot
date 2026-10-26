@@ -53,3 +53,30 @@ class BotAdapter(ABC):
     async def get_context(self, group_id: int, max_messages: int = 10) -> List[Dict[str, Any]]:
         """近期上下文（默认=历史；下层/领域数据源可覆盖）。"""
         raise UnsupportedOperationError("当前 Adapter 未实现 get_context")
+
+    # ---------- 群管理员扩展（v2.10；默认不支持，子类按需实现） ----------
+    async def set_group_admin(self, group_id: int, user_id: int, enable: bool = True) -> Any:
+        """设置/取消群管理员。"""
+        raise UnsupportedOperationError("当前 Adapter 未实现 set_group_admin")
+
+    async def kick_with_reject(self, group_id: int, user_id: int) -> Any:
+        """移出群成员并拒绝再次加群。"""
+        raise UnsupportedOperationError("当前 Adapter 未实现 kick_with_reject")
+
+    async def get_group_shut_list(self, group_id: int) -> Any:
+        """当前被禁言成员列表。"""
+        raise UnsupportedOperationError("当前 Adapter 未实现 get_group_shut_list")
+
+    async def quit_group(self, group_id: int, dismiss: bool = False) -> Any:
+        """Bot 退出群聊（群主且 dismiss=True 时解散）。"""
+        raise UnsupportedOperationError("当前 Adapter 未实现 quit_group")
+
+    # ---------- QQ空间（v2.10；默认不支持，子类按需实现） ----------
+    async def qzone_publish(self, content: str, images: List[str],
+                            ugc_right: int = 1, target_uins: Optional[List[int]] = None) -> Any:
+        """发表 QQ空间说说（返回 {ok, tid}）。"""
+        raise UnsupportedOperationError("当前 Adapter 未实现 qzone_publish")
+
+    async def qzone_delete(self, tid: str) -> Any:
+        """删除 QQ空间说说（按 tid）。"""
+        raise UnsupportedOperationError("当前 Adapter 未实现 qzone_delete")

@@ -510,6 +510,30 @@ class Sender:
         """群资源（头像直链等；Lagrange 独有）。res_type: small_head/great_head。"""
         return await self._post("/get_group_res", {"group_id": int(group_id), "group_res": res_type})
 
+    # ---------- v2.10 群管理员扩展（NapCat / Lagrange 均支持） ----------
+    async def get_group_shut_list(self, group_id: int) -> dict:
+        """当前被禁言成员列表（OneBot get_group_shut_list）。"""
+        return await self._post("/get_group_shut_list", {"group_id": int(group_id)})
+
+    async def set_group_leave(self, group_id: int, is_dismiss: bool = False) -> dict:
+        """退出群聊（群主且 is_dismiss=True 时解散群）。"""
+        return await self._post("/set_group_leave",
+                                {"group_id": int(group_id), "is_dismiss": bool(is_dismiss)})
+
+    # ---------- v2.10 QQ空间（NapCat 扩展动作） ----------
+    async def send_qzone_msg(self, content: str, images: list, ugc_right: int = 1,
+                             target_uins: list = None) -> dict:
+        """发表 QQ空间说说（NapCat send_qzone_msg）。images 支持 file:// / http(s):// / base64://。"""
+        body: dict = {"content": str(content), "images": list(images or []),
+                      "ugc_right": int(ugc_right)}
+        if target_uins:
+            body["target_uins"] = [int(x) for x in target_uins]
+        return await self._post("/send_qzone_msg", body, timeout=60.0)
+
+    async def delete_qzone_msg(self, tid: str) -> dict:
+        """删除 QQ空间说说（NapCat delete_qzone_msg）。"""
+        return await self._post("/delete_qzone_msg", {"tid": str(tid)})
+
     async def send_private_message(self, user_id: int, message: str) -> bool:
         if not message:
             return False

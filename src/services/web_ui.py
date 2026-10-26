@@ -12,14 +12,7 @@
 - 所有管理接口必须管理员 token
 
 架构（防上帝类）：本模块是薄门面，仅保留认证基座 / 面板壳 / 生命周期；
-各功能域处理器拆到 src/services/webui_panels/ 的独立 mixin：
-- AuthPanelMixin        认证与会话（登录/注册/token/JSON API）
-- ConfigPanelMixin      配置分组表单保存
-- AppearancePanelMixin  主题/背景/图片/透明度
-- McpPanelMixin         MCP 多 server 编辑/测试
-- PromptPanelMixin      群聊自定义 Prompt 读写（按群隔离）
-- PersonaPanelMixin     默认/全局/自定义/群聊人格
-- KnowledgePanelMixin   群聊梗知识（按群隔离）
+各功能域处理器拆到 src/services/webui_panels/ 的独立 mixin（清单见该包 __init__）。
 渲染层（HTML/CSS/主题）见 src/services/webui_render/（web_ui_assets.py 为聚合导出）。
 配置持久化：.env（原子）+ settings.db 双写（见 ConfigService）。
 """
@@ -45,6 +38,7 @@ from src.services.web_ui_assets import (
 )
 from src.services.webui_panels import (
     AccountPanelMixin,
+    AdminPanelMixin,
     AppearancePanelMixin,
     AuthPanelMixin,
     ConfigPanelMixin,
@@ -56,6 +50,7 @@ from src.services.webui_panels import (
     PluginWebUIStaticMixin,
     ProfilePanelMixin,
     PromptPanelMixin,
+    QzonePanelMixin,
 )
 
 # 兼容导出：拆分后常量/辅助函数移入 webui_panels.appearance_panel
@@ -70,15 +65,15 @@ _LOGIN_FAIL_WINDOW = 60
 
 
 class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, AppearancePanelMixin,
-                  McpPanelMixin, PromptPanelMixin, PersonaPanelMixin,
-                  KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin,
+                  McpPanelMixin, PromptPanelMixin, PersonaPanelMixin, AdminPanelMixin,
+                  QzonePanelMixin, KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin,
                   NicknamePanelMixin, ProfilePanelMixin):
 
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
                  persona_manager=None, meme_manager=None, prompt_manager=None,
                  plugin_manager=None, group_nicknames=None, group_style_rules=None,
-                 profile_service=None):
+                 profile_service=None, admin_service=None, qzone_service=None):
         self.config = config
         self.group_nicknames = group_nicknames
         # 群专属发言规则 store（与 MessageRouter 共享同一实例；按 群+人设 解析）
@@ -103,6 +98,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         self._plugin_manager = plugin_manager
         # 群友画像（未注入/未开启时画像页提示不可用）
         self._profile_service = profile_service
+        # 群管理控制台 / QQ空间（v2.10；未注入时对应页提示不可用）
+        self._admin_service = admin_service
+        self._qzone_service = qzone_service
 
     def _issue_token(self) -> str:
         now = time.time()
@@ -223,6 +221,11 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/profile/save", self._handle_panel_profile_save)
         app.router.add_post("/panel/profile/delete", self._handle_panel_profile_delete)
         app.router.add_post("/panel/profile/clear", self._handle_panel_profile_clear)
+        # 群管理控制台（零 JS 表单：执行单个群管操作，结果回显）
+        app.router.add_post("/panel/admin/run", self._handle_panel_admin_run)
+        # QQ空间（零 JS 表单：发说说 / 删除说说）
+        app.router.add_post("/panel/qzone/publish", self._handle_panel_qzone_publish)
+        app.router.add_post("/panel/qzone/delete", self._handle_panel_qzone_delete)
         # 插件管理（零 JS 表单：保护级别 / 扫描 / 上传 / URL / 启用 / 禁用 / 卸载）
         app.router.add_post("/panel/plugins/refresh", self._handle_panel_plugins_refresh)
         app.router.add_post("/panel/plugins/upload", self._handle_panel_plugins_upload)
@@ -282,7 +285,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         err = request.query.get("err", "") == "1"
         tab = request.query.get("tab", "")
         if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins",
-                       "nicknames", "profiles"):
+                       "nicknames", "profiles", "admin", "qzone"):
             tab = "config"
         cat = request.query.get("cat", "")
         if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
@@ -366,6 +369,10 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             body_html = self._render_knowledge_page(gid, search)
         elif tab == "profiles":
             body_html = self._render_profile_page(gid)
+        elif tab == "admin":
+            body_html = self._render_admin_page(msg=msg, err=err)
+        elif tab == "qzone":
+            body_html = self._render_qzone_page(msg=msg, err=err)
         elif tab == "plugins":
             body_html = self._render_plugin_page()
         else:

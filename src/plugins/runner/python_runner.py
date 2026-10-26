@@ -733,6 +733,23 @@ class PluginApi:
         """判断成员是否群主（group_id + user_id）。"""
         return self._send_action("is_group_owner", payload)
 
+    # ---------- v2.10：群管理扩展 + QQ空间 ----------
+    def group_shut_list(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """当前被禁言成员列表（group_id）。"""
+        return self._send_action("group_shut_list", payload)
+
+    def group_leave(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Bot 退出群聊（group_id，可选 is_dismiss；群主且 is_dismiss=true 时解散）。"""
+        return self._send_action("group_leave", payload)
+
+    def qzone_publish(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """发表 QQ空间说说（content + images[]；ugc_right 1/4/16/64/128；target_uins 权限对象）。"""
+        return self._send_action("qzone_publish", payload)
+
+    def qzone_delete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """删除 QQ空间说说（tid）。"""
+        return self._send_action("qzone_delete", payload)
+
     def matcher_register(self, matchers: list) -> Dict[str, Any]:
         """批量注册 Matcher（SDK 启动时调用；返回注册摘要）。"""
         return self._send_action("matcher_register", {"matchers": list(matchers or [])})

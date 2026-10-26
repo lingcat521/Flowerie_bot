@@ -46,6 +46,7 @@ ALL_PERMISSIONS = frozenset({
     "storage",               # 插件 KV 存储
     "ai_chat",               # 受限 AI 对话（独立于聊天预算，务必自限频）
     "bot_profile",           # 修改 Bot 自身资料（昵称/签名）
+    "qzone",                 # QQ空间写操作（发说说/删说说）——默认不给，需管理员批准
     "plugin_admin",          # 插件运行时管理（调用/事件/服务/重载/发现/健康/配置）
     "web_ui",                # Plugin WebUI：插件自有管理页面（管理员批准后才能访问）
     "web_ui.files",          # Plugin WebUI 文件能力（上传/下载，仅插件自身空间）
@@ -77,6 +78,10 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "group_ban": "group_manage",
     "group_kick": "group_manage",
     "group_admin": "group_manage",
+    "group_shut_list": "read_group_info",
+    "group_leave": "group_manage",
+    "qzone_publish": "qzone",
+    "qzone_delete": "qzone",
     "matcher_register": "read_message",
     "is_group_admin": "read_group_info",
     "is_group_owner": "read_group_info",
