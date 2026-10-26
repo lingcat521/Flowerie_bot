@@ -369,3 +369,25 @@ PROFILE_SECTION_TTL_DAYS=30          # 单字段多少天没更新就淘汰（0=
 - 画像失败（AI 故障 / JSON 解析失败）**不影响摘要主流程**
 - 管理面：Web UI「群友画像」页按群查看 / 手工修正 / 删除；群内 `/profile` 查看花璃对自己的画像
 
+## 群管理控制台 / QQ空间（ADMIN_* / QZONE_*，v2.10.0）
+
+Web UI 两个专属页签的开关与默认值。**两者默认开启**，不需要在 `.env` 里写任何东西；
+想关掉或改默认权限时再显式配置：
+
+```ini
+ADMIN_CONSOLE_ENABLED=true           # 群管理控制台开关（关=「群管理」页提示不可用；SDK 直接调用不受限）
+QZONE_ENABLED=true                   # QQ空间功能开关（关=「QQ空间」页提示不可用）
+QZONE_DEFAULT_UGC_RIGHT=1            # 默认查看权限：1 所有人 / 4 好友 / 16 部分好友 / 64 仅自己 / 128 部分好友不可见
+QZONE_HISTORY_PATH=./data/qzone_history.json  # 本机发布历史（tid/摘要/权限/时间）
+QZONE_MAX_HISTORY=100                # 历史最大条数（超出淘汰最旧）
+```
+
+### 行为边界
+
+- **图片/头像来源**：本地绝对路径（`/sdcard/a.jpg`、`~/a.jpg`）自动归一化成 `file://` URI
+  再交协议端（NapCat 上传器只认 URI）；相对路径明确报错。`http(s)://` 与 `base64://` 原样支持
+- QQ空间是 **NapCat 扩展动作**（`send_qzone_msg` / `delete_qzone_msg`）：Lagrange / Milky 上返回
+  「明确不支持」，不会静默失败
+- 群管理控制台操作与 SDK `set_group_admin` 等走同一套 Adapter 能力接口；页面只做参数校验与结果回显
+- 面板操作结果就地回显，失败不抛异常（管理操作不能打崩面板）
+
