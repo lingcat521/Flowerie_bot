@@ -416,6 +416,26 @@ export class PluginContext {
   action(type: string, params: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     return this.client.action(type, params);
   }
+
+  // ---------------- v2.10.0：群管理扩展 + QQ空间（能力对齐 Python SDK） ----------------
+  /** 群管理：当前被禁言成员列表（需要 `read_group_info`）。 */
+  groupShutList(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("group_shut_list", { group_id: groupId });
+  }
+  /** 群管理：Bot 退出群聊（群主且 isDismiss=true 时解散；需要 `group_manage`）。 */
+  groupLeave(groupId: number | string, isDismiss = false): Promise<Record<string, unknown>> {
+    return this.action("group_leave", { group_id: groupId, is_dismiss: isDismiss });
+  }
+  /** QQ空间：发表说说（需要 `qzone`；权限 1/4/16/64/128）。 */
+  qzonePublish(content: string, images: string[] = [], ugcRight = 1,
+               targetUins: Array<number | string> = []): Promise<Record<string, unknown>> {
+    return this.action("qzone_publish", { content, images, ugc_right: ugcRight,
+                                          target_uins: targetUins });
+  }
+  /** QQ空间：按 tid 删除说说（需要 `qzone`）。 */
+  qzoneDelete(tid: string): Promise<Record<string, unknown>> {
+    return this.action("qzone_delete", { tid });
+  }
   /** MCP facade：与 Python 的 bot.mcp、Go/Rust/Java 的 ctx.mcp() 语义一致（认证状态不含密钥）。 */
   get mcp(): McpFacade {
     return this.client.mcp;

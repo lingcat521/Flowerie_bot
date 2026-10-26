@@ -749,9 +749,31 @@ func (m *minimal) runCommand(text string) (any, error) {
 			return nil, err
 		}
 		return m.errorProbes(granted, denied), nil
+
+	case "caps":
+		return m.capabilitiesProbe(), nil
 	}
 
 	return nil, commandErrorf("未知命令: %s", head)
+}
+
+// capabilitiesProbe v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。
+// 单动作失败返回 {ok:false,error}，不打断其它动作——测试要能分别看到每一路结果。
+func (m *minimal) capabilitiesProbe() map[string]any {
+	ctx := m.plugin.Context()
+	safe := func(fn func() (map[string]any, error)) any {
+		res, err := fn()
+		if err != nil {
+			return map[string]any{"ok": false, "error": err.Error()}
+		}
+		return res
+	}
+	return map[string]any{
+		"shut":    safe(func() (map[string]any, error) { return ctx.GroupShutList(10001) }),
+		"leave":   safe(func() (map[string]any, error) { return ctx.GroupLeave(10002, false) }),
+		"publish": safe(func() (map[string]any, error) { return ctx.QzonePublish("hello from go", nil, 1, nil) }),
+		"remove":  safe(func() (map[string]any, error) { return ctx.QzoneDelete("TX") }),
+	}
 }
 
 // errorProbes 依次触发六种错误，每种都返回 **Go 原生**错误模型的观察结果（§九）。

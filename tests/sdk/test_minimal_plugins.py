@@ -177,10 +177,59 @@ async def test_shutdown_is_clean(tmp_path, lang):
     _record(lang, "Shutdown", "PASS")
 
 
+# ---------- v2.10.0：群管理扩展 + QQ空间（五语言 SDK 高层方法 → 真动作通道 → 发送端点） ----------
+#: 新能力所需权限（各语言 manifest 已声明；测试按「声明 ∩ 批准」规则显式批准）
+_CAPS_PERMS = ["read_message", "send_message", "plugin.call.*", "plugin.emit", "web_ui",
+               "read_group_info", "group_manage", "qzone"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lang", LANGS)
+async def test_admin_capabilities_roundtrip(tmp_path, lang):
+    """v2.10.0：群管扩展（禁言列表 / 退群）经该语言 SDK 高层方法打到 Sender 端点。"""
+    reason = missing_reason(lang)
+    if reason:
+        pytest.skip(reason)
+    async with RigCtx(tmp_path) as rig:
+        plugin_id = await rig.load(lang, approved=_CAPS_PERMS)
+        caps = await rig.send("/sdk@%s caps" % plugin_id)
+        assert caps["shut"]["ok"] is True, caps
+        assert caps["shut"]["data"][0]["user_id"] == 20002, caps
+        assert caps["leave"]["ok"] is True, caps
+        endpoints = [c["endpoint"] for c in rig.sender.calls]
+        assert "get_group_shut_list" in endpoints and "set_group_leave" in endpoints, endpoints
+        shut = [c for c in rig.sender.calls if c["endpoint"] == "get_group_shut_list"][-1]
+        assert shut["args"]["group_id"] == 10001, shut
+        leave = [c for c in rig.sender.calls if c["endpoint"] == "set_group_leave"][-1]
+        assert leave["args"] == {"group_id": 10002, "is_dismiss": False}, leave
+        _record(lang, "GroupCaps", "PASS")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lang", LANGS)
+async def test_qzone_capabilities_roundtrip(tmp_path, lang):
+    """v2.10.0：QQ空间发/删说说经该语言 SDK 高层方法打到 Sender 端点，tid 原样回传。"""
+    reason = missing_reason(lang)
+    if reason:
+        pytest.skip(reason)
+    async with RigCtx(tmp_path) as rig:
+        plugin_id = await rig.load(lang, approved=_CAPS_PERMS)
+        caps = await rig.send("/sdk@%s caps" % plugin_id)
+        assert caps["publish"]["ok"] is True, caps
+        assert caps["publish"]["data"]["tid"] == "T-CAPS", caps
+        assert caps["remove"]["ok"] is True, caps
+        pub = [c for c in rig.sender.calls if c["endpoint"] == "send_qzone_msg"][-1]
+        assert pub["args"]["ugc_right"] == 1 and pub["args"]["target_uins"] == [], pub
+        assert pub["args"]["content"].startswith("hello from "), pub
+        delete = [c for c in rig.sender.calls if c["endpoint"] == "delete_qzone_msg"][-1]
+        assert delete["args"] == {"tid": "TX"}, delete
+        _record(lang, "QzoneCaps", "PASS")
+
+
 def test_zzz_acceptance_table_is_reported(capsys):
     """§十七：把验收表打印出来（skip 不等于 pass：没跑过的语言要写清缺什么）。"""
     rows = ["Build", "Load", "Ready", "Ping", "Info", "Echo", "Event", "Call", "Error",
-            "Permission", "Shutdown"]
+            "Permission", "Shutdown", "GroupCaps", "QzoneCaps"]
     lines = ["§十七 最小插件验收表（只写真实结果）",
              "| 测试 | " + " | ".join(LANGS) + " |",
              "| --- | " + " | ".join(["---"] * len(LANGS)) + " |"]

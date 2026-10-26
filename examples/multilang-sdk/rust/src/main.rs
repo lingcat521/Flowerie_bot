@@ -780,8 +780,31 @@ fn run_command(ctx: &Context, command: &str) -> Result<Json, PluginCommError> {
             let (denied, _) = split_token(rest);
             Ok(probe_errors(ctx, granted, denied))
         }
+        "caps" => Ok(capabilities_probe(ctx)),
         other => Err(command_error(&format!("未知命令: {}", other))),
     }
+}
+
+/// v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。
+/// 单动作失败返回 {ok:false,error}，不打断其它动作——测试要能分别看到每一路结果。
+fn capabilities_probe(ctx: &Context) -> Json {
+    fn safe<F>(f: F) -> Json
+    where
+        F: FnOnce() -> Result<Json, String>,
+    {
+        match f() {
+            Ok(value) => value,
+            Err(err) => Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(&err))]),
+        }
+    }
+    Json::obj(vec![
+        ("shut", safe(|| ctx.group_shut_list(10001))),
+        ("leave", safe(|| ctx.group_leave(10002, false))),
+        ("publish", safe(|| {
+            ctx.qzone_publish("hello from rust", Vec::new(), 1, Vec::new())
+        })),
+        ("remove", safe(|| ctx.qzone_delete("TX"))),
+    ])
 }
 
 // ==================== 六种错误探针（§九） ====================

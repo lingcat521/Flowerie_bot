@@ -651,7 +651,39 @@ public final class MinimalPlugin {
         if ("errors".equals(head)) {
             return errors(plugin, arg(argv, 0), arg(argv, 1));
         }
+        if ("caps".equals(head)) {
+            return capabilities(plugin);
+        }
         throw new IllegalArgumentException("未知命令: " + head);
+    }
+
+    /** v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。
+     *  单动作失败返回 {ok:false,error}，不打断其它动作——测试要能分别看到每一路结果。 */
+    private static Object capabilities(final FloweriePlugin plugin) {
+        FloweriePlugin.Context ctx = plugin.context();
+        Map<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("shut", safeCap(() -> ctx.groupShutList(Integer.valueOf(10001))));
+        out.put("leave", safeCap(() -> ctx.groupLeave(Integer.valueOf(10002), false)));
+        out.put("publish", safeCap(() -> ctx.qzonePublish("hello from java",
+                new ArrayList<String>(), 1, new ArrayList<Object>())));
+        out.put("remove", safeCap(() -> ctx.qzoneDelete("TX")));
+        return out;
+    }
+
+    /** 单动作兜底：异常收敛成 {ok:false,error}，与其它语言的探针形状一致。 */
+    private interface CapCall {
+        Object run() throws Exception;
+    }
+
+    private static Object safeCap(CapCall call) {
+        try {
+            return call.run();
+        } catch (Exception e) {
+            Map<String, Object> failed = new LinkedHashMap<String, Object>();
+            failed.put("ok", Boolean.FALSE);
+            failed.put("error", e.getMessage() == null ? e.toString() : e.getMessage());
+            return failed;
+        }
     }
 
     /** /sdk errors：依次触发六种错误，每种都回**本语言原生错误模型**的观察结果。 */

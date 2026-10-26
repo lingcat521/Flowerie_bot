@@ -52,6 +52,27 @@ async function errorProbe(granted: string, denied: string): Promise<Record<strin
   return out;
 }
 
+/** v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。
+ * 单个动作失败返回 {ok:false,error}，不打断其它动作——测试要能分别看到每一路的结果。 */
+async function safeAction(fn: () => Promise<Record<string, unknown>>): Promise<Record<string, unknown>> {
+  try {
+    return await fn();
+  } catch (err) {
+    const e: any = err;
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+}
+
+async function capabilitiesProbe(): Promise<Record<string, unknown>> {
+  const ctx = plugin.ctx;
+  return {
+    shut: await safeAction(() => ctx.groupShutList(10001)),
+    leave: await safeAction(() => ctx.groupLeave(10002, false)),
+    publish: await safeAction(() => ctx.qzonePublish("hello from ts", [], 1, [])),
+    remove: await safeAction(() => ctx.qzoneDelete("TX")),
+  };
+}
+
 async function runCommand(text: string): Promise<any> {
   const parts = text.split(" ");
   const head = parts[1];
@@ -68,6 +89,7 @@ async function runCommand(text: string): Promise<any> {
                t2: await call(argv[1], "echo", { hello: "world" }),
                t3: await call(argv[2], "ping", {}) };
     case "errors": return await errorProbe(argv[0], argv[1]);
+    case "caps": return await capabilitiesProbe();
     default: throw new Error("未知命令: " + head);
   }
 }

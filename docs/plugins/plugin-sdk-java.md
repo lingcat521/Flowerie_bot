@@ -1,5 +1,7 @@
 # Java SDK（dev.flowerie.sdk）
 
+> 行号说明：下表 `:行号` 是写作时的定位；代码变动后行号会漂移，请按符号名检索（`ctx.action` 等）。
+
 > 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](../reference/plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)
 > 源码 `sdk/java/src/main/java/dev/flowerie/sdk/`（`FloweriePlugin.java` + `Json.java`）· 示例 `examples/multilang-sdk/java/`（最小插件实测）与 `examples/java-plugin/`（契约/WebUI 用例）· CI 实测：`tests/sdk/test_minimal_plugins.py::test_build_load_ready_and_api[java]`、`tests/sdk/test_minimal_paths.py::test_plugin_communication_path[typescript->java]`、`tests/test_plugin_sdk_contract.py::test_handshake_declares_protocol_and_capabilities[java]`、`tests/test_plugin_webui_multilang.py::test_webui_page_receives_engine_context[java]`
 
@@ -47,6 +49,7 @@ public final class Plugin {
 | 能力 | 本语言签名 / 写法 |
 | :--- | :--- |
 | 生命周期 / 上下文 / 日志 | `onStartup` :446 · `onShutdown` :452 · `run()` :546 · `plugin.context()` :541 · `ctx.pluginId()` :244 · `ctx.log(msg)` :248（stderr）｜ 动作（副作用出口）：`ctx.action("send_message", Map.of("group_id", …, "message", …))` :380；事件钩子里直接 `return Json.obj("type", "send_message", "payload", payload)`（`MinimalPlugin.java:583`）|
+| 群管扩展 / QQ空间（v2.10.0）| `ctx.groupShutList(Object groupId)` · `ctx.groupLeave(Object groupId, boolean isDismiss)` · `ctx.qzonePublish(String content, List<String> images, int ugcRight, List<Object> targetUins)` · `ctx.qzoneDelete(String tid)`（均抛 `IOException`）|
 | 存储 / 配置 / 权限 | `storageGet` :265 · `storageSet` :273 · `storageDelete` :290 · `storageList` :294 · `configGet` :331 · `configSet` :343 · `permissionCheck` :366 |
 | 控制面 / WebUI / JSON | `ctx.info()` :373 · `registerHook` :501 · `webUI()` :512-537 · `Json.obj/parse/dump/get`（`Json.java:172/27/39/158`）|
 | MCP facade | `ctx.mcp()` :385 · `McpFacade.servers()` :1195 · `tools(server)` :1209 · `call(server, tool, args)` :1233 · `status(server)` :1246 · `auth(server)` :1251 · 类型 `McpAuthInfo` :1124 / `McpServer` :1146 / `McpTool` :1159 / `McpCallResult` :1170（认证状态不含 token）|

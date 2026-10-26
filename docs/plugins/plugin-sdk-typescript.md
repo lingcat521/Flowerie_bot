@@ -1,5 +1,7 @@
 # TypeScript / Node.js SDK（@flowerie/sdk）
 
+> 行号说明：下表 `:行号` 是写作时的定位；代码变动后行号会漂移，请按符号名检索（`ctx.action` 等）。
+
 > 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)（§1–§9 的通用语义都在那里）｜ 协议：[plugin-protocol.md](../reference/plugin-protocol.md) ｜ 能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)
 > 源码 `sdk/typescript/flowerie_sdk.ts` · 示例 `examples/multilang-sdk/typescript/`（契约/WebUI 用例另跑 `examples/typescript-plugin/`）· CI 实测：`tests/sdk/test_minimal_plugins.py::test_build_load_ready_and_api[typescript]`、`tests/sdk/test_minimal_paths.py::test_plugin_communication_path[typescript->go]`、`tests/test_plugin_sdk_contract.py`（含 `test_typescript_shim_covers_host_apis`）、`tests/test_plugin_webui_multilang.py::test_webui_action_save_is_identical[typescript]`
 
@@ -46,6 +48,7 @@ void plugin.run();
 | :--- | :--- |
 | 构造 · 主循环 · 上下文 | `new FloweriePlugin({ pluginId?, pluginDir?, capabilities? })`（:476）· `await plugin.run()`（:621）· `plugin.ctx`（:541）|
 | 动作（唯一副作用出口）| `ctx.action(type, params): Promise<Record<string, unknown>>`（:317）|
+| 群管扩展 / QQ空间（v2.10.0）| `ctx.groupShutList(gid)` · `ctx.groupLeave(gid, isDismiss=false)` · `ctx.qzonePublish(content, images?, ugcRight=1, targetUins?)` · `ctx.qzoneDelete(tid)`（权限：`read_group_info` / `group_manage` / `qzone`）|
 | 存储 / 配置 | `ctx.storageGet(key)`（:338）· `storageSet(key, value): number`（:343）· `storageDelete(key): boolean`（:353）· `storageList(prefix?)`（:359）· `await ctx.configGet(keys?)`（:369）· `configSet(values): string[]`（:380）|
 | 权限 / 上下文 / 日志 | `await ctx.permissionCheck(p): boolean`（:320）· `await ctx.refreshContext()`（:324）· `ctx.logger.info/warn/error`（stderr，:309-315）|
 | MCP facade | `ctx.mcp`（getter :420；`client.mcp` :554）· `McpFacade.servers()/tools(server)/call(server,tool,args)/status(server)/auth(server)`（:328）· 类型 `McpAuthInfo` :296 · `McpServer` :304 · `McpTool` :307 · `McpCallResult` :310（认证状态不含 token）|

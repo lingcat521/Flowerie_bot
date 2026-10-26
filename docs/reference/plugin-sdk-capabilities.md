@@ -10,7 +10,7 @@
 
 ## 1. 逐能力对照（当前事实）
 
-证据列：**A** = `tests/sdk/`（46 条）+ `tests/test_plugin_sdk_contract.py`（78 条）；
+证据列：**A** = `tests/sdk/`（56 条）+ `tests/test_plugin_sdk_contract.py`（78 条）；
 **B** = `tests/test_plugin_webui_multilang.py`（31 条）；**C** = `tests/test_plugin_comm_model.py`（62）/
 `tests/test_plugin_comm_bus.py`（17）/ `tests/test_plugin_comm_paths.py`（7）+ 上面 A 的 Call/Error 行。
 

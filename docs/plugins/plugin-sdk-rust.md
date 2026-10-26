@@ -1,5 +1,7 @@
 # Rust SDK（flowerie · 零 crate 依赖）
 
+> 行号说明：下表 `:行号` 是写作时的定位；代码变动后行号会漂移，请按符号名检索（`ctx.action` 等）。
+
 > 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](../reference/plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)
 > 源码 `sdk/rust/src/lib.rs` + `sdk/rust/src/json.rs` · 示例 `examples/multilang-sdk/rust/`（契约/WebUI 用例另跑 `examples/rust-plugin/`）· CI 实测：`tests/sdk/test_minimal_plugins.py::test_build_load_ready_and_api[rust]`、`tests/sdk/test_minimal_paths.py::test_plugin_communication_path[rust->java]`、`tests/test_plugin_sdk_contract.py::test_plugin_call_inbound_matches_vector[rust]`、`tests/test_plugin_webui_multilang.py::test_webui_action_save_is_identical[rust]`
 
@@ -53,6 +55,7 @@ fn main() {
 | 能力 | 本语言签名 |
 | :--- | :--- |
 | 生命周期 / 日志 | `Plugin::new()` :349 · `plugin.run()` :445 · `plugin.context()` :440 · `ctx.log(&str)` → stderr :104 ｜ 动作 / 存储：`ctx.action(action_type, &Json) -> Result<Json, String>` :237 · `storage_get(key)` :122 · `storage_set(key, &Json)` :131 · `storage_delete(key)` :150 · `storage_list(prefix)` :156 |
+| 群管扩展 / QQ空间（v2.10.0）| `ctx.group_shut_list(group_id: i64)` · `ctx.group_leave(group_id: i64, is_dismiss: bool)` · `ctx.qzone_publish(content: &str, images: Vec<Json>, ugc_right: i64, target_uins: Vec<Json>)` · `ctx.qzone_delete(tid: &str)`（均返回 `Result<Json, String>`）|
 | 配置 / 权限 / 上下文 | `config_get()` :183 · `config_set(&Json)` :195 · `permission_check(&str)` :224 · `info()` :231 · 字段 `ctx.plugin_id` / `ctx.plugin_dir` / `ctx.data_dir` :78-80 |
 | JSON / WebUI | `Json::obj/str/num`、`get/as_str/as_f64/as_bool/as_arr/dump`（`json.rs:22-78`）、`parse_json` :20 · `plugin.webui().page(f).action(f).asset(f)`（:435 / :332 / :337 / :342）|
 | 插件间通信 / 错误 | `ctx.call` :931 · `emit` :956 · `cancel` :984 · `expose` :1005 · `unexpose` :1021 · `on` :1026 · `exposed_methods` :1042 · `comm_context` :920 · `CallOptions::default().with_timeout(ms).with_route(route)` :745-766 · `PluginCommError`（:813-881）/ `EmitResult` :771 / `CancelResult` :782 |

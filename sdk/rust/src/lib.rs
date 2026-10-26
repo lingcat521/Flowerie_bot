@@ -239,6 +239,35 @@ impl Context {
             ("action", Json::str(action_type)), ("payload", params.clone())]))
     }
 
+    // ---------------- v2.10.0：群管理扩展 + QQ空间（能力对齐 Python SDK） ----------------
+
+    /// 群管理：当前被禁言成员列表（需要 read_group_info）。
+    pub fn group_shut_list(&self, group_id: i64) -> Result<Json, String> {
+        self.action("group_shut_list", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    /// 群管理：Bot 退出群聊（群主且 is_dismiss 为 true 时解散；需要 group_manage）。
+    pub fn group_leave(&self, group_id: i64, is_dismiss: bool) -> Result<Json, String> {
+        self.action("group_leave", &Json::obj(vec![
+            ("group_id", Json::num(group_id)), ("is_dismiss", Json::Bool(is_dismiss))]))
+    }
+
+    /// QQ空间：发表说说（需要 qzone；ugc_right 1/4/16/64/128，16/128 需 target_uins）。
+    pub fn qzone_publish(&self, content: &str, images: Vec<Json>, ugc_right: i64,
+                         target_uins: Vec<Json>) -> Result<Json, String> {
+        self.action("qzone_publish", &Json::obj(vec![
+            ("content", Json::str(content)),
+            ("images", Json::Arr(images)),
+            ("ugc_right", Json::num(ugc_right)),
+            ("target_uins", Json::Arr(target_uins)),
+        ]))
+    }
+
+    /// QQ空间：按 tid 删除说说（需要 qzone）。
+    pub fn qzone_delete(&self, tid: &str) -> Result<Json, String> {
+        self.action("qzone_delete", &Json::obj(vec![("tid", Json::str(tid))]))
+    }
+
     fn engine_op(&self, op: &str, args: &Json) -> Result<Json, String> {
         self.reverse("engine", &Json::obj(vec![
             ("op", Json::str(op)), ("args", args.clone())]))

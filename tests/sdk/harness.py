@@ -56,10 +56,15 @@ def missing_reason(lang):
 
 
 class CapturingSender:
-    """协议端替身：只记录插件发出的消息（没有 Mock 插件，插件全是真的）。"""
+    """协议端替身：只记录插件发出的消息（没有 Mock 插件，插件全是真的）。
+
+    群管理扩展 / QQ空间 四个动作（v2.10.0）也在这里登记：记录 endpoint 与参数，
+    让测试能断言「插件 → SDK → 引擎 → Sender 端点」整条链路真的走通。
+    """
 
     def __init__(self):
         self.sent = []
+        self.calls = []
 
     async def send_msg_raw(self, target, target_id, message, reply_id=None):
         self.sent.append({"target": target, "target_id": target_id, "message": message})
@@ -71,6 +76,27 @@ class CapturingSender:
 
     async def get_friend_msg_history(self, user_id, count=20):
         return {"messages": []}
+
+    # ---------- v2.10.0：群管理扩展 + QQ空间（协议端替身记录调用） ----------
+    async def get_group_shut_list(self, group_id):
+        self.calls.append({"endpoint": "get_group_shut_list", "args": {"group_id": group_id}})
+        return {"ok": True, "data": [{"user_id": 20002, "duration": 600}]}
+
+    async def set_group_leave(self, group_id, is_dismiss=False):
+        self.calls.append({"endpoint": "set_group_leave",
+                           "args": {"group_id": group_id, "is_dismiss": is_dismiss}})
+        return {"ok": True}
+
+    async def send_qzone_msg(self, content, images, ugc_right=1, target_uins=None):
+        self.calls.append({"endpoint": "send_qzone_msg",
+                           "args": {"content": content, "images": list(images or []),
+                                    "ugc_right": ugc_right,
+                                    "target_uins": list(target_uins or [])}})
+        return {"ok": True, "data": {"tid": "T-CAPS"}}
+
+    async def delete_qzone_msg(self, tid):
+        self.calls.append({"endpoint": "delete_qzone_msg", "args": {"tid": tid}})
+        return {"ok": True}
 
 
 #: 构建缓存（模块级）：编译型语言每个 session 只构建一次，多个用例共用同一份产物

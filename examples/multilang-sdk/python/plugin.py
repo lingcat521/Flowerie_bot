@@ -454,7 +454,32 @@ def _run_command(text):
                 "t3": _call(argv[2], "ping")}
     if head == "errors":
         return _errors(argv[0], argv[1])
+    if head == "caps":
+        return _capabilities()
     raise ValueError("未知命令: %s" % head)
+
+
+def _capabilities():
+    """v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。
+
+    单动作失败返回 {"ok": False, "error": ...}，不打断其它动作——测试要能分别看到每一路结果。
+    """
+    api = _api()
+
+    def _safe(fn):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001 - 探针要把失败形状带回去
+            return {"ok": False, "error": "%s: %s" % (type(exc).__name__, exc)}
+
+    return {
+        "shut": _safe(lambda: api.group_shut_list({"group_id": 10001})),
+        "leave": _safe(lambda: api.group_leave({"group_id": 10002, "is_dismiss": False})),
+        "publish": _safe(lambda: api.qzone_publish({"content": "hello from python",
+                                                    "images": [], "ugc_right": 1,
+                                                    "target_uins": []})),
+        "remove": _safe(lambda: api.qzone_delete({"tid": "TX"})),
+    }
 
 
 def _addressed_to_me(text):

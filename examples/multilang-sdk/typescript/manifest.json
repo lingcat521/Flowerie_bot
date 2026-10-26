@@ -12,14 +12,25 @@
     "send_message",
     "plugin.call.*",
     "plugin.emit",
-    "web_ui"
+    "web_ui",
+    "read_group_info",
+    "group_manage",
+    "qzone"
   ],
   "web_ui": {
     "static": "static",
     "entry": "webui_page",
     "pages": [
-      { "id": "index", "title": "Index", "render": "plugin" },
-      { "id": "communication", "title": "Communication", "render": "plugin" }
+      {
+        "id": "index",
+        "title": "Index",
+        "render": "plugin"
+      },
+      {
+        "id": "communication",
+        "title": "Communication",
+        "render": "plugin"
+      }
     ]
   }
 }

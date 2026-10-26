@@ -731,6 +731,37 @@ func (c *Context) Action(actionType string, params map[string]any) (map[string]a
 	return c.reverse("action", map[string]any{"action": actionType, "payload": params})
 }
 
+// ---------------- v2.10.0：群管理扩展 + QQ空间（能力对齐 Python SDK） ----------------
+
+// GroupShutList 当前被禁言成员列表（需要 read_group_info 权限）。
+func (c *Context) GroupShutList(groupID any) (map[string]any, error) {
+	return c.Action("group_shut_list", map[string]any{"group_id": groupID})
+}
+
+// GroupLeave Bot 退出群聊（群主且 isDismiss 为 true 时解散；需要 group_manage 权限）。
+func (c *Context) GroupLeave(groupID any, isDismiss bool) (map[string]any, error) {
+	return c.Action("group_leave", map[string]any{"group_id": groupID, "is_dismiss": isDismiss})
+}
+
+// QzonePublish 发表 QQ空间说说（需要 qzone 权限；ugcRight 1/4/16/64/128，16/128 需 targetUins）。
+func (c *Context) QzonePublish(content string, images []string, ugcRight int,
+	targetUins []any) (map[string]any, error) {
+	if images == nil {
+		images = []string{}
+	}
+	if targetUins == nil {
+		targetUins = []any{}
+	}
+	return c.Action("qzone_publish", map[string]any{
+		"content": content, "images": images, "ugc_right": ugcRight, "target_uins": targetUins,
+	})
+}
+
+// QzoneDelete 按 tid 删除 QQ空间说说（需要 qzone 权限）。
+func (c *Context) QzoneDelete(tid string) (map[string]any, error) {
+	return c.Action("qzone_delete", map[string]any{"tid": tid})
+}
+
 // PermissionCheck 查询已批准权限（只读；无法提权）。
 func (c *Context) PermissionCheck(permission string) (bool, error) {
 	res, err := c.engineOp("permission.check", map[string]any{"permission": permission})

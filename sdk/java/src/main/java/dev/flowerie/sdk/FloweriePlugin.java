@@ -381,6 +381,32 @@ public class FloweriePlugin {
             return reverse("action", Json.obj("action", type, "payload", params));
         }
 
+        // ---------------- v2.10.0：群管理扩展 + QQ空间（能力对齐 Python SDK） ----------------
+
+        /** 群管理：当前被禁言成员列表（需要 read_group_info）。 */
+        public Object groupShutList(Object groupId) throws IOException {
+            return action("group_shut_list", Json.obj("group_id", groupId));
+        }
+
+        /** 群管理：Bot 退出群聊（群主且 isDismiss 为 true 时解散；需要 group_manage）。 */
+        public Object groupLeave(Object groupId, boolean isDismiss) throws IOException {
+            return action("group_leave", Json.obj("group_id", groupId, "is_dismiss", Boolean.valueOf(isDismiss)));
+        }
+
+        /** QQ空间：发表说说（需要 qzone；ugcRight 1/4/16/64/128，16/128 需 targetUins）。 */
+        public Object qzonePublish(String content, List<String> images, int ugcRight,
+                                   List<Object> targetUins) throws IOException {
+            List<String> imgs = images == null ? new ArrayList<String>() : images;
+            List<Object> uins = targetUins == null ? new ArrayList<Object>() : targetUins;
+            return action("qzone_publish", Json.obj("content", content, "images", imgs,
+                    "ugc_right", Integer.valueOf(ugcRight), "target_uins", uins));
+        }
+
+        /** QQ空间：按 tid 删除说说（需要 qzone）。 */
+        public Object qzoneDelete(String tid) throws IOException {
+            return action("qzone_delete", Json.obj("tid", tid));
+        }
+
         /** MCP facade：列 server / 查工具 / 查认证状态 / 调用工具（认证不含密钥）。 */
         public McpFacade mcp() {
             return new McpFacade(this);

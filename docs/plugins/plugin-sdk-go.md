@@ -1,5 +1,7 @@
 # Go SDK（github.com/lingcat521/Flowerie_bot/sdk/go/flowerie）
 
+> 行号说明：下表 `:行号` 是写作时的定位；代码变动后行号会漂移，请按符号名检索（`ctx.action` 等）。
+
 > 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](../reference/plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)
 > 源码 `sdk/go/flowerie/plugin.go` · 示例 `examples/multilang-sdk/go/`（契约/WebUI 用例另跑 `examples/go-plugin/`）· CI 实测：`tests/sdk/test_minimal_plugins.py::test_build_load_ready_and_api[go]`、`tests/sdk/test_minimal_paths.py::test_plugin_communication_path[typescript->go]`、`tests/test_plugin_sdk_contract.py::test_handshake_declares_protocol_and_capabilities[go]`、`tests/test_plugin_webui_multilang.py::test_webui_page_receives_engine_context[go]`
 
@@ -52,6 +54,7 @@ func main() {
 | :--- | :--- |
 | 创建 · 运行 · 上下文 | `flowerie.New() *Plugin` :164 · `(*Plugin).Run() error` :318 · `(*Plugin).Context() *Context` :308 · `Context{PluginID,PluginDir,DataDir}` :156-160 |
 | 动作 · 日志 | `(*Context).Action(actionType string, params map[string]any) (map[string]any, error)` :730 · `(*Context).Logf(format string, args ...any)` :757（stderr）｜ 存储 · 配置 · 权限 · 上下文查询：`StorageGet` :796 · `StorageSet` :813 · `StorageDelete` :840 · `StorageList` :849 · `ConfigGet([]string)` :883 · `ConfigSet(map[string]any)` :907 · `PermissionCheck(string) (bool, error)` :735 · `Info()` :745 |
+| 群管扩展 / QQ空间（v2.10.0）| `(*Context).GroupShutList(groupID any)` · `GroupLeave(groupID any, isDismiss bool)` · `QzonePublish(content string, images []string, ugcRight int, targetUins []any)` · `QzoneDelete(tid string)`（返回 `(map[string]any, error)`）|
 | MCP facade | `(*Context).MCP() *McpFacade` :1587 · `Servers()` :1611 · `Tools(server)` :1631 · `Call(server, tool, args)` :1661 · `Status(server)` :1684 · `Auth(server)` :1689 · 类型 `McpAuthInfo` :1560 / `McpServer` :1567 / `McpTool` :1574 / `McpCallResult` :1580（认证状态不含 token）|
 | 插件间通信 | `Expose(method, Handler)` :1025 · `Call(target, method, params, opts...)` :1074 · `Emit(name, payload)` :1140 · `Cancel(requestID, reason)` :1179 · `OnPluginEvent` :1042 · `Handler` :980 · `CommError` :947 · `CommCode(err)` :965 · `WithTimeout/WithRoute/WithRequestID/WithMetadata` :993/:999/:1005/:1010 |
 | WebUI · 常量 | `WebUI().Page/.Action/.Asset` :287/:290/:296/:302 · `ProtocolVersion` :32 · `ErrorCodes` :84 · `Action` :98 · `RouteAuto/RouteCore/RouteLocal` :61-63 |

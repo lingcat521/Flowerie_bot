@@ -11,6 +11,9 @@
 | Java | `java/` | `minimal_java` | `build.sh`（`javac` SDK + 插件）| `run.sh` |
 
 - 契约（暴露哪些方法、`/sdk@<自己>` 命令、动作形状、错误探针）：`docs/plugin-sdk-minimal-test.md`
+- **v2.10.0 新命令 `caps`**：一次返回四个新能力的动作结果（`group_shut_list` / `group_leave` /
+  `qzone_publish` / `qzone_delete`，各自 `{ok:true,...}` 或 `{ok:false,error}`），
+  由 `tests/sdk/test_minimal_plugins.py` 的两个 `*_capabilities_roundtrip` 用例逐一验证五语言
 - 实测入口：`tests/sdk/`（真仓库 + 真引擎公开面 + 真插件进程；Build 与 Load 分开验证）
 - 任务书里的 `plugin.call("minimal.go", …)` 在本仓库写作 `plugin.call("minimal_go", …)`
   （插件 id 只允许小写字母/数字/下划线/短横线）。

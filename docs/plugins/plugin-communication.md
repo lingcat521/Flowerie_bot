@@ -167,7 +167,7 @@ tuple/set → list；dict 键必须是字符串；NaN/Infinity 拒绝；嵌套�
 | :--- | :--- |
 | `tests/test_plugin_comm_model.py`（**62 passed**） | 五类消息、请求/响应/错误模型、语言无关类型与 DTO、环保护、权限串、超时归一；与 runner 内联常量逐项比对 |
 | `tests/test_plugin_comm_bus.py`（**17 passed**） | 真子进程跑真 Core Router：投递、权限拒绝不投递、超时 + CANCEL、事件广播、A↔B 环保护、实例寻址、生命周期 |
-| `tests/test_plugin_comm_paths.py`（7 条）/ `tests/sdk/`（**46 条**） | 7 条跨语言路径真编译真进程 + 五语言最小插件实测（缺工具链 skip 并打印原因，CI 全跑）；逐语言状态见 [plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md) |
+| `tests/test_plugin_comm_paths.py`（7 条）/ `tests/sdk/`（**56 条**） | 7 条跨语言路径真编译真进程 + 五语言最小插件实测（缺工具链 skip 并打印原因，CI 全跑）；逐语言状态见 [plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md) |
 
 ```bash
 python3 -m pytest tests/test_plugin_comm_model.py tests/test_plugin_comm_bus.py -q   # 模型层 + 真子进程总线

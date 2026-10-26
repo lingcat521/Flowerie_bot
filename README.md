@@ -51,7 +51,7 @@
 | 🎲 主动发言概率配置化 | `PROACTIVE_MESSAGE_*` 上下文随机回复概率 + `ACTIVE_CHAT_*` 主动聊天循环，全部可配置 |
 | 🗣️ 发言规则 | 管理员补充规则（人格页，默认 4 行）+ 按群专属覆盖，注入所有人格最高优先级 |
 | 🧩 插件系统（Plugin Protocol v1） | 受控插件运行时：Python / Node / **任意语言（exec，13 种语言 CI 实测：C/C++·Go·Rust·Java·C#·Kotlin·PHP·Lua·Ruby·Perl·R·TypeScript）** / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
-| 🧰 多语言 SDK | **Python / TypeScript / Go / Rust / Java 五套官方 SDK**（零第三方依赖，能力对齐 14 项）；最小插件实测 46 条真跑：[SDK 实测报告](docs/reports/plugin-sdk-minimal-report.md) |
+| 🧰 多语言 SDK | **Python / TypeScript / Go / Rust / Java 五套官方 SDK**（零第三方依赖，能力对齐 14 项）；最小插件实测 56 条真跑（含 v2.10.0 群管/QQ空间能力）：[SDK 实测报告](docs/reports/plugin-sdk-minimal-report.md) |
 | 🔗 插件间通信 | `plugin.call()` / `plugin.emit()` / `plugin.on()` 统一抽象：跨语言经 Core Router，权限/超时/取消/环保护/trace 全链路：[插件间通信](docs/plugins/plugin-communication.md) |
 | 🖥️ Plugin WebUI | 插件自带管理页面（HTML+CSS，**零 JavaScript**）：`webui.page/action/asset` + 六项 `webui.*` 权限 + 净化/隔离：[WebUI 协议](docs/plugins/plugin-webui-protocol.md) |
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
@@ -213,7 +213,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/featu
 ```bash
 pip install -r requirements-dev.txt
 pytest              # 2484 个测试（CI pytest 步骤实测，Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
-pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（46 条：五语言真 build / 真调用 / 真关闭）
+pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（56 条：五语言真 build / 真调用 / 真关闭，含群管与 QQ空间能力）
 pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
 pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）
 acceptance          # 37 项黑盒验收（tests/acceptance_check.py）
