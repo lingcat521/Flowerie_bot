@@ -6,7 +6,9 @@ NapCat 实测接口（见 docs/reference/napcat-admin-qzone.md）：
 - ugc_right: 1 所有人可见 / 4 好友可见 / 16 部分好友可见 / 64 仅自己可见 / 128 部分好友不可见
   16、128 必须带 target_uins（权限作用对象）
 
-图片支持 file:// 本地路径、http(s):// URL、base64:// 数据（由 NapCat 端下载/解码上传）。
+图片支持 file:// 本地路径、http(s):// URL、base64:// 数据（由 NapCat 端下载/解码上传）；
+也允许直接填**本地绝对路径**（如 /storage/emulated/0/a.jpg 或 ~/a.jpg）——这里会归一化成
+file:// URI 再交给 NapCat，因为它的上传器只认 URI 形式（裸路径会被当成非法来源）。
 本地历史（data/qzone_history.json）只存 tid/摘要/权限/时间，用于面板列出与删除；
 文件采用"写临时文件 + os.replace"原子落盘（与 GroupNicknameStore 同款）。
 """
@@ -16,6 +18,7 @@ import threading
 import time
 from typing import Any, Dict, List, Optional
 
+from src.utils.file_source import to_uri_source
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -32,6 +35,11 @@ UGC_RIGHTS: Dict[int, str] = {
 _MAX_CONTENT = 2000      # 说说正文字数上限（面板侧保护，超出直接拒绝而非静默截断）
 _MAX_IMAGES = 9          # 单条说说图片上限
 _MAX_TARGETS = 100       # 权限对象 QQ 号上限
+
+
+def _normalize_image(raw: str) -> str:
+    """图片输入归一化成 NapCat 认的 URI；不合法返回空串（strict 语义见 utils.file_source）。"""
+    return to_uri_source(raw, strict=True)
 
 
 class QzoneService:
@@ -79,11 +87,15 @@ class QzoneService:
         imgs = [str(x).strip() for x in (images or []) if str(x).strip()]
         if len(imgs) > _MAX_IMAGES:
             return False, f"图片数量超过 {_MAX_IMAGES} 张上限", [], []
+        normalized: List[str] = []
         for img in imgs:
-            if not (img.startswith("file://") or img.startswith("http://")
-                    or img.startswith("https://") or img.startswith("base64://")
-                    or os.path.isabs(img)):
-                return False, "图片来源只支持 file:// / http(s):// / base64:// / 本地绝对路径", [], []
+            item = _normalize_image(img)
+            if not item:
+                return (False,
+                        "图片来源只支持 file:// / http(s):// / base64:// / 本地绝对路径"
+                        "（相对路径不受支持，请填绝对路径或 file:// 链接）", [], [])
+            normalized.append(item)
+        imgs = normalized
         targets: List[int] = []
         for raw in (target_uins or []):
             try:

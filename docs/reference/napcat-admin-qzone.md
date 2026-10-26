@@ -40,6 +40,8 @@ cookie `p_uin=o{uin}; p_skey={pskey}; skey={skey}; uin=o{uin}`。
 表单关键字段：`uin/skey/p_skey/p_uin/uploadtype=1/albumtype=7/refer=shuoshuo/output_type=jsonhtml/base64=1/picfile=<base64>/hd_width=2048/hd_height=10000/hd_quality=96`。
 响应是 `frameElement.callback({...});</script>` 包裹的 JSON；richval = `",{albumid},{lloc},{lloc},{type},{h},{w},,{h},{w}"`，多图用 `\t` 连接。
 
+**Flowerie 侧**：图片参数接受本地绝对路径（`/sdcard/a.jpg`、`~/a.jpg`），会归一化成 `file://` URI 再交给 NapCat（其上传器只认 URI）；相对路径直接拒绝。
+
 **发说说**：POST `https://user.qzone.qq.com/proxy/domain/taotao.qzone.qq.com/cgi-bin/emotion_cgi_publish_v6?g_tk=...`
 字段：`syn_tweet_verson=1/paramstr=1/con=<正文>/feedversion=1/ver=1/ugc_right/to_sign=0/hostuin/code_version=1/format=json/qzreferrer`；
 带图加 `richtype=1 + richval`；16/128 加 `allow_uins=uin1|uin2 + who=1`。

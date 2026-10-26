@@ -10,8 +10,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.adapters.onebot.adapter import OneBotAdapter  # noqa: E402
 from src.services.group_admin import GroupAdminService  # noqa: E402
 from src.services.qzone import UGC_RIGHTS, QzoneService  # noqa: E402
+from src.services.sender import Sender  # noqa: E402
 from src.services.webui_render.admin import render_admin_tab  # noqa: E402
 from src.services.webui_render.qzone import render_qzone_tab  # noqa: E402
+from src.utils.file_source import to_uri_source  # noqa: E402
 
 
 class _Cfg:
@@ -172,8 +174,61 @@ def test_qzone_validate_rules(tmp_path):
     assert svc.validate("hi", ["ftp://x"], 1)[0] is False               # 非法来源
     assert svc.validate("hi", ["file://%s" % "/tmp/a.jpg"], 1)[0] is True
     assert svc.validate("hi", ["https://e.com/a.png"], 1)[0] is True
+    assert svc.validate("hi", ["a.jpg"], 1)[0] is False                 # 相对路径不受支持
     ok, err, imgs, targets = svc.validate("hi", [], 1, [3, 4])
     assert ok and targets == []                                          # 非 16/128 清空对象
+
+
+def test_qzone_bare_absolute_path_is_normalized(tmp_path):
+    """同类 bug：裸绝对路径必须归一成 file:// 再交给 NapCat（否则上传器当非法来源）。"""
+    svc = _qzone(tmp_path)
+    ok, err, imgs, _ = svc.validate("hi", ["/tmp/a.jpg", "~/b.png"], 1)
+    assert ok, err
+    assert imgs == ["file:///tmp/a.jpg", "file://" + os.path.expanduser("~/b.png")]
+    # 已带 scheme 的原样保留
+    ok, err, imgs, _ = svc.validate("hi", ["file:///tmp/c.jpg", "base64://QUJD",
+                                           "https://e.com/d.png"], 1)
+    assert ok and imgs == ["file:///tmp/c.jpg", "base64://QUJD", "https://e.com/d.png"]
+
+
+@pytest.mark.asyncio
+async def test_qzone_publishes_normalized_path(tmp_path):
+    """发布链路把归一化后的 file:// 传给适配器（不是裸路径）。"""
+    ad = _FakeAdapter()
+    svc = _qzone(tmp_path, ad)
+    result = await svc.publish("hi", ["/tmp/a.jpg"], 1, [])
+    assert result["ok"] is True
+    assert ad.calls[0][2] == ["file:///tmp/a.jpg"], ad.calls[0]
+
+
+def test_file_source_helper_semantics():
+    """utils.file_source：scheme 透传 / 绝对路径补 file:// / strict 拒相对路径。"""
+    assert to_uri_source("") == ""
+    assert to_uri_source("https://e.com/a.png") == "https://e.com/a.png"
+    assert to_uri_source("file:///tmp/a.jpg") == "file:///tmp/a.jpg"
+    assert to_uri_source("base64://QUJD") == "base64://QUJD"
+    assert to_uri_source("/tmp/a.jpg") == "file:///tmp/a.jpg"
+    assert to_uri_source("~/a.jpg") == "file://" + os.path.expanduser("~/a.jpg")
+    assert to_uri_source("a.jpg", strict=True) == ""
+    assert to_uri_source("a.jpg", strict=False) == "a.jpg"      # base64 裸串等调用方语义
+
+
+@pytest.mark.asyncio
+async def test_portrait_normalizes_local_path():
+    """同类 bug：改群头像的本地路径也要归一成 file://（base64 裸串保持原样）。"""
+    sender = Sender.__new__(Sender)
+    captured = {}
+
+    async def fake_post(endpoint, payload, timeout=10.0):
+        captured["endpoint"] = endpoint
+        captured["payload"] = payload
+        return {"ok": True}
+
+    sender._post = fake_post  # type: ignore[assignment]
+    await sender.set_group_portrait(10001, "/tmp/portrait.png")
+    assert captured["payload"]["file"] == "file:///tmp/portrait.png"
+    await sender.set_group_portrait(10001, "iVBORw0KGgo=")
+    assert captured["payload"]["file"] == "iVBORw0KGgo="
 
 
 @pytest.mark.asyncio

@@ -4,6 +4,7 @@ import aiohttp
 
 from src.config import Settings
 from src.transport.action_channels import make_action_channel
+from src.utils.file_source import to_uri_source
 from src.utils.logging_setup import get_logger
 from src.utils.metrics import registry
 
@@ -378,9 +379,15 @@ class Sender:
                                 {"group_id": int(group_id), "notice_id": str(notice_id)})
 
     async def set_group_portrait(self, group_id: int, file: str) -> dict:
-        """修改群头像（file 为本地路径/base64；拉格朗日/NapCat 扩展）。"""
+        """修改群头像（file 为本地路径/URI/base64；拉格朗日/NapCat 扩展）。
+
+        同类 bug 修复（v2.10.1）：本地绝对路径归一成 file:// URI 再发——
+        协议端上传器只认 URI，裸路径会被当非法来源（与 QQ空间图片同根因）。
+        base64 裸串等其它形态原样透传（strict=False），不改变既有调用语义。
+        """
+        source = to_uri_source(file, strict=False)
         return await self._post("/set_group_portrait",
-                                {"group_id": int(group_id), "file": str(file)})
+                                {"group_id": int(group_id), "file": source})
 
     async def create_group_file_folder(self, group_id: int, name: str) -> dict:
         """创建群文件文件夹。"""

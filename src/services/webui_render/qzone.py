@@ -1,7 +1,7 @@
 """webui_render QQ空间页（发说说 / 查看历史 / 删除），零 JavaScript。
 
 权限枚举与 QzoneService.UGC_RIGHTS 同源；历史来自本地 data/qzone_history.json。
-图片输入支持 file:// / http(s):// / base64:// / 本地绝对路径，每行一个。
+图片输入支持 本地绝对路径（自动转 file://）/ file:// / http(s):// / base64://，每行一个。
 """
 import time
 
@@ -63,7 +63,8 @@ def render_qzone_tab(enabled: bool = True, rights=None, default_right: int = 1,
         '<span class="row-key">images</span></label>'
         '<div class="row-control"><textarea name="images" rows="3" '
         'placeholder="file:///sdcard/a.jpg&#10;https://example.com/b.png&#10;base64://..."></textarea>'
-        '<span class="hint">支持 file:// 本地路径 / http(s):// 链接 / base64:// 数据；最多 9 张</span>'
+        '<span class="hint">支持 本地绝对路径（自动转 file://）/ file:// / http(s):// / base64://；'
+        '最多 9 张</span>'
         '</div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">查看权限</span>'
         '<span class="row-key">ugc_right</span></label>'
