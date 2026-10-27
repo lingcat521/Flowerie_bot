@@ -29,8 +29,14 @@ box-shadow:var(--shadow);padding:16px 18px 18px;margin-bottom:18px}
 /* 液态玻璃：只给卡片加磨砂，绝不能让 .group 变成 flex ——
    曾经因选择器断行，.pglass .group 被并进 .breadcrumb 的规则拿到 display:flex，
    开启卡片效果后 fieldset 变行布局、里面输入框被挤成 1px 竖线 */
-.pglass .group,.pglass .mcp-card,.pglass .plugin-card,.pglass .topbar{
+.pglass .group,.pglass .mcp-card,.pglass .plugin-card{
   -webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2)}
+/* 顶栏的磨砂移到伪元素上：backdrop-filter 会创建 fixed 的包含块，
+   直接挂在 .topbar 上会让窄屏抽屉（.tabs position:fixed）被限制在顶栏高度里 */
+.pglass .topbar{position:relative}
+.pglass .topbar::before{content:"";position:absolute;inset:0;border-radius:inherit;z-index:-1;
+  pointer-events:none;-webkit-backdrop-filter:blur(14px) saturate(1.2);
+  backdrop-filter:blur(14px) saturate(1.2)}
 .crumb-here{color:var(--text)}
 .plugin-page{margin-top:12px}
 .plugin-grid{display:grid;grid-template-columns:repeat(var(--cols,2),1fr);gap:12px}
@@ -236,3 +242,34 @@ padding:7px 11px;font-size:13px;color:var(--text);word-break:break-word}
   .mcp-card{padding:12px 13px}
   .stat-value{font-size:18px}
 }
+
+/* ================= 抽屉导航（纯 CSS，零 JS） ================= */
+.nav-toggle{position:absolute;opacity:0;pointer-events:none}
+.nav-btn{display:none;align-items:center;justify-content:center;width:38px;height:38px;
+border-radius:10px;border:1px solid var(--panel-border);cursor:pointer;user-select:none;
+font-size:19px;line-height:1;color:var(--heading);background:var(--accent-soft)}
+.nav-btn:hover{background:var(--accent);color:#fff}
+.nav-overlay{display:none}
+/* 窄屏：导航收成左侧抽屉，点 ☰ 滑出；点遮罩或跳转任意页签即关闭 */
+@media (max-width:760px){
+  .topbar{flex-wrap:nowrap;gap:10px}
+  .nav-btn{display:inline-flex}
+  .tabs{position:fixed;top:0;left:0;bottom:0;width:min(78vw,300px);z-index:60;
+    flex-direction:column;flex-wrap:nowrap;gap:4px;padding:18px 14px 24px;
+    background:rgb(var(--panel-rgb));border-right:1px solid var(--panel-border);
+    box-shadow:0 0 40px rgba(0,0,0,.35);overflow-y:auto;
+    transform:translateX(-105%);transition:transform .22s ease}
+  .tabs .tab{border-radius:10px;padding:11px 14px;font-size:14px}
+  .wrap:has(#nav-toggle:checked) .tabs{transform:translateX(0)}
+  .wrap:has(#nav-toggle:checked) .nav-overlay{display:block;position:fixed;inset:0;
+    z-index:50;background:rgba(0,0,0,.45)}
+}
+/* 旧浏览器不支持 :has()：不隐藏导航，退化成可换行胶囊（绝不出现“点不开”） */
+@supports not selector(:has(*)){
+  .nav-btn{display:none}
+  .tabs{position:static;transform:none;flex-wrap:wrap;
+    background:transparent;border:0;box-shadow:none;padding:0;width:auto;overflow:visible}
+  .nav-overlay{display:none!important}
+}
+/* 宽屏把抽屉相关元素彻底隐藏，保持一行胶囊 */
+@media (min-width:761px){.nav-toggle,.nav-btn,.nav-overlay{display:none}}

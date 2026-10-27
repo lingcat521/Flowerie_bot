@@ -11,10 +11,16 @@
 <body class="{{body_class}}"{{inline_style}}>
 <div class="bg-layer" aria-hidden="true"></div>
 <div class="wrap">
+<!-- 抽屉导航（纯 CSS，零 JS）：窄屏 ☰ 滑出；宽屏保持一行胶囊。
+     checkbox 放在 .wrap 下、导航在 .topbar 里，靠 :has() 跨层联动
+     （旧浏览器不支持 :has 时自动退化为可换行的胶囊，不会丢导航）。 -->
+<input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
 <header class="topbar">
+<label class="nav-btn" for="nav-toggle" aria-label="打开导航">☰</label>
 <div class="brand">花璃<small>· 管理后台</small></div>
-<nav class="tabs">{{tabs}}<a class="tab danger" href="/panel/logout">退出</a></nav>
+<nav class="tabs" id="nav">{{tabs}}<a class="tab danger" href="/panel/logout">退出</a></nav>
 </header>
+<label class="nav-overlay" for="nav-toggle" aria-label="关闭导航"></label>
 <h1 class="page-title">{{page_title}}</h1>
 {{msg_html}}
 {{body_html}}

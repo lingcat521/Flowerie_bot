@@ -176,3 +176,38 @@ def test_panel_asset_body_rejects_traversal_names():
     assert panel_asset_body("panel.css") is not None
     for bad in ("../secret.css", "a/b.css", "..", "", None, "x.txt", "panel.css/../x"):
         assert panel_asset_body(bad) is None, bad
+
+
+# ---------- 导航抽屉（v2.13.0：纯 CSS，零 JS） ----------
+def test_panel_has_css_only_drawer_nav():
+    """窄屏 ☰ 抽屉：checkbox + label 实现，不能引入任何脚本。"""
+    html = render_panel_page(theme_class="theme-default", bg_rules="", msg_html="",
+                             body_html="<div>body</div>", active_tab="config")
+    assert 'id="nav-toggle"' in html
+    assert 'class="nav-btn"' in html and 'for="nav-toggle"' in html
+    assert 'class="nav-overlay"' in html
+    assert '<nav class="tabs" id="nav">' in html
+    assert "<script" not in html.lower()
+    assert "onclick=" not in html.lower()
+
+
+def test_drawer_css_rules_present():
+    for rule in (
+        "@media (max-width:760px)",
+        ".wrap:has(#nav-toggle:checked) .tabs{transform:translateX(0)}",
+        ".wrap:has(#nav-toggle:checked) .nav-overlay{",
+        "@media (min-width:761px){.nav-toggle,.nav-btn,.nav-overlay{display:none}}",
+        "position:fixed;top:0;left:0;bottom:0;width:min(78vw,300px)",
+    ):
+        assert rule in PANEL_CSS, rule
+    # 旧浏览器兜底：不支持 :has() 时不隐藏导航（退化为可换行胶囊）
+    assert "@supports not selector(:has(*))" in PANEL_CSS
+
+
+def test_drawer_nav_lists_all_tabs():
+    html = render_panel_page(theme_class="", bg_rules="", msg_html="",
+                             body_html="", active_tab="qzone")
+    for label in ("配置", "人格", "群聊知识", "群友画像", "群管理", "QQ空间",
+                  "群昵称", "插件", "外观", "日志", "用户状态", "退出"):
+        assert label in html, label
+    assert 'class="tab active" href="/panel?tab=qzone"' in html
