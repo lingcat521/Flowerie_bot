@@ -420,6 +420,7 @@ AI_QZONE_AUTO_ENABLED=false          # 定时自己发动态（后台任务，�
 AI_QZONE_AUTO_INTERVAL_HOURS=24
 AI_ADMIN_ENABLED=false               # 允许 AI 自主禁言/解禁（仍需群主/管理员指使）
 AI_MEMORY_ENABLED=false              # 允许 AI 主动读取当前用户的群记忆
+AI_TOOL_PROMPT=true                 # 给模型注入「工具怎么用」（关=只靠工具 schema）
 QZONE_IMAGE_DIR=./data/qzone_images  # 配图池：把图丢这里，AI 会识图后自己挑
 QZONE_IMAGE_INDEX_PATH=./data/qzone_image_index.json  # 识图描述缓存
 QZONE_IMAGE_MAX=50                   # 图片池上限

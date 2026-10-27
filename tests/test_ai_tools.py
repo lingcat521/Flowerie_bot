@@ -348,3 +348,97 @@ def test_attach_auto_poster_registers_task():
     poster = attach_auto_poster(router)
     assert router.task_manager.names == ["qzone_auto"]
     assert router._qzone_poster is poster
+
+
+# ---------- 工具使用说明（v2.12.3） ----------
+def test_build_tool_prompt_sections(tmp_path):
+    from src.services.ai_tools import build_tool_prompt
+
+    reg, *_ = _registry(tmp_path)
+    text = build_tool_prompt(reg)
+    assert "可用工具" in text and "group_status" in text
+    assert "qzone_list_images" in text and "memory_recall" in text
+    assert "ok=false" in text
+
+
+def test_build_tool_prompt_empty_when_disabled(tmp_path):
+    from src.services.ai_tools import build_tool_prompt
+
+    class Off(_Cfg):
+        AI_QZONE_ENABLED = False
+        AI_ADMIN_ENABLED = False
+        AI_MEMORY_ENABLED = False
+
+    reg, *_ = _registry(tmp_path, cfg=Off())
+    assert build_tool_prompt(reg) == ""
+    assert build_tool_prompt(None) == ""
+
+
+@pytest.mark.asyncio
+async def test_gateway_injects_tool_prompt(tmp_path):
+    """网关把工具说明拼进 custom_prompt（低优先级补充），并带上内置工具 schema。"""
+    from src.core.ai_gateway import AiGateway
+
+    class Cfg(_Cfg):
+        MULTI_REPLY_ENABLED = False
+        AI_MAX_RETRIES = 0
+        MCP_MAX_TOOL_CALLS = 5
+        BUDGET_EXHAUSTED_NOTICE = False
+        AI_TOOL_PROMPT = True
+
+    class AI:
+        _retryable = True
+        _api_backoff = 0.0
+
+        def __init__(self):
+            self.seen = None
+
+        async def chat_once(self, **kwargs):
+            self.seen = kwargs
+            return "好", None
+
+    class Budget:
+        def check(self, *a, **k):
+            return True, "ok"
+
+    reg, *_ = _registry(tmp_path, cfg=Cfg())
+    ai = AI()
+    gw = AiGateway(Cfg(), ai, Budget(), persona_manager=lambda: None, ai_tools=lambda: reg)
+    reply, _mem, denied = await gw.guarded_chat(200, 7, user_message="hi", context="")
+    assert reply == "好" and denied is False
+    assert "可用工具" in (ai.seen.get("custom_prompt") or "")
+    names = [t["function"]["name"] for t in ai.seen.get("tools", [])]
+    assert "group_mute" in names and "qzone_post" in names
+
+
+@pytest.mark.asyncio
+async def test_gateway_skips_tool_prompt_when_disabled(tmp_path):
+    from src.core.ai_gateway import AiGateway
+
+    class Cfg(_Cfg):
+        MULTI_REPLY_ENABLED = False
+        AI_MAX_RETRIES = 0
+        MCP_MAX_TOOL_CALLS = 5
+        BUDGET_EXHAUSTED_NOTICE = False
+        AI_TOOL_PROMPT = False
+
+    class AI:
+        _retryable = True
+        _api_backoff = 0.0
+
+        def __init__(self):
+            self.seen = None
+
+        async def chat_once(self, **kwargs):
+            self.seen = kwargs
+            return "好", None
+
+    class Budget:
+        def check(self, *a, **k):
+            return True, "ok"
+
+    reg, *_ = _registry(tmp_path, cfg=Cfg())
+    ai = AI()
+    gw = AiGateway(Cfg(), ai, Budget(), persona_manager=lambda: None, ai_tools=lambda: reg)
+    await gw.guarded_chat(200, 7, user_message="hi", context="")
+    assert "可用工具" not in (ai.seen.get("custom_prompt") or "")

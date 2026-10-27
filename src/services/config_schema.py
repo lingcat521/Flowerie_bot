@@ -163,6 +163,8 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "AI_ADMIN_ENABLED": ("Admin", "bool", False, True,
                          "AI 可自主禁言/解禁（仍要求发起人是群主/管理员，且 Bot 有管理权限）"),
     "AI_MEMORY_ENABLED": ("AI", "bool", False, True, "AI 可主动读取当前用户的群记忆（memory_recall）"),
+    "AI_TOOL_PROMPT": ("AI", "bool", False, True,
+                       "给模型注入工具使用说明（群管/空间/记忆的调用时机与红线；关=只靠工具 schema）"),
     "QZONE_IMAGE_DIR": ("Qzone", "str", False, False, "配图池目录（AI 从这里挑图；需重启）"),
     "QZONE_IMAGE_INDEX_PATH": ("Qzone", "str", False, False, "识图描述缓存路径（需重启）"),
     "QZONE_IMAGE_MAX": ("Qzone", "int", False, True, "图片池上限（按修改时间取最新 N 张）"),

@@ -129,6 +129,7 @@ class Settings(BaseSettings):
     AI_QZONE_AUTO_INTERVAL_HOURS: int = 24 # 自主发动态间隔（小时）
     AI_ADMIN_ENABLED: bool = False         # AI 可自主禁言/解禁（仍要求发起人是群主/管理员）
     AI_MEMORY_ENABLED: bool = False        # AI 可主动读取当前用户的群记忆
+    AI_TOOL_PROMPT: bool = True            # 给模型注入「工具怎么用」说明（关=只靠工具 schema）
     QZONE_IMAGE_DIR: str = "./data/qzone_images"          # 配图池目录（AI 从这里挑图）
     QZONE_IMAGE_INDEX_PATH: str = "./data/qzone_image_index.json"  # 识图描述缓存
     QZONE_IMAGE_MAX: int = 50              # 图片池上限（按修改时间取最新的 N 张）

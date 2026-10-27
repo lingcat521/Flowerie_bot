@@ -319,3 +319,27 @@ class AiToolRegistry:
             return {"ok": False, "error": "不在群聊上下文里"}
         notes = self.memory.get_user_notes(uid, gid) or []
         return {"ok": True, "notes": [str(n)[:120] for n in notes[-10:]]}
+
+
+def build_tool_prompt(registry) -> str:
+    """给模型的工具使用说明（只在工具启用时注入，作为低优先级补充）。"""
+    if registry is None or not registry.enabled():
+        return ""
+    lines = ["【可用工具（需要时再调用，能直接聊天就先聊天）】"]
+    if registry.admin_enabled():
+        lines += [
+            "- 群管理：动手前先用 group_status 看花璃有没有管理权限；只有群主/管理员让你做才做；",
+            "  禁言用分钟为单位、想清楚对象与时长；不要对自己、对管理员/群主动手；",
+            "  平台拒绝时把原因如实说出来，不要假装成功。",
+        ]
+    if registry.qzone_enabled():
+        lines += [
+            "- QQ空间：发说说前先 qzone_list_images 看每张图的描述，按内容挑 0~2 张；",
+            "  正文用第一人称、像日常分享，不要提 AI/模型；没有合适的图就不配图。",
+        ]
+    if registry.memory_enabled():
+        lines += ["- 记忆：想主动回忆对方说过什么时用 memory_recall，不要凭空编造记忆。"]
+    lines += [
+        "- 工具结果是 JSON：ok=false 表示没成功，用自然语言说明原因；不要连续重复调用同一个工具。",
+    ]
+    return "\n".join(lines)

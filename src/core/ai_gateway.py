@@ -220,6 +220,16 @@ class AiGateway:
         # 这里只捕获模型给的 messages[]，绝不发送消息（发送仍走 ReplyPlan → ReplySender）。
         reply_capture = ReplyToolCapture() if getattr(self.config, "MULTI_REPLY_ENABLED", False) else None
         reply_tools_off = False  # provider 拒绝 tools 时降级为纯文本（Phase 9）
+        # 工具使用说明（v2.12.3）：只注入给「已启用内置工具」的会话，作为低优先级补充
+        _tool_block = ""
+        if getattr(self.config, "AI_TOOL_PROMPT", True):
+            _reg0 = self.ai_tools
+            if _reg0 is not None and _reg0.enabled():
+                try:
+                    from src.services.ai_tools import build_tool_prompt
+                    _tool_block = build_tool_prompt(_reg0)
+                except Exception as e:  # noqa: BLE001 —— 提示词失败不能阻断对话
+                    logger.debug("tool_prompt_failed err=%s", e)
         for attempt in range(attempts):
             # 用户聊天限速只在首次尝试检查（重试是同一逻辑调用的延续，
             # 若每次都查，会被自己刚更新的 user_ai_last_call 拦掉）
@@ -229,7 +239,12 @@ class AiGateway:
                 return None, None, True
             _M_AI_ATTEMPTS.inc()  # 实际 HTTP attempt 计数
             if self.prompt_manager is not None and group_id:
-                kwargs = {**kwargs, "custom_prompt": self.prompt_manager.get_effective_prompt(group_id)}
+                _cp = self.prompt_manager.get_effective_prompt(group_id) or ""
+                if _tool_block:
+                    _cp = (_cp + "\n" + _tool_block) if _cp else _tool_block
+                kwargs = {**kwargs, "custom_prompt": _cp}
+            elif _tool_block and not kwargs.get("custom_prompt"):
+                kwargs = {**kwargs, "custom_prompt": _tool_block}
             # 花语记忆检索（群隔离；ON 且可用时注入语义记忆，失败降级为空串）
             _gid = kwargs.get("group_id")
             if _gid is None:
