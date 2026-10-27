@@ -408,5 +408,46 @@ QZONE_MAX_HISTORY=100                # 历史最大条数（超出淘汰最旧�
 - 角色查询有 `ADMIN_ROLE_CACHE_SECONDS`（默认 60s）缓存，不会每次刷平台接口
 - 这条链路不经过 LLM：指令由 `CommandHandler` 直接处理，无注入面
 
+## AI 自主工具层（v2.12.0，默认全关）
+
+让模型像真人一样自己动手：模型在一轮对话里可以调用内置工具（与 MCP 工具同一形状），
+每个工具都有开关 + 权限护栏 + 配额，默认全部关闭。
+
+```ini
+AI_QZONE_ENABLED=false               # 允许 AI 自己发/删 QQ空间说说
+AI_QZONE_MAX_PER_DAY=1               # 每天最多发几条（0=不限）
+AI_QZONE_AUTO_ENABLED=false          # 定时自己发动态（后台任务，间隔见下）
+AI_QZONE_AUTO_INTERVAL_HOURS=24
+AI_ADMIN_ENABLED=false               # 允许 AI 自主禁言/解禁（仍需群主/管理员指使）
+AI_MEMORY_ENABLED=false              # 允许 AI 主动读取当前用户的群记忆
+QZONE_IMAGE_DIR=./data/qzone_images  # 配图池：把图丢这里，AI 会识图后自己挑
+QZONE_IMAGE_INDEX_PATH=./data/qzone_image_index.json  # 识图描述缓存
+QZONE_IMAGE_MAX=50                   # 图片池上限
+QZONE_IMAGE_DESCRIBE_LIMIT=12        # 单次列图最多识图几张（省视觉额度）
+```
+
+### 工具清单
+
+| 工具 | 作用 | 护栏 |
+| :--- | :--- | :--- |
+| `qzone_list_images` | 列出配图池 + 每张图的识图描述 | 需 `AI_QZONE_ENABLED`；识图结果按 mtime 缓存 |
+| `qzone_post` | 发说说（正文 + 自选配图 + 权限） | 每日额度、正文 ≤2000 字、图片必须来自配图池 |
+| `qzone_delete` | 按 tid 删说说 | 同上 |
+| `group_status` | 看 Bot 与自己的群权限 | 只读 |
+| `group_mute` / `group_unmute` | 禁言/解禁 | 需 `AI_ADMIN_ENABLED`；**发起人必须是群主/管理员**，Bot 自己也要有管理权限；单次 ≤24h |
+| `memory_recall` | 读当前用户在本群的长期记忆 | 只读、只限当前用户 |
+
+### 自主发动态（像真人一样活着）
+
+`AI_QZONE_AUTO_ENABLED=true` 后，后台任务每 `AI_QZONE_AUTO_INTERVAL_HOURS` 小时：
+
+1. 扫一遍配图池，用视觉模型生成/复用每张图的描述；
+2. 取最近群聊做素材（只作素材，不复述）；
+3. 让模型**自己决定**写什么、配哪几张图，必须输出 JSON `{content, images}`；
+4. 走 `qzone_post` 同一套额度/校验后发布；解析不出 JSON 就**不发**（绝不猜内容）。
+
+> 识图用的是现有 `VISION_*` 配置；没开识图时图片仍可发，但模型看不到图片内容，挑图只能靠文件名。
+> 群管理工具只接受「当前群主/管理员」发起的会话——模型无法凭空对陌生人动手。
+
 > AI 自主调用管理动作目前**未开放**（只有面板/命令/插件 `group_manage` 权限三条路径），需要 LLM 自主禁言时再单独设计工具与风控。
 

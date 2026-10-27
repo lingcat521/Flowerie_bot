@@ -45,7 +45,7 @@ class AiGateway:
     def __init__(self, config, ai_client, budget, prompt_manager=None,
                  tool_manager=None, persona_manager=None, meme_manager=None,
                  blossom_memory=None, nicknames=None, style_rules=None,
-                 profile_manager=None):
+                 profile_manager=None, ai_tools=None):
         """ai_client/tool_manager 等可变依赖以 provider（可调用）传入：
         动态读取宿主（MessageRouter）当前属性，支持测试/运行期热替换。"""
         self.config = config
@@ -63,6 +63,9 @@ class AiGateway:
         # 群友画像（MemberProfileService）：默认 None（main 按开关注入）
         self._profile_manager = profile_manager if callable(profile_manager) or profile_manager is None \
             else (lambda: profile_manager)
+        # AI 内置工具层（AiToolRegistry）：QQ空间/群管理/记忆（默认 None；main 按开关注入）
+        self._ai_tools = ai_tools if callable(ai_tools) or ai_tools is None \
+            else (lambda: ai_tools)
 
         # ---- Circuit Breaker（双层：provider 级全局 + 群级有界）----
         self.provider_breaker = CircuitBreaker(
@@ -91,6 +94,11 @@ class AiGateway:
     @property
     def tool_manager(self):
         return self._tool_manager()
+
+    @property
+    def ai_tools(self):
+        """AI 内置工具层（QQ空间/群管理/记忆）；未注入时为 None。"""
+        return self._ai_tools() if callable(self._ai_tools) else self._ai_tools
 
     @property
     def persona_manager(self):
@@ -258,7 +266,19 @@ class AiGateway:
             if self.tool_manager is not None and self.tool_manager.is_enabled() and mcp_max_calls > 0:
                 mcp_tools = self.tool_manager.build_tools_payload()
                 mcp_caller = self.tool_manager.call_tool
-            tool_payload = list(mcp_tools)
+            # 内置工具层（v2.12.0）：QQ空间 / 群管理 / 记忆——模型可自主调用，
+            # 但每个工具自带开关与权限护栏（管理类要求「群主/管理员在指使」）。
+            builtin_tools: list = []
+            builtin_caller = None
+            _registry = self.ai_tools
+            if _registry is not None and _registry.enabled():
+                try:
+                    _registry.bind_context(_gid or 0, kwargs.get("user_id") or 0)
+                except Exception as e:  # noqa: BLE001 —— 绑定失败不阻断对话
+                    logger.debug("ai_tools_bind_failed err=%s", e)
+                builtin_tools = _registry.schemas()
+                builtin_caller = _registry.call_tool
+            tool_payload = list(mcp_tools) + list(builtin_tools)
             if reply_capture is not None and not reply_tools_off:
                 tool_payload.append(REPLY_TOOL_SCHEMA)
             # 每次 attempt 单独组装：降级后不带 tools，也不污染 kwargs
@@ -268,8 +288,9 @@ class AiGateway:
                     tool_quota = {"max": max(1, mcp_max_calls), "used": 0}
                 attempt_kwargs.update({
                     "tools": tool_payload,
-                    "tool_caller": (make_tool_caller(reply_capture, mcp_caller)
-                                    if reply_capture is not None else mcp_caller),
+                    "tool_caller": (make_tool_caller(reply_capture, mcp_caller, extra=builtin_caller)
+                                    if (reply_capture is not None or builtin_caller is not None)
+                                    else mcp_caller),
                     "max_tool_calls": int(tool_quota["max"]),
                     "tool_quota": tool_quota,
                 })

@@ -86,15 +86,21 @@ class ReplyToolCapture:
         return "已记录本轮回复（%d 条），请勿重复调用。" % len(msgs)
 
 
-def make_tool_caller(capture: ReplyToolCapture, fallback=None):
-    """包装 caller：reply → 捕获；其余工具 → 原样委托（MCP）。
+def make_tool_caller(capture: ReplyToolCapture = None, fallback=None, extra=None):
+    """包装 caller：reply → 捕获；extra（内置工具）→ 优先；其余 → 委托 MCP。
 
-    fallback 为 None 时（未配置 MCP）：未知工具名返回明确错误，绝不静默失败。
+    - capture 为 None：当前回合没有 reply 捕获（例如只有内置/MCP 工具）
+    - extra：内置工具层（AiToolRegistry.call_tool），返回 None 表示「不认识」→ 继续 MCP
+    - fallback 为 None 时：未知工具名返回明确错误，绝不静默失败
     """
 
     async def _call(name: str, args: Any) -> str:
-        if name == REPLY_TOOL_NAME:
+        if name == REPLY_TOOL_NAME and capture is not None:
             return capture.capture(args)
+        if extra is not None:
+            handled = await extra(name, args)
+            if handled is not None:
+                return handled
         if fallback is None:
             return "工具不可用：%s" % name
         return await fallback(name, args)

@@ -117,6 +117,7 @@ class MessageRouter(ReplyDispatchMixin):
             nicknames=lambda: getattr(self, "group_nicknames", None),
             style_rules=lambda: getattr(self, "group_style_rules", None),
             profile_manager=lambda: getattr(self, "profile_service", None),
+            ai_tools=lambda: getattr(self, "ai_tools", None),
         )
         # 群特色昵称：由 main 创建并注入（与 Web UI 共享同一实例；gateway provider 动态读）
         # 花语记忆（可写 provider：测试可热替换）
@@ -124,9 +125,7 @@ class MessageRouter(ReplyDispatchMixin):
         # 兼容属性：熔断器/群级熔断容器由 AiGateway 持有（旧调用路径）
         self.provider_breaker = self.ai_gateway.provider_breaker
         self.group_breakers = self.ai_gateway.group_breakers
-        # 并发上限：同时处理的消息数（WS 层用它限制 AI/识图并发，防止突发消息打爆 API）
-        # 惰性创建：Python 3.9 的 asyncio.Semaphore 构造时即绑定事件循环，
-        # 延迟到 async 上下文中首次使用（保证有 running loop）更健壮。
+        # 并发上限（WS 层限制 AI/识图并发）；惰性创建：Py3.9 Semaphore 构造即绑事件循环
         self._process_semaphore: Optional[asyncio.Semaphore] = None
 
     @property
@@ -139,6 +138,9 @@ class MessageRouter(ReplyDispatchMixin):
         """启动主动聊天循环（若配置允许）与上下文备份循环（经 TaskManager 注册）"""
         if not self.config.ONLY_REPLY_WHEN_AT and getattr(self.config, "PROACTIVE_CHAT_ENABLED", True):
             self.task_manager.register("active_chat", self._active_chat_loop())
+        if getattr(self.config, "AI_QZONE_AUTO_ENABLED", False):   # 自主发动态（service 层）
+            from src.services.qzone_auto import attach_auto_poster
+            attach_auto_poster(self)
             logger.info("Active chat loop started")
         # 周期备份上下文（意外去世后重启可恢复最近 50 条）
         self.task_manager.register("context_backup", self._context_backup_loop())
@@ -333,8 +335,7 @@ class MessageRouter(ReplyDispatchMixin):
 
         # ---------- 强制记忆（静默，先于回复决策） ----------
         # 用户明确表达个人偏好/特征但未被@：只记记忆、不回复、不烧 AI 调用。
-        # 修复：此前静默记忆被"接话概率"随机闸门挡住，经常漏记；
-        # 现在只要命中个人偏好句式就确定记录（记忆禁用群除外，降级为普通消息继续走回复流程）。
+        # 命中个人偏好句式即确定记录（记忆禁用群除外，降级为普通消息继续走回复流程）
         force_memory = self.policy_engine.should_force_memory(clean_text, full_text, has_at_others)
         silent_memory_only = force_memory and not is_mentioned and not is_reply_to_bot
         if silent_memory_only and not self._memory_disabled(group_id):
@@ -569,7 +570,7 @@ class MessageRouter(ReplyDispatchMixin):
     async def _active_chat_loop(self):
         logger.info("Active chat loop started")
         while True:
-            # 轮询间隔（原硬编码 random.randint(5,10)，现走配置，默认值不变）
+            # 轮询间隔（配置化，默认值与旧硬编码一致）
             interval_min = max(1, int(getattr(self.config, "ACTIVE_CHAT_INTERVAL_MIN_SECONDS", 5) or 5))
             interval_max = max(interval_min, int(getattr(self.config, "ACTIVE_CHAT_INTERVAL_MAX_SECONDS", 10) or 10))
             await asyncio.sleep(random.randint(interval_min, interval_max))
@@ -595,8 +596,7 @@ class MessageRouter(ReplyDispatchMixin):
             await self._do_active_chat(target_group)
 
     async def _do_active_chat(self, group_id: int):
-        # 主动聊天也吃并发额度（与 WS 消息处理共用 process_semaphore），
-        # 防止主动聊天与突发群消息叠加打爆 API
+        # 主动聊天也吃并发额度，防止与突发群消息叠加打爆 API
         async with self.process_semaphore:
             await self._do_active_chat_inner(group_id)
 
@@ -605,8 +605,7 @@ class MessageRouter(ReplyDispatchMixin):
         if not context_text:
             logger.debug(f"No context for group {group_id}, skip active")
             return
-        # 主动聊天提示词只保留通用框架；人格名/人格发言规则由人格系统动态注入
-        # （原先硬编码「花璃」已移除，切换人格后主动聊天同样跟随当前 Persona）
+        # 主动聊天提示词只留通用框架；人格名/规则由人格系统注入（跟随当前 Persona）
         persona_name = self.persona_manager.resolve_persona_name(group_id) if self.persona_manager else "花璃"
         for _attempt in range(3):
             prompt = (
@@ -619,7 +618,7 @@ class MessageRouter(ReplyDispatchMixin):
                 "不要刻意活跃气氛。\n"
                 "一句话即可，尽量短，自然。"
             )
-            # 主动聊天同样过预算闸门（user_id=0 表示机器人主动发起；受群级/全局预算约束）
+            # 主动聊天同样过预算闸门（user_id=0=机器人主动发起）
             reply, _active_mem, denied = await self.guarded_chat(
                 group_id,
                 0,

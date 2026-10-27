@@ -4,6 +4,27 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.12.0] - 2026-10-27
+
+### 新功能
+
+- **AI 自主工具层**（src/services/ai_tools.py）：模型在一轮对话里可自己调用内置工具，与 MCP 工具同一形状；每个工具都有开关 + 权限护栏 + 配额：
+  - qzone_list_images：配图池 + 视觉模型生成的图片描述（按 mtime 缓存，省识图额度）
+  - qzone_post / qzone_delete：AI 自己决定发什么、配哪几张图（图片必须来自配图池；每日额度、正文 ≤2000 字）
+  - group_status / group_mute / group_unmute：发起人必须是群主/管理员，且 Bot 自己要有管理权限；单次 ≤24h
+  - memory_recall：主动回忆当前用户在本群的长期记忆
+- **AI 定时自主发动态**（src/services/qzone_auto.py）：按 AI_QZONE_AUTO_INTERVAL_HOURS 让模型自己写说说 + 挑图；必须输出 JSON，解析失败就不发，异常不打断主循环
+- 新配置：AI_QZONE_ENABLED / AI_QZONE_MAX_PER_DAY / AI_QZONE_AUTO_ENABLED / AI_QZONE_AUTO_INTERVAL_HOURS / AI_ADMIN_ENABLED / AI_MEMORY_ENABLED / QZONE_IMAGE_DIR / QZONE_IMAGE_INDEX_PATH / QZONE_IMAGE_MAX / QZONE_IMAGE_DESCRIBE_LIMIT（全部默认关或安全默认）
+
+### 架构
+
+- make_tool_caller 增加 extra 层：内置工具 → MCP → 明确错误；网关按需拼装 tools
+- 自主发动态逻辑放 service 层（qzone_auto.py），message_router.py 保持 ≤650 行门禁
+
+### 测试
+
+- +19 单元测试（tests/test_ai_tools.py）：开关/schema、识图缓存、路径穿越、发说说额度、群管护栏、工具链顺序、自主发动态 JSON 解析
+
 ## [2.11.0] - 2026-10-27
 
 ### 新功能

@@ -233,6 +233,12 @@ async def main():
         qzone_service = QzoneService(admin_adapter, config)
         # 群内管理指令（/admin /mute /unmute）：Bot 自检权限 + 调用群管能力
         message_router.commands.admin_service = admin_service
+        # AI 内置工具层（v2.12.0）：QQ空间（识图选图）/ 群管理 / 记忆——模型自主调用，
+        # 每个工具自带开关与权限护栏；默认全关，需显式开 AI_* 配置。
+        from src.services.ai_tools import AiToolRegistry
+        message_router.ai_tools = AiToolRegistry(
+            config, qzone_service=qzone_service, admin_service=admin_service,
+            memory_manager=memory_manager, vision=getattr(ai_client, "vision", None))
         if config.WEB_UI_ENABLED:
             def _status_provider():
                 return {

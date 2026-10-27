@@ -122,6 +122,17 @@ class Settings(BaseSettings):
     ADMIN_CONSOLE_ENABLED: bool = True     # 群管理控制台开关（关=面板提示不可用；SDK 直接调用不受限）
     ADMIN_COMMANDS_ENABLED: bool = True    # 群内管理指令开关（/mute /unmute /admin；关=指令不响应）
     ADMIN_ROLE_CACHE_SECONDS: int = 60     # Bot/成员角色查询缓存秒数（0=不缓存，每次都问平台）
+    # AI 内置工具层（v2.12.0：模型自主调用；全部默认关，按需开启）
+    AI_QZONE_ENABLED: bool = False         # AI 可自主发表/删除 QQ空间说说
+    AI_QZONE_MAX_PER_DAY: int = 1          # AI 每天最多发几条说说（0=不限）
+    AI_QZONE_AUTO_ENABLED: bool = False    # AI 定时自己发说说（像真人一样偶尔发动态）
+    AI_QZONE_AUTO_INTERVAL_HOURS: int = 24 # 自主发动态间隔（小时）
+    AI_ADMIN_ENABLED: bool = False         # AI 可自主禁言/解禁（仍要求发起人是群主/管理员）
+    AI_MEMORY_ENABLED: bool = False        # AI 可主动读取当前用户的群记忆
+    QZONE_IMAGE_DIR: str = "./data/qzone_images"          # 配图池目录（AI 从这里挑图）
+    QZONE_IMAGE_INDEX_PATH: str = "./data/qzone_image_index.json"  # 识图描述缓存
+    QZONE_IMAGE_MAX: int = 50              # 图片池上限（按修改时间取最新的 N 张）
+    QZONE_IMAGE_DESCRIBE_LIMIT: int = 12   # 单次列图时最多识图几张（防一次调用打爆视觉额度）
     # QQ空间（v2.10：Web UI「QQ空间」页 + SDK qzone_* 能力，底层 NapCat send/delete_qzone_msg）
     QZONE_ENABLED: bool = True             # QQ空间功能开关（关=面板提示不可用）
     QZONE_DEFAULT_UGC_RIGHT: int = 1       # 默认查看权限（1 所有人 / 4 好友 / 16 部分好友 / 64 仅自己 / 128 部分好友不可见）

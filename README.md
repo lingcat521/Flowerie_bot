@@ -22,7 +22,7 @@
 ---
 ## 这是什么
 
-**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.11.0**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.12.0**）。
 
 - **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/reference/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
@@ -40,6 +40,7 @@
 | 💬 AI 对话 | DeepSeek 或任意 OpenAI 兼容厂商驱动，小恶魔系人设，@ 或群聊接话；**也支持本机自建模型**（Ollama / vLLM / llama.cpp / LM Studio，回环地址免填 Key、免发鉴权头） |
 | 🌙 每日摘要 | 长期挂机不重启：每天凌晨把当天群聊压缩成滚动摘要（嵌套合并、既定背景、收敛检查），跨周/跨月连续记忆；`DIGEST_ENABLED` 默认关，摘要可导出 txt；`DIGEST_SOURCE` 可选隐私存档 txt 作数据源 |
 | 🧑‍🤝‍🧑 群友画像 | 性格/喜好/个人生活/特点的长期记忆：每日摘要后自动提炼（merge 语义更新、字段级 TTL 淘汰），群聊时注入本群活跃成员画像；`PROFILE_ENABLED` 默认关，Web UI 画像页 + `/profile` 命令可查可改 |
+| 🤖 AI 自主工具层（v2.12.0，默认关） | 模型在对话中可自己调用内置工具：qzone_list_images（配图池 + 识图描述）/ qzone_post（自己决定发什么、配哪张图）/ qzone_delete / group_status / group_mute·group_unmute（发起人必须是群主/管理员）/ memory_recall；还能按 AI_QZONE_AUTO_INTERVAL_HOURS 定时自己发动态（JSON 解析失败就不发）。全部开关默认关 |
 | 🛡️ 群内管理指令（v2.11.0） | 花璃先自检自己的群权限再动手：`/admin` 看双方权限、`/mute QQ号 [10m]` 禁言（s/m/h/d，上限 30 天）、`/unmute QQ号` 解禁；发起人须群主/管理员，权限不足直接说明原因；不经过 LLM |
 | 👑 群管理控制台（v2.10.0） | Web UI「群管理」页 12 个操作：设/取消管理员、禁言/解除、踢人（可拒绝再加群）、改群名片、改群名、专属头衔、全员禁言、禁言列表、退群（群主可解散）；SDK `set_group_admin` 等 10 个 Bot 方法 + 插件 API 同步 |
 | 🌏 QQ空间（v2.10.0） | Web UI「QQ空间」页：发表说说（正文 + 最多 9 图，本地绝对路径（自动转 file://）/ file:// / http(s):// / base64://；权限 1/4/16/64/128）、按 tid 删除、本机发布历史；SDK `qzone_publish` / `qzone_delete`；底层 NapCat 扩展动作 |
