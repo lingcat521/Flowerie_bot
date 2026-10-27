@@ -4,6 +4,13 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.14.1] - 2026-10-28
+
+### 修复
+
+- **Ruff 导入顺序 3 处**（v2.14.0 引入，仅静态检查失败）：`web_ui_assets.py`（plugins/private_chat）、
+  `web_ui.py`（PrivateChatPanelMixin 位置）、`message_router.py`（private_chat 位置）
+
 ## [2.14.0] - 2026-10-28
 
 ### 新功能

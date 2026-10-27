@@ -24,8 +24,8 @@ from src.services.webui_render.pages import (
     render_register_page,
 )
 from src.services.webui_render.persona import render_persona_tab
-from src.services.webui_render.private_chat import render_private_tab
 from src.services.webui_render.plugins import render_plugin_tab
+from src.services.webui_render.private_chat import render_private_tab
 from src.services.webui_render.profiles import render_profile_tab
 from src.services.webui_render.qzone import render_qzone_tab
 from src.services.webui_render.theme import (

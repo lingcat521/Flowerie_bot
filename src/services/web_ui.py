@@ -44,9 +44,9 @@ from src.services.webui_panels import (
     PersonaPanelMixin,
     PluginPanelMixin,
     PluginWebUIStaticMixin,
+    PrivateChatPanelMixin,
     ProfilePanelMixin,
     PromptPanelMixin,
-    PrivateChatPanelMixin,
     QzonePanelMixin,
 )
 
