@@ -24,6 +24,7 @@ from src.services.webui_render.pages import (
     render_register_page,
 )
 from src.services.webui_render.persona import render_persona_tab
+from src.services.webui_render.private_chat import render_private_tab
 from src.services.webui_render.plugins import render_plugin_tab
 from src.services.webui_render.profiles import render_profile_tab
 from src.services.webui_render.qzone import render_qzone_tab
@@ -49,7 +50,7 @@ __all__ = [
     "hex_to_rgb", "theme_body_class", "theme_css_block", "theme_default_alpha",
     "theme_default_bg", "render_admin_tab", "render_appearance", "render_config_sections",
     "render_knowledge_tab", "render_login_page", "render_mcp_editor",
-    "render_profile_tab", "render_qzone_tab",
+    "render_private_tab", "render_profile_tab", "render_qzone_tab",
     "render_panel_page", "render_persona_tab", "render_plugin_tab", "render_register_page",
     "render_account_tab",
 ]

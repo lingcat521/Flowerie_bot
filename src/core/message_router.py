@@ -13,6 +13,7 @@ from src.core.ai_gateway import AiGateway
 from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
 from src.core.memory_hook import apply_memory_update
+from src.core.private_chat import handle_private_event
 from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
 from src.core.reply_dispatch import ReplyDispatchMixin
@@ -192,7 +193,10 @@ class MessageRouter(ReplyDispatchMixin):
                 logger.error("plugin_dispatch_error reason=%s", e, extra={"event": "plugin_error"})
         # ---- 业务分支（unknown/request 等旧行为 = 不进入业务，保持等价）----
         if event.kind == "message":
-            await self._handle_message(event)
+            if event.scope == "group":
+                await self._handle_message(event)
+            else:
+                await handle_private_event(self, event)   # 私聊：按 QQ 号隔离（v2.14.0）
         elif event.kind == "notice":
             if event.notice_kind == "group_upload":
                 self._handle_group_upload(event)
@@ -328,13 +332,11 @@ class MessageRouter(ReplyDispatchMixin):
         # 更新上下文
         self.policy_engine.add_context(group_id, user_id, full_text[:200], is_bot=False, digest_text=full_text)
 
-        # 梗知识消息缓冲（每日总结的数据源；MEME_LEARNING_ENABLED 时才有总结任务，
-        # 但缓冲记录始终启用有界保护，避免开关切换瞬间丢数据）
+        # 梗知识消息缓冲（总结数据源；缓冲记录始终有界，避免开关切换瞬间丢数据）
         if self.meme_manager is not None and full_text and full_text.strip():
             self.meme_manager.record_message(group_id, user_id, full_text, raw_time)
 
-        # ---------- 强制记忆（静默，先于回复决策） ----------
-        # 用户明确表达个人偏好/特征但未被@：只记记忆、不回复、不烧 AI 调用。
+        # ---------- 强制记忆（静默；命中个人偏好句式只记记忆、不回复、不烧 AI）----------
         # 命中个人偏好句式即确定记录（记忆禁用群除外，降级为普通消息继续走回复流程）
         force_memory = self.policy_engine.should_force_memory(clean_text, full_text, has_at_others)
         silent_memory_only = force_memory and not is_mentioned and not is_reply_to_bot
@@ -375,8 +377,7 @@ class MessageRouter(ReplyDispatchMixin):
         else:
             self.policy_engine.update_user_time(user_id, group_id)
 
-        # ---------- 调用 AI ----------
-        # guarded_chat 仍是唯一准入/扣减点；上面那次只读预检只为提前结束，
+        # ---------- 调用 AI（guarded_chat 仍是唯一准入/扣减点）----------
         # 不扣预算也不发提示，避免被拒的消息白构建上下文与表情包上下文（fix.txt ③）
         if not await self.ai_gateway.precheck_allowed(group_id, user_id):
             logger.info("budget_rejected group=%s user=%s", group_id, user_id, extra={"event": "budget_rejected"})

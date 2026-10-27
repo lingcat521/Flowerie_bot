@@ -4,6 +4,24 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.14.0] - 2026-10-28
+
+### 新功能
+
+- **私聊（按 QQ 号完全隔离）**：私聊消息进入独立会话——虚拟会话 key = -QQ 号，
+上下文/记忆/人格解析/AI 预算/冷却全部各人独立，互不可见、不与群聊混用。
+  - AI 能力与群聊一致：识图、内置工具（QQ空间/记忆）、人格、花语记忆
+  - 命令同样可用（/help /memory /forget /profile …），回复自动走私聊通道；群管理指令在私聊里明确拒绝
+  - 默认关；允许名单为空时只允许 ADMIN_QQ_IDS；临时会话/陌生人默认拒绝
+  - 同一人冷却、上下文条数、私聊记忆开关均可配（PRIVATE_CHAT_*）
+- **Web UI「私聊」页**：开关状态、允许名单编辑、每人记忆条数与一键清空（零 JS）
+- **SDK/API**：Bot 新增 `send_private` / `get_private_history` / `private_chat_status`；Adapter 新增 `get_private_history`
+（OneBot 实现，其余协议明确不支持）；插件动作 `send_private_message` / `user_history` 已有，补齐文档
+
+### 测试
+
+- +14 单元测试（tests/test_private_chat.py）：隔离/允许名单/陌生人/冷却/去重/记忆开关/预算拒绝/命令通道/面板渲染与两个 POST 处理器
+
 ## [2.13.0] - 2026-10-28
 
 ### 新功能

@@ -130,6 +130,13 @@ class Settings(BaseSettings):
     AI_ADMIN_ENABLED: bool = False         # AI 可自主禁言/解禁（仍要求发起人是群主/管理员）
     AI_MEMORY_ENABLED: bool = False        # AI 可主动读取当前用户的群记忆
     AI_TOOL_PROMPT: bool = True            # 给模型注入「工具怎么用」说明（关=只靠工具 schema）
+    # 私聊（v2.14.0：按 QQ 号隔离的上下文/记忆/人格/AI；默认关）
+    PRIVATE_CHAT_ENABLED: bool = False     # 私聊总开关（关=私聊消息一律不理）
+    PRIVATE_CHAT_ALLOWED_QQS: Optional[List[int]] = None   # 允许私聊的 QQ（空=只允许 ADMIN_QQ_IDS）
+    PRIVATE_CHAT_ALLOW_STRANGERS: bool = False   # 是否允许临时会话/陌生人私聊
+    PRIVATE_CHAT_COOLDOWN_SECONDS: int = 3       # 同一人私聊冷却（秒）
+    PRIVATE_CHAT_CONTEXT_SIZE: int = 40          # 私聊注入的历史条数
+    PRIVATE_CHAT_MEMORY_ENABLED: bool = True     # 私聊记忆写入/读取（独立隔离）
     QZONE_IMAGE_DIR: str = "./data/qzone_images"          # 配图池目录（AI 从这里挑图）
     QZONE_IMAGE_INDEX_PATH: str = "./data/qzone_image_index.json"  # 识图描述缓存
     QZONE_IMAGE_MAX: int = 50              # 图片池上限（按修改时间取最新的 N 张）
@@ -374,7 +381,8 @@ class Settings(BaseSettings):
     MEMORY_TTL_DAYS: int = 0               # 用户原话记忆保留天数（0=永久保留）
     MODEL_MEMORY_TTL_DAYS: int = 30        # AI 推断记忆(model)保留天数（低信任，默认 30 天自动过期）
 
-    @field_validator("ALLOWED_GROUP_IDS", "TOXIC_GROUP_IDS", "MEMORY_DISABLED_GROUPS", "ADMIN_QQ_IDS", mode="before")
+    @field_validator("ALLOWED_GROUP_IDS", "TOXIC_GROUP_IDS", "MEMORY_DISABLED_GROUPS", "ADMIN_QQ_IDS",
+                     "PRIVATE_CHAT_ALLOWED_QQS", mode="before")
     @classmethod
     def parse_list(cls, v):
         if isinstance(v, str):

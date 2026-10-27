@@ -245,6 +245,7 @@ async def main():
                 plugin_manager=plugin_manager, group_nicknames=group_nicknames,
                 group_style_rules=group_style_rules,
                 admin_service=admin_service, qzone_service=qzone_service,
+                memory_manager=memory_manager,
             )
         file_parser = FileParser(config)
         # 资源取数（Gate R）：三种资源形态一次接上；协议差异（OneBot /get_file、Milky 临时 URL）在 Adapter 层，

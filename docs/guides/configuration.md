@@ -369,6 +369,33 @@ PROFILE_SECTION_TTL_DAYS=30          # 单字段多少天没更新就淘汰（0=
 - 画像失败（AI 故障 / JSON 解析失败）**不影响摘要主流程**
 - 管理面：Web UI「群友画像」页按群查看 / 手工修正 / 删除；群内 `/profile` 查看花璃对自己的画像
 
+## 私聊（PRIVATE_CHAT_*，v2.14.0）
+
+让花璃在私聊里也能聊天，并且**按 QQ 号完全隔离**：每个人独立的上下文、记忆、人格解析、AI 预算与冷却，互不可见。默认关闭（防止陌生人私聊烧额度）。
+
+```ini
+PRIVATE_CHAT_ENABLED=false            # 私聊总开关
+PRIVATE_CHAT_ALLOWED_QQS=             # 允许私聊的 QQ（逗号分隔；留空=只允许 ADMIN_QQ_IDS）
+PRIVATE_CHAT_ALLOW_STRANGERS=false    # 是否允许临时会话/陌生人
+PRIVATE_CHAT_COOLDOWN_SECONDS=3       # 同一人冷却（秒）
+PRIVATE_CHAT_CONTEXT_SIZE=40          # 注入的历史条数
+PRIVATE_CHAT_MEMORY_ENABLED=true      # 私聊记忆（与群聊记忆分开存）
+```
+
+### 隔离实现（为什么不会串号）
+
+- 私聊用**虚拟会话 key = -QQ号** 作为上下文/记忆/预算的键；QQ 群号恒为正，永不冲突
+- 回复走 `send_private_message`，但记忆/上下文/预算记账都用虚拟 key
+- 命令同样可用（`/help` `/memory` `/forget` `/profile`），回复自动走私聊通道；群管理指令在私聊里明确拒绝
+- AI 能力与群聊一致：识图、内置工具（QQ空间/记忆）、人格、花语记忆不受影响
+
+### 行为边界
+
+- 默认关；名单为空时只允许 `ADMIN_QQ_IDS`，不会有人人可私聊的意外
+- 临时会话/陌生人默认拒绝（`PRIVATE_CHAT_ALLOW_STRANGERS` 才放行）
+- 冷却按用户独立；AI 预算沿用群级/全局闸门（虚拟 key 独立计数）
+- Web UI「私聊」页：开关状态、允许名单编辑、每人记忆条数与清空
+
 ## 群管理控制台 / QQ空间（ADMIN_* / QZONE_*，v2.10.0）
 
 Web UI 两个专属页签的开关与默认值。**两者默认开启**，不需要在 `.env` 里写任何东西；

@@ -4,7 +4,7 @@ CATEGORY_ORDER = [
     "AI", "Bot", "Connection", "Behavior", "Stability", "Memory", "BlossomMemory", "Context",
     "Sticker", "MCP", "WebUI", "Logging", "Budget", "ActiveChat", "Repeat",
     "Poke", "FileParse", "Security", "Whitelist", "Archive", "Paths",
-    "Admin", "Qzone",
+    "Admin", "Qzone", "PrivateChat",
     # 注意：Persona/Knowledge/Plugin 分类的配置项已在 SCHEMA 中，但不在配置页展示——
     # 它们由「人格」「群聊知识」「插件」页的专属配置区块管理（见 webui_panels/* 等）
 ]
@@ -36,4 +36,5 @@ CATEGORY_LABELS = {
     "Plugin": "插件系统",
     "Admin": "群管理控制台",
     "Qzone": "QQ空间",
+    "PrivateChat": "私聊",
 }

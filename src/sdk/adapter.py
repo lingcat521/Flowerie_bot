@@ -54,6 +54,11 @@ class BotAdapter(ABC):
         """近期上下文（默认=历史；下层/领域数据源可覆盖）。"""
         raise UnsupportedOperationError("当前 Adapter 未实现 get_context")
 
+    # ---------- 私聊（v2.14.0；默认不支持，子类按需实现） ----------
+    async def get_private_history(self, user_id: int, count: int = 20) -> Any:
+        """好友/私聊最近消息（各协议实现不同；默认不支持）。"""
+        raise UnsupportedOperationError("当前 Adapter 未实现 get_private_history")
+
     # ---------- 群管理员扩展（v2.10；默认不支持，子类按需实现） ----------
     async def set_group_admin(self, group_id: int, user_id: int, enable: bool = True) -> Any:
         """设置/取消群管理员。"""

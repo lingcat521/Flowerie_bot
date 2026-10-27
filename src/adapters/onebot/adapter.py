@@ -203,6 +203,10 @@ class OneBotAdapter(BotAdapter):
         """私聊戳一戳。"""
         return await self._call(self._sender.friend_poke(int(user_id)))
 
+    async def get_private_history(self, user_id: int, count: int = 20) -> dict:
+        """好友/私聊最近消息（v2.14.0；SDK 语义层入口，端点仍只在 Sender）。"""
+        return await self._call(self._sender.get_friend_msg_history(int(user_id), int(count)))
+
     async def group_forward(self, group_id: int, messages: list) -> dict:
         """群合并转发消息。"""
         return await self._call(self._sender.send_group_forward_msg(int(group_id), list(messages)))

@@ -127,6 +127,8 @@ async def send_file(event):
 | `await bot.reply(event, message)` | 回复事件（自动 target + 引用）|
 | `await bot.recall(message_id)` / `get_message(message_id)` | 撤回（**仅本 bot 已发送记录**）/ 消息详情 |
 | `await bot.get_context(group_id, max_messages=10)` | 群近期上下文（复用 ContextManager）|
+| `await bot.send_private(user_id, message)` · `get_private_history(user_id, count=20)` | 发私聊（v2.14.0）/ 好友私聊最近消息（协议不支持时抛 UnsupportedOperationError）|
+| `bot.private_chat_status(user_id)` | 私聊开关与允许判定（纯本地读配置，不发网络请求）|
 | `await bot.get_group_member(gid, uid)` / `get_group_members(gid)` | 成员信息 / 成员列表 |
 | `await bot.is_group_admin(gid, uid)` / `is_group_owner(gid, uid)` | 群角色判定 |
 | `await bot.mute(gid, uid, seconds)` / `kick(gid, uid)` · `bot.log(level, message)` | 群管理（需 `group_manage`）· 插件日志（§6）|

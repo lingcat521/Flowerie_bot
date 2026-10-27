@@ -3,17 +3,13 @@
 安全设计：
 - 默认 WEB_UI_ENABLED=true，但只监听 127.0.0.1（对外必须显式 WEB_UI_ALLOW_LAN=true）
 - WEB_UI_PASSWORD 允许为空 = UNINITIALIZED：此时注册页是创建第一个管理员的唯一入口
-- 认证：POST /api/login 换取 token（secrets.token_hex，内存存储 + TTL）；
-  请求带 Authorization: Bearer <token>（无 cookie → 天然防 CSRF）；
-  无 JS 面板走 Cookie 会话（fb_token，httponly + SameSite=Strict）
+- 认证：token（Bearer）或 Cookie 会话（fb_token，httponly + SameSite=Strict）
 - 登录失败限速：同一 IP 连续 5 次失败锁 1 分钟
 - Secret 脱敏：页面只返回掩码；提交时留空=不修改
 - 端口：与反向 WS 端口（WS_PORT）错开由启动校验保证
 - 所有管理接口必须管理员 token
 
-架构（防上帝类）：本模块是薄门面，仅保留认证基座 / 面板壳 / 生命周期；
-各功能域处理器拆到 src/services/webui_panels/ 的独立 mixin（清单见该包 __init__）。
-渲染层（HTML/CSS/主题）见 src/services/webui_render/（web_ui_assets.py 为聚合导出）。
+架构：薄门面（认证/面板壳/生命周期）；功能域在 webui_panels/ 的 mixin，渲染在 webui_render/。
 配置持久化：.env（原子）+ settings.db 双写（见 ConfigService）。
 """
 import html as _html
@@ -50,6 +46,7 @@ from src.services.webui_panels import (
     PluginWebUIStaticMixin,
     ProfilePanelMixin,
     PromptPanelMixin,
+    PrivateChatPanelMixin,
     QzonePanelMixin,
 )
 
@@ -67,13 +64,14 @@ _LOGIN_FAIL_WINDOW = 60
 class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, AppearancePanelMixin,
                   McpPanelMixin, PromptPanelMixin, PersonaPanelMixin, AdminPanelMixin,
                   QzonePanelMixin, KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin,
-                  NicknamePanelMixin, ProfilePanelMixin):
+                  NicknamePanelMixin, ProfilePanelMixin, PrivateChatPanelMixin):
 
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
                  persona_manager=None, meme_manager=None, prompt_manager=None,
                  plugin_manager=None, group_nicknames=None, group_style_rules=None,
-                 profile_service=None, admin_service=None, qzone_service=None):
+                 profile_service=None, admin_service=None, qzone_service=None,
+                 memory_manager=None):
         self.config = config
         self.group_nicknames = group_nicknames
         # 群专属发言规则 store（与 MessageRouter 共享同一实例；按 群+人设 解析）
@@ -101,6 +99,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         # 群管理控制台 / QQ空间（v2.10；未注入时对应页提示不可用）
         self._admin_service = admin_service
         self._qzone_service = qzone_service
+        # 私聊面板数据源（v2.14.0；未注入时页面提示不可用）
+        self._memory_manager = memory_manager
 
     def _issue_token(self) -> str:
         now = time.time()
@@ -226,6 +226,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         # QQ空间（零 JS 表单：发说说 / 删除说说）
         app.router.add_post("/panel/qzone/publish", self._handle_panel_qzone_publish)
         app.router.add_post("/panel/qzone/delete", self._handle_panel_qzone_delete)
+        app.router.add_post("/panel/private/allowlist", self._handle_panel_private_allowlist)
+        app.router.add_post("/panel/private/clear", self._handle_panel_private_clear)
         # 插件管理（零 JS 表单：保护级别 / 扫描 / 上传 / URL / 启用 / 禁用 / 卸载）
         app.router.add_post("/panel/plugins/refresh", self._handle_panel_plugins_refresh)
         app.router.add_post("/panel/plugins/upload", self._handle_panel_plugins_upload)
@@ -285,7 +287,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         err = request.query.get("err", "") == "1"
         tab = request.query.get("tab", "")
         if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins",
-                       "nicknames", "profiles", "admin", "qzone"):
+                       "nicknames", "profiles", "admin", "qzone", "private"):
             tab = "config"
         cat = request.query.get("cat", "")
         if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
@@ -373,6 +375,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             body_html = self._render_admin_page(msg=msg, err=err)
         elif tab == "qzone":
             body_html = self._render_qzone_page(msg=msg, err=err)
+        elif tab == "private":
+            body_html = self._render_private_page(msg=msg, err=err)
         elif tab == "plugins":
             body_html = self._render_plugin_page()
         else:

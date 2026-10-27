@@ -30,6 +30,38 @@ class Bot:
         kind, target_id = target
         return await self._adapter.send(kind, int(target_id), message, reply_id=reply_id)
 
+    async def send_private(self, user_id: int, message, *, reply_id: Optional[int] = None) -> int:
+        """发私聊（v2.14.0 便捷入口；等价 send(("private", qq), msg)）。"""
+        return await self.send(("private", int(user_id)), message, reply_id=reply_id)
+
+    async def get_private_history(self, user_id: int, count: int = 20):
+        """好友/私聊最近消息（协议不支持时抛 UnsupportedOperationError）。"""
+        return await self._adapter.get_private_history(int(user_id), int(count))
+
+    def private_chat_status(self, user_id: Optional[int] = None) -> dict:
+        """私聊功能状态（给插件/面板做前置判断，不发起网络请求）。
+
+        返回 {enabled, memory_enabled, allowed, allow_strangers, cooldown_seconds}；
+        allowed 为 False 时，私聊消息会被引擎直接忽略。
+        """
+        config = self._config
+        if config is None:
+            return {"enabled": False, "allowed": False}
+        allowed_ids = set()
+        for raw in list(getattr(config, "PRIVATE_CHAT_ALLOWED_QQS", None) or []) + \
+                list(getattr(config, "ADMIN_QQ_IDS", None) or []):
+            try:
+                allowed_ids.add(int(raw))
+            except (TypeError, ValueError):
+                continue
+        return {
+            "enabled": bool(getattr(config, "PRIVATE_CHAT_ENABLED", False)),
+            "memory_enabled": bool(getattr(config, "PRIVATE_CHAT_MEMORY_ENABLED", True)),
+            "allow_strangers": bool(getattr(config, "PRIVATE_CHAT_ALLOW_STRANGERS", False)),
+            "cooldown_seconds": int(getattr(config, "PRIVATE_CHAT_COOLDOWN_SECONDS", 0) or 0),
+            "allowed": (int(user_id) in allowed_ids) if user_id is not None else False,
+        }
+
     async def reply(self, event_or_target, message, **kwargs) -> int:
         """回复：传入 BotEvent 自动推导目标（群/私聊）。"""
         if isinstance(event_or_target, BotEvent):

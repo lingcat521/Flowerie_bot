@@ -16,7 +16,8 @@ class ReplyDispatchMixin:
     """宿主需提供 sender / config / policy_engine。"""
 
     async def _send_reply(self, reply, *, group_id: Optional[int] = None,
-                         user_id: Optional[int] = None) -> bool:
+                         user_id: Optional[int] = None,
+                         record_key: Optional[int] = None) -> bool:
         """发送回复：字符串（单条）与列表（多条）都走这里。"""
         plan = plan_from_config(reply, self.config)
         if not plan:
@@ -35,7 +36,8 @@ class ReplyDispatchMixin:
             只在首条发出后记一次合并文本：上下文不再出现「半句 半句」碎片，
             MAX_CONSECUTIVE_REPLIES 也不会被同一轮分段提前触发（用户下一句被吞）。
             """
-            target = group_id if group_id else user_id
+            # record_key：私聊用虚拟群号记账（发送目标仍是 user_id，互不影响）
+            target = record_key if record_key is not None else (group_id if group_id else user_id)
             if plan.count_as_one:
                 if _idx != 0:
                     return
