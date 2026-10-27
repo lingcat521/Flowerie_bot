@@ -4,6 +4,13 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.12.1] - 2026-10-27
+
+### 修复
+
+- **启动崩溃**：v2.11.0/v2.12.0 把 message_router.commands.admin_service 与 message_router.ai_tools 的注入写在 MessageRouter 构造之前，启动时 NameError （cannot access local variable 'message_router'），Web UI 起不来；已把两处注入移到路由器构造之后
+- 新增静态回归测试 tests/test_main_wiring.py：用 AST 检查 main.py 里 先引用后赋值的变量，防止同类组合根顺序问题再溜进来
+
 ## [2.12.0] - 2026-10-27
 
 ### 新功能
