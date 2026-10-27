@@ -13,9 +13,8 @@ from src.core.budget_manager import BudgetManager  # noqa: E402
 from src.core.command_handler import CommandHandler  # noqa: E402
 from src.core.message_router import MessageRouter  # noqa: E402
 from src.core.policy_engine import PolicyEngine  # noqa: E402
-
 from tests.test_router_regression import (  # noqa: E402
-    FakeAIClient, FakeAssembler, FakeFileParser, FakeMemoryManager, FakeSender, make_config,
+    FakeAIClient, FakeAssembler, FakeFileParser, FakeMemoryManager, FakeSender, make_config
 )
 
 

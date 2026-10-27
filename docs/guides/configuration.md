@@ -1,10 +1,10 @@
 # 配置说明
 
-> 当前版本 **v2.10.0**。优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
+> 当前版本 **v2.14.2**。优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
 > Web UI 保存 = 写回项目根 `.env`（原子更新、保留注释与原有变量）+ 同步 `data/settings.db`，重启后仍优先生效。
 
 - **首次启动**（项目根无 `.env`）自动释放完整模板：`main.ensure_env_template()` → `src/services/env_template.py`，
-  由 `src/services/config_schema.py:SCHEMA` 渲染（**171 项**配置，每项带中文说明 + 分类，与 Web UI 配置页同源）；已有 `.env` 不覆盖。
+  由 `src/services/config_schema.py:SCHEMA` 渲染（**227 项**配置，每项带中文说明 + 分类，与 Web UI 配置页同源）；已有 `.env` 不覆盖。
 - **启动校验**（`src/config.py:validate_config()`，fail-fast，见文末「启动校验」）：必填缺失/占位值、端口冲突、枚举非法、区间越界一律拒绝启动。
 - 下表「默认」= 代码默认值；说明标 **重启** 的项改后需重启，其余热更新（完整重启清单见文末）。
 
@@ -179,7 +179,7 @@
 | `WEB_UI_TOKEN_TTL_SECONDS` | 登录 token 有效期（秒，区间 60~604800） | `3600` |
 | `WEB_UI_USERNAME` / `WEB_UI_PASSWORD` | 初始管理账号；**不在 SCHEMA/配置表单中**——由 `/panel/register` 注册页管理，密码只存 scrypt 哈希 | `admin` / 空 |
 
-- 访问：`http://127.0.0.1:8080/panel`（十一个页签：配置 / 人格 / 群聊知识 / 群友画像 / 群管理 / QQ空间 / 群昵称 / 插件 / 外观 / 日志 / 用户状态，全部零 JavaScript 服务端渲染）。
+- 访问：`http://127.0.0.1:8080/panel`（十二个页签：配置 / 人格 / 群聊知识 / 群友画像 / 群管理 / QQ空间 / 私聊 / 群昵称 / 插件 / 外观 / 日志 / 用户状态，全部零 JavaScript 服务端渲染）。
 - **Bootstrap Lock**：`WEB_UI_PASSWORD` 允许为空（= UNINITIALIZED，此时拒绝一切登录），公开注册页是创建**第一个**管理员的唯一入口；
   系统一旦初始化（`.env` 或 `settings.db` 已有凭据）注册**永久关闭**，改账号走登录态「用户状态」页（需当前密码），
   注销 = 显式重置回 UNINITIALIZED 才能重新注册。详见 [security.md](../reference/security.md)、[web-ui.md](../features/web-ui.md)。

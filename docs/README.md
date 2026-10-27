@@ -1,10 +1,8 @@
 # Flowerie 文档
 
-> 对应 **v2.10.0**（2026-10-27）：**Bot 群管理控制台 + QQ空间**——Web UI 新增「群管理」「QQ空间」两个页签
-> （12 个群管操作 / 发说说·删除·本地历史，均为零 JavaScript 表单）；SDK 与插件 API 同步扩展
-> （`set_group_admin` / `qzone_publish` 等 10 个 Bot 方法 + 4 个插件 API），NapCat v4.18.41 实测对照见
-> [napcat-admin-qzone.md](reference/napcat-admin-qzone.md)。上一版 v2.9.x 的内容（群友画像 / 每日摘要 /
-> 架构审计四项修复）见 `CHANGELOG.md`；更早版本见 [archive/](archive/README.md)。
+> 对应 **v2.14.2**（2026-10-28）：**私聊（按 QQ 号完全隔离）+ AI 自主工具层**——Web UI 新增「私聊」页签（共 12 个），窄屏导航收成纯 CSS 抽屉；
+> AI 可自主调用 QQ空间 / 群管 / 记忆工具，并可按间隔自己发说说；SDK 新增私聊方法与 `get_private_history`，五语言最小插件矩阵扩到 61 条。
+> 更早版本（群管理控制台 / QQ空间 / 群友画像 / 每日摘要）见 `CHANGELOG.md`；历史版本见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走
 
@@ -58,8 +56,8 @@
 | [plugin-final-report.md](reports/plugin-final-report.md) | **三份任务书最终报告**：逐条必答清单 + 真实数字 + 复核命令 | 评审 |
 | [sdk.md](reference/sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ + **附录 A 能力与兼容矩阵**（端点映射 / 网关兼容 / v2.1 缺口台账） | 插件开发者 |
 | [api.md](reference/api.md) | **API 权威速查总表**（方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |
-| [configuration.md](guides/configuration.md) | 全部配置项 / `.env` / 优先级 / 功能开关表 / **多条回复与 Native Reply Tool** / 存储后端与迁移工具 | 运维 |
-| [web-ui.md](features/web-ui.md) | Web UI 十一个页签（含 **群管理** / **QQ空间**）/ 如何开启 / 零 JavaScript / 注册与登录 / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
+| [configuration.md](guides/configuration.md) | 全部配置项 / `.env` / 优先级 / 功能开关表 / **多条回复与 Native Reply Tool** / **私聊（PRIVATE_CHAT_*）** / **AI 工具层** / 存储后端与迁移工具 | 运维 |
+| [web-ui.md](features/web-ui.md) | Web UI 十二个页签（含 **群管理** / **QQ空间** / **私聊**）/ 如何开启 / 零 JavaScript / 注册与登录 / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
 | [security.md](reference/security.md) | **安全规则权威**：SSRF / 注入 / 权限 / 资源上限 / 指标 / 已知边界 | 运维 + 开发者 |
 | [memory.md](features/memory.md) | 记忆体系：Context / Memory / 群知识 / 花语记忆（BlossomMemory） | 运维 + 开发者 |
 | [persona.md](features/persona.md) | 人格系统（内置三套 / 群 / 全局 / 管理员补充规则） | 运维 |

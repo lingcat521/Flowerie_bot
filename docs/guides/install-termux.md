@@ -1,6 +1,6 @@
 # 📱 花璃 · 安卓 (Termux) 专用安装
 
-> 当前版本 **v2.10.0**。本文是 Termux 部署的**唯一权威步骤**（[README](../../README.md) 与 [Release 资产说明](install-release-guide.md) 都指向本文）。
+> 当前版本 **v2.14.2**。本文是 Termux 部署的**唯一权威步骤**（[README](../../README.md) 与 [Release 资产说明](install-release-guide.md) 都指向本文）。
 > 安卓与 PC 的差别：`pydantic-core` 在 Termux 没有匹配 wheel（源码编译需 Rust，极易失败），必须走 Termux 专用源拿预编译包；
 > `aiohttp` / `lxml` 等仍需本地用 clang 编译，耗时数分钟属正常。
 
@@ -74,7 +74,7 @@ pip install -r requirements.txt        # 直接源码编译，约 10~20 分钟
 python main.py
 ```
 
-首次运行会在项目根**自动生成 `.env` 完整配置模板**（171 项，带中文说明），然后因为
+首次运行会在项目根**自动生成 `.env` 完整配置模板**（227 项，带中文说明），然后因为
 `DEEPSEEK_API_KEY` 仍是占位值 `sk-your-key-here` 而退出——**这是正常的**。编辑 `.env` 填两项后重启：
 
 ```ini

@@ -1,5 +1,8 @@
 # 验收 Dashboard（架构阶段 Gate 实测）
 
+> **历史快照**：本文记录的是当时提交的实测数字，**保留原文不改**；当前基线（v2.14.2：CI unit 2552 passed / 22 skipped，Acceptance 37/37）见 [development.md](../guides/development.md)。
+
+
 > **最终验收报告（任务书 §36 要求的数字块）见 [final-acceptance-report.md](final-acceptance-report.md)** ——
 > 本文件是逐 Gate / 逐提交的过程台账，那份是结论与证据汇总。
 

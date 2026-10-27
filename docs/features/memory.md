@@ -24,6 +24,14 @@ TTL 分级：`confidence=model`（AI 推断，低信任）走 `MODEL_MEMORY_TTL_
 | `MEMORY_DISABLED_GROUPS` | 空 | 这些群完全禁止写入记忆 |
 | `AUDIT_LOG_PATH` | `./data/audit.log` | 审计日志路径（需重启） |
 | `STORAGE_BACKEND` / `DATABASE_URL` | `sqlite` / 空 | 存储后端；`postgres` 时连接串必填 |
+### 私聊记忆（v2.14.0）
+
+私聊与群聊**分开存**：记忆键仍是 (user_id, group_id)，私聊的 `group_id` 取虚拟值 `-QQ号`。因此：
+
+- 同一个人在不同群的记忆互不可见；私聊记忆也不会出现在任何群里
+- Web UI「私聊」页可看每人私聊记忆条数并一键清空；`PRIVATE_CHAT_MEMORY_ENABLED=false` 可关闭写入
+- 私聊里的 `/memory` `/forget` 只作用于该好友的私聊记忆
+
 ## 花语记忆（BlossomMemory，默认关闭）
 
 ```

@@ -10,11 +10,10 @@
 </p>
 
 <div align="center">
-<div align="center">
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-2484%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-2552%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -31,7 +30,7 @@
   受控运行时：独立子进程 + 权限批准 + 保护级别 + 资源上限；CI 里 **13 种语言**最小插件真编译真运行。
 - **QQ Bot 是原生场景**：开箱即用的群聊机器人 —— DeepSeek 驱动的人设对话、识图、转发/卡片解析、
   长期记忆、人格系统、表情包、MCP 工具、主动聊天、冷却与预算；OneBot11 / Milky 双协议接入。
-- **零 JavaScript 的 Web 管理后台**：配置/人格/群昵称/群聊知识/外观/日志/用户状态/插件，热更新。
+- **零 JavaScript 的 Web 管理后台**：配置/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/私聊/外观/日志/用户状态/插件，热更新。
 
 ## 功能
 
@@ -54,7 +53,7 @@
 | 🎲 主动发言概率配置化 | `PROACTIVE_MESSAGE_*` 上下文随机回复概率 + `ACTIVE_CHAT_*` 主动聊天循环，全部可配置 |
 | 🗣️ 发言规则 | 管理员补充规则（人格页，默认 4 行）+ 按群专属覆盖，注入所有人格最高优先级 |
 | 🧩 插件系统（Plugin Protocol v1） | 受控插件运行时：Python / Node / **任意语言（exec，13 种语言 CI 实测：C/C++·Go·Rust·Java·C#·Kotlin·PHP·Lua·Ruby·Perl·R·TypeScript）** / JSON 声明式插件，独立子进程 + 权限批准 + 保护级别（每插件自动 `data/` 数据目录）|
-| 🧰 多语言 SDK | **Python / TypeScript / Go / Rust / Java 五套官方 SDK**（零第三方依赖，能力对齐 14 项）；最小插件实测 61 条真跑（含 v2.10.0 群管/QQ空间能力）：[SDK 实测报告](docs/reports/plugin-sdk-minimal-report.md) |
+| 🧰 多语言 SDK | **Python / TypeScript / Go / Rust / Java 五套官方 SDK**（零第三方依赖，能力对齐 14 项）；最小插件实测 61 条真跑（含群管 / QQ空间 / 私聊动作）：[SDK 实测报告](docs/reports/plugin-sdk-minimal-report.md) |
 | 🔗 插件间通信 | `plugin.call()` / `plugin.emit()` / `plugin.on()` 统一抽象：跨语言经 Core Router，权限/超时/取消/环保护/trace 全链路：[插件间通信](docs/plugins/plugin-communication.md) |
 | 🖥️ Plugin WebUI | 插件自带管理页面（HTML+CSS，**零 JavaScript**）：`webui.page/action/asset` + 六项 `webui.*` 权限 + 净化/隔离：[WebUI 协议](docs/plugins/plugin-webui-protocol.md) |
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
@@ -154,7 +153,7 @@ OneBot WebSocket connected
 也可提前在 `.env` 设 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD`。
 想彻底关闭：`WEB_UI_ENABLED=false`；想让局域网设备访问：`WEB_UI_ALLOW_LAN=true`（默认关闭）。
 
-十一个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
+十二个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
 
 - **配置**：全部变量按功能分组（bool/int/secret/文本/列表/JSON 各有控件），每组独立保存，
   修改**真正写入项目根 `.env`**（原子更新、保留注释与原变量），Secret 只显示掩码、留空不覆盖
@@ -164,6 +163,8 @@ OneBot WebSocket connected
   全员禁言、禁言列表、退群；结果就地回显
 - **QQ空间**（v2.10.0）：发表说说（正文 + 最多 9 图，支持 file:// / http(s):// / base64://；
   权限 1/4/16/64/128）、按 tid 删除、本机发布历史
+- **私聊**（v2.14.0）：开关 / 允许名单 / 每人记忆条数与一键清空；与群聊完全隔离（虚拟会话 key = -QQ 号）
+- **AI 工具层**（v2.12.0）：QQ空间 / 群管 / 记忆工具开关（默认关），模型可自主调用并可定时发说说
 - **群昵称**：按群专属称呼（× 人设隔离，留空恢复默认）
 - **外观**：7 套主题（默认/深色/浅色/Sakura/Ocean/Forest/AMOLED）、背景图上传（≤5MB，魔数校验）、透明度与显示方式
 - **日志**：最近 200 条运行日志 · **用户状态**：凭据来源 / 改账号 / 注销 / 服务器状态 / MCP / API 厂商连接
@@ -215,7 +216,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/featu
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 2484 个测试（CI pytest 步骤实测，Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
+pytest              # 2552 个测试（CI pytest 步骤实测，Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
 pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（61 条：五语言真 build / 真调用 / 真关闭，含群管 / QQ空间 / 私聊动作）
 pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
 pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）

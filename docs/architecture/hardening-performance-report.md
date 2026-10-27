@@ -1,5 +1,8 @@
 # Hardening + Hot-path Optimization 报告（fix.txt）
 
+> **历史快照**：本文记录的是当时提交的实测数字，**保留原文不改**；当前基线（v2.14.2：CI unit 2552 passed / 22 skipped，Acceptance 37/37）见 [development.md](../guides/development.md)。
+
+
 - **基线**：`0bb36a3`（上一轮重构收尾，CI 三绿、工作树干净）
 - **本轮**：10 个提交（20 files changed, 1047 insertions(+), 19 deletions(-)）
 - **范围**：fix.txt 的六个优先项 + 条件性项审计；任务书 §八「暂时不要做」的清单一项未碰

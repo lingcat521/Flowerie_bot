@@ -1,6 +1,6 @@
 # Windows 可执行文件使用说明（.exe）
 
-> 当前版本 **v2.10.0**。官方 Release 提供：
+> 当前版本 **v2.14.2**。官方 Release 提供：
 > `Flowerie_bot-windows-x64-builtin.exe`（Intel/AMD）与 `Flowerie_bot-windows-arm64-builtin.exe`（Arm 设备 / 越狱 Android 模拟）；
 > 另有目录版 `Flowerie_bot-windows-x64-portable.zip` / `-windows-arm64-portable.zip`（解压即用）。
 > 其他平台见 [install-release-guide.md](install-release-guide.md)。
@@ -37,7 +37,7 @@ DEEPSEEK_API_KEY=sk-你的真实DeepSeekKey   # ⚠️ 必填（https://platform
 BOT_QQ=10001                              # ⚠️ 必填（机器人 QQ 号）
 ```
 
-> 模板共 171 项、带中文说明，与 Web UI 配置页同源（见 [configuration.md](configuration.md)）；只需先填这两项。
+> 模板共 227 项、带中文说明，与 Web UI 配置页同源（见 [configuration.md](configuration.md)）；只需先填这两项。
 
 ## 4. NapCat（QQ 协议端）连接
 

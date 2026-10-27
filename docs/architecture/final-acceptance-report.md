@@ -1,5 +1,8 @@
 # 最终验收报告（任务书 §36 要求的真实数字）
 
+> **历史快照**：本文记录的是当时提交的实测数字，**保留原文不改**；当前基线（v2.14.2：CI unit 2552 passed / 22 skipped，Acceptance 37/37）见 [development.md](../guides/development.md)。
+
+
 - **日期**：2026-08-09｜**仓库**：Flowerie_bot｜**验收提交**：`7bf3e24`（CI / Acceptance / Push on main **三项全绿**）
 - 本报告只写**能追溯到证据**的数字：每条都给出 test / grep / CI / fixture / 源码出处。
   证据等级沿用全项目约定：`[CODE]` / `[DOC]` / `[FIXTURE]` / `[MVP]` / `[INFERENCE]` / `[UNKNOWN]`。

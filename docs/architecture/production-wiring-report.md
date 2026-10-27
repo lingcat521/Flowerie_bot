@@ -1,5 +1,8 @@
 # 生产链路报告（road.txt §十一）
 
+> **历史快照**：本文记录的是当时提交的实测数字，**保留原文不改**；当前基线（v2.14.2：CI unit 2552 passed / 22 skipped，Acceptance 37/37）见 [development.md](../guides/development.md)。
+
+
 > 配套审计：`docs/architecture/production-wiring-audit.md`（修复前快照 + 五分判据取证）
 > 基线 `ecdcf86` → 交付 `0576580`：4 个提交、12 个文件、+430 / −7 行。
 > 原则：**从生产副作用反向验证调用链**；回答不了「谁调用 / 为什么进生产 / 生命周期 / 依赖从哪注入 /

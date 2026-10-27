@@ -1,6 +1,6 @@
 # 其他平台构建产物使用说明（Linux / macOS / Termux）
 
-> 当前版本 **v2.10.0**；Windows exe 见 [install-release-windows.md](install-release-windows.md)，Termux 部署细节见 [install-termux.md](install-termux.md)。
+> 当前版本 **v2.14.2**；Windows exe 见 [install-release-windows.md](install-release-windows.md)，Termux 部署细节见 [install-termux.md](install-termux.md)。
 > 官方 Release 每个版本都提供下列资产（由 `.github/workflows/compiler.yml` 在 release 创建时构建上传）：
 > `Flowerie_bot-<platform>-<arch>-builtin`（单文件）/ `Flowerie_bot-<platform>-<arch>-portable.zip`（目录版，解压即用）；
 > Termux 走源码包 `Flowerie_bot-termux-source.tar.gz`。
@@ -22,7 +22,7 @@ unzip Flowerie_bot-linux-x64-portable.zip && cd Flowerie_bot-linux-x64-portable
 ./Flowerie_bot-linux-x64-portable
 ```
 
-首次启动会在**当前目录**自动生成 `.env` 完整模板（171 项），改完两个必填项再运行：
+首次启动会在**当前目录**自动生成 `.env` 完整模板（227 项），改完两个必填项再运行：
 
 ```ini
 DEEPSEEK_API_KEY=sk-你的真实Key
