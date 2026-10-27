@@ -92,7 +92,7 @@
 | workflow / 步骤 | 结果 | 关键数字 |
 | :--- | :--- | :--- |
 | `CI` · Ruff check | **success** | All checks passed!（3.9 与 3.12 两个 job）|
-| `CI` · SDK 语言矩阵（`pytest -q -s tests/sdk/`）| **success** | **56 passed，0 skipped**（v2.10.0；v2.3.0 时为 46）—— 五种语言真 build、真启动、真调用、真关闭，另含群管/QQ空间能力回环；§十七 表与 §五 表就打印在这一步 |
+| `CI` · SDK 语言矩阵（`pytest -q -s tests/sdk/`）| **success** | **61 passed，0 skipped**（v2.14.0；v2.10.0 为 56，v2.3.0 为 46）—— 五种语言真 build、真启动、真调用、真关闭，另含群管/QQ空间能力回环；§十七 表与 §五 表就打印在这一步 |
 | `CI` · 全量 pytest | **success** | **2136 passed / 22 skipped** |
 | `Acceptance` | **success** | **37/37 通过**（pytest 2178 passed / 26 skipped + ruff clean）|
 | `Push on main` | **success** | CodeQL（actions / javascript-typescript / python）全过 |

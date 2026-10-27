@@ -654,7 +654,21 @@ public final class MinimalPlugin {
         if ("caps".equals(head)) {
             return capabilities(plugin);
         }
+        if ("dm".equals(head)) {
+            return privateProbe(plugin);
+        }
         throw new IllegalArgumentException("未知命令: " + head);
+    }
+
+    /** v2.14.0 私聊动作探针：send_private_message + user_history（真实动作通道）。 */
+    private static Object privateProbe(final FloweriePlugin plugin) {
+        FloweriePlugin.Context ctx = plugin.context();
+        Map<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("send", safeCap(() -> ctx.action("send_private_message",
+                Json.obj("user_id", Integer.valueOf(20001), "message", "私聊测试"))));
+        out.put("history", safeCap(() -> ctx.action("user_history",
+                Json.obj("user_id", Integer.valueOf(20001), "count", Integer.valueOf(5)))));
+        return out;
     }
 
     /** v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。

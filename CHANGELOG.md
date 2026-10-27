@@ -4,6 +4,16 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.14.2] - 2026-10-28
+
+### 测试
+
+- **最小插件矩阵补私聊动作**（tests/sdk 61 条，原 56）：五语言最小插件新增 `dm`
+  命令（send_private_message / user_history），新增 test_private_actions_roundtrip ×5，
+  断言「插件 → SDK 动作通道 → Sender」整条链路与参数；五个 manifest 补 read_user_info
+- **Bot SDK 私聊方法单测**：send_private / get_private_history / private_chat_status
+- 文档与报告计数 56 → 61（README / development / capabilities / communication / 最小插件报告）
+
 ## [2.14.1] - 2026-10-28
 
 ### 修复

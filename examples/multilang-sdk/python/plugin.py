@@ -456,7 +456,25 @@ def _run_command(text):
         return _errors(argv[0], argv[1])
     if head == "caps":
         return _capabilities()
+    if head == "dm":
+        return _private_probe()
     raise ValueError("未知命令: %s" % head)
+
+
+def _private_probe():
+    """v2.14.0 私聊动作探针：send_private_message + user_history（真实动作通道）。"""
+    api = _api()
+
+    def _safe(fn):
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": "%s: %s" % (type(exc).__name__, exc)}
+
+    return {
+        "send": _safe(lambda: api.send_private_message({"user_id": 20001, "message": "私聊测试"})),
+        "history": _safe(lambda: api.user_history(20001, 5)),
+    }
 
 
 def _capabilities():

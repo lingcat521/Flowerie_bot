@@ -263,3 +263,24 @@ async def test_minimal_plugin_starts_standalone(lang):
     assert probe["ok"], "独立启动失败：%s\nstderr=%s" % (probe.get("error"), probe.get("stderr"))
     assert probe["exit"] == 0, probe
     assert len(probe["capabilities"]) == 14, probe["capabilities"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lang", LANGS)
+async def test_private_actions_roundtrip(tmp_path, lang):
+    """v2.14.0：私聊动作 send_private_message / user_history 经五语言 SDK 真跑。"""
+    reason = missing_reason(lang)
+    if reason:
+        pytest.skip(reason)
+    async with RigCtx(tmp_path) as rig:
+        plugin_id = await rig.load(lang, approved=_CAPS_PERMS + ["read_user_info"])
+        out = await rig.send("/sdk@%s dm" % plugin_id)
+        assert out["send"]["ok"] is True, out
+        assert out["send"]["target"] == "private", out
+        assert out["send"]["target_id"] == 20001, out
+        assert out["history"]["ok"] is True, out
+        sent = [s for s in rig.sender.sent if s["target"] == "private"]
+        assert sent and sent[-1]["target_id"] == 20001, rig.sender.sent
+        hist = [c for c in rig.sender.calls if c["endpoint"] == "get_friend_msg_history"]
+        assert hist and hist[-1]["args"]["user_id"] == 20001, rig.sender.calls
+        _record(lang, "Private", "PASS")

@@ -15,7 +15,8 @@
     "web_ui",
     "read_group_info",
     "group_manage",
-    "qzone"
+    "qzone",
+    "read_user_info"
   ],
   "web_ui": {
     "static": "static",

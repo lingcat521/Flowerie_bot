@@ -63,6 +63,16 @@ async function safeAction(fn: () => Promise<Record<string, unknown>>): Promise<R
   }
 }
 
+/** v2.14.0 私聊动作探针：send_private_message + user_history（真实动作通道）。 */
+async function privateProbe(): Promise<Record<string, unknown>> {
+  const ctx = plugin.ctx;
+  return {
+    send: await safeAction(() =>
+      ctx.action("send_private_message", { user_id: 20001, message: "私聊测试" })),
+    history: await safeAction(() => ctx.action("user_history", { user_id: 20001, count: 5 })),
+  };
+}
+
 async function capabilitiesProbe(): Promise<Record<string, unknown>> {
   const ctx = plugin.ctx;
   return {
@@ -90,6 +100,7 @@ async function runCommand(text: string): Promise<any> {
                t3: await call(argv[2], "ping", {}) };
     case "errors": return await errorProbe(argv[0], argv[1]);
     case "caps": return await capabilitiesProbe();
+    case "dm": return await privateProbe();
     default: throw new Error("未知命令: " + head);
   }
 }

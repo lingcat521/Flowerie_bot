@@ -28,7 +28,7 @@ pytest -m "not real_device"               # 排除实机用例
 | 层 | 位置 | 命令 | 当前状态 |
 | :--- | :--- | :--- | :--- |
 | unit / 静态（含架构 Gate） | `tests/test_*.py` | `pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e` | **v2.10.0 CI 实测 2484 passed / 22 skipped**（CI 的 pytest 步骤就是这个口径；数字口径见下方注） |
-| 多语言 SDK 最小插件实测 | `tests/sdk/` | `pytest -q -s tests/sdk/` | **56**：真 build（go/rustc/javac/tsc…）→ 真加载 → ping/echo/event/call/权限/关机 + v2.10.0 群管/QQ空间能力 |
+| 多语言 SDK 最小插件实测 | `tests/sdk/` | `pytest -q -s tests/sdk/` | **61**：真 build（go/rustc/javac/tsc…）→ 真加载 → ping/echo/event/call/权限/关机 + v2.10.0 群管/QQ空间能力 |
 | Plugin WebUI（真服务器 + 真插件进程） | `tests/webui/` | `pytest -q -s tests/webui/` | **102**：HTTP / 静态 / 安全 / 隔离 / 动作 / 插件间通信 |
 | 真浏览器 E2E（Playwright Chromium） | `tests/e2e/` | `pytest -q -rs -s tests/e2e/` | **21**：真 WebUI 服务器 + 真插件进程 + 真 Chromium；缺浏览器即 `BLOCKED BY ENVIRONMENT` skip（**绝不写 PASS**） |
 | 实机 integration（可自动判定） | `tests/integration/` | `pytest tests/integration -q -rs` + 环境变量 | **22**，默认全 skip：需真实协议端 + 测试群 |

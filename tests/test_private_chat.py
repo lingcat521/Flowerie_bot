@@ -323,3 +323,41 @@ def test_config_parses_empty_and_csv_allowlist(monkeypatch):
     assert Settings(_env_file=None).PRIVATE_CHAT_ALLOWED_QQS == []
     monkeypatch.setenv("PRIVATE_CHAT_ALLOWED_QQS", "20001, 20002")
     assert Settings(_env_file=None).PRIVATE_CHAT_ALLOWED_QQS == [20001, 20002]
+
+
+# ---------- Bot SDK 私聊方法（v2.14.0） ----------
+class _SdkAdapter:
+    def __init__(self):
+        self.sent = []
+        self.history = []
+
+    async def send(self, target, target_id, message, reply_id=None):
+        self.sent.append((target, target_id, message))
+        return 42
+
+    async def get_private_history(self, user_id, count=20):
+        self.history.append((user_id, count))
+        return {"ok": True, "messages": []}
+
+
+@pytest.mark.asyncio
+async def test_bot_sdk_private_methods():
+    from src.sdk.bot import Bot
+
+    adapter = _SdkAdapter()
+    bot = Bot(adapter, Cfg())
+    assert await bot.send_private(20001, "hi") == 42
+    assert adapter.sent == [("private", 20001, "hi")]
+    await bot.get_private_history(20001, 5)
+    assert adapter.history == [(20001, 5)]
+
+
+def test_bot_private_chat_status():
+    from src.sdk.bot import Bot
+
+    bot = Bot(_SdkAdapter(), Cfg())
+    assert bot.private_chat_status(20001)["allowed"] is True
+    assert bot.private_chat_status(12345)["allowed"] is False
+    stat = bot.private_chat_status()
+    assert stat["enabled"] is True and stat["allowed"] is False
+    assert stat["cooldown_seconds"] == 0

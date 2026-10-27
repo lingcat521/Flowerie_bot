@@ -11,6 +11,7 @@
 | Java | `java/` | `minimal_java` | `build.sh`（`javac` SDK + 插件）| `run.sh` |
 
 - 契约（暴露哪些方法、`/sdk@<自己>` 命令、动作形状、错误探针）：`docs/plugin-sdk-minimal-test.md`
+- **v2.14.0 新命令 `dm`**：一次返回两个私聊动作的结果（`send_private_message` / `user_history`），由 `test_private_actions_roundtrip` 对五语言逐一真跑；manifest 需声明 `read_user_info`
 - **v2.10.0 新命令 `caps`**：一次返回四个新能力的动作结果（`group_shut_list` / `group_leave` /
   `qzone_publish` / `qzone_delete`，各自 `{ok:true,...}` 或 `{ok:false,error}`），
   由 `tests/sdk/test_minimal_plugins.py` 的两个 `*_capabilities_roundtrip` 用例逐一验证五语言

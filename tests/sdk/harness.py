@@ -68,6 +68,8 @@ class CapturingSender:
 
     async def send_msg_raw(self, target, target_id, message, reply_id=None):
         self.sent.append({"target": target, "target_id": target_id, "message": message})
+        self.calls.append({"endpoint": "send_msg_raw",
+                           "args": {"target": target, "target_id": target_id}})
         return {"ok": True, "message_id": len(self.sent)}
 
     # 引擎其它动作路径可能用到的最小面（不参与本任务书验收）
@@ -75,7 +77,9 @@ class CapturingSender:
         return {"messages": []}
 
     async def get_friend_msg_history(self, user_id, count=20):
-        return {"messages": []}
+        self.calls.append({"endpoint": "get_friend_msg_history",
+                           "args": {"user_id": user_id, "count": count}})
+        return {"ok": True, "messages": [{"message_id": 1, "text": "hi"}]}
 
     # ---------- v2.10.0：群管理扩展 + QQ空间（协议端替身记录调用） ----------
     async def get_group_shut_list(self, group_id):

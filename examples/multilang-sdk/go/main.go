@@ -752,9 +752,31 @@ func (m *minimal) runCommand(text string) (any, error) {
 
 	case "caps":
 		return m.capabilitiesProbe(), nil
+	case "dm":
+		return m.privateProbe(), nil
 	}
 
 	return nil, commandErrorf("未知命令: %s", head)
+}
+
+// privateProbe v2.14.0 私聊动作探针：send_private_message + user_history（真实动作通道）。
+func (m *minimal) privateProbe() map[string]any {
+	ctx := m.plugin.Context()
+	safe := func(fn func() (map[string]any, error)) any {
+		res, err := fn()
+		if err != nil {
+			return map[string]any{"ok": false, "error": err.Error()}
+		}
+		return res
+	}
+	return map[string]any{
+		"send": safe(func() (map[string]any, error) {
+			return ctx.Action("send_private_message", map[string]any{"user_id": 20001, "message": "私聊测试"})
+		}),
+		"history": safe(func() (map[string]any, error) {
+			return ctx.Action("user_history", map[string]any{"user_id": 20001, "count": 5})
+		}),
+	}
 }
 
 // capabilitiesProbe v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。

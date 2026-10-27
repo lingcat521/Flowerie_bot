@@ -781,12 +781,40 @@ fn run_command(ctx: &Context, command: &str) -> Result<Json, PluginCommError> {
             Ok(probe_errors(ctx, granted, denied))
         }
         "caps" => Ok(capabilities_probe(ctx)),
+        "dm" => Ok(private_probe(ctx)),
         other => Err(command_error(&format!("未知命令: {}", other))),
     }
 }
 
 /// v2.10.0 能力探针：群管理扩展 + QQ空间（一次命令覆盖四个新动作）。
 /// 单动作失败返回 {ok:false,error}，不打断其它动作——测试要能分别看到每一路结果。
+/// v2.14.0 私聊动作探针：send_private_message + user_history（真实动作通道）。
+fn private_probe(ctx: &Context) -> Json {
+    fn safe<F>(f: F) -> Json
+    where
+        F: FnOnce() -> Result<Json, String>,
+    {
+        match f() {
+            Ok(value) => value,
+            Err(err) => Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(&err))]),
+        }
+    }
+    Json::obj(vec![
+        ("send", safe(|| {
+            ctx.action(
+                "send_private_message",
+                &Json::obj(vec![("user_id", Json::num(20001)), ("message", Json::str("私聊测试"))]),
+            )
+        })),
+        ("history", safe(|| {
+            ctx.action(
+                "user_history",
+                &Json::obj(vec![("user_id", Json::num(20001)), ("count", Json::num(5))]),
+            )
+        })),
+    ])
+}
+
 fn capabilities_probe(ctx: &Context) -> Json {
     fn safe<F>(f: F) -> Json
     where
