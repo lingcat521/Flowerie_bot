@@ -95,7 +95,7 @@ class QzoneAutoPoster:
             except Exception:  # noqa: BLE001
                 persona = "花璃"
         prompt = (
-            "你是一个真实的人，正在经营自己的 QQ空间。\n"
+            "你就是%s，一个真实的人，正在经营自己的 QQ空间。\n" % persona +
             "请写一条自然的说说（30~120 字，第一人称，不要提到 AI/模型/机器人）。\n"
             "下面是你相册里可用的图片和它们的内容：\n" + image_lines + "\n\n"
             "从里面挑 0~2 张和说说内容相配的图片（用图片名），然后只输出 JSON：\n"

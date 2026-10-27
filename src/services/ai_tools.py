@@ -18,7 +18,7 @@
 import json
 import os
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from src.utils.file_source import to_uri_source
 from src.utils.logging_setup import get_logger
