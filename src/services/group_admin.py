@@ -9,6 +9,7 @@
 set_group_admin / set_group_ban / set_group_kick / set_group_card / set_group_name /
 set_group_special_title / set_group_whole_ban / get_group_shut_list / set_group_leave
 """
+import time
 from typing import Any, Dict, List, Optional
 
 from src.utils.logging_setup import get_logger
@@ -40,6 +41,60 @@ class GroupAdminService:
     def __init__(self, adapter, config=None):
         self._adapter = adapter
         self.config = config
+        # 成员角色缓存：(group_id, user_id) -> (role, expire_monotonic)
+        # 目的：让「Bot 自己有没有管理员权限」这类查询不刷屏打平台接口（默认 60s TTL）。
+        self._role_cache: Dict[tuple, tuple] = {}
+        try:
+            self._role_ttl = max(0.0, float(getattr(config, "ADMIN_ROLE_CACHE_SECONDS", 60) or 0))
+        except (TypeError, ValueError):
+            self._role_ttl = 60.0
+
+    # ---------- 角色自检（Bot 自己 / 调用者） ----------
+    def bot_qq(self) -> int:
+        try:
+            return int(getattr(self.config, "BOT_QQ", 0) or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    async def member_role(self, group_id: int, user_id: int, fresh: bool = False) -> str:
+        """查群成员角色：owner / admin / member；查询失败返回空串（不缓存失败）。"""
+        gid, uid = int(group_id), int(user_id)
+        if uid <= 0:
+            return ""
+        now = time.monotonic()
+        if not fresh:
+            hit = self._role_cache.get((gid, uid))
+            if hit and hit[1] > now:
+                return str(hit[0])
+        try:
+            member = await self._adapter.get_group_member(gid, uid)
+        except Exception as e:  # noqa: BLE001 —— 角色查询失败按「未知」处理，不缓存
+            logger.debug("group_admin_role_query_failed group=%s user=%s err=%s", gid, uid, e)
+            return ""
+        role = str((member or {}).get("role") or "")
+        if role:
+            if len(self._role_cache) >= 512:
+                self._role_cache.clear()
+            self._role_cache[(gid, uid)] = (role, now + self._role_ttl)
+        return role
+
+    async def bot_role(self, group_id: int, fresh: bool = False) -> str:
+        """Bot 自己在本群的角色（owner / admin / member / 空=未知）。"""
+        return await self.member_role(int(group_id), self.bot_qq(), fresh=fresh)
+
+    async def can_manage(self, group_id: int, fresh: bool = False) -> bool:
+        """Bot 是否具备群管理权限（群主或管理员）——决定能否禁言/踢人/设管理员。"""
+        return await self.bot_role(group_id, fresh=fresh) in ("owner", "admin")
+
+    async def caller_can_manage(self, group_id: int, user_id: int) -> bool:
+        """调用者是否有权下管理指令：Bot 管理员白名单(ADMIN_QQ_IDS) 或 群主/管理员。"""
+        admins = getattr(self.config, "ADMIN_QQ_IDS", None) or []
+        try:
+            if int(user_id) in {int(x) for x in admins}:
+                return True
+        except (TypeError, ValueError):
+            pass
+        return await self.member_role(int(group_id), int(user_id)) in ("owner", "admin")
 
     def enabled(self) -> bool:
         """是否启用管理控制台（默认开启；关=面板提示不可用，SDK 直接调用不受限）。"""

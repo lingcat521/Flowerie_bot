@@ -149,6 +149,10 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     # ---------- 群管理控制台 / QQ空间（v2.10；专属页签在 Web UI「群管理」「QQ空间」） ----------
     "ADMIN_CONSOLE_ENABLED": ("Admin", "bool", False, True,
                               "群管理控制台开关（关=「群管理」页提示不可用；SDK 直接调用不受限）"),
+    "ADMIN_COMMANDS_ENABLED": ("Admin", "bool", False, True,
+                               "群内管理指令开关（/mute /unmute /admin；关=群内指令不响应，面板与 SDK 不受影响）"),
+    "ADMIN_ROLE_CACHE_SECONDS": ("Admin", "int", False, True,
+                                 "Bot/成员角色查询缓存秒数（0=不缓存，每次都问平台；默认 60）"),
     "QZONE_ENABLED": ("Qzone", "bool", False, True,
                       "QQ空间功能开关（关=「QQ空间」页提示不可用）"),
     "QZONE_DEFAULT_UGC_RIGHT": ("Qzone", "int", False, True,

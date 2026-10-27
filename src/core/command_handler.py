@@ -1,5 +1,7 @@
 
 
+from typing import Optional
+
 from src.config import Settings
 from src.services.memory_manager import MemoryManager
 from src.services.prompt_manager import PromptManager
@@ -17,13 +19,15 @@ class CommandHandler:
     """
 
     def __init__(self, config: Settings, sender: Sender, memory_manager: MemoryManager,
-                 prompt_manager: PromptManager = None, profile_service=None):
+                 prompt_manager: PromptManager = None, profile_service=None, admin_service=None):
         self.config = config
         self.sender = sender
         self.memory_manager = memory_manager
         self.prompt_manager = prompt_manager
         # 群友画像服务（/profile 命令的数据源；main 按开关在构造后注入）
         self.profile_service = profile_service
+        # 群管理服务（/admin /mute /unmute 的数据源；main 在构造后注入）
+        self.admin_service = admin_service
 
     async def handle(self, text: str, user_id: int, group_id: int) -> bool:
         """处理指令，返回 True 表示已处理（不再走正常聊天流程）。"""
@@ -56,7 +60,95 @@ class CommandHandler:
         if cmd == "/profile":
             await self._cmd_profile(user_id, group_id)
             return True
+        if cmd in ("/admin", "/mute", "/unmute"):
+            await self._cmd_admin(cmd, arg, user_id, group_id)
+            return True
         return False
+
+    # ---------- 群管理（Bot 自检权限 + 禁言/解禁） ----------
+    @staticmethod
+    def parse_duration(arg: str, default: int = 600) -> Optional[int]:
+        """把 "10m" / "1h" / "90s" / "600" 解析成秒；非法返回 None。
+
+        单位：s 秒 / m 分钟 / h 小时 / d 天（不写单位=秒）；上限 30 天（OneBot 上限）。
+        """
+        text = str(arg or "").strip().lower()
+        if not text:
+            return default
+        unit = 1
+        if text[-1] in ("s", "m", "h", "d"):
+            unit = {"s": 1, "m": 60, "h": 3600, "d": 86400}[text[-1]]
+            text = text[:-1]
+        try:
+            value = int(text)
+        except ValueError:
+            return None
+        if value < 0:
+            return None
+        return min(value * unit, 30 * 24 * 3600)
+
+    async def _cmd_admin(self, cmd: str, arg: str, user_id: int, group_id: int) -> None:
+        """/admin（自检权限）· /mute <QQ> [时长] · /unmute <QQ>。
+
+        权限模型：必须由群主/管理员（或 ADMIN_QQ_IDS）发起；Bot 自己也要有管理员权限，
+        否则平台会拒绝——这里先自检并给出明确原因，避免"喊了没反应"。
+        """
+        service = self.admin_service
+        if service is None or not bool(getattr(self.config, "ADMIN_COMMANDS_ENABLED", True)):
+            await self.sender.send_group_message(group_id, "群管理指令没有开启哦（ADMIN_COMMANDS_ENABLED）")
+            return
+        caller_ok = await service.caller_can_manage(group_id, user_id)
+        bot_role = await service.bot_role(group_id)
+        role_label = {"owner": "群主", "admin": "管理员", "member": "普通成员"}.get(bot_role, "未知")
+        if cmd == "/admin":
+            mine = await service.member_role(group_id, user_id)
+            mine_label = {"owner": "群主", "admin": "管理员", "member": "普通成员"}.get(mine, "未知")
+            can = bot_role in ("owner", "admin")
+            lines = [
+                f"{self.config.BOT_NICKNAME} 在本群的权限：{role_label}"
+                + ("（可以禁言/解禁）" if can else "（没有管理权限，禁言会被平台拒绝）"),
+                f"你的权限：{mine_label}",
+            ]
+            if not can:
+                lines.append("让群主给花璃一个管理员吧，之后才能执行 /mute")
+            await self.sender.send_group_message(group_id, "\n".join(lines))
+            return
+        if not caller_ok:
+            await self.sender.send_group_message(group_id, "只有群主/管理员能使用这条指令哦")
+            return
+        if bot_role not in ("owner", "admin"):
+            await self.sender.send_group_message(
+                group_id,
+                f"花璃在本群没有管理权限（当前：{role_label}），禁言会被平台拒绝；先请群主授予管理员")
+            return
+        parts = arg.split(maxsplit=1)
+        try:
+            target = int(parts[0])
+        except (IndexError, ValueError):
+            await self.sender.send_group_message(
+                group_id, "用法：/mute QQ号 [时长]（如 /mute 123456 10m）；/unmute QQ号")
+            return
+        if target <= 0 or target == int(getattr(self.config, "BOT_QQ", 0) or 0):
+            await self.sender.send_group_message(group_id, "这个 QQ 号不能禁言哦")
+            return
+        if cmd == "/unmute":
+            duration = 0
+        else:
+            duration = self.parse_duration(parts[1] if len(parts) > 1 else "", default=600)
+            if duration is None:
+                await self.sender.send_group_message(
+                    group_id, "时长写法：10m（分钟）/ 1h / 90s / 600（秒）；上限 30 天")
+                return
+        result = await service.ban(group_id, target, duration)
+        if result.get("ok"):
+            if duration == 0:
+                await self.sender.send_group_message(group_id, f"已解除 {target} 的禁言")
+            else:
+                await self.sender.send_group_message(
+                    group_id, f"已禁言 {target}，时长 {duration} 秒（约 {duration // 60} 分钟）")
+        else:
+            await self.sender.send_group_message(
+                group_id, f"操作失败：{str(result.get('error') or '平台返回失败')[:120]}")
 
     # ---------- 自定义 Prompt ----------
     async def _cmd_prompt(self, arg: str, user_id: int, group_id: int, is_admin: bool) -> None:
@@ -135,6 +227,9 @@ class CommandHandler:
             "/forget 关键词 删掉包含该词的记忆",
             "/forget_me 清空我对你的全部记忆",
             "/profile 看看我对你的群友画像",
+            "/admin 看看花璃和你在本群的权限",
+            "/mute QQ号 [时长] 禁言（如 /mute 123456 10m）",
+            "/unmute QQ号 解除禁言",
         ]
         if is_admin:
             lines.append("/memory_clear 清空本群所有记忆（管理员）")

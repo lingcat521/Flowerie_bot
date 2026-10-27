@@ -120,6 +120,8 @@ class Settings(BaseSettings):
 
     # 群管理控制台（v2.10：Web UI「群管理」页 + SDK 群管扩展）
     ADMIN_CONSOLE_ENABLED: bool = True     # 群管理控制台开关（关=面板提示不可用；SDK 直接调用不受限）
+    ADMIN_COMMANDS_ENABLED: bool = True    # 群内管理指令开关（/mute /unmute /admin；关=指令不响应）
+    ADMIN_ROLE_CACHE_SECONDS: int = 60     # Bot/成员角色查询缓存秒数（0=不缓存，每次都问平台）
     # QQ空间（v2.10：Web UI「QQ空间」页 + SDK qzone_* 能力，底层 NapCat send/delete_qzone_msg）
     QZONE_ENABLED: bool = True             # QQ空间功能开关（关=面板提示不可用）
     QZONE_DEFAULT_UGC_RIGHT: int = 1       # 默认查看权限（1 所有人 / 4 好友 / 16 部分好友 / 64 仅自己 / 128 部分好友不可见）

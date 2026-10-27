@@ -376,6 +376,8 @@ Web UI 两个专属页签的开关与默认值。**两者默认开启**，不需
 
 ```ini
 ADMIN_CONSOLE_ENABLED=true           # 群管理控制台开关（关=「群管理」页提示不可用；SDK 直接调用不受限）
+ADMIN_COMMANDS_ENABLED=true          # 群内管理指令开关（/admin /mute /unmute；关=指令不响应）
+ADMIN_ROLE_CACHE_SECONDS=60          # Bot/成员角色查询缓存秒数（0=不缓存）
 QZONE_ENABLED=true                   # QQ空间功能开关（关=「QQ空间」页提示不可用）
 QZONE_DEFAULT_UGC_RIGHT=1            # 默认查看权限：1 所有人 / 4 好友 / 16 部分好友 / 64 仅自己 / 128 部分好友不可见
 QZONE_HISTORY_PATH=./data/qzone_history.json  # 本机发布历史（tid/摘要/权限/时间）
@@ -390,4 +392,21 @@ QZONE_MAX_HISTORY=100                # 历史最大条数（超出淘汰最旧�
   「明确不支持」，不会静默失败
 - 群管理控制台操作与 SDK `set_group_admin` 等走同一套 Adapter 能力接口；页面只做参数校验与结果回显
 - 面板操作结果就地回显，失败不抛异常（管理操作不能打崩面板）
+
+### 群内管理指令（/admin /mute /unmute）
+
+花璃会**先自检自己的管理员权限**再动手，避免“喊了没反应”：
+
+```ini
+/admin                     # 查看花璃和你在本群的权限（群主/管理员/普通成员）
+/mute 123456 10m           # 禁言 10 分钟（单位：s/m/h/d，不写单位=秒）
+/unmute 123456             # 解除禁言
+```
+
+- 发起人必须是**群主/管理员**（或 `ADMIN_QQ_IDS` 白名单）；花璃自己也必须是管理员，否则直接给出原因
+- 时长上限 30 天（OneBot 限制）；`/mute 123456` 不写时长默认 10 分钟
+- 角色查询有 `ADMIN_ROLE_CACHE_SECONDS`（默认 60s）缓存，不会每次刷平台接口
+- 这条链路不经过 LLM：指令由 `CommandHandler` 直接处理，无注入面
+
+> AI 自主调用管理动作目前**未开放**（只有面板/命令/插件 `group_manage` 权限三条路径），需要 LLM 自主禁言时再单独设计工具与风控。
 

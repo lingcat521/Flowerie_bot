@@ -231,6 +231,8 @@ async def main():
         admin_adapter = OneBotAdapter(sender, context_manager=policy_engine.context)
         admin_service = GroupAdminService(admin_adapter, config)
         qzone_service = QzoneService(admin_adapter, config)
+        # 群内管理指令（/admin /mute /unmute）：Bot 自检权限 + 调用群管能力
+        message_router.commands.admin_service = admin_service
         if config.WEB_UI_ENABLED:
             def _status_provider():
                 return {
