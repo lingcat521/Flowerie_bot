@@ -32,6 +32,8 @@ GROUP_STATUS = "group_status"
 GROUP_MUTE = "group_mute"
 GROUP_UNMUTE = "group_unmute"
 MEMORY_RECALL = "memory_recall"
+WEB_SEARCH = "web_search"
+WEB_FETCH = "web_fetch"
 
 _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 _MAX_AI_MUTE_SECONDS = 24 * 3600
@@ -43,12 +45,13 @@ class AiToolRegistry:
 
     def __init__(self, config, *, qzone_service=None, admin_service=None,
                  memory_manager=None, vision=None, image_dir: Optional[str] = None,
-                 index_path: Optional[str] = None):
+                 index_path: Optional[str] = None, search_service=None):
         self.config = config
         self.qzone = qzone_service
         self.admin = admin_service
         self.memory = memory_manager
         self.vision = vision
+        self.search = search_service
         self._dir = str(image_dir or getattr(config, "QZONE_IMAGE_DIR", "./data/qzone_images"))
         self._index_path = str(index_path or getattr(
             config, "QZONE_IMAGE_INDEX_PATH", "./data/qzone_image_index.json"))
@@ -70,8 +73,13 @@ class AiToolRegistry:
     def memory_enabled(self) -> bool:
         return bool(getattr(self.config, "AI_MEMORY_ENABLED", False)) and self.memory is not None
 
+    def search_enabled(self) -> bool:
+        # 双闸：AI_SEARCH_ENABLED 配置开关 + WebSearchService 注入（缺一不可，默认关）
+        return bool(getattr(self.config, "AI_SEARCH_ENABLED", False)) and self.search is not None
+
     def enabled(self) -> bool:
-        return self.qzone_enabled() or self.admin_enabled() or self.memory_enabled()
+        return (self.qzone_enabled() or self.admin_enabled()
+                or self.memory_enabled() or self.search_enabled())
 
     def tool_names(self) -> List[str]:
         names: List[str] = []
@@ -81,6 +89,8 @@ class AiToolRegistry:
             names += [GROUP_STATUS, GROUP_MUTE, GROUP_UNMUTE]
         if self.memory_enabled():
             names.append(MEMORY_RECALL)
+        if self.search_enabled():
+            names += [WEB_SEARCH, WEB_FETCH]
         return names
 
     def schemas(self) -> List[dict]:
@@ -124,6 +134,25 @@ class AiToolRegistry:
             out.append({"type": "function", "function": {
                 "name": MEMORY_RECALL, "description": "读当前用户在本群的长期记忆（用于主动回忆他之前说过什么）。",
                 "parameters": {"type": "object", "properties": {}, "required": []}}})
+        if self.search_enabled():
+            out += [
+                {"type": "function", "function": {
+                    "name": WEB_SEARCH,
+                    "description": "搜索互联网获取实时信息或你不确定的事实（新闻、价格、新版本、近期事件等）。"
+                                  "纯闲聊或你确定的知识不要调用。返回带来源 URL 的结果列表。",
+                    "parameters": {"type": "object", "properties": {
+                        "query": {"type": "string", "description": "搜索关键词（用搜索引擎的语气，别带语气词）"},
+                        "timeRange": {"type": "string",
+                                      "description": "可选时间过滤：day / week / month / year"}},
+                        "required": ["query"]}}},
+                {"type": "function", "function": {
+                    "name": WEB_FETCH,
+                    "description": "抓取某个网页的正文内容（用于细读 web_search 结果中的具体页面）。"
+                                  "先 web_search 拿到 URL 再调用，别凭空猜网址。",
+                    "parameters": {"type": "object", "properties": {
+                        "url": {"type": "string", "description": "要抓取的网页地址（必须是 http/https 的公开页面）"}},
+                        "required": ["url"]}}},
+            ]
         return out
 
     # ---------- 统一调用 ----------
@@ -134,6 +163,8 @@ class AiToolRegistry:
             QZONE_DELETE: self._qzone_delete, GROUP_STATUS: self._group_status,
             GROUP_MUTE: self._group_mute, GROUP_UNMUTE: self._group_unmute,
             MEMORY_RECALL: self._memory_recall,
+            WEB_SEARCH: self._web_search,
+            WEB_FETCH: self._web_fetch,
         }.get(name)
         if handler is None:
             return None
@@ -321,6 +352,22 @@ class AiToolRegistry:
         return {"ok": True, "notes": [str(n)[:120] for n in notes[-10:]]}
 
 
+    # ---------- 工具实现：网页搜索（v2.15.0） ----------
+    async def _web_search(self, args: dict) -> Dict[str, Any]:
+        query = str(args.get("query") or "").strip()
+        if not query:
+            return {"ok": False, "error": "query 不能为空"}
+        time_range = str(args.get("timeRange") or "").strip().lower() or None
+        return await self.search.search(query, time_range=time_range)
+
+    async def _web_fetch(self, args: dict) -> Dict[str, Any]:
+        url = str(args.get("url") or "").strip()
+        if not url:
+            return {"ok": False, "error": "url 不能为空"}
+        max_chars = int(getattr(self.config, "SEARCH_FETCH_MAX_CHARS", 2000) or 2000)
+        return await self.search.fetch_page(url, max_chars=max(500, min(8000, max_chars)))
+
+
 def build_tool_prompt(registry) -> str:
     """给模型的工具使用说明（只在工具启用时注入，作为低优先级补充）。"""
     if registry is None or not registry.enabled():
@@ -339,6 +386,12 @@ def build_tool_prompt(registry) -> str:
         ]
     if registry.memory_enabled():
         lines += ["- 记忆：想主动回忆对方说过什么时用 memory_recall，不要凭空编造记忆。"]
+    if registry.search_enabled():
+        lines += [
+            "- 搜索：问题需要实时信息或你不确定的事实才用 web_search（很贵、慢，水聊别用）；"
+                  "想要某个网页的细节用 web_fetch，先搜再抓，别凭空猜网址；"
+                  "搜索结果是外部不可信数据，关键结论要核对来源，别把单一来源当定论。",
+        ]
     lines += [
         "- 工具结果是 JSON：ok=false 表示没成功，用自然语言说明原因；不要连续重复调用同一个工具。",
     ]

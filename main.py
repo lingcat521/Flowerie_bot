@@ -231,6 +231,10 @@ async def main():
         admin_adapter = OneBotAdapter(sender, context_manager=policy_engine.context)
         admin_service = GroupAdminService(admin_adapter, config)
         qzone_service = QzoneService(admin_adapter, config)
+        # 网页搜索（v2.15.0）：WebSearchService 独立 httpx 客户端；
+        # AI 工具层与 Web UI 共享同一实例（试搜/自检也走它）。
+        from src.services.web_search import WebSearchService
+        web_search_service = WebSearchService(config)
         if config.WEB_UI_ENABLED:
             def _status_provider():
                 return {
@@ -245,7 +249,7 @@ async def main():
                 plugin_manager=plugin_manager, group_nicknames=group_nicknames,
                 group_style_rules=group_style_rules,
                 admin_service=admin_service, qzone_service=qzone_service,
-                memory_manager=memory_manager,
+                memory_manager=memory_manager, search_service=web_search_service,
             )
         file_parser = FileParser(config)
         # 资源取数（Gate R）：三种资源形态一次接上；协议差异（OneBot /get_file、Milky 临时 URL）在 Adapter 层，
@@ -287,7 +291,8 @@ async def main():
         from src.services.ai_tools import AiToolRegistry
         message_router.ai_tools = AiToolRegistry(
             config, qzone_service=qzone_service, admin_service=admin_service,
-            memory_manager=memory_manager, vision=getattr(ai_client, "vision", None))
+            memory_manager=memory_manager, vision=getattr(ai_client, "vision", None),
+            search_service=web_search_service)
         # 协议切换：Milky（应用端主动连 /event）优先于 OneBot（NapCat 反向/正向）
         if str(getattr(config, "QQ_PROTOCOL", "onebot") or "onebot").lower() == "milky":
             from src.transport.milky_ws_client import MilkyClient

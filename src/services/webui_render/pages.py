@@ -17,6 +17,7 @@ _TABS = [
     ("private", "/panel?tab=private", "私聊"),
     ("nicknames", "/panel?tab=nicknames", "群昵称"),
     ("plugins", "/panel?tab=plugins", "插件"),
+    ("search", "/panel?tab=search", "网页搜索"),
     ("appearance", "/panel?tab=appearance", "外观"),
     ("logs", "/panel?tab=logs", "日志"),
     ("account", "/panel?tab=account", "用户状态"),
@@ -25,7 +26,7 @@ _TABS = [
 _TITLES = {
     "config": "配置管理", "appearance": "外观美化", "logs": "日志",
     "persona": "人格管理", "knowledge": "群聊知识管理", "account": "用户状态",
-    "plugins": "插件管理", "nicknames": "群特色昵称", "profiles": "群友画像",
+    "plugins": "插件管理", "search": "网页搜索", "nicknames": "群特色昵称", "profiles": "群友画像",
     "admin": "群管理（Bot 管理员）", "qzone": "QQ空间", "private": "私聊",
 }
 

@@ -21,7 +21,7 @@
 ---
 ## 这是什么
 
-**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.14.4**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.15.0**）。
 
 - **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/reference/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
@@ -58,10 +58,11 @@
 | 🖥️ Plugin WebUI | 插件自带管理页面（HTML+CSS，**零 JavaScript**）：`webui.page/action/asset` + 六项 `webui.*` 权限 + 净化/隔离：[WebUI 协议](docs/plugins/plugin-webui-protocol.md) |
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
 | 🖼️ 表情包 | 目录扫描 + Vision 索引缓存，模型按语境选择发送 |
-| 🔧 MCP 工具 | 外部工具调用（如搜索），插件式多 server + 工具白名单 + 独立熔断 |
+| 🔧 MCP 工具 | 外部工具调用，插件式多 server + 工具白名单 + 独立熔断 |
+| 🔍 网页搜索 | 原生免 key 引擎（DDG/Bing/SearXNG），失败感知回退 + 正文抓取，Web UI「网页搜索」页试搜/自检：[文档](docs/features/search.md) |
 | ⚔️ 引战检测 | 关键词 + AI 双重确认 |
 | 🎯 冷却/预算 | 用户/机器人冷却、全局+群+用户三层 AI 预算、复读检测、主动聊天 |
-| 🖥️ Web UI | 管理后台：配置/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/外观/日志/用户状态/插件（十二个页签），全零 JS，热更新；手机窄屏导航自动收成 ☰ 抽屉（纯 CSS，无脚本） |
+| 🖥️ Web UI | 管理后台：配置/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/网页搜索/外观/日志/用户状态/插件（十三个页签），全零 JS，热更新；手机窄屏导航自动收成 ☰ 抽屉（纯 CSS，无脚本） |
 | 🛡️ 安全 | SSRF 防护、Prompt 注入多层防线、知识防污染、日志脱敏、双层熔断、Web UI 注册 Bootstrap Lock、插件权限强制 |
 
 ## 快速开始
@@ -153,7 +154,7 @@ OneBot WebSocket connected
 也可提前在 `.env` 设 `WEB_UI_USERNAME` / `WEB_UI_PASSWORD`。
 想彻底关闭：`WEB_UI_ENABLED=false`；想让局域网设备访问：`WEB_UI_ALLOW_LAN=true`（默认关闭）。
 
-十二个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
+十三个页签，全部纯 HTML + CSS + 服务端渲染，**零 JavaScript**：
 
 - **配置**：全部变量按功能分组（bool/int/secret/文本/列表/JSON 各有控件），每组独立保存，
   修改**真正写入项目根 `.env`**（原子更新、保留注释与原变量），Secret 只显示掩码、留空不覆盖

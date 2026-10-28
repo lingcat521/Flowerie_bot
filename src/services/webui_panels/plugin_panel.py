@@ -268,6 +268,7 @@ class PluginPanelMixin:
         form = await request.post()
         updates = {k: str(v) for k, v in form.items()
                    if k in ("PLUGIN_MAX_COUNT", "PLUGIN_URL_MAX_BYTES", "PLUGIN_URL_TIMEOUT",
-                            "PLUGIN_ZIP_MAX_UNZIPPED_BYTES", "PLUGIN_ZIP_MAX_FILES")}
+                            "PLUGIN_ZIP_MAX_UNZIPPED_BYTES", "PLUGIN_ZIP_MAX_FILES",
+                            "PLUGIN_LEGACY_CALL_TIMEOUT", "PLUGIN_LEGACY_CALL_TIMEOUT_MAX")}
         ok, message = self.config_service.update_many(updates)
         return web.HTTPFound(f"/panel?tab=plugins&msg={quote(message)}&err={'1' if not ok else ''}")

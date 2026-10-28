@@ -17,6 +17,7 @@ class _Cfg:
     AI_QZONE_MAX_PER_DAY = 1
     AI_ADMIN_ENABLED = True
     AI_MEMORY_ENABLED = True
+    AI_SEARCH_ENABLED = True
     QZONE_IMAGE_MAX = 50
     QZONE_IMAGE_DESCRIBE_LIMIT = 12
     BOT_QQ = 10000
@@ -252,6 +253,128 @@ async def test_tool_caller_chain_builtin_then_mcp(tmp_path):
     assert out2 == "mcp:mcp_search" and calls == ["mcp_search"]
     out3 = await caller("reply", {"messages": ["hi"]})
     assert "已记录" in out3
+
+
+
+
+# ---------- 网页搜索工具（v2.15.0） ----------
+
+class _SearchSvc:
+    def __init__(self):
+        self.queries = []
+        self.urls = []
+
+    def enabled(self):
+        return True
+
+    async def search(self, query, time_range=None, engine=None):
+        self.queries.append((query, time_range, engine))
+        return {"ok": True, "sources": [{"url": "https://x.com/1", "title": "T", "snippet": "S"}],
+                "engine": "ddg", "engines_used": ["ddg"]}
+
+    async def fetch_page(self, url, max_chars=2000):
+        self.urls.append((url, max_chars))
+        return {"ok": True, "url": url, "title": "页", "text": "正文", "truncated": False}
+
+
+def _search_registry(tmp_path, cfg=None):
+    from src.services.web_search import WebSearchService
+    reg, *_ = _registry(tmp_path, cfg=cfg)
+    reg.search = _SearchSvc()
+    return reg
+
+
+def test_search_tools_off_by_default(tmp_path):
+    class Off(_Cfg):
+        AI_QZONE_ENABLED = False
+        AI_ADMIN_ENABLED = False
+        AI_MEMORY_ENABLED = False
+        AI_SEARCH_ENABLED = False
+    reg, *_ = _registry(tmp_path, cfg=Off())
+    reg.search = _SearchSvc()
+    assert reg.enabled() is False
+    assert reg.schemas() == []
+
+
+def test_search_tools_off_without_service(tmp_path):
+    # 无服务注入：即使 AI_SEARCH_ENABLED=true 也不注册（双闸）；其他工具不受影响
+    reg, *_ = _registry(tmp_path)
+    assert reg.search is None
+    assert reg.search_enabled() is False
+    names = [d["function"]["name"] for d in reg.schemas()]
+    assert "web_search" not in names and "web_fetch" not in names
+    assert len(names) == 7  # qzone*3 + admin*3 + memory*1 照常注册
+
+
+def test_search_schemas_listed(tmp_path):
+    reg = _search_registry(tmp_path)
+    names = [d["function"]["name"] for d in reg.schemas() if "web_" in d["function"]["name"]]
+    assert names == ["web_search", "web_fetch"]
+    # schema 必填字段齐备
+    schemas = {d["function"]["name"]: d["function"] for d in reg.schemas()}
+    assert schemas["web_search"]["parameters"]["required"] == ["query"]
+    assert schemas["web_fetch"]["parameters"]["required"] == ["url"]
+
+
+def test_search_tool_names(tmp_path):
+    reg = _search_registry(tmp_path)
+    assert "web_search" in reg.tool_names() and "web_fetch" in reg.tool_names()
+
+
+@pytest.mark.asyncio
+async def test_web_search_handler_calls_service(tmp_path):
+    reg = _search_registry(tmp_path)
+    out = await reg.call_tool("web_search", {"query": "今天天气", "timeRange": "day"})
+    import json
+    d = json.loads(out)
+    assert d["ok"] is True
+    assert reg.search.queries == [("今天天气", "day", None)]
+
+
+@pytest.mark.asyncio
+async def test_web_search_handler_rejects_empty(tmp_path):
+    reg = _search_registry(tmp_path)
+    out = await reg.call_tool("web_search", {"query": "   "})
+    import json
+    assert json.loads(out)["ok"] is False
+
+
+@pytest.mark.asyncio
+async def test_web_fetch_handler_clamps_chars(tmp_path):
+    class C(_Cfg):
+        SEARCH_FETCH_MAX_CHARS = 99999
+    reg = _search_registry(tmp_path, cfg=C())
+    out = await reg.call_tool("web_fetch", {"url": "https://x.com/p"})
+    import json
+    assert json.loads(out)["ok"] is True
+    # clamped 到 8000 上限
+    assert reg.search.urls == [("https://x.com/p", 8000)]
+
+
+@pytest.mark.asyncio
+async def test_unknown_search_tool_returns_none(tmp_path):
+    reg = _search_registry(tmp_path)
+    assert await reg.call_tool("web_search_pro", {}) is None
+
+
+def test_build_tool_prompt_includes_search(tmp_path):
+    from src.services.ai_tools import build_tool_prompt
+    reg = _search_registry(tmp_path)
+    p = build_tool_prompt(reg)
+    assert "web_search" in p and "web_fetch" in p
+    assert "不可信" in p  # 外部数据警示
+
+
+def test_build_tool_prompt_excludes_search_when_off(tmp_path):
+    class Off(_Cfg):
+        AI_QZONE_ENABLED = False
+        AI_ADMIN_ENABLED = False
+        AI_MEMORY_ENABLED = False
+        AI_SEARCH_ENABLED = False
+    from src.services.ai_tools import build_tool_prompt
+    reg, *_ = _registry(tmp_path, cfg=Off())
+    reg.search = _SearchSvc()
+    assert "web_search" not in build_tool_prompt(reg)
 
 
 # ---------- 自主发动态 ----------

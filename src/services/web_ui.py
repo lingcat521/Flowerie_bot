@@ -48,6 +48,7 @@ from src.services.webui_panels import (
     ProfilePanelMixin,
     PromptPanelMixin,
     QzonePanelMixin,
+    SearchPanelMixin,
 )
 
 # 兼容导出：拆分后常量/辅助函数移入 webui_panels.appearance_panel
@@ -64,14 +65,15 @@ _LOGIN_FAIL_WINDOW = 60
 class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, AppearancePanelMixin,
                   McpPanelMixin, PromptPanelMixin, PersonaPanelMixin, AdminPanelMixin,
                   QzonePanelMixin, KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin,
-                  NicknamePanelMixin, ProfilePanelMixin, PrivateChatPanelMixin):
+                  NicknamePanelMixin, ProfilePanelMixin, PrivateChatPanelMixin,
+                  SearchPanelMixin):
 
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
                  persona_manager=None, meme_manager=None, prompt_manager=None,
                  plugin_manager=None, group_nicknames=None, group_style_rules=None,
                  profile_service=None, admin_service=None, qzone_service=None,
-                 memory_manager=None):
+                 memory_manager=None, search_service=None):
         self.config = config
         self.group_nicknames = group_nicknames
         # 群专属发言规则 store（与 MessageRouter 共享同一实例；按 群+人设 解析）
@@ -88,6 +90,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         self._data_dir = str(data_dir)
         # 运行中 MCP 工具管理器（读取各 server 已同步工具数，用于卡片显示真实数量）
         self._tool_manager = tool_manager
+        # 网页搜索服务（v2.15.0；main 注入，与 AI 工具层共享同一实例）
+        self._search_service_ref = search_service
         # 人格系统 / 群聊知识 / 自定义 Prompt（Web UI 管理页数据源；未注入时对应区块提示不可用）
         self._persona_manager = persona_manager
         self._meme_manager = meme_manager
@@ -193,6 +197,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_get("/panel/static/{name}", handle_panel_static)
         # MCP server 结构化编辑（添加/编辑/删除，零 JS 表单）
         app.router.add_post("/panel/mcp/edit", self._handle_panel_mcp_edit)
+        # 网页搜索（试搜 / 引擎自检；零 JS 表单）
+        app.router.add_post("/panel/search/probe", self._handle_panel_search_probe)
+        app.router.add_post("/panel/search/test", self._handle_panel_search_test)
         # 人格管理（零 JS 表单：默认 / 全局 / 列表 CRUD / 群绑定）
         app.router.add_post("/panel/persona/config", self._handle_panel_persona_config)
         app.router.add_post("/panel/persona/default", self._handle_panel_persona_default)
@@ -287,7 +294,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         err = request.query.get("err", "") == "1"
         tab = request.query.get("tab", "")
         if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins",
-                       "nicknames", "profiles", "admin", "qzone", "private"):
+                       "nicknames", "profiles", "admin", "qzone", "private", "search"):
             tab = "config"
         cat = request.query.get("cat", "")
         if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
@@ -379,6 +386,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             body_html = self._render_private_page(msg=msg, err=err)
         elif tab == "plugins":
             body_html = self._render_plugin_page()
+        elif tab == "search":
+            body_html = self._render_search_page(msg=msg, err=err,
+                                                 probe=getattr(self, "_search_probe_cache", None))
         else:
             body_html = render_config_sections(self.config_service.list_configs(), active_cat=cat,
                                                mcp_edit=mcp_edit, mcp_test_status=self._get_mcp_test_status(),

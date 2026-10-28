@@ -4,6 +4,29 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.15.0] - 2026-10-29
+
+### 新功能
+
+- **原生网页搜索（无 key、无 MCP）**：AI 内置工具层新增 `web_search` / `web_fetch`，
+  引擎层移植自 dsh-free-search v0.9.14（MIT）的 keyless 部分：
+  - 4 个免 key 引擎：DuckDuckGo HTML / DuckDuckGo Lite / Bing / SearXNG（6 公共实例轮询）
+  - 失败感知回退链：transient 重试一次、403/429 反爬冷却 60s、总预算 30s
+  - Bing 反爬适配（`ck/a` 跳转解包 + 无结果缓存 SERP 判定，issue #38）
+  - LRU 结果缓存（TTL 可配 0-5 分钟）、域名黑名单、安全搜索档
+  - `web_fetch` 抓正文复用 MCP 同款 SSRF 防线（回环/私网拒绝）
+- **Web UI 新增「网页搜索」页签**（抽屉内独立 tab）：引擎状态卡片 + 试搜 + 逐引擎自检（手动触发）
+
+### 优化
+
+- 配置对齐：插件页补 `PLUGIN_LEGACY_CALL_TIMEOUT` / `PLUGIN_LEGACY_CALL_TIMEOUT_MAX` 两键
+  （此前只在 .env 可改、WebUI 无入口）
+
+### 变更
+
+- `web_ui.py` 行数门禁 430 → 460（新增搜索 tab 装配）
+
+
 ## [2.14.4] - 2026-10-29
 
 ### 优化

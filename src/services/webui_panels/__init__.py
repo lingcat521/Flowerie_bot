@@ -19,6 +19,7 @@ from src.services.webui_panels.private_panel import PrivateChatPanelMixin
 from src.services.webui_panels.profile_panel import ProfilePanelMixin
 from src.services.webui_panels.prompt_panel import PromptPanelMixin
 from src.services.webui_panels.qzone_panel import QzonePanelMixin
+from src.services.webui_panels.search_panel import SearchPanelMixin
 
 __all__ = [
     "AccountPanelMixin", "AdminPanelMixin", "AppearancePanelMixin", "AuthPanelMixin",
@@ -26,4 +27,5 @@ __all__ = [
     "PersonaPanelMixin", "PluginPanelMixin", "PluginWebUIStaticMixin", "PrivateChatPanelMixin",
     "ProfilePanelMixin",
     "PromptPanelMixin", "QzonePanelMixin",
+    "SearchPanelMixin",
 ]

@@ -127,7 +127,8 @@ def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
     # ---------- 插件系统配置 ----------
     cfg_rows = ""
     allowed = ("PLUGIN_MAX_COUNT", "PLUGIN_URL_MAX_BYTES", "PLUGIN_URL_TIMEOUT",
-               "PLUGIN_ZIP_MAX_UNZIPPED_BYTES", "PLUGIN_ZIP_MAX_FILES")
+               "PLUGIN_ZIP_MAX_UNZIPPED_BYTES", "PLUGIN_ZIP_MAX_FILES",
+               "PLUGIN_LEGACY_CALL_TIMEOUT", "PLUGIN_LEGACY_CALL_TIMEOUT_MAX")
     for entry in (plugin_configs or []):
         key = entry.get("key", "")
         if key not in allowed:
