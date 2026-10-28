@@ -9,8 +9,14 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.services.web_search import (  # noqa: E402
-    ENGINE_IDS, WebSearchService, extract_bing_url, extract_ddg_url,
-    _days_of, _extract_main_text, _looks_relevant, _strip_tags,
+    ENGINE_IDS,
+    WebSearchService,
+    _days_of,
+    _extract_main_text,
+    _looks_relevant,
+    _strip_tags,
+    extract_bing_url,
+    extract_ddg_url,
 )
 
 
@@ -353,8 +359,8 @@ def test_search_panel_disabled_hint():
 
 def test_plugin_page_legacy_keys_alignable():
     """配置对齐：插件页白名单补上 LEGACY_CALL_TIMEOUT 两键（.env 与 WebUI 对齐）。"""
-    import src.services.webui_render.plugins as plugins_mod
     import src.services.webui_panels.plugin_panel as pp_mod
-    for mod in (plugins_mod, pp_mod):
+    import src.services.webui_render.plugins as plugins_mod
+    for mod in (pp_mod, plugins_mod):
         src = open(mod.__file__, encoding="utf-8").read()
         assert "PLUGIN_LEGACY_CALL_TIMEOUT_MAX" in src

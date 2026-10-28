@@ -323,9 +323,10 @@ def test_search_tool_names(tmp_path):
 
 @pytest.mark.asyncio
 async def test_web_search_handler_calls_service(tmp_path):
+    import json
+
     reg = _search_registry(tmp_path)
     out = await reg.call_tool("web_search", {"query": "今天天气", "timeRange": "day"})
-    import json
     d = json.loads(out)
     assert d["ok"] is True
     assert reg.search.queries == [("今天天气", "day", None)]
@@ -333,19 +334,21 @@ async def test_web_search_handler_calls_service(tmp_path):
 
 @pytest.mark.asyncio
 async def test_web_search_handler_rejects_empty(tmp_path):
+    import json
+
     reg = _search_registry(tmp_path)
     out = await reg.call_tool("web_search", {"query": "   "})
-    import json
     assert json.loads(out)["ok"] is False
 
 
 @pytest.mark.asyncio
 async def test_web_fetch_handler_clamps_chars(tmp_path):
+    import json
+
     class C(_Cfg):
         SEARCH_FETCH_MAX_CHARS = 99999
     reg = _search_registry(tmp_path, cfg=C())
     out = await reg.call_tool("web_fetch", {"url": "https://x.com/p"})
-    import json
     assert json.loads(out)["ok"] is True
     # clamped 到 8000 上限
     assert reg.search.urls == [("https://x.com/p", 8000)]
