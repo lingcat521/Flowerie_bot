@@ -261,6 +261,9 @@ font-size:19px;line-height:1;color:var(--heading);background:var(--accent-soft)}
     transform:translateX(-105%);transition:transform .22s ease}
   .tabs .tab{border-radius:10px;padding:11px 14px;font-size:14px}
   .wrap:has(#nav-toggle:checked) .tabs{transform:translateX(0)}
+  /* 打开抽屉时把 .topbar 整层抬到遮罩之上：抽屉与遮罩同属这一层，
+     内部 60 > 50 才生效；否则遮罩会盖住抽屉导致「点不中」 */
+  .wrap:has(#nav-toggle:checked) .topbar{z-index:100}
   .wrap:has(#nav-toggle:checked) .nav-overlay{display:block;position:fixed;inset:0;
     z-index:50;background:rgba(0,0,0,.45)}
 }

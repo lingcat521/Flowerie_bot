@@ -187,6 +187,13 @@ def test_panel_has_css_only_drawer_nav():
     assert 'class="nav-btn"' in html and 'for="nav-toggle"' in html
     assert 'class="nav-overlay"' in html
     assert '<nav class="tabs" id="nav">' in html
+    # 遮罩必须与抽屉同属 .topbar 层叠上下文（v2.14.3 修）：
+    # 早前遮罩是 header 的兄弟，z-index 50 直接盖住 topbar（z-index 1）里的抽屉，
+    # 导致点抽屉按钮实际点到遮罩、抽屉还被打暗。
+    header_start = html.find("<header")
+    header_end = html.find("</header>")
+    overlay_at = html.find('class="nav-overlay"')
+    assert header_start < overlay_at < header_end, "遮罩必须在 .topbar 内部"
     assert "<script" not in html.lower()
     assert "onclick=" not in html.lower()
 
@@ -195,6 +202,7 @@ def test_drawer_css_rules_present():
     for rule in (
         "@media (max-width:760px)",
         ".wrap:has(#nav-toggle:checked) .tabs{transform:translateX(0)}",
+        ".wrap:has(#nav-toggle:checked) .topbar{z-index:100}",
         ".wrap:has(#nav-toggle:checked) .nav-overlay{",
         "@media (min-width:761px){.nav-toggle,.nav-btn,.nav-overlay{display:none}}",
         "position:fixed;top:0;left:0;bottom:0;width:min(78vw,300px)",
