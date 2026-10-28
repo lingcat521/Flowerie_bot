@@ -1,5 +1,9 @@
 """面板导航抽屉的真实浏览器回归（v2.14.3 修复）。
 
+文件名刻意排在 test_plugin_chain_engine.py 之后：Playwright 的同步 API 会占用主线程的
+事件循环，若它早于 pytest-asyncio 的 async 用例启动，那些用例会报
+"Runner.run() cannot be called from a running event loop"（本仓库真实踩过）。
+
 Bug 背景：遮罩曾是 <header> 的兄弟节点，z-index:50 压在 .topbar（z-index:1）整层之上，
 于是窄屏打开抽屉后：① 点抽屉里的页签，实际点到的是遮罩；② 整个抽屉被遮罩压暗。
 这里用真 Chromium 走用户路径：窄屏点 ☰ → 点「外观」→ 必须真的跳转；

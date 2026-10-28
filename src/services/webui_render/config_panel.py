@@ -87,7 +87,8 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
         summary_status = _cat_status_badge(by_cat[cat])
         section = (
             f'<details class="cfg-group" open>'
-            f'<summary class="cfg-summary">{_esc(label)}{summary_status}</summary>'
+            f'<summary class="cfg-summary"><span class="cfg-caret" aria-hidden="true"></span>'
+            f'{_esc(label)}{summary_status}</summary>'
             + body
             + '</details>'
         )
@@ -304,13 +305,27 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
     )
 
 def _render_cat_nav(active: str, cats, labels) -> str:
-    """顶部分类导航（pill 链接，响应式换行）。"""
+    """顶部分类导航：折叠成一行摘要，展开后是扁平链接网格（零 JS）。
+
+    为什么改：25 个半透明胶囊在手机上一屏全是"气泡"，首屏全被导航吃掉。
+    现在窄屏默认收起（只占一行，显示当前分类），点开才列出全部；
+    宽屏用 CSS 强制展开内容、隐藏 summary，保持一眼可选。
+    """
+    current = "全部" if active in ("all", "") else labels.get(active, active)
     links = [f'<a class="cat{" active" if active in ("all", "") else ""}" href="/panel?cat=all">全部</a>']
     for cat in cats:
         label = labels.get(cat, cat)
         active_cls = " active" if cat == active else ""
         links.append(f'<a class="cat{active_cls}" href="/panel?cat={_esc(cat)}">{_esc(label)}</a>')
-    return '<nav class="cats">' + "".join(links) + '</nav>'
+    links_html = "".join(links)
+    # 两份：窄屏用 <details> 折叠（一行摘要）；宽屏直接铺开网格（媒体查询二选一显示）
+    return (
+        '<details class="cats-fold">'
+        '<summary class="cats-summary"><span class="cats-title">分类导航</span>'
+        f'<span class="cats-current">当前：{_esc(str(current))}</span></summary>'
+        f'<nav class="cats">{links_html}</nav></details>'
+        f'<nav class="cats cats-wide">{links_html}</nav>'
+    )
 
 def _render_config_row(c: dict, extra_badges: str = "") -> str:
     key = c["key"]

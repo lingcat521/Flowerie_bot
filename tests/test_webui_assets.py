@@ -219,3 +219,21 @@ def test_drawer_nav_lists_all_tabs():
                   "群昵称", "插件", "外观", "日志", "用户状态", "退出"):
         assert label in html, label
     assert 'class="tab active" href="/panel?tab=qzone"' in html
+
+
+def test_config_category_nav_is_folded_and_flat():
+    """v2.14.4：分类导航折叠成一行（窄屏），宽屏铺开网格，不再是 25 个胶囊气泡。"""
+    from src.services.webui_render.config_panel import _render_cat_nav
+
+    html = _render_cat_nav("AI", ["AI", "Bot"],
+                           {"AI": "AI / Provider 配置", "Bot": "基础配置"})
+    assert '<details class="cats-fold">' in html
+    assert "分类导航" in html and "当前：AI / Provider 配置" in html
+    assert 'class="cats cats-wide"' in html
+    assert 'class="cat active"' in html
+
+
+def test_config_category_nav_css_rules():
+    for rule in (".cats-fold{", ".cats-summary{", ".cats-wide{display:none}",
+                 "@media (min-width:761px){", ".cfg-caret::before"):
+        assert rule in PANEL_CSS, rule
