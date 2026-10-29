@@ -35,8 +35,8 @@ from src.services.web_ui_assets import (
 from src.services.webui_panels import (
     AccountPanelMixin,
     AdminPanelMixin,
-    AutomationPanelMixin,
     AppearancePanelMixin,
+    AutomationPanelMixin,
     AuthPanelMixin,
     ConfigPanelMixin,
     KnowledgePanelMixin,

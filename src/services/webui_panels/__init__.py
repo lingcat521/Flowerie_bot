@@ -5,9 +5,9 @@ WebUIServer 只保留核心（认证基座/面板壳/生命周期）并多重继
 对外 API（from src.services.web_ui import WebUIServer）保持不变。
 """
 from src.services.webui_panels.account_panel import AccountPanelMixin
-from src.services.webui_panels.automation_panel import AutomationPanelMixin
 from src.services.webui_panels.admin_panel import AdminPanelMixin
 from src.services.webui_panels.appearance_panel import AppearancePanelMixin
+from src.services.webui_panels.automation_panel import AutomationPanelMixin
 from src.services.webui_panels.auth_panel import AuthPanelMixin
 from src.services.webui_panels.config_panel import ConfigPanelMixin
 from src.services.webui_panels.knowledge_panel import KnowledgePanelMixin
