@@ -14,7 +14,6 @@ from src.services.webui_render.category_constants import (  # noqa: E402
     CATEGORY_ORDER,
 )
 
-
 _EXPECTED = (
     "AI_QZONE_ENABLED", "AI_QZONE_MAX_PER_DAY",
     "AI_QZONE_AUTO_ENABLED", "AI_QZONE_AUTO_INTERVAL_HOURS",
