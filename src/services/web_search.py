@@ -576,7 +576,6 @@ class WebSearchService:
     async def test_engines(self, query: str = "Flowerie", limit: int = 2) -> Dict[str, Dict[str, Any]]:
         """逐引擎连通性自检（设置页手动按钮调用，不给 AI 用）。"""
         out: Dict[str, Dict[str, Any]] = {}
-        loop = asyncio.get_event_loop()
         signal = asyncio.Event()
         for eng in self._engine_order():
             started = time.monotonic()

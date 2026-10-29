@@ -55,11 +55,12 @@ class SearchPanelMixin:
                     f'<span class="row-key">{_t(s.get("url", ""))}</span></label>'
                     f'<div class="row-control"><span class="hint">{_t(s.get("snippet", ""))}</span></div></div>'
                     for s in (probe.get("sources") or [])[:5])
+                empty_hint = '<div class="hint">无结果</div>'
                 probe_html = (
                     f'<details class="cfg-group" open><summary class="cfg-summary">'
                     f'<span class="cfg-caret" aria-hidden="true"></span>试搜结果'
                     f'（引擎 {_t(probe.get("engine", ""))}，{len(probe.get("sources") or [])} 条）</summary>'
-                    f'{items or "<div class=\"hint\">无结果</div>"}</details>')
+                    + (items or empty_hint) + "</details>")
             else:
                 probe_html = (
                     '<details class="cfg-group" open><summary class="cfg-summary">'

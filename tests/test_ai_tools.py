@@ -278,7 +278,6 @@ class _SearchSvc:
 
 
 def _search_registry(tmp_path, cfg=None):
-    from src.services.web_search import WebSearchService
     reg, *_ = _registry(tmp_path, cfg=cfg)
     reg.search = _SearchSvc()
     return reg
