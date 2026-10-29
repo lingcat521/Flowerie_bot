@@ -104,12 +104,16 @@ async def test_panel_contains_all_config_keys():
                 continue  # 渲染为专用编辑器（卡片），由 test_mcp_editor_renders_in_config_page 覆盖
             if ConfigService.SCHEMA[key][0] in ("Persona", "Knowledge", "Plugin"):
                 continue  # 人格/知识/插件分类已移到各自专属页区块
+            if ConfigService.SCHEMA[key][0] == "Automation":
+                continue  # v2.16.0：自动化键移到「自动化」tab（同 Persona/Plugin 模式）
             if key.startswith("BLOSSOM_MEMORY_") and key != "BLOSSOM_MEMORY_ENABLED":
                 continue  # 花语记忆子键：总开关 OFF 时按设计门控隐藏（见 test_webui_blossom）
             assert f'name="{key}"' in text, f"面板缺少配置项 {key}"
         # 人格/知识配置项不在配置页（已移走）
         for key in ("PERSONA_DEFAULT", "MEME_LEARNING_ENABLED"):
             assert f'name="{key}"' not in text, f"配置页不应再出现 {key}"
+        for key in ("AI_QZONE_ENABLED", "AI_ADMIN_ENABLED", "QZONE_ENABLED"):
+            assert f'name="{key}"' not in text, f"配置页不应再出现自动化键 {key}"
         assert "保存本组" in text  # 分组保存按钮
 
 

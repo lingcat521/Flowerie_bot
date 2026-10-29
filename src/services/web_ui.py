@@ -35,6 +35,7 @@ from src.services.web_ui_assets import (
 from src.services.webui_panels import (
     AccountPanelMixin,
     AdminPanelMixin,
+    AutomationPanelMixin,
     AppearancePanelMixin,
     AuthPanelMixin,
     ConfigPanelMixin,
@@ -66,7 +67,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
                   McpPanelMixin, PromptPanelMixin, PersonaPanelMixin, AdminPanelMixin,
                   QzonePanelMixin, KnowledgePanelMixin, PluginPanelMixin, PluginWebUIStaticMixin,
                   NicknamePanelMixin, ProfilePanelMixin, PrivateChatPanelMixin,
-                  SearchPanelMixin):
+                  SearchPanelMixin, AutomationPanelMixin):
 
     def __init__(self, config: Settings, config_service: ConfigService, status_provider=None,
                  data_dir: str = "./data/webui", tool_manager=None,
@@ -199,6 +200,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/mcp/edit", self._handle_panel_mcp_edit)
         # 网页搜索（试搜 / 引擎自检；零 JS 表单）
         app.router.add_post("/panel/search/probe", self._handle_panel_search_probe)
+        app.router.add_post("/panel/automation/save", self._handle_panel_automation_save)
         app.router.add_post("/panel/search/test", self._handle_panel_search_test)
         # 人格管理（零 JS 表单：默认 / 全局 / 列表 CRUD / 群绑定）
         app.router.add_post("/panel/persona/config", self._handle_panel_persona_config)
@@ -294,7 +296,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         err = request.query.get("err", "") == "1"
         tab = request.query.get("tab", "")
         if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins",
-                       "nicknames", "profiles", "admin", "qzone", "private", "search"):
+                       "nicknames", "profiles", "admin", "qzone", "private", "search",
+                       "automation"):
             tab = "config"
         cat = request.query.get("cat", "")
         if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
@@ -386,6 +389,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             body_html = self._render_private_page(msg=msg, err=err)
         elif tab == "plugins":
             body_html = self._render_plugin_page()
+        elif tab == "automation":
+            body_html = self._render_automation_page(msg=msg, err=err)
         elif tab == "search":
             body_html = self._render_search_page(msg=msg, err=err,
                                                  probe=getattr(self, "_search_probe_cache", None))

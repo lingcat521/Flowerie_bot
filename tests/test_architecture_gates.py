@@ -43,6 +43,7 @@ KNOWN_SERVICES_AIOHTTP = {
     "src/services/webui_panels/qzone_panel.py",
     "src/services/webui_panels/private_panel.py",
     "src/services/webui_panels/search_panel.py",
+    "src/services/webui_panels/automation_panel.py",
 }
 
 

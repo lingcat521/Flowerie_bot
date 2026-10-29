@@ -4,6 +4,22 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.16.0] - 2026-10-30
+
+### 新功能
+
+- **Web UI 新增「自动化」页签**（抽屉内独立 tab）：把原散落在 Qzone / Admin / AI
+  分类的 15 个 AI 内置工具层 + QQ空间配套配置集中管理——
+  `AI_QZONE_*` / `AI_ADMIN_ENABLED` / `AI_MEMORY_ENABLED` / `AI_TOOL_PROMPT` /
+  `QZONE_IMAGE_*` / `QZONE_ENABLED` / `QZONE_DEFAULT_UGC_RIGHT` / `QZONE_HISTORY_*` 等，
+  单表单保存（复用 ConfigService 双写 + 热更新）。配置页不再展示这些键。
+
+### 变更
+
+- `Qzone` 配置分类整体迁出（12 键并入 Automation），配置页分类导航少一项;
+  `Admin` 分类只剩群管控制台三键
+
+
 ## [2.15.0] - 2026-10-29
 
 ### 新功能
