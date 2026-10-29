@@ -2,18 +2,16 @@
 import os
 import sys
 
-import pytest
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.services.config_schema import SCHEMA  # noqa: E402
-from src.services.webui_render.category_constants import (  # noqa: E402
-    CATEGORY_LABELS,
-    CATEGORY_ORDER,
-)
 from src.services.webui_panels.automation_panel import (  # noqa: E402
     AUTOMATION_KEYS,
     AutomationPanelMixin,
+)
+from src.services.webui_render.category_constants import (  # noqa: E402
+    CATEGORY_LABELS,
+    CATEGORY_ORDER,
 )
 
 

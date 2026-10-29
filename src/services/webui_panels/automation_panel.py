@@ -44,7 +44,7 @@ class AutomationPanelMixin:
             '自主调用 QQ空间 / 群管理 / 记忆 / 搜索工具。保存即刻生效（写入 .env）。</div>')
         return (
             "<h2>自动化（AI 内置工具层）</h2>" + hint
-            + f'<form method="post" action="/panel/automation/save">'
+            + '<form method="post" action="/panel/automation/save">'
             + rows
             + '<div class="group-actions"><button type="submit" class="btn">保存自动化配置</button></div>'
             + "</form>")
