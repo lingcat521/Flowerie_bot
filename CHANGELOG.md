@@ -4,6 +4,14 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.17.1] - 2026-10-31
+
+### 变更
+
+- CI 全面升级到 **Python 3.14**（matrix 从 3.9/3.12 收敛为单档 3.14；
+  acceptance / compiler 同步；`requires-python >= 3.14`，ruff
+  `target-version = "py314"`）——顺带修掉 10 处 `zip()` 缺 `strict=`
+
 ## [2.17.0] - 2026-10-30
 
 ### 新功能
