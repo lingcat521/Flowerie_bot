@@ -2,7 +2,7 @@
 name = "flowerie-bot"
 version = "2.17.0"
 description = "花璃 · QQ 群聊机器人（DeepSeek 驱动 + NapCat OneBot11）"
-requires-python = ">=3.9"
+requires-python = ">=3.14"
 readme = "README.md"
 
 [tool.pytest.ini_options]
@@ -18,7 +18,7 @@ markers = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py314"
 extend-exclude = ["data", "logs", ".git", "tests/acceptance_check.py"]
 
 # 规则集说明：

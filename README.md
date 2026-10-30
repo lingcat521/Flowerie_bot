@@ -13,7 +13,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-2552%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-2656%20passed%20(CI%20pytest)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -73,7 +73,7 @@
 
 ### 环境要求
 
-- Python 3.9+（Linux / macOS / Termux）
+- Python 3.14+（Linux / macOS / Termux）
 - NapCat（或任意 OneBot11 实现），开启反向 WebSocket
 - DeepSeek API Key
 
@@ -217,7 +217,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/featu
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 2552 个测试（CI pytest 步骤实测，Python 3.9/3.12 + PostgreSQL，工具链齐全口径）
+pytest              # 2656 个测试（CI pytest 步骤实测，Python 3.14 + PostgreSQL，工具链齐全口径）
 pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（61 条：五语言真 build / 真调用 / 真关闭，含群管 / QQ空间 / 私聊动作）
 pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
 pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）
@@ -225,7 +225,7 @@ acceptance          # 37 项黑盒验收（tests/acceptance_check.py）
 ruff check .        # 代码检查
 ```
 
-CI：GitHub Actions 自动跑 Python 3.9 / 3.12 的 ruff + pytest。
+CI：GitHub Actions 自动跑 Python 3.14 的 ruff + pytest。
 
 更多工程细节：架构审计见 [架构审计](docs/archive/architecture-audit.md)（历史快照），表情包见 [表情包](docs/features/stickers.md)，
 安全模型见 [安全模型](docs/reference/security.md)。

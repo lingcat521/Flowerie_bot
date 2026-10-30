@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         # 覆盖项目声明支持的最低版本（3.9）与当前主流版本（3.12）
-        python-version: ["3.9", "3.12"]
+        python-version: ["3.14"]
 
     # PostgreSQL 服务（验证可选 PG 后端：Postgres*Repository 真跑 CRUD）
     services:
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.14"
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
