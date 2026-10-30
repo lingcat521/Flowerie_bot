@@ -256,13 +256,16 @@ class AIClient:
         if max_tool_calls <= 0:
             return None, None
         final_content = await self.chat_with_messages(
-            messages, tools=tools, tool_caller=tool_caller, tool_quota=tool_quota)
+            messages, tools=tools, tool_caller=tool_caller, tool_quota=tool_quota,
+            group_id=group_id, user_id=user_id)
         if final_content is None:
             return None, None
         return self._parse_reply_content(final_content)
 
     async def chat_with_messages(self, messages: list, tools: Optional[list] = None,
-                                 tool_caller=None, tool_quota: Optional[dict] = None) -> Optional[str]:
+                                 tool_caller=None, tool_quota: Optional[dict] = None,
+                                 group_id: Optional[int] = None,
+                                 user_id: Optional[int] = None) -> Optional[str]:
         """通用多轮 LLM 对话（含可选 MCP 工具循环），返回最终回复文本。
 
         与聊天路径共用同一套请求与额度语义：
@@ -337,13 +340,20 @@ class AIClient:
                         args = {}
                     tool_quota["used"] = int(tool_quota.get("used", 0)) + 1
                     logger.info(
-                        "mcp_call_started tool=%s used=%d/%d", name, tool_quota["used"], max_tool_calls,
-                        extra={"event": "mcp_call_started", "tool": name, "used": tool_quota["used"], "max": max_tool_calls},
+                        "ai_tool_call_started tool=%s group=%s user=%s used=%d/%d",
+                        name, group_id, user_id, tool_quota["used"], max_tool_calls,
+                        extra={"event": "ai_tool_call_started", "tool": name,
+                               "group_id": group_id, "user_id": user_id,
+                               "used": tool_quota["used"], "max": max_tool_calls},
                     )
                     result = await tool_caller(name, args)
+                    ok_flag = not str(result or "").startswith(("工具不可用", "工具 ", "[工具调用已跳过"))
                     logger.info(
-                        "mcp_call_completed tool=%s used=%d/%d", name, tool_quota["used"], max_tool_calls,
-                        extra={"event": "mcp_call_completed", "tool": name, "used": tool_quota["used"], "max": max_tool_calls},
+                        "ai_tool_call_completed tool=%s ok=%s group=%s user=%s used=%d/%d",
+                        name, ok_flag, group_id, user_id, tool_quota["used"], max_tool_calls,
+                        extra={"event": "ai_tool_call_completed", "tool": name,
+                               "ok": ok_flag, "group_id": group_id, "user_id": user_id,
+                               "used": tool_quota["used"], "max": max_tool_calls},
                     )
                     messages.append({"role": "tool", "tool_call_id": tc_id, "content": result})
                 if quota_exhausted or int(tool_quota.get("used", 0)) >= max_tool_calls:

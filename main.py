@@ -414,6 +414,10 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("收到退出信号 (Ctrl+C)，正在关闭...")
+    except ValueError as e:
+        # 配置类错误（validate_config）：给单行可读提示，不刷整段 Python 栈
+        logger.error("配置错误: %s（改正后重启）", e, extra={"event": "config_error"})
+        sys.exit(1)
     except Exception as e:
         logger.exception("运行异常: %s", e)
         sys.exit(1)

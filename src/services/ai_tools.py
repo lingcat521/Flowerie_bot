@@ -237,12 +237,25 @@ class AiToolRegistry:
         if handler is None:
             return None
         payload = args if isinstance(args, dict) else {}
+        gid, uid = self._ctx.get("group_id", 0), self._ctx.get("user_id", 0)
+        # 参数脱敏后入日志（secret 类工具不在这里出现；只供排查"模型对谁做了什么"）
+        safe_args = {k: (v if isinstance(v, (int, float, bool)) else str(v)[:60])
+                     for k, v in payload.items()}
+        logger.info("ai_tool_call name=%s group=%s user=%s args=%s",
+                    name, gid, uid, json.dumps(safe_args, ensure_ascii=False),
+                    extra={"event": "ai_tool_call", "tool": name,
+                           "group_id": gid, "user_id": uid})
         try:
             result = await handler(payload)
         except Exception as e:  # noqa: BLE001 —— 工具失败不能打崩对话
-            logger.warning("ai_tool_failed name=%s err=%s: %s", name, type(e).__name__, e)
+            logger.warning("ai_tool_failed name=%s group=%s user=%s err=%s: %s",
+                           name, gid, uid, type(e).__name__, e,
+                           extra={"event": "ai_tool_failed", "tool": name,
+                                  "group_id": gid, "user_id": uid})
             result = {"ok": False, "error": "%s: %s" % (type(e).__name__, e)}
-        logger.info("ai_tool_called name=%s ok=%s", name, bool(result.get("ok")))
+        logger.info("ai_tool_result name=%s ok=%s group=%s user=%s",
+                    name, bool(result.get("ok")), gid, uid,
+                    extra={"event": "ai_tool_result", "tool": name, "ok": bool(result.get("ok"))})
         return json.dumps(result, ensure_ascii=False)
 
     # ---------- 图片池 + 识图 ----------

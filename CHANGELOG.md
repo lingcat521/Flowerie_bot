@@ -4,6 +4,23 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.17.3] - 2026-10-31
+
+### 新功能
+
+- **AI 工具调用全链路审计日志**：每次模型自主调用工具都落日志，含工具名 /
+  群 / 用户 / 参数（脱敏截断）/ 成败——`ai_tool_call` → `ai_tool_call_started` →
+  `ai_tool_call_completed`，MCP 工具与内置工具同一套事件名
+  （`AIClient.chat_with_messages` 签名新增可选 `group_id`/`user_id`，
+  向后兼容；内置工具层 `call_tool` 补参数与上下文）
+
+### 优化（日志可读性）
+
+- 配置类启动失败（`validate_config` 抛 ValueError）从「运行异常 + 整段 Python 栈」
+  改为一行：`配置错误: <原因>（改正后重启）`
+- `apply_persisted` 单键应用失败从 `logger.exception`（刷栈）降为
+  一行 warning（含键名/异常类型/原因截断 + 不影响启动）
+
 ## [2.17.2] - 2026-10-31
 
 ### 修复（启动报错刷屏 + 配置不生效）

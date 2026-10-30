@@ -195,8 +195,9 @@ class ConfigService:
             try:
                 setattr(self.config, key, self._coerce(ctype, str(value)))
                 applied += 1
-            except Exception:  # noqa: BLE001
-                logger.exception("config_persisted_apply_failed key=%s", key)
+            except Exception as e:  # noqa: BLE001 - 一行可读，不刷栈（字段缺失/类型不符）
+                logger.warning("config_persisted_apply_failed key=%s err=%s: %s（已跳过，不影响启动）",
+                               key, type(e).__name__, str(e)[:120])
         if applied:
             logger.info(
                 "config_persisted_applied count=%d", applied,
