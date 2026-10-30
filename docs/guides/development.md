@@ -68,7 +68,7 @@ ruff check .        # lint（E/F/W/I/B 规则集，line-length=120）
 
 | workflow / job | 触发 | 内容 |
 | :--- | :--- | :--- |
-| `ci.yml` → **test** | push main / PR | Python **3.9 与 3.12** 双版本 + PostgreSQL 16 service + Node 20 + lua/R 工具链；`ruff check .` → `pytest -q -s tests/sdk/` → `pytest -q -s tests/webui/` → 主套件（`--ignore` 三个专项目录，带 `TEST_POSTGRES_URL`） |
+| `ci.yml` → **test** | push main / PR | Python **3.14**（v2.17.1 起从 3.9/3.12 收敛为单档）+ PostgreSQL 16 service + Node 20 + lua/R 工具链；`ruff check .` → `pytest -q -s tests/sdk/` → `pytest -q -s tests/webui/` → 主套件（`--ignore` 三个专项目录，带 `TEST_POSTGRES_URL`） |
 | `ci.yml` → **webui-e2e** | 同上 | `continue-on-error`：装 Playwright Chromium 后跑 `pytest -q -rs -s tests/e2e/`（真浏览器证据由 CI 产出） |
 | `acceptance.yml` | push main / PR | `python tests/acceptance_check.py`：起真实 Web UI + 真 HTTP + `.env` round-trip + 零 JS/安全 + pytest + ruff，逐项 `rec()`（37 项），非 0 即失败 |
 | `compiler.yml` | release created | 5 个平台 × builtin/portable 打包 + Termux 源码包 → 上传 Release 资产（见 [install-release-guide.md](install-release-guide.md)） |
