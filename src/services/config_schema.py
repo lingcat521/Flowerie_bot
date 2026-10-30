@@ -223,7 +223,11 @@ SCHEMA: Dict[str, Tuple[str, str, bool, bool, str]] = {
     "MCP_AUTH_USERNAME": ("MCP", "str", False, True, "basic 认证用户名"),
     "MCP_AUTH_PASSWORD": ("MCP", "secret", True, True, "basic 认证密码"),
     # ---------- 网页搜索（v2.15.0：4 个免 key 引擎，移植自 dsh-free-search） ----------
-    "AI_SEARCH_ENABLED": ("Search", "bool", False, True, "AI 搜索工具开关（默认关；模型自主调用 web_search/web_fetch）"),
+    "AI_SEARCH_ENABLED": ("Automation", "bool", False, True, "AI 搜索工具开关（默认关；模型自主调用 web_search/web_fetch）"),
+    "AI_GROUP_INFO_ENABLED": ("Automation", "bool", False, True, "AI 群信息开关（默认关；模型可查群成员名单/单人画像）"),
+    "AI_PROFILES_ENABLED": ("Automation", "bool", False, True, "AI 群友画像开关（默认关；上面的群信息里是否含画像读取）"),
+    "AI_KNOWLEDGE_ENABLED": ("Automation", "bool", False, True, "AI 群知识开关（默认关；模型可检索本群知识/梗）"),
+    "AI_POKE_ENABLED": ("Automation", "bool", False, True, "AI 戳一戳开关（默认关；互动玩笑，目标限制：非管理员/非自己）"),
     "SEARCH_ENGINES": ("Search", "str", False, True,
                         "启用引擎与回退顺序（逗号分隔：ddg,bing,searxng,ddg-lite）"),
     "SEARCH_MAX_RESULTS": ("Search", "int", False, True, "默认结果条数（1-10）"),

@@ -379,6 +379,161 @@ def test_build_tool_prompt_excludes_search_when_off(tmp_path):
     assert "web_search" not in build_tool_prompt(reg)
 
 
+
+
+class _FakeAdmin:
+    def __init__(self, role="member"):
+        self._role = role
+        self.adapter = _FakeAdapter()
+
+    async def member_role(self, group_id, user_id, fresh=False):
+        return self._role
+
+
+class _FakeAdapter:
+    async def get_group_members(self, group_id):
+        return [{"user_id": 100, "nickname": "小白", "role": "member"},
+                {"user_id": 200, "nickname": "大佬", "role": "admin"}]
+
+
+class _FakeProfiles:
+    def load(self, group_id, user_id):
+        if user_id == 100:
+            return {"nickname": "小白", "sections": {"性格": "温和", "喜好": "奶茶"}}
+        return None
+
+
+class _FakeMeme:
+    def retrieve_matches(self, group_id, text, max_items=10):
+        if "奶茶" in text:
+            return [{"text": "小白说过喜欢喝奶茶"}]
+        return []
+
+
+class _FakePoke:
+    def __init__(self):
+        self.pokes = []
+
+    async def send_poke(self, group_id, user_id):
+        self.pokes.append((group_id, user_id))
+        return {"ok": True}
+
+
+class _ToolCfg(_Cfg):
+    AI_SEARCH_ENABLED = False
+    AI_QZONE_ENABLED = False
+    AI_ADMIN_ENABLED = False
+    AI_MEMORY_ENABLED = False
+    AI_GROUP_INFO_ENABLED = True
+    AI_PROFILES_ENABLED = True
+    AI_KNOWLEDGE_ENABLED = True
+    AI_POKE_ENABLED = True
+    BOT_QQ = 10000
+
+
+def _tool_registry(tmp_path):
+    reg, *_ = _registry(tmp_path, cfg=_ToolCfg())
+    reg.group_admin = _FakeAdmin()
+    reg.profiles = _FakeProfiles()
+    reg.meme = _FakeMeme()
+    reg.poke = _FakePoke()
+    reg.bind_context(200, 7)  # 在群里，调用者 QQ=7
+    return reg
+
+
+def test_new_tools_schemas_listed(tmp_path):
+    reg = _tool_registry(tmp_path)
+    names = [d["function"]["name"] for d in reg.schemas()]
+    assert names == ["group_members", "member_profile", "group_knowledge", "poke"]
+    fn = {d["function"]["name"]: d["function"] for d in reg.schemas()}
+    assert fn["member_profile"]["parameters"]["required"] == ["qq"]
+    assert fn["group_knowledge"]["parameters"]["required"] == ["query"]
+    assert fn["poke"]["parameters"]["required"] == ["qq"]
+
+
+def test_new_tools_off_by_default(tmp_path):
+    class Off(_ToolCfg):
+        AI_GROUP_INFO_ENABLED = False
+        AI_PROFILES_ENABLED = False
+        AI_KNOWLEDGE_ENABLED = False
+        AI_POKE_ENABLED = False
+    reg, *_ = _registry(tmp_path, cfg=Off())
+    # 服务未注入时开关无效（双闸）
+    assert not reg.group_info_enabled()
+    assert not reg.profiles_enabled()
+    assert not reg.knowledge_enabled()
+    assert not reg.poke_enabled()
+    assert reg.schemas() == []
+
+
+@pytest.mark.asyncio
+async def test_group_members_tool(tmp_path):
+    import json
+    reg = _tool_registry(tmp_path)
+    out = json.loads(await reg.call_tool("group_members", {}))
+    assert out["ok"] is True
+    assert out["members"][0]["nickname"] == "小白"
+
+
+@pytest.mark.asyncio
+async def test_member_profile_tool(tmp_path):
+    import json
+    reg = _tool_registry(tmp_path)
+    out = json.loads(await reg.call_tool("member_profile", {"qq": 100}))
+    assert out["ok"] is True and out["sections"]["喜好"] == "奶茶"
+    out2 = json.loads(await reg.call_tool("member_profile", {"qq": 999}))
+    assert out2["ok"] is False
+
+
+@pytest.mark.asyncio
+async def test_group_knowledge_tool(tmp_path):
+    import json
+    reg = _tool_registry(tmp_path)
+    out = json.loads(await reg.call_tool("group_knowledge", {"query": "奶茶"}))
+    assert out["ok"] is True and "奶茶" in out["items"][0]
+    out2 = json.loads(await reg.call_tool("group_knowledge", {"query": "不存在xyz"}))
+    assert out2["ok"] is False
+
+
+@pytest.mark.asyncio
+async def test_poke_guards(tmp_path):
+    import json
+    reg = _tool_registry(tmp_path)
+    # 戳管理员 → 拒
+    reg.admin = _FakeAdmin(role="admin")
+    out = json.loads(await reg.call_tool("poke", {"qq": 100}))
+    assert out["ok"] is False and "管理员" in out["error"]
+    reg.admin = _FakeAdmin(role="member")
+    # 戳调用者自己 → 拒
+    out2 = json.loads(await reg.call_tool("poke", {"qq": 7}))
+    assert out2["ok"] is False
+    # 戳 Bot 自己 → 拒
+    out3 = json.loads(await reg.call_tool("poke", {"qq": 10000}))
+    assert out3["ok"] is False
+    # 正常戳
+    out4 = json.loads(await reg.call_tool("poke", {"qq": 100}))
+    assert out4["ok"] is True
+    assert reg.poke.pokes == [(200, 100)]
+
+
+@pytest.mark.asyncio
+async def test_poke_admin_service_none_allows(tmp_path):
+    """admin_service 未注入时（无群管能力）：poke 仍可用（无管理员保护查询）。"""
+    import json
+    reg = _tool_registry(tmp_path)
+    reg.admin = None
+    out = json.loads(await reg.call_tool("poke", {"qq": 100}))
+    assert out["ok"] is True
+
+
+def test_build_tool_prompt_new_tools(tmp_path):
+    from src.services.ai_tools import build_tool_prompt
+    reg = _tool_registry(tmp_path)
+    p = build_tool_prompt(reg)
+    assert "group_members" in p and "member_profile" in p
+    assert "group_knowledge" in p and "poke" in p
+    assert "管理员" in p
+
 # ---------- 自主发动态 ----------
 def test_extract_json_object_tolerates_noise():
     assert extract_json_object('好的：{"content":"hi","images":[]} 以上')["content"] == "hi"

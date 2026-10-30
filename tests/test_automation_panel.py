@@ -18,6 +18,8 @@ _EXPECTED = (
     "AI_QZONE_ENABLED", "AI_QZONE_MAX_PER_DAY",
     "AI_QZONE_AUTO_ENABLED", "AI_QZONE_AUTO_INTERVAL_HOURS",
     "AI_ADMIN_ENABLED", "AI_MEMORY_ENABLED", "AI_TOOL_PROMPT",
+    "AI_SEARCH_ENABLED", "AI_GROUP_INFO_ENABLED", "AI_PROFILES_ENABLED",
+    "AI_KNOWLEDGE_ENABLED", "AI_POKE_ENABLED",
     "QZONE_IMAGE_DIR", "QZONE_IMAGE_INDEX_PATH",
     "QZONE_IMAGE_MAX", "QZONE_IMAGE_DESCRIBE_LIMIT",
     "QZONE_ENABLED", "QZONE_DEFAULT_UGC_RIGHT",
@@ -55,7 +57,11 @@ def test_automation_render_and_filter():
                 {"key": "QZONE_IMAGE_DIR", "type": "str", "current": "./data/qzone_images",
                  "description": "配图池目录", "hot_reload": True},
                 {"key": "AI_SEARCH_ENABLED", "type": "bool", "current": "false",
-                 "description": "搜索开关", "hot_reload": True},
+                 "description": "AI 搜索工具开关", "hot_reload": True},
+                {"key": "AI_POKE_ENABLED", "type": "bool", "current": "false",
+                 "description": "AI 戳一戳开关", "hot_reload": True},
+                {"key": "SOME_OTHER_KEY", "type": "str", "current": "x",
+                 "description": "不属于本页", "hot_reload": True},
             ]
 
     class FakeServer(AutomationPanelMixin):
@@ -66,7 +72,9 @@ def test_automation_render_and_filter():
     assert "checked" in html
     assert "./data/qzone_images" in html
     assert "/panel/automation/save" in html
-    assert "AI_SEARCH_ENABLED" not in html
+    assert "AI_SEARCH_ENABLED" in html  # v2.17.0 起搜索开关也在本页
+    assert "AI_POKE_ENABLED" in html
+    assert "SOME_OTHER_KEY" not in html  # 非本页键过滤
 
 
 def test_automation_keys_in_schema():

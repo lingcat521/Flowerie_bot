@@ -4,6 +4,27 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.17.0] - 2026-10-30
+
+### 新功能
+
+- **AI 工具层大扩展**（全部默认关，Web UI「自动化」页统一开关）：
+  - `group_members`：查看当前群成员名单（昵称/角色）
+  - `member_profile`：查看某成员的群友画像（性格/喜好/个人生活/特点）
+  - `group_knowledge`：检索本群知识/梗
+  - `poke`：戳一戳（护栏：不戳管理员/不戳自己/不戳 Bot；管理员身份实时校验）
+  - `web_search` / `web_fetch` 的开关 `AI_SEARCH_ENABLED` 从「配置页·搜索」
+    分类迁入「自动化」tab，与其它 AI_* 工具同列
+- 新配置项：`AI_GROUP_INFO_ENABLED` / `AI_PROFILES_ENABLED` / `AI_KNOWLEDGE_ENABLED` / `AI_POKE_ENABLED`
+
+### 修复
+
+- 网页搜索 tab：试搜/自检表单提交后页面重载、`<details>` 收起导致按钮「消失」——改为常开
+- 自检超时预算：`test_engines` 用 `SEARCH_TIMEOUT`(10s) 作 wait_for 上限，
+  但单引擎内部重试链（3 次 × 超时 + 重试间隔）最大 ~34s、SearXNG 串 6 实例 ~48s——
+  预算永远不够，自检必然全 TimeoutError。改为 `SEARCH_TIMEOUT × 4`（最小 40s）
+
+
 ## [2.16.0] - 2026-10-30
 
 ### 新功能

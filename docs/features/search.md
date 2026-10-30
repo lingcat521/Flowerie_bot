@@ -3,7 +3,7 @@
 花璃内置网页搜索（v2.15.0），让 AI **自主**获取实时信息——不用配 API key、不用接 MCP。
 引擎层移植自 [dsh-free-search](https://github.com/DDDMUC/dsh-free-search) v0.9.14（MIT）的 keyless 部分。
 
-默认**关闭**。在 Web UI「网页搜索」页或配置 `AI_SEARCH_ENABLED=true` 开启后，模型在需要实时信息时
+默认**关闭**。在 Web UI「自动化」页或配置 `AI_SEARCH_ENABLED=true` 开启后，模型在需要实时信息时
 可自行调用 `web_search`（搜索）与 `web_fetch`（抓正文）两个工具，与 MCP 工具共用同一套额度与安全边界。
 
 ## 工作机制
@@ -27,7 +27,7 @@
 
 | 变量 | 默认 | 说明 |
  | :--- | :--- | :--- |
- | `AI_SEARCH_ENABLED` | `false` | AI 搜索工具开关（默认关；模型自主调用 web_search/web_fetch） |
+ | `AI_SEARCH_ENABLED` | `false` | AI 搜索工具开关（默认关；**Web UI「自动化」页**统一管理，与其它 AI_* 工具同列） |
  | `SEARCH_ENGINES` | `ddg,bing,searxng,ddg-lite` | 启用引擎与回退顺序（逗号分隔） |
  | `SEARCH_MAX_RESULTS` | `5` | 默认结果条数（1-10） |
  | `SEARCH_TIMEOUT` | `10` | 单引擎请求超时（秒） |

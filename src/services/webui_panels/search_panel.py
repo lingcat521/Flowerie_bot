@@ -89,7 +89,7 @@ class SearchPanelMixin:
             f'<details class="cfg-group" open><summary class="cfg-summary">'
             f'<span class="cfg-caret" aria-hidden="true"></span>引擎状态</summary>'
             f'{engines_html}</details>'
-            f'<details class="cfg-group"><summary class="cfg-summary">'
+            f'<details class="cfg-group" open><summary class="cfg-summary">'
             f'<span class="cfg-caret" aria-hidden="true"></span>试搜 / 自检</summary>'
             '<form method="post" action="/panel/search/probe">'
             '<div class="row"><label class="row-info"><span class="row-title">试搜关键词</span></label>'

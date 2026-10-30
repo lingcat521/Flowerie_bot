@@ -289,10 +289,18 @@ async def main():
         # AI 内置工具层（v2.12.0）：QQ空间（识图选图）/ 群管理 / 记忆——模型自主调用，
         # 每个工具自带开关与权限护栏；默认全关，需显式开 AI_* 配置。
         from src.services.ai_tools import AiToolRegistry
+        # AI 工具层的画像读取：独立 ProfileStore（轻量 SQLite，与 PROFILE_ENABLED 解耦）
+        from src.services.profile_manager import ProfileStore
+        _profile_store_for_tools = ProfileStore(getattr(config, "PROFILE_DB_PATH", "./data/profiles.db"))
         message_router.ai_tools = AiToolRegistry(
             config, qzone_service=qzone_service, admin_service=admin_service,
             memory_manager=memory_manager, vision=getattr(ai_client, "vision", None),
-            search_service=web_search_service)
+            search_service=web_search_service,
+            group_admin=admin_service,
+            # 画像读取用独立 ProfileStore（registry 先于 profile_service 构造；读取不依赖 PROFILE_ENABLED）
+            profile_repository=_profile_store_for_tools,
+            meme_manager=meme_manager,
+            poke_adapter=sender)
         # 协议切换：Milky（应用端主动连 /event）优先于 OneBot（NapCat 反向/正向）
         if str(getattr(config, "QQ_PROTOCOL", "onebot") or "onebot").lower() == "milky":
             from src.transport.milky_ws_client import MilkyClient

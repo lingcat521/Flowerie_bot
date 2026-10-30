@@ -574,14 +574,21 @@ class WebSearchService:
                 "truncated": len(text) > max_chars}
 
     async def test_engines(self, query: str = "Flowerie", limit: int = 2) -> Dict[str, Dict[str, Any]]:
-        """逐引擎连通性自检（设置页手动按钮调用，不给 AI 用）。"""
+        """逐引擎连通性自检（设置页手动按钮调用，不给 AI 用）。
+
+        预算 = 单引擎超时 × 4：内部 _fetch_html 重试 3 次（间隔 1.5s），
+        SearXNG 串行 6 实例 × 8s——10s 的 SEARCH_TIMEOUT 必然提前杀掉，
+        自检会清一色报 TimeoutError（此前确实现过）。
+        """
         out: Dict[str, Dict[str, Any]] = {}
         signal = asyncio.Event()
+        # 自检给足预算（最小 40s）；真实搜索仍受 _BUDGET_SECONDS 总预算约束
+        per_engine = max(40.0, self._timeout() * 4)
         for eng in self._engine_order():
             started = time.monotonic()
             try:
                 sources = await asyncio.wait_for(
-                    self._dispatch(eng, query, limit, None, signal), timeout=self._timeout())
+                    self._dispatch(eng, query, limit, None, signal), timeout=per_engine)
                 out[eng] = {"ok": True, "results": len(sources),
                             "seconds": round(time.monotonic() - started, 1)}
             except Exception as e:  # noqa: BLE001 - 自检就是来看谁挂的

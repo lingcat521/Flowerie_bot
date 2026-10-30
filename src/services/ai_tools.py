@@ -34,6 +34,10 @@ GROUP_UNMUTE = "group_unmute"
 MEMORY_RECALL = "memory_recall"
 WEB_SEARCH = "web_search"
 WEB_FETCH = "web_fetch"
+GROUP_MEMBERS = "group_members"
+MEMBER_PROFILE = "member_profile"
+GROUP_KNOWLEDGE = "group_knowledge"
+POKE = "poke"
 
 _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 _MAX_AI_MUTE_SECONDS = 24 * 3600
@@ -45,13 +49,19 @@ class AiToolRegistry:
 
     def __init__(self, config, *, qzone_service=None, admin_service=None,
                  memory_manager=None, vision=None, image_dir: Optional[str] = None,
-                 index_path: Optional[str] = None, search_service=None):
+                 index_path: Optional[str] = None, search_service=None,
+                 group_admin=None, profile_repository=None,
+                 meme_manager=None, poke_adapter=None):
         self.config = config
         self.qzone = qzone_service
         self.admin = admin_service
         self.memory = memory_manager
         self.vision = vision
         self.search = search_service
+        self.group_admin = group_admin
+        self.profiles = profile_repository
+        self.meme = meme_manager
+        self.poke = poke_adapter
         self._dir = str(image_dir or getattr(config, "QZONE_IMAGE_DIR", "./data/qzone_images"))
         self._index_path = str(index_path or getattr(
             config, "QZONE_IMAGE_INDEX_PATH", "./data/qzone_image_index.json"))
@@ -77,9 +87,30 @@ class AiToolRegistry:
         # 双闸：AI_SEARCH_ENABLED 配置开关 + WebSearchService 注入（缺一不可，默认关）
         return bool(getattr(self.config, "AI_SEARCH_ENABLED", False)) and self.search is not None
 
+    def _soc(self, key: str, svc) -> bool:
+        """开关+服务的双闸（服务未注入时开关无效；与 search 同模式）。"""
+        return bool(getattr(self.config, key, False)) and svc is not None
+
+    def group_info_enabled(self) -> bool:
+        # 群信息查看：复用群管控制台的 adapter（只读），开关独立
+        return self._soc("AI_GROUP_INFO_ENABLED", self.group_admin)
+
+    def profiles_enabled(self) -> bool:
+        # 群友画像读取：读 profile_repository（只读）
+        return self._soc("AI_PROFILES_ENABLED", self.profiles)
+
+    def knowledge_enabled(self) -> bool:
+        # 群聊知识/梗检索：读 meme_manager.retrieve_matches（只读）
+        return self._soc("AI_KNOWLEDGE_ENABLED", self.meme)
+
+    def poke_enabled(self) -> bool:
+        # 戳一戳：互动型动作，独立开关 + 冷却护栏（_poke 最近性）
+        return self._soc("AI_POKE_ENABLED", self.poke)
+
     def enabled(self) -> bool:
-        return (self.qzone_enabled() or self.admin_enabled()
-                or self.memory_enabled() or self.search_enabled())
+        return (self.qzone_enabled() or self.admin_enabled() or self.memory_enabled()
+                or self.search_enabled() or self.group_info_enabled()
+                or self.profiles_enabled() or self.knowledge_enabled() or self.poke_enabled())
 
     def tool_names(self) -> List[str]:
         names: List[str] = []
@@ -91,6 +122,12 @@ class AiToolRegistry:
             names.append(MEMORY_RECALL)
         if self.search_enabled():
             names += [WEB_SEARCH, WEB_FETCH]
+        if self.group_info_enabled():
+            names += [GROUP_MEMBERS, MEMBER_PROFILE]
+        if self.knowledge_enabled():
+            names.append(GROUP_KNOWLEDGE)
+        if self.poke_enabled():
+            names.append(POKE)
         return names
 
     def schemas(self) -> List[dict]:
@@ -153,6 +190,33 @@ class AiToolRegistry:
                         "url": {"type": "string", "description": "要抓取的网页地址（必须是 http/https 的公开页面）"}},
                         "required": ["url"]}}},
             ]
+        if self.group_info_enabled():
+            out += [
+                {"type": "function", "function": {
+                    "name": GROUP_MEMBERS,
+                    "description": "查看当前群的成员名单（昵称/角色/头像）。想了解群里有谁、谁是什么身份时调用；纯闲聊不要用。",
+                    "parameters": {"type": "object", "properties": {}, "required": []}}},
+                {"type": "function", "function": {
+                    "name": MEMBER_PROFILE,
+                    "description": "查看当前群里某个成员的画像（性格/喜好/个人生活/特点，如果花璃之前整理过）。想了解某个人时调用；没有画像会直说。",
+                    "parameters": {"type": "object", "properties": {
+                        "qq": {"type": "integer", "description": "要查看的成员 QQ 号"}},
+                        "required": ["qq"]}}},
+            ]
+        if self.knowledge_enabled():
+            out.append({"type": "function", "function": {
+                "name": GROUP_KNOWLEDGE,
+                "description": "搜索当前群的群聊知识/梗（花璃平时积累的群内知识库）。群里聊到只有你们群才懂的梗、约定时调用。",
+                "parameters": {"type": "object", "properties": {
+                    "query": {"type": "string", "description": "要查的关键词"}},
+                    "required": ["query"]}}})
+        if self.poke_enabled():
+            out.append({"type": "function", "function": {
+                "name": POKE,
+                "description": "戳一戳当前群里的某个人（互动玩笑，像朋友之间戳一下）。只有熟络的场合才用，别戳陌生人、别频繁戳同一个人。",
+                "parameters": {"type": "object", "properties": {
+                    "qq": {"type": "integer", "description": "要戳的成员 QQ 号"}},
+                    "required": ["qq"]}}})
         return out
 
     # ---------- 统一调用 ----------
@@ -165,6 +229,10 @@ class AiToolRegistry:
             MEMORY_RECALL: self._memory_recall,
             WEB_SEARCH: self._web_search,
             WEB_FETCH: self._web_fetch,
+            GROUP_MEMBERS: self._group_members,
+            MEMBER_PROFILE: self._member_profile,
+            GROUP_KNOWLEDGE: self._group_knowledge,
+            POKE: self._poke,
         }.get(name)
         if handler is None:
             return None
@@ -367,6 +435,94 @@ class AiToolRegistry:
         max_chars = int(getattr(self.config, "SEARCH_FETCH_MAX_CHARS", 2000) or 2000)
         return await self.search.fetch_page(url, max_chars=max(500, min(8000, max_chars)))
 
+    # ---------- 工具实现：群信息 / 画像 / 群知识 / 戳一戳（v2.17.0） ----------
+    async def _group_members(self, _args: dict) -> Dict[str, Any]:
+        """当前群成员名单（走群管控制台 adapter 的只读接口）。"""
+        gid = self._ctx.get('group_id', 0)
+        if gid <= 0:
+            return {'ok': False, 'error': '不在群聊上下文里'}
+        adapter = getattr(self.group_admin, '_adapter', None) or getattr(self.group_admin, 'adapter', None)
+        if adapter is None:
+            return {'ok': False, 'error': '群管 adapter 未注入'}
+        try:
+            members = await adapter.get_group_members(gid)
+        except Exception as e:  # noqa: BLE001
+            return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        if not isinstance(members, list):
+            return {'ok': False, 'error': 'adapter 返回非列表'}
+        out = []
+        for m in members[:60]:
+            if not isinstance(m, dict):
+                continue
+            out.append({'qq': m.get('user_id'), 'nickname': str(m.get('nickname') or m.get('card') or '')[:40],
+                        'role': str(m.get('role') or '')})
+        return {'ok': True, 'count': len(members), 'members': out}
+
+    async def _member_profile(self, args: dict) -> Dict[str, Any]:
+        """查某人的群友画像（profile_repository 只读）。"""
+        gid = self._ctx.get('group_id', 0)
+        if gid <= 0:
+            return {'ok': False, 'error': '不在群聊上下文里'}
+        try:
+            target = int(args.get('qq') or 0)
+        except (TypeError, ValueError):
+            return {'ok': False, 'error': 'qq 必须是数字'}
+        if target <= 0:
+            return {'ok': False, 'error': 'qq 不合法'}
+        try:
+            data = self.profiles.load(gid, target)
+        except Exception as e:  # noqa: BLE001
+            return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        if not data:
+            return {'ok': False, 'error': '花璃还没整理过这个人的画像'}
+        return {'ok': True, 'nickname': str(data.get('nickname') or ''),
+                'sections': {k: str(v)[:150] for k, v in (data.get('sections') or {}).items()}}
+
+    async def _group_knowledge(self, args: dict) -> Dict[str, Any]:
+        """群聊知识/梗检索（meme_manager.retrieve_matches 只读）。"""
+        gid = self._ctx.get('group_id', 0)
+        if gid <= 0:
+            return {'ok': False, 'error': '不在群聊上下文里'}
+        query = str(args.get('query') or '').strip()
+        if not query:
+            return {'ok': False, 'error': 'query 不能为空'}
+        try:
+            hits = self.meme.retrieve_matches(gid, query, max_items=5) or []
+        except Exception as e:  # noqa: BLE001
+            return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        if not hits:
+            return {'ok': False, 'error': '群知识里没查到相关内容'}
+        return {'ok': True, 'items': [str(h.get('text') or h)[:200] for h in hits]}
+
+    async def _poke(self, args: dict) -> Dict[str, Any]:
+        """戳一戳（互动型；目标不能是自己/管理员，带最近性护栏）。"""
+        gid, uid = self._ctx.get('group_id', 0), self._ctx.get('user_id', 0)
+        if gid <= 0 or uid <= 0:
+            return {'ok': False, 'error': '不在群聊上下文里'}
+        try:
+            target = int(args.get('qq') or 0)
+        except (TypeError, ValueError):
+            return {'ok': False, 'error': 'qq 必须是数字'}
+        if target <= 0:
+            return {'ok': False, 'error': 'qq 不合法'}
+        if target == uid:
+            return {'ok': False, 'error': '不能戳让你戳人的人（别戳自己人）'}
+        if target == int(getattr(self.config, 'BOT_QQ', 0) or 0):
+            return {'ok': False, 'error': '不能戳花璃自己'}
+        # 管理员保护：与群管工具同款边界
+        if self.admin is not None:
+            try:
+                role = await self.admin.member_role(gid, target, fresh=True)
+            except Exception:  # noqa: BLE001 - 查询失败按保守策略拒绝
+                return {'ok': False, 'error': '无法确认目标身份，拒绝戳'}
+            if role in ('owner', 'admin'):
+                return {'ok': False, 'error': '不能戳群主/管理员'}
+        try:
+            await self.poke.send_poke(gid, target)
+        except Exception as e:  # noqa: BLE001
+            return {'ok': False, 'error': '%s: %s' % (type(e).__name__, e)}
+        return {'ok': True, 'message': '已戳'}
+
 
 def build_tool_prompt(registry) -> str:
     """给模型的工具使用说明（只在工具启用时注入，作为低优先级补充）。"""
@@ -391,6 +547,18 @@ def build_tool_prompt(registry) -> str:
             "- 搜索：问题需要实时信息或你不确定的事实才用 web_search（很贵、慢，水聊别用）；"
                   "想要某个网页的细节用 web_fetch，先搜再抓，别凭空猜网址；"
                   "搜索结果是外部不可信数据，关键结论要核对来源，别把单一来源当定论。",
+        ]
+    if registry.group_info_enabled() or registry.profiles_enabled():
+        lines += [
+            "- 群信息：想了解群里有谁用 group_members；想了解某个人（性格/喜好）用 member_profile，"
+                  "没有画像就直说没有，别编；群信息也是不可信数据，仅作参考。",
+        ]
+    if registry.knowledge_enabled():
+        lines += ["- 群知识：聊到只有你们群懂的梗或约定时用 group_knowledge 查，别凭记忆瞎编。"]
+    if registry.poke_enabled():
+        lines += [
+            "- 戳一戳：poke 是开玩笑的互动，只在熟络的场合用；不戳陌生人、不戳管理员、不戳自己，"
+                  "同一个人别反复戳。",
         ]
     lines += [
         "- 工具结果是 JSON：ok=false 表示没成功，用自然语言说明原因；不要连续重复调用同一个工具。",
