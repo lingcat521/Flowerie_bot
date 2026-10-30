@@ -4,6 +4,27 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.17.2] - 2026-10-31
+
+### 修复（启动报错刷屏 + 配置不生效）
+
+- **根因**：14 个键（`AI_SEARCH_ENABLED` / `AI_GROUP_INFO_ENABLED` /
+  `AI_PROFILES_ENABLED` / `AI_KNOWLEDGE_ENABLED` / `AI_POKE_ENABLED` /
+  `SEARCH_ENGINES` / `SEARCH_MAX_RESULTS` / `SEARCH_TIMEOUT` /
+  `SEARCH_CACHE_TTL` / `SEARCH_SAFE_SEARCH` / `SEARCH_BLOCKED_DOMAINS` /
+  `SEARCH_SEARXNG_INSTANCES` / `SEARCH_FETCH_MAX_CHARS` /
+  `SEARCH_PROOF_REQUIRED`）只在 `SCHEMA` 声明（Web UI 可保存），
+  但 pydantic `Settings` **没有对应字段**——`apply_persisted` 的
+  `setattr` 直接抛 `ValueError: "Settings" object has no field`，
+  启动日志刷一片 `config_persisted_apply_failed`，且用户保存的值
+  **重启后被静默丢弃**（配置永远不生效）
+- 补齐 `Settings` 字段（默认值与文档一致）；两个列表键
+  （`SEARCH_BLOCKED_DOMAINS` / `SEARCH_SEARXNG_INSTANCES`）注册
+  before-validator 兼容 .env 逗号写法；`web_search` 读取点兼容
+  List / 字符串两种形态
+- 新增守卫测试：`SCHEMA` 的每个键必须是 `Settings` 真实字段
+  （堵死此类漏申明）+ 列表形态读取测试 + 默认值断言
+
 ## [2.17.1] - 2026-10-31
 
 ### 变更

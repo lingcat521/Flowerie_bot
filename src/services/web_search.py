@@ -230,14 +230,23 @@ class WebSearchService:
         return order
 
     def _searxng_instances(self) -> List[str]:
-        raw = str(self._cfg("SEARCH_SEARXNG_INSTANCES", "") or "").strip()
-        if not raw:
+        raw = self._cfg("SEARCH_SEARXNG_INSTANCES", [])
+        # 配置来源两种形态：Settings List[str]（Web UI 保存）或逗号/换行字符串（.env 手工）
+        if isinstance(raw, (list, tuple)):
+            items = [str(x).strip() for x in raw if str(x).strip()]
+        else:
+            items = [x.strip() for x in re.split(r"[,\n\s]+", str(raw)) if x.strip()]
+        if not items:
             return list(DEFAULT_SEARXNG_INSTANCES)
-        return [x.strip() for x in re.split(r"[,\n\s]+", raw) if x.strip()]
+        return items
 
     def _blocked_domains(self) -> Tuple[str, ...]:
-        raw = str(self._cfg("SEARCH_BLOCKED_DOMAINS", "") or "")
-        return tuple(x.strip().lower() for x in raw.split(",") if x.strip())
+        raw = self._cfg("SEARCH_BLOCKED_DOMAINS", [])
+        if isinstance(raw, (list, tuple)):
+            items = [str(x).strip() for x in raw if str(x).strip()]
+        else:
+            items = [x.strip() for x in str(raw).split(",") if x.strip()]
+        return tuple(x.lower() for x in items)
 
     def _safe_search(self) -> str:
         v = str(self._cfg("SEARCH_SAFE_SEARCH", "off") or "off").lower()

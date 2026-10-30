@@ -129,6 +129,11 @@ class Settings(BaseSettings):
     AI_QZONE_AUTO_INTERVAL_HOURS: int = 24 # 自主发动态间隔（小时）
     AI_ADMIN_ENABLED: bool = False         # AI 可自主禁言/解禁（仍要求发起人是群主/管理员）
     AI_MEMORY_ENABLED: bool = False        # AI 可主动读取当前用户的群记忆
+    AI_SEARCH_ENABLED: bool = False        # AI 搜索工具开关（v2.15.0：web_search/web_fetch）
+    AI_GROUP_INFO_ENABLED: bool = False    # AI 查看群成员名单（v2.17.0）
+    AI_PROFILES_ENABLED: bool = False      # AI 读群友画像（v2.17.0）
+    AI_KNOWLEDGE_ENABLED: bool = False     # AI 检索群知识/梗（v2.17.0）
+    AI_POKE_ENABLED: bool = False          # AI 戳一戳（v2.17.0；不戳管理员/自己/Bot）
     AI_TOOL_PROMPT: bool = True            # 给模型注入「工具怎么用」说明（关=只靠工具 schema）
     # 私聊（v2.14.0：按 QQ 号隔离的上下文/记忆/人格/AI；默认关）
     PRIVATE_CHAT_ENABLED: bool = False     # 私聊总开关（关=私聊消息一律不理）
@@ -266,6 +271,16 @@ class Settings(BaseSettings):
     STICKER_ENABLED: bool = False
     STICKER_COOLDOWN: int = 60          # 同一群两次表情包的最小间隔（秒）
     STICKER_MAX_LIST: int = 30          # 提供给模型的可用表情包描述上限（防 token 膨胀）
+    # 网页搜索（v2.15.0：免 key 原生引擎；Web UI「网页搜索」页试搜/自检）
+    SEARCH_ENGINES: str = "ddg,bing,searxng,ddg-lite"   # 启用引擎与回退顺序（逗号分隔）
+    SEARCH_MAX_RESULTS: int = 5          # 默认结果条数（1-10）
+    SEARCH_TIMEOUT: int = 10             # 单引擎请求超时（秒；10-30）
+    SEARCH_CACHE_TTL: int = 5            # 结果缓存分钟数（0=禁用，最大 5）
+    SEARCH_SAFE_SEARCH: str = "off"      # off / moderate / strict（Bing/DDG 生效）
+    SEARCH_BLOCKED_DOMAINS: List[str] = []  # 域名黑名单（命中域名的结果直接丢弃）
+    SEARCH_SEARXNG_INSTANCES: List[str] = []  # SearXNG 公共实例（留空=内置 6 个）
+    SEARCH_FETCH_MAX_CHARS: int = 2000   # web_fetch 正文截断字数（1000-8000）
+    SEARCH_PROOF_REQUIRED: bool = True   # 结果附来源 URL 要求（开=模型必须引用来源）
     # MCP（外部工具）：默认关闭，管理员主动配置后启用；仅 allowlist 内的工具可调用。
     # 插件式多 server：MCP_SERVERS 为 JSON 数组（每个元素含 name/url/allowed_tools/
     # timeout/enabled），为空时回退到下方单 server 字段（向后兼容）。
@@ -391,7 +406,8 @@ class Settings(BaseSettings):
             return [int(x.strip()) for x in v.split(",") if x.strip().isdigit()]
         return v
 
-    @field_validator("IMAGE_ALLOWED_HOSTS", "MCP_ALLOWED_HOSTS", mode="before")
+    @field_validator("IMAGE_ALLOWED_HOSTS", "MCP_ALLOWED_HOSTS",
+                     "SEARCH_BLOCKED_DOMAINS", "SEARCH_SEARXNG_INSTANCES", mode="before")
     @classmethod
     def parse_str_list(cls, v):
         if isinstance(v, str):

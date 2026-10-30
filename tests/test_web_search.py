@@ -113,6 +113,17 @@ def test_blocked_domains_lowercased():
     assert _svc(C())._blocked_domains() == ("spam.com", "bad.org")
 
 
+def test_searxng_and_blocklist_in_list_form():
+    """Settings 字段是 List[str]（Web UI 保存后的形态）时同样正确解析。"""
+    class ListCfg(_Cfg):
+        SEARCH_SEARXNG_INSTANCES = ["https://x.example", "https://y.example"]
+        SEARCH_BLOCKED_DOMAINS = ["spam.com", "BAD.ORG"]
+
+    svc = _svc(ListCfg())
+    assert svc._searxng_instances() == ["https://x.example", "https://y.example"]
+    assert svc._blocked_domains() == ("spam.com", "bad.org")
+
+
 def test_max_results_clamped():
     assert _svc()._max_results(99) == 10
     assert _svc()._max_results(3) == 3
