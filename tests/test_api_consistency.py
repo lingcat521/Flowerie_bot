@@ -22,7 +22,7 @@ def _sender_actions() -> dict:
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
         for t in targets:
             if isinstance(t, ast.Name) and t.id == "_SENDER_ACTIONS" and isinstance(node.value, ast.Dict):
-                for k, v in zip(node.value.keys, node.value.values):
+                for k, v in zip(node.value.keys, node.value.values, strict=True):
                     if isinstance(k, ast.Constant):
                         entry = v.elts[0]
                         names = ([entry.value] if isinstance(entry, ast.Constant)
@@ -95,7 +95,7 @@ def _local_actions() -> dict:
             targets = node.targets if isinstance(node, ast.Assign) else [node.target]
             if any(isinstance(t, ast.Name) and t.id == "_LOCAL_ACTIONS" for t in targets):
                 out = {}
-                for k, v in zip(node.value.keys, node.value.values):
+                for k, v in zip(node.value.keys, node.value.values, strict=True):
                     if isinstance(k, ast.Constant) and isinstance(v, ast.Constant):
                         out[k.value] = v.value
                 return out

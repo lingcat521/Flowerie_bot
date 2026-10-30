@@ -29,7 +29,7 @@ def _milky_actions() -> dict:
     for node in ast.walk(_sender_module()):
         if isinstance(node, ast.Assign) and any(
                 getattr(t, "id", "") == "_MILKY_ACTIONS" for t in node.targets):
-            return {k.value: v.value for k, v in zip(node.value.keys, node.value.values)}
+            return {k.value: v.value for k, v in zip(node.value.keys, node.value.values, strict=True)}
     raise AssertionError("action_channels.py 里找不到 _MILKY_ACTIONS")
 
 

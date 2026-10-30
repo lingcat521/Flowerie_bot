@@ -160,7 +160,7 @@ def colored_banner(version: str = "", summary: Optional[Sequence[Tuple[str, str]
                    quip: Optional[str] = None) -> str:
     """带七彩渐变的横幅（调用方需自行确认终端支持颜色）。"""
     art = BANNER.strip("\n").split("\n")
-    out = [_paint(line, rgb, True) for line, rgb in zip(art, _rainbow(len(art)))]
+    out = [_paint(line, rgb, True) for line, rgb in zip(art, _rainbow(len(art)), strict=True)]
     out.append("")
     out.append(_paint(_head_line(version), _COLOR_TAGLINE, True))   # 标题：花璃粉
     out.append(SEP)

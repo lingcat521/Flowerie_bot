@@ -52,7 +52,7 @@ MESSAGE_KINDS = ("CALL", "RESPONSE", "EVENT", "ERROR", "CANCEL")
 #: 与引擎 -> 插件 的协议方法名一一对应（发起侧叫 emit，被调侧叫 event）—— 顺序对齐，
 #: 由 protocol.PLUGIN_METHODS 提供被调侧名字，杜绝两处各写一份方法名。
 PLUGIN_OPS = ("plugin.call", "plugin.emit", "plugin.cancel")
-PLUGIN_OP_TO_METHOD = dict(zip(PLUGIN_OPS, PLUGIN_METHODS))
+PLUGIN_OP_TO_METHOD = dict(zip(PLUGIN_OPS, PLUGIN_METHODS, strict=True))
 #: 能力分组名（SDK 的 initialize 里可写组名或方法名，两种等价）
 PLUGIN_CAPABILITY_GROUP = "plugin"
 

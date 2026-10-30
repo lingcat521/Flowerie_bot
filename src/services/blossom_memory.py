@@ -115,7 +115,7 @@ def cosine_similarity(a: List[float], b: List[float]) -> float:
     """纯 Python cosine（向量维度与条目均有上限治理，性能足够）。"""
     if not a or not b or len(a) != len(b):
         return 0.0
-    dot = sum(x * y for x, y in zip(a, b))
+    dot = sum(x * y for x, y in zip(a, b, strict=True))
     na = math.sqrt(sum(x * x for x in a))
     nb = math.sqrt(sum(x * x for x in b))
     if na <= 0 or nb <= 0:

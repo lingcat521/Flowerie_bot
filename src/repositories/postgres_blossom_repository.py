@@ -120,7 +120,7 @@ class PostgresBlossomMemoryRepository(BlossomMemoryRepository):
     def _row(r: Any) -> dict:
         cols = ("memory_id", "group_id", "kind", "target_id", "text", "vector",
                 "source_message_id", "created_at", "last_used_at", "used_count")
-        d = dict(zip(cols, r))
+        d = dict(zip(cols, r, strict=True))
         vec = d.get("vector")
         if isinstance(vec, str):
             try:

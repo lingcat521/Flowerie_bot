@@ -98,7 +98,7 @@ def _cast_memory(r, cols, vals):
 
 def _cast_blossom(r, cols, vals):
     out = []
-    for c, v in zip(cols, vals):
+    for c, v in zip(cols, vals, strict=True):
         if c == "vector" and isinstance(v, str):
             try:
                 out.append(json.loads(v))

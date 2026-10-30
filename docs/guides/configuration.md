@@ -435,10 +435,10 @@ QZONE_MAX_HISTORY=100                # 历史最大条数（超出淘汰最旧�
 - 角色查询有 `ADMIN_ROLE_CACHE_SECONDS`（默认 60s）缓存，不会每次刷平台接口
 - 这条链路不经过 LLM：指令由 `CommandHandler` 直接处理，无注入面
 
-## AI 自主工具层（v2.12.0，默认全关）
+## AI 自主工具层（v2.12.0；v2.17.0 扩展，默认全关）
 
 让模型像真人一样自己动手：模型在一轮对话里可以调用内置工具（与 MCP 工具同一形状），
-每个工具都有开关 + 权限护栏 + 配额，默认全部关闭。
+每个工具都有开关 + 权限护栏 + 配额，默认全部关闭。Web UI「自动化」页统一管理全部开关。
 
 ```ini
 AI_QZONE_ENABLED=false               # 允许 AI 自己发/删 QQ空间说说
@@ -447,6 +447,11 @@ AI_QZONE_AUTO_ENABLED=false          # 定时自己发动态（后台任务，�
 AI_QZONE_AUTO_INTERVAL_HOURS=24
 AI_ADMIN_ENABLED=false               # 允许 AI 自主禁言/解禁（仍需群主/管理员指使）
 AI_MEMORY_ENABLED=false              # 允许 AI 主动读取当前用户的群记忆
+AI_SEARCH_ENABLED=false              # 允许 AI 自主搜索网页 / 抓网页正文
+AI_GROUP_INFO_ENABLED=false          # 允许 AI 查看群成员名单
+AI_PROFILES_ENABLED=false            # 允许 AI 读群友画像
+AI_KNOWLEDGE_ENABLED=false           # 允许 AI 检索本群知识/梗
+AI_POKE_ENABLED=false                # 允许 AI 戳一戳（不戳管理员/自己/Bot）
 AI_TOOL_PROMPT=true                 # 给模型注入「工具怎么用」（关=只靠工具 schema）
 QZONE_IMAGE_DIR=./data/qzone_images  # 配图池：把图丢这里，AI 会识图后自己挑
 QZONE_IMAGE_INDEX_PATH=./data/qzone_image_index.json  # 识图描述缓存
@@ -464,6 +469,11 @@ QZONE_IMAGE_DESCRIBE_LIMIT=12        # 单次列图最多识图几张（省视�
 | `group_status` | 看 Bot 与自己的群权限 | 只读 |
 | `group_mute` / `group_unmute` | 禁言/解禁 | 需 `AI_ADMIN_ENABLED`；**发起人必须是群主/管理员**，Bot 自己也要有管理权限；单次 ≤24h |
 | `memory_recall` | 读当前用户在本群的长期记忆 | 只读、只限当前用户 |
+| `web_search` / `web_fetch` | 搜实时信息 / 抓网页正文 | 需 `AI_SEARCH_ENABLED`；结果按不可信外部数据处理，详见 [网页搜索](../../features/search.md) |
+| `group_members` | 看当前群成员名单（昵称/角色） | 需 `AI_GROUP_INFO_ENABLED`；只读 |
+| `member_profile` | 看某成员的群友画像 | 需 `AI_PROFILES_ENABLED`；只读，无画像直说 |
+| `group_knowledge` | 检索本群知识/梗 | 需 `AI_KNOWLEDGE_ENABLED`；只读 |
+| `poke` | 戳一戳群成员 | 需 `AI_POKE_ENABLED`；**不戳管理员/不戳调用者/不戳 Bot**，身份实时校验 |
 
 ### 自主发动态（像真人一样活着）
 

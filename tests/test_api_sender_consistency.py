@@ -21,7 +21,7 @@ def _action_table() -> tuple:
     for n in ast.walk(tree):
         if isinstance(n, ast.AnnAssign) and isinstance(n.target, ast.Name) and n.target.id == "_SENDER_ACTIONS":
             keys, methods = set(), set()
-            for k, v in zip(n.value.keys, n.value.values):
+            for k, v in zip(n.value.keys, n.value.values, strict=True):
                 keys.add(k.value)
                 first = v.elts[0] if hasattr(v, "elts") and v.elts else None
                 if isinstance(first, ast.Constant):

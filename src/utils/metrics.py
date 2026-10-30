@@ -148,7 +148,7 @@ class MetricsRegistry:
     def _format_labels(label_names: Tuple[str, ...], values: Tuple[str, ...]) -> str:
         if not label_names:
             return ""
-        pairs = ",".join(f'{n}="{v}"' for n, v in zip(label_names, values))
+        pairs = ",".join(f'{n}="{v}"' for n, v in zip(label_names, values, strict=True))
         return "{" + pairs + "}"
 
 

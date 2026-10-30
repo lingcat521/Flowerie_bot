@@ -288,10 +288,10 @@ async def main():
         message_router.commands.admin_service = admin_service
         # AI 内置工具层（v2.12.0）：QQ空间（识图选图）/ 群管理 / 记忆——模型自主调用，
         # 每个工具自带开关与权限护栏；默认全关，需显式开 AI_* 配置。
-        from src.services.ai_tools import AiToolRegistry
         # AI 工具层的画像读取：独立 ProfileStore（轻量 SQLite，与 PROFILE_ENABLED 解耦）
         from src.services.profile_manager import ProfileStore
         _profile_store_for_tools = ProfileStore(getattr(config, "PROFILE_DB_PATH", "./data/profiles.db"))
+        from src.services.ai_tools import AiToolRegistry
         message_router.ai_tools = AiToolRegistry(
             config, qzone_service=qzone_service, admin_service=admin_service,
             memory_manager=memory_manager, vision=getattr(ai_client, "vision", None),

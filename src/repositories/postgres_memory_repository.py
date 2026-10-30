@@ -165,7 +165,7 @@ class PostgresMemoryRepository(MemoryRepository):
     def _row(r: Any) -> MemoryNote:
         d = dict(zip(("user_id", "group_id", "note_id", "text", "source_user",
                       "source_group", "source_message_id", "created_at", "confidence"),
-                     r))
+                     r, strict=True))
         return MemoryNote(
             text=d["text"], user_id=int(d["user_id"]), group_id=int(d["group_id"]),
             note_id=int(d["note_id"]), source_user=d["source_user"],
