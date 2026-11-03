@@ -8,6 +8,7 @@
   [STICKER:<filename>] 选择；只传描述，不传图片本体
 """
 import hashlib
+import asyncio
 import os
 import re
 from typing import Optional
@@ -52,17 +53,36 @@ class StickerManager:
             return 0
         indexed = 0
         seen_paths = set()
+        budget = int(getattr(self.config, "STICKER_INDEX_LIMIT", 0) or 0)
+        skip_rest = False
+        # 并发索引（STICKER_INDEX_WORKERS 路；单文件失败不阻塞扫描）
+        workers = max(1, int(getattr(self.config, "STICKER_INDEX_WORKERS", 4) or 4))
+
+        async def _safe(path: str, filename: str) -> int:
+            try:
+                return await self._index_file(path, filename)
+            except Exception as e:  # noqa: BLE001
+                logger.error("sticker_analysis_failed file=%s err=%s", filename, e,
+                             extra={"event": "sticker_analysis_failed"})
+            return 0
+
+        tasks: list = []
         for filename in sorted(os.listdir(base)):
             ext = os.path.splitext(filename)[1].lower()
             if ext not in _IMAGE_EXTS:
                 continue
             path = os.path.join(base, filename)
             seen_paths.add(path)
-            try:
-                indexed += await self._index_file(path, filename)
-            except Exception as e:  # noqa: BLE001 - 单文件失败不阻塞扫描
-                logger.error("sticker_analysis_failed file=%s err=%s", filename, e,
-                             extra={"event": "sticker_analysis_failed"})
+            if skip_rest:
+                continue
+            tasks.append(_safe(path, filename))
+            if budget and len(tasks) >= budget:
+                skip_rest = True
+        # 分批并发
+        for i in range(0, len(tasks), workers):
+            batch = tasks[i:i + workers]
+            for r in await asyncio.gather(*batch):
+                indexed += r
         # 清理已被删除文件的索引
         for row in self.repository.list_ok(limit=10000):
             if row["file_path"] not in seen_paths and not os.path.exists(row["file_path"]):
@@ -100,16 +120,30 @@ class StickerManager:
 
     # ---------- 模型选择辅助 ----------
     def build_sticker_context(self) -> str:
-        """构造提供给模型的可用表情包文字描述（不传图片本体）。"""
+        """提供给模型的可用表情包上下文。
+
+        主模型原生识图（_native_vision_active）时传图片本体（native_vision_image
+        标记由 AIClient 转成多模态段，主模型自己看图选图）；否则只传文字描述
+        （外部识图模型在索引时已写好描述）。
+        """
         if not self.is_enabled():
             return ""
         stickers = self.repository.list_ok(limit=max(1, self.config.STICKER_MAX_LIST))
         if not stickers:
             return ""
+        from src.core.message_assembler import _native_vision_active
+        native = _native_vision_active(self.config)
         lines = ["可用表情包（如语境合适，可在回复中附加 [STICKER:文件名] 选择，最多一张）："]
-        for s in stickers:
-            lines.append(f"[{s['filename']}] {s['description'][:50]}")
-        return "\n".join(lines)
+        if native:
+            # 主模型直看：候选图本体（限制张数，防 token 爆炸）
+            max_imgs = max(1, int(getattr(self.config, "STICKER_NATIVE_MAX_IMAGES", 4) or 4))
+            for s in stickers[:max_imgs]:
+                lines.append(f"[STICKER:{s['filename']}]")
+                lines.append(f"[native_vision_image] file://{s['file_path']}")
+        else:
+            for s in stickers:
+                lines.append(f"[{s['filename']}] {s['description'][:120]}")
+        return chr(10).join(lines)
 
     # ---------- 回复解析与发送 ----------
     def extract_sticker(self, reply: str) -> Optional[str]:

@@ -16,6 +16,8 @@ from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
 
+_DESCRIBE_PROMPT = "详细描述这张表情包图片（80-150字）：人物外观（发色/发型/服装/饰品）、动作与姿态、面部表情、画面氛围、可能的情绪含义，以及适合在什么聊天场景使用。自然流畅的一段话，不要分点，不要提这是一张图片之类的话。"
+
 
 def _looks_like_image(data: bytes) -> bool:
     """MIME 嗅探：按魔数判断是否为常见图片格式（jpg/png/gif/webp/bmp）。"""
@@ -37,6 +39,23 @@ def _looks_like_image(data: bytes) -> bool:
     if data[:2] == b"BM":
         return True
     return False
+
+
+def _mime_from_magic(data: bytes) -> str:
+    """按魔数返回 MIME（data: URL 的声明类型必须与真实内容一致，否则 400 invalid_media）。"""
+    if not data:
+        return "image/jpeg"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:2] == b"BM":
+        return "image/bmp"
+    return "image/jpeg"
 
 
 class VisionService:
@@ -178,12 +197,12 @@ class VisionService:
             "messages": [{
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
-                    {"type": "text", "text": "请用一句简短自然的话（25字以内）描述这张图片的内容，不要提'这是一张图片'之类的话。"},
+                    {"type": "image_url", "image_url": {"url": f"data:{_mime_from_magic(image_bytes)};base64,{b64}"}},
+                    {"type": "text", "text": "详细描述这张表情包图片（80-150字）：人物外观（发色/发型/服装/饰品）、动作与姿态、面部表情、画面氛围、可能的情绪含义，以及适合在什么聊天场景使用。自然流畅的一段话，不要分点，不要提'这是一张图片'之类的话。"},
                 ],
             }],
             "temperature": 0.3,
-            "max_tokens": 200,
+            "max_tokens": 1200,
         }
         # 本机回环模型免密钥：空 key 时不发 Authorization（见 utils/llm_headers）
         headers = auth_headers(api_key)
@@ -201,6 +220,53 @@ class VisionService:
         except Exception as e:
             logger.error(f"Vision API error: {e}")
         return None
+
+    async def describe_image_native(self, file_path: str) -> Optional[str]:
+        """主聊天模型直接描述本地图片（multimodal image_url，base64 内联）。
+
+        与外部视觉模型走同一描述规范（80-150 字详细描述）。
+        """
+        from src.services.multimodal import load_image_part
+
+        fp = str(file_path or "")
+        if not fp.startswith("file://"):
+            fp = "file://" + fp
+        part = load_image_part(fp)
+        if not part:
+            return None
+        payload = {
+            "model": self.config.DEEPSEEK_MODEL,
+            "messages": [{
+                "role": "user",
+                "content": [
+                    part,
+                    {"type": "text", "text": _DESCRIBE_PROMPT},
+                ],
+            }],
+            "temperature": 0.3,
+            "max_tokens": int(getattr(self.config, "VISION_CHAT_MAX_TOKENS", 4000) or 4000),
+        }
+        try:
+            client = self._client()
+            if client is None:
+                return None
+            r = await client.post(self.config.DEEPSEEK_API_URL,
+                                  headers=auth_headers(self.config.DEEPSEEK_API_KEY),
+                                  json=payload,
+                                  timeout=int(getattr(self.config, "VISION_TIMEOUT", 30) or 30))
+            if r.status_code != 200:
+                logger.warning("native describe HTTP %s", r.status_code)
+                return None
+            d = r.json()
+            content = None
+            try:
+                content = (d.get("choices") or [{}])[0].get("message", {}).get("content")
+            except Exception:  # noqa: BLE001
+                content = None
+            return str(content).strip() if content else None
+        except Exception as e:  # noqa: BLE001 - 描述失败不阻断主流程
+            logger.warning("native describe failed: %s", e)
+            return None
 
     async def describe_image_file(self, file_path: str) -> Optional[str]:
         """描述本地图片文件（表情包/群消息图），失败返回 None。"""

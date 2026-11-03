@@ -5,9 +5,10 @@
 因此可以独立测试。
 """
 import json
+import re
 from typing import Any, List, Optional, Tuple
 
-from src.core.reply_splitter import SplitSegments, split_by_boundary
+from src.core.reply_splitter import SplitSegments, extract_stickers, fragment_split
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -49,7 +50,19 @@ def split_memory_lines(text: str) -> Tuple[str, Optional[str]]:
     多条记忆行时以最后一条为准（与 parse_reply_content 的覆盖语义一致）。
     """
     clean_lines, memory_update = [], None
-    for line in (text or "").split("\n"):
+    # 行内拼接兜底：部分模型（如 Atria-Dawn）把 MEMORY_JSON 跟正文写在同一行，
+    # 按纯行首匹配会漏剥。先把行内 JSON 提取为记忆，再走行首识别。
+    _inline_mem = None
+    m = re.search(r"MEMORY_JSON:\s*(\{.*\})\s*$", (text or "").rstrip())
+    if m:
+        try:
+            parsed = json.loads(m.group(1))
+            if isinstance(parsed, dict) and parsed.get("text"):
+                _inline_mem = str(parsed["text"]).strip()
+        except (json.JSONDecodeError, TypeError):
+            pass
+        text = (text or "")[:m.start()].rstrip()
+    for line in text.split("\n"):
         stripped = line.strip()
         if stripped.startswith("MEMORY_JSON:"):
             try:
@@ -66,31 +79,55 @@ def split_memory_lines(text: str) -> Tuple[str, Optional[str]]:
             memory_update = stripped
             continue
         clean_lines.append(line)
-    return "\n".join(clean_lines).strip(), memory_update
+    return "\n".join(clean_lines).strip(), (memory_update or _inline_mem)
 
 
 def parse_reply_content(content: str, config) -> Tuple[Optional[Any], Optional[str]]:
-    """解析模型回复：剥离记忆指令，返回 (reply_text, memory_update)。"""
+    """parse model reply: 剥离记忆行与控制标记，再按规则分句。
+
+    控制标记（[STICKER:文件名]）**无条件**剥离：它属于框架内部指令，
+    与 SPLIT_REPLY_ENABLED 无关——分句器关掉时也不能把标记发给用户。
+
+    Split rules (only these; nothing else):
+    - total length > SPLIT_REPLY_DISABLE_AT (100): send whole, no fragmentation
+    - total length < SPLIT_REPLY_LOWER (40): fragment by spaces and punctuation
+    - between: send whole
+    """
     content = (content or "").strip()
     if not content:
         return None, None
     reply_content, memory_update = split_memory_lines(content)
-    if getattr(config, "MULTI_REPLY_ENABLED", False):
-        multi = extract_multi_messages(reply_content)
-        if multi:
-            limit = int(getattr(config, "MAX_REPLY_LENGTH", 40) or 40)
-            capped = [m if len(m) <= limit else m[:limit] + "..." for m in multi]
-            logger.debug("multi_reply_detected count=%d", len(capped))
-            return capped, memory_update
-    if len(reply_content) > config.MAX_REPLY_LENGTH:
-        if getattr(config, "SPLIT_REPLY_ENABLED", False):
-            limit = int(getattr(config, "SPLIT_REPLY_SEGMENT_LIMIT", config.MAX_REPLY_LENGTH) or config.MAX_REPLY_LENGTH)
-            segments = split_by_boundary(reply_content, limit)
-            if segments:
-                logger.debug("split_reply count=%d", len(segments))
-                return SplitSegments(segments), memory_update
-        reply_content = reply_content[:config.MAX_REPLY_LENGTH] + "..."
-    logger.debug("api_reply len=%d", len(reply_content))
-    if memory_update:
-        logger.debug("memory_update_detected len=%d", len(memory_update))
+
+    # 1) 控制标记剥离（与分句开关解耦，任何情况下都不外发）
+    reply_content, sticker_names = extract_stickers(reply_content)
+    if sticker_names and not getattr(config, "STICKER_MARKER_ENABLED", True):
+        # 开关关闭：丢弃图片指令（标记已剥离，绝不泄漏给用户）
+        sticker_names = []
+    # 注意：空文本不在这里判 None（原语义：只有整条为空才返回 None，
+    # 记忆行剥离后的空串仍返回 ''，避免把「只发记忆指令」误判成「没有回复」）
+
+    # 2) 文本分句（可选的表达增强，与标记无关）
+    frags = None
+    if getattr(config, "SPLIT_REPLY_ENABLED", False):
+        disable_at = int(getattr(config, "SPLIT_REPLY_DISABLE_AT", 100) or 100)
+        lower = int(getattr(config, "SPLIT_REPLY_LOWER", 40) or 40)
+        n = len(reply_content)
+        if n < lower:
+            _f = fragment_split(reply_content)
+            if len(_f) > 1:
+                frags = _f
+                logger.debug("fragment_reply count=%d", len(_f))
+    if frags is None:
+        # >=lower: keep the legacy cap (MAX_REPLY_LENGTH + ellipsis)
+        max_len = int(getattr(config, "MAX_REPLY_LENGTH", 40) or 40)
+        if len(reply_content) > max_len:
+            reply_content = reply_content[:max_len] + "..."
+
+    # 3) 有表情包指令时用 SplitSegments 承载（结构化，便于发送层单独发图）
+    if sticker_names:
+        segs = SplitSegments(frags if frags else ([reply_content] if reply_content.strip() else []))
+        segs.stickers = sticker_names
+        return segs, memory_update
+    if frags:
+        return SplitSegments(frags), memory_update
     return reply_content, memory_update

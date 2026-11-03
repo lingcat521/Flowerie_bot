@@ -74,13 +74,13 @@ class Bot:
     # ---------- 多条回复（Multi-Reply）----------
     def _build_plan(self, messages, interval_mode=None, min_interval=None, max_interval=None):
         """把「要发的若干条」变成 Core 的 ReplyPlan（条数受配置上限约束）。"""
-        max_messages = int(getattr(self._config, "MULTI_REPLY_MAX_MESSAGES", 3) or 3)
+        max_messages = int(getattr(self._config, "SPLIT_REPLY_MAX_MESSAGES", 3) or 3)
         if interval_mode is None:
-            interval_mode = str(getattr(self._config, "MULTI_REPLY_INTERVAL_MODE", "random") or "random")
+            interval_mode = str(getattr(self._config, "SPLIT_REPLY_INTERVAL_MODE", "random") or "random")
         if min_interval is None:
-            min_interval = float(getattr(self._config, "MULTI_REPLY_MIN_INTERVAL", 1.5) or 0.0)
+            min_interval = float(getattr(self._config, "SPLIT_REPLY_MIN_INTERVAL", 1.5) or 0.0)
         if max_interval is None:
-            max_interval = float(getattr(self._config, "MULTI_REPLY_MAX_INTERVAL", 4.0) or 0.0)
+            max_interval = float(getattr(self._config, "SPLIT_REPLY_MAX_INTERVAL", 4.0) or 0.0)
         plan = ReplyPlan.of(messages, interval_mode=interval_mode,
                             min_interval=min_interval, max_interval=max_interval)
         return plan.normalize_mode().clamped(max_messages)
@@ -89,7 +89,7 @@ class Bot:
                         min_interval=None, max_interval=None):
         """一次发送多条独立消息（按 Core 的间隔策略逐条发）。
 
-        与「插件自己写 for 循环」的区别：条数受 MULTI_REPLY_MAX_MESSAGES 约束、
+        与「插件自己写 for 循环」的区别：条数受 SPLIT_REPLY_MAX_MESSAGES 约束、
         间隔由 Core 统一控制、每条都走同一条发送与记录路径、失败策略统一。
         返回每条消息的 message_id 列表。
         """

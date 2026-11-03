@@ -660,7 +660,7 @@ async def test_gateway_injects_tool_prompt(tmp_path):
     from src.core.ai_gateway import AiGateway
 
     class Cfg(_Cfg):
-        MULTI_REPLY_ENABLED = False
+        SPLIT_REPLY_ENABLED = False
         AI_MAX_RETRIES = 0
         MCP_MAX_TOOL_CALLS = 5
         BUDGET_EXHAUSTED_NOTICE = False
@@ -696,7 +696,7 @@ async def test_gateway_skips_tool_prompt_when_disabled(tmp_path):
     from src.core.ai_gateway import AiGateway
 
     class Cfg(_Cfg):
-        MULTI_REPLY_ENABLED = False
+        SPLIT_REPLY_ENABLED = False
         AI_MAX_RETRIES = 0
         MCP_MAX_TOOL_CALLS = 5
         BUDGET_EXHAUSTED_NOTICE = False

@@ -13,7 +13,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-2656%20passed%20(CI%20pytest%2C%20Python%203.14)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-2556%20passed%20(CI%20pytest%2C%20Python%203.14)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -21,13 +21,14 @@
 ---
 ## 这是什么
 
-**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.17.3**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.18.0**）。
 
 - **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/reference/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
   [插件间通信](docs/plugins/plugin-communication.md)（`plugin.call/emit/on`，跨语言经 Core Router，权限/超时/取消/环保护/trace）+
   [Plugin WebUI](docs/plugins/plugin-webui-protocol.md)（插件自带管理页面，零 JavaScript）。
   受控运行时：独立子进程 + 权限批准 + 保护级别 + 资源上限；CI 里 **13 种语言**最小插件真编译真运行。
+- **表情包三通道（v2.18.0）**：模型可用文本标记 `[STICKER:文件名]` 选图、被 @ 后按概率附随机图、或调用 `sticker_search`/`sticker_send` 工具自主发图；标记在解析层剥离，**文本与图片永远分开发送**，GIF 保留动图
 - **QQ Bot 是原生场景**：开箱即用的群聊机器人 —— DeepSeek 驱动的人设对话、识图、转发/卡片解析、
   长期记忆、人格系统、表情包、MCP 工具、主动聊天、冷却与预算；OneBot11 / Milky 双协议接入。
 - **零 JavaScript 的 Web 管理后台**：配置/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/私聊/外观/日志/用户状态/插件，热更新。
@@ -39,7 +40,7 @@
 | 💬 AI 对话 | DeepSeek 或任意 OpenAI 兼容厂商驱动，小恶魔系人设，@ 或群聊接话；**也支持本机自建模型**（Ollama / vLLM / llama.cpp / LM Studio，回环地址免填 Key、免发鉴权头） |
 | 🌙 每日摘要 | 长期挂机不重启：每天凌晨把当天群聊压缩成滚动摘要（嵌套合并、既定背景、收敛检查），跨周/跨月连续记忆；`DIGEST_ENABLED` 默认关，摘要可导出 txt；`DIGEST_SOURCE` 可选隐私存档 txt 作数据源 |
 | 🧑‍🤝‍🧑 群友画像 | 性格/喜好/个人生活/特点的长期记忆：每日摘要后自动提炼（merge 语义更新、字段级 TTL 淘汰），群聊时注入本群活跃成员画像；`PROFILE_ENABLED` 默认关，Web UI 画像页 + `/profile` 命令可查可改 |
-| 🤖 AI 自主工具层（v2.12.0；v2.17.0 扩展，默认关） | 模型在对话中可自己调用内置工具：QQ空间（发/删/配图识图）· 群管理（禁言/解禁，发起人须群主/管理员）· 记忆读取 · 网页搜索 · 群成员名单 · 群友画像 · 群知识/梗 · 戳一戳（poke 护栏：不戳管理员/自己/Bot）；还能按 AI_QZONE_AUTO_INTERVAL_HOURS 定时自己发动态。全部开关默认关，Web UI「自动化」页统一管理 |
+| 🤖 AI 自主工具层（v2.12.0；v2.17.0 / v2.18.0 扩展，默认关） | 模型在对话中可自己调用内置工具：QQ空间（发/删/配图识图）· 群管理（禁言/解禁，发起人须群主/管理员）· 记忆读取 · 网页搜索 · 群成员名单 · 群友画像 · 群知识/梗 · 戳一戳（poke 护栏：不戳管理员/自己/Bot）· 表情包检索与发送（v2.18.0）；还能按 AI_QZONE_AUTO_INTERVAL_HOURS 定时自己发动态。全部开关默认关，Web UI「自动化」页统一管理 |
 | 💬 私聊（v2.14.0） | 按 QQ 号完全隔离的私聊会话：独立上下文/记忆/人格/预算，AI 能力与群聊一致（识图/工具/记忆），命令同样可用；Web UI「私聊」页管理允许名单与每人记忆；默认关，留空名单=仅管理员可私聊 |
 | 🛡️ 群内管理指令（v2.11.0） | 花璃先自检自己的群权限再动手：`/admin` 看双方权限、`/mute QQ号 [10m]` 禁言（s/m/h/d，上限 30 天）、`/unmute QQ号` 解禁；发起人须群主/管理员，权限不足直接说明原因；不经过 LLM |
 | 👑 群管理控制台（v2.10.0） | Web UI「群管理」页 12 个操作：设/取消管理员、禁言/解除、踢人（可拒绝再加群）、改群名片、改群名、专属头衔、全员禁言、禁言列表、退群（群主可解散）；SDK `set_group_admin` 等 10 个 Bot 方法 + 插件 API 同步 |

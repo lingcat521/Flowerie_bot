@@ -370,11 +370,18 @@ class WebSearchService:
 
     async def _search_bing(self, query, limit, time_range, signal):
         # mkt 默认不发：海外 IP + mkt=zh-CN 会返回空 SERP（插件 #71）
-        url = "https://www.bing.com/search?q=" + _quote(query)
+        # 国内网络 bing.com 会 302 → cn.bing.com；_fetch_html 不跟随重定向
+        # （SSRF 边界），直接用 cn.bing.com 主机，避免被判失败。
+        path = "/search?q=" + _quote(query)
         adlt = self._safe_search()
         if adlt != "off":
             url += "&adlt=" + adlt
-        html = await self._fetch_html(url)
+        try:
+            html = await self._fetch_html("https://www.bing.com" + path)
+        except Exception:
+            html = ""
+        if not html:
+            html = await self._fetch_html("https://cn.bing.com" + path)
         blocks = re.findall(_BING_BLOCK_RE, html)
         sources = []
         for block in blocks:

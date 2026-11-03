@@ -90,3 +90,5 @@
 
 各阶段的审计 / 评审 / 交付报告见 [archive/](archive/README.md) —— 它们是**当时的既定事实记录，不随版本更新**；
 查当前行为一律以上表为准。
+
+- [更新公告（announcements）](announcements/v2.18.0.md) — 面向使用者的版本要点

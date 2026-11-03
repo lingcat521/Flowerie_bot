@@ -12,6 +12,20 @@ from src.utils.logging_setup import get_logger
 logger = get_logger(__name__)
 
 
+def _native_vision_active(config) -> bool:
+    """主聊天模型是否直接看图（VISION_ROUTE_MODE 三档）。"""
+    mode = str(getattr(config, "VISION_ROUTE_MODE", "auto") or "auto").lower()
+    if mode == "native":
+        return True
+    if mode != "auto":
+        return False
+    model = str(getattr(config, "DEEPSEEK_MODEL", "") or "")
+    raw = getattr(config, "NATIVE_VISION_MODELS", "") or ""
+    whitelist = [str(m).strip() for m in str(raw).split(",") if str(m).strip()]
+    return any(m.lower() == model.lower() for m in whitelist)
+
+    # ---------- 顶层图片识图 ----------
+
 class MessageAssembler:
     """消息组装：把原始 message_array 拼成 AI 能看懂的完整文本。
 
@@ -44,7 +58,15 @@ class MessageAssembler:
         full_text = clean_text
 
         # 顶层图片识图（边界语义：images=url-or-file；历史行为仅描述 url）
-        image_descriptions = await self._describe_images(event)
+        if _native_vision_active(self.config):
+            # 主模型原生识图：URL 直通（不调外部识图模型），由 AIClient 组成 multimodal 段
+            image_descriptions = []
+            _urls = [str(i) for i in (event.images or [])
+                     if str(i).startswith(("http://", "https://"))][:max(1, getattr(self.config, "MAX_IMAGES_PER_MESSAGE", 3) or 3)]
+            for u in _urls:
+                full_text += chr(10) + "[native_vision_image] " + u
+        else:
+            image_descriptions = await self._describe_images(event)
         if image_descriptions:
             # 图片描述也按不可信数据处理（图片里可能被塞文字指令）
             cleaned_descs, _ = sanitize_untrusted_text("；".join(image_descriptions))
@@ -73,6 +95,8 @@ class MessageAssembler:
         # 存档
         privacy_archive.archive_message(self.config, group_id, user_id, full_text, raw_time)
         return full_text, image_descriptions, is_reply_to_bot, has_reply_to_other, has_at_others
+
+
 
     # ---------- 顶层图片识图 ----------
     async def _describe_images(self, event) -> List[str]:

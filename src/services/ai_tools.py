@@ -38,6 +38,8 @@ GROUP_MEMBERS = "group_members"
 MEMBER_PROFILE = "member_profile"
 GROUP_KNOWLEDGE = "group_knowledge"
 POKE = "poke"
+STICKER_SEARCH = "sticker_search"
+STICKER_SEND = "sticker_send"
 
 _IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp", ".gif")
 _MAX_AI_MUTE_SECONDS = 24 * 3600
@@ -51,7 +53,8 @@ class AiToolRegistry:
                  memory_manager=None, vision=None, image_dir: Optional[str] = None,
                  index_path: Optional[str] = None, search_service=None,
                  group_admin=None, profile_repository=None,
-                 meme_manager=None, poke_adapter=None):
+                 meme_manager=None, poke_adapter=None,
+                 sticker_manager=None, sender=None):
         self.config = config
         self.qzone = qzone_service
         self.admin = admin_service
@@ -62,6 +65,10 @@ class AiToolRegistry:
         self.profiles = profile_repository
         self.meme = meme_manager
         self.poke = poke_adapter
+        self.stickers = sticker_manager
+        self.sender = sender
+        self.stickers = sticker_manager
+        self.sender = sender
         self._dir = str(image_dir or getattr(config, "QZONE_IMAGE_DIR", "./data/qzone_images"))
         self._index_path = str(index_path or getattr(
             config, "QZONE_IMAGE_INDEX_PATH", "./data/qzone_image_index.json"))
@@ -103,6 +110,11 @@ class AiToolRegistry:
         # 群聊知识/梗检索：读 meme_manager.retrieve_matches（只读）
         return self._soc("AI_KNOWLEDGE_ENABLED", self.meme)
 
+    def sticker_tool_enabled(self) -> bool:
+        # 表情包工具：需要 StickerManager 与 sender（发送受群级冷却约束）
+        return bool(self.stickers is not None and self.sender is not None and
+                    getattr(self.config, "AI_STICKER_ENABLED", False) and self.stickers.is_enabled())
+
     def poke_enabled(self) -> bool:
         # 戳一戳：互动型动作，独立开关 + 冷却护栏（_poke 最近性）
         return self._soc("AI_POKE_ENABLED", self.poke)
@@ -110,7 +122,7 @@ class AiToolRegistry:
     def enabled(self) -> bool:
         return (self.qzone_enabled() or self.admin_enabled() or self.memory_enabled()
                 or self.search_enabled() or self.group_info_enabled()
-                or self.profiles_enabled() or self.knowledge_enabled() or self.poke_enabled())
+                or self.profiles_enabled() or self.knowledge_enabled() or self.poke_enabled() or self.sticker_tool_enabled())
 
     def tool_names(self) -> List[str]:
         names: List[str] = []
@@ -128,6 +140,8 @@ class AiToolRegistry:
             names.append(GROUP_KNOWLEDGE)
         if self.poke_enabled():
             names.append(POKE)
+        if self.sticker_tool_enabled():
+            names += [STICKER_SEARCH, STICKER_SEND]
         return names
 
     def schemas(self) -> List[dict]:
@@ -210,6 +224,19 @@ class AiToolRegistry:
                 "parameters": {"type": "object", "properties": {
                     "query": {"type": "string", "description": "要查的关键词"}},
                     "required": ["query"]}}})
+        if self.sticker_tool_enabled():
+            out += [
+                {"type": "function", "function": {
+                    "name": STICKER_SEARCH, "description": "搜索可用表情包：按关键词（情绪/动作/场景/文件名）匹配，返回候选文件名与描述，挑好后再调用 sticker_send 发送。",
+                    "parameters": {"type": "object", "properties": {
+                        "keyword": {"type": "string", "description": "搜索关键词（如：开心、哭、搓手、贴贴）"}},
+                        "required": ["keyword"]}}},
+                {"type": "function", "function": {
+                    "name": STICKER_SEND, "description": "给当前群发一张表情包（纯图）。先 sticker_search 拿到文件名。受群级冷却限制，冷却中调用会失败。",
+                    "parameters": {"type": "object", "properties": {
+                        "filename": {"type": "string", "description": "表情包文件名（sticker_search 返回的 filename）"}},
+                        "required": ["filename"]}}},
+            ]
         if self.poke_enabled():
             out.append({"type": "function", "function": {
                 "name": POKE,
@@ -218,6 +245,50 @@ class AiToolRegistry:
                     "qq": {"type": "integer", "description": "要戳的成员 QQ 号"}},
                     "required": ["qq"]}}})
         return out
+
+    # ---------- 表情包工具 ----------
+    async def _sticker_search(self, payload: dict) -> str:
+        kw = str((payload or {}).get("keyword") or "").strip()
+        stickers = self.stickers.repository.list_ok(limit=500) if self.stickers else []
+        if not stickers:
+            return json.dumps({"ok": False, "error": "no stickers"}, ensure_ascii=False)
+        if kw:
+            kw_l = kw.lower()
+            scored = []
+            for s in stickers:
+                hay = (str(s["filename"]) + " " + str(s.get("description") or "")).lower()
+                score = hay.count(kw_l) + (2 if kw_l in str(s["filename"]).lower() else 0)
+                if score:
+                    scored.append((score, s))
+            scored.sort(key=lambda t: -t[0])
+            stickers = [s for _, s in scored[:8]]
+        else:
+            stickers = stickers[:8]
+        return json.dumps({"ok": True, "stickers": [
+            {"filename": s["filename"], "description": str(s.get("description") or "")[:120]}
+            for s in stickers]}, ensure_ascii=False)
+
+    async def _sticker_send(self, payload: dict) -> str:
+        filename = str((payload or {}).get("filename") or "").strip()
+        gid = self._ctx.get("group_id", 0)
+        if not gid:
+            return json.dumps({"ok": False, "error": "no group context"}, ensure_ascii=False)
+        if not self.stickers.can_send(gid):
+            return json.dumps({"ok": False, "error": "cooldown"}, ensure_ascii=False)
+        path = self.stickers.extract_sticker(f"[STICKER:{filename}]")
+        if not path:
+            return json.dumps({"ok": False, "error": "not found"}, ensure_ascii=False)
+        text = (payload or {}).get("text") or None
+        sent = await self.sender.send_group_message_with_image(gid, text, path)
+        if not sent:
+            return json.dumps({"ok": False, "error": "send failed"}, ensure_ascii=False)
+        self.stickers.mark_sent(gid)
+        _touch = getattr(self.stickers.repository, "touch_sent", None)
+        if callable(_touch):
+            _touch(filename)
+        logger.info("sticker_tool_sent group=%s file=%s", gid, filename,
+                    extra={"event": "sticker_tool_sent"})
+        return json.dumps({"ok": True, "filename": filename}, ensure_ascii=False)
 
     # ---------- 统一调用 ----------
     async def call_tool(self, name: str, args: Any) -> Optional[str]:
@@ -233,6 +304,8 @@ class AiToolRegistry:
             MEMBER_PROFILE: self._member_profile,
             GROUP_KNOWLEDGE: self._group_knowledge,
             POKE: self._poke,
+            STICKER_SEARCH: self._sticker_search,
+            STICKER_SEND: self._sticker_send,
         }.get(name)
         if handler is None:
             return None

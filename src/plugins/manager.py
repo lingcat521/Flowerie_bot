@@ -27,7 +27,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import httpx
 
 from src.config import build_legacy_mcp_auth, parse_mcp_servers
-from src.core.reply_splitter import split_by_boundary
+from src.core.reply_splitter import fragment_split
 from src.core.sanitizer import validate_memory_content
 from src.plugins import comm
 from src.plugins.http_action import plugin_http_request, redact_url
@@ -1729,7 +1729,7 @@ class PluginManager:
             if not text.strip():
                 return {"ok": False, "error": "split_reply: text 不能为空"}
             limit = max(1, min(2000, int(payload.get("limit", 40) or 40)))
-            segs = split_by_boundary(text, limit)
+            segs = fragment_split(text)
             if not segs:
                 return {"ok": False, "error": "split_reply: 切分结果为空"}
             return {"ok": True, "segments": segs, "count": len(segs), "limit": limit}
@@ -1808,10 +1808,10 @@ class PluginManager:
             return {"ok": False, "error": "sender 未注入（不可用）"}
 
         cfg = getattr(self, "config", None)
-        limit = int(getattr(cfg, "MULTI_REPLY_MAX_MESSAGES", 3) or 3)
-        mode = str(getattr(cfg, "MULTI_REPLY_INTERVAL_MODE", "random") or "random")
-        lo = float(getattr(cfg, "MULTI_REPLY_MIN_INTERVAL", 1.5) or 0.0)
-        hi = float(getattr(cfg, "MULTI_REPLY_MAX_INTERVAL", 4.0) or 0.0)
+        limit = int(getattr(cfg, "SPLIT_REPLY_MAX_MESSAGES", 3) or 3)
+        mode = "none"
+        lo = 0.0
+        hi = 0.0
         plan = ReplyPlan.of(list(messages), interval_mode=mode, min_interval=lo,
                             max_interval=hi).normalize_mode().clamped(limit)
         if not plan:

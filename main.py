@@ -300,7 +300,9 @@ async def main():
             # 画像读取用独立 ProfileStore（registry 先于 profile_service 构造；读取不依赖 PROFILE_ENABLED）
             profile_repository=_profile_store_for_tools,
             meme_manager=meme_manager,
-            poke_adapter=sender)
+            poke_adapter=sender,
+            sticker_manager=sticker_manager,
+            sender=sender)
         # 协议切换：Milky（应用端主动连 /event）优先于 OneBot（NapCat 反向/正向）
         if str(getattr(config, "QQ_PROTOCOL", "onebot") or "onebot").lower() == "milky":
             from src.transport.milky_ws_client import MilkyClient

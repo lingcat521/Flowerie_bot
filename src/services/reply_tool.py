@@ -4,7 +4,7 @@
 - 只**捕获**模型给出的 messages[]，绝不发送消息、绝不 import OneBot/Milky/NapCat；
 - 捕获结果以 List[str] 形式回到既有回复链路（与旧式 JSON Multi-Reply 完全同型），
   于是 100% 复用 plan_from_config（开关门控 + clamped 上限）→ ReplySender → 协议适配；
-- 工具仅在 MULTI_REPLY_ENABLED 时注入（不新增开关，Phase 12）；
+- 工具直接注入（Phase 12 起）；
 - 每个 logical request 只认**第一次**成功捕获：模型重复调用不会重发第一条（Phase 8）。
 """
 from typing import Any, Dict, List, Optional
@@ -39,7 +39,7 @@ REPLY_TOOL_SCHEMA: Dict[str, Any] = {
     },
 }
 
-# 防元数据洪泛：超出部分直接丢弃；真正的上限仍由 Core 配置（MULTI_REPLY_MAX_MESSAGES）决定。
+# 防元数据洪泛：超出部分直接丢弃；上限由 SPLIT_REPLY_MAX_MESSAGES 决定。
 MAX_CAPTURE_MESSAGES = 20
 
 

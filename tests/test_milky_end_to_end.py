@@ -118,11 +118,11 @@ class _Host(ReplyDispatchMixin):
         self.sender = sender
         self.policy_engine = _Policy()
         self.config = type("C", (), {
-            "MULTI_REPLY_ENABLED": True,
-            "MULTI_REPLY_MAX_MESSAGES": 3,
-            "MULTI_REPLY_INTERVAL_MODE": INTERVAL_NONE,
-            "MULTI_REPLY_MIN_INTERVAL": 0.0,
-            "MULTI_REPLY_MAX_INTERVAL": 0.0,
+            "SPLIT_REPLY_ENABLED": True,
+            "SPLIT_REPLY_MAX_MESSAGES": 3,
+            "SPLIT_REPLY_INTERVAL_MODE": INTERVAL_NONE,
+            "SPLIT_REPLY_MIN_INTERVAL": 0.0,
+            "SPLIT_REPLY_MAX_INTERVAL": 0.0,
         })()
 
 
@@ -133,12 +133,13 @@ async def test_multi_reply_over_milky_sends_each_message():
         base = "http://127.0.0.1:%d" % milky.port
         async with Sender(Cfg("milky", base)) as sender:
             host = _Host(sender)
-            ok = await host._send_reply(["第一句", "第二句", "第三句"], group_id=777)
+            from src.core.reply_splitter import SplitSegments
+            ok = await host._send_reply(SplitSegments(["第一句", "第二句", "第三句"]), group_id=777)
         assert ok is True
         assert [c[0] for c in milky.calls] == ["send_group_message"] * 3
         texts = [c[2]["message"][0]["data"]["text"] for c in milky.calls]
         assert texts == ["第一句", "第二句", "第三句"]
-        assert host.policy_engine.count == 3          # 每条都计一次连续回复
+        assert host.policy_engine.count == 1  # count_as_one
 
 
 @pytest.mark.asyncio

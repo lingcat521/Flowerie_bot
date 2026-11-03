@@ -19,7 +19,7 @@ _EXPECTED = (
     "AI_QZONE_AUTO_ENABLED", "AI_QZONE_AUTO_INTERVAL_HOURS",
     "AI_ADMIN_ENABLED", "AI_MEMORY_ENABLED", "AI_TOOL_PROMPT",
     "AI_SEARCH_ENABLED", "AI_GROUP_INFO_ENABLED", "AI_PROFILES_ENABLED",
-    "AI_KNOWLEDGE_ENABLED", "AI_POKE_ENABLED",
+    "AI_KNOWLEDGE_ENABLED", "AI_POKE_ENABLED", "AI_STICKER_ENABLED",
     "QZONE_IMAGE_DIR", "QZONE_IMAGE_INDEX_PATH",
     "QZONE_IMAGE_MAX", "QZONE_IMAGE_DESCRIBE_LIMIT",
     "QZONE_ENABLED", "QZONE_DEFAULT_UGC_RIGHT",
@@ -28,7 +28,7 @@ _EXPECTED = (
 
 
 def test_automation_keys_match_expected():
-    """SCHEMA 中 Automation 分类恰好是这 15 键（防漂移）。"""
+    """SCHEMA 中 Automation 分类恰好是这些键（防漂移；v2.18.0 增 AI_STICKER_ENABLED）。"""
     in_schema = sorted(k for k, v in SCHEMA.items() if v[0] == "Automation")
     assert in_schema == sorted(_EXPECTED)
     assert set(AUTOMATION_KEYS) == set(_EXPECTED)

@@ -1,27 +1,49 @@
-"""回复分发 mixin：统一处理「单条 / 多条」回复的发送（防上帝类：从 MessageRouter 拆出）。
+"""Reply dispatch: single / fragmented replies with overflow buffering.
 
-条数与间隔由 Core 配置决定，AI 无权绕过；默认每条计一次连续回复（MAX_CONSECUTIVE_REPLIES
-生效），切分/流式段按 count_as_one 整轮只计一次（C1）。协议无关：只调用 sender 既有方法。
+Splitting rules (only these, see reply_parser.parse_reply_content):
+- total > SPLIT_REPLY_DISABLE_AT (100): whole reply, no fragments
+- total < SPLIT_REPLY_LOWER (40): fragment by spaces and punctuation
+- otherwise: whole reply
+
+Anti-flood: at most SPLIT_REPLY_MAX_MESSAGES (3) fragments per burst.
+Overflow fragments are buffered and sent after a 4-6s delay each.
 """
+import asyncio
+import random
 from typing import Optional
 
 from src.core.reply_plan import plan_from_config
+from src.core.reply_splitter import SplitSegments
 from src.core.reply_sender import MultiReplyError, send_plan
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
 
+_OVERFLOW_MIN_DELAY = 4.0
+_OVERFLOW_MAX_DELAY = 6.0
+
 
 class ReplyDispatchMixin:
-    """宿主需提供 sender / config / policy_engine。"""
+    """Hosts must provide sender / config / policy_engine."""
 
     async def _send_reply(self, reply, *, group_id: Optional[int] = None,
                          user_id: Optional[int] = None,
                          record_key: Optional[int] = None) -> bool:
-        """发送回复：字符串（单条）与列表（多条）都走这里。"""
+        """Send a reply: string (single) or SplitSegments (fragments)."""
+        # 结构化表情包指令（解析层剥离出的控制标记，不依赖文本正则）
+        sticker_names = list(getattr(reply, "stickers", None) or [])
         plan = plan_from_config(reply, self.config)
         if not plan:
+            # 只有表情包、没有文本：直接发图
+            if sticker_names and group_id:
+                return await self._send_sticker_files(group_id, sticker_names)
             return False
+        # 溢出缓存：plan 已被 clamped 到 3 句，多余片段原样保留在 reply 里
+        overflow = []
+        if isinstance(reply, SplitSegments) and len(plan.messages) < len(reply):
+            overflow = [m for m in list(reply)[len(plan.messages):] if m]
+
+        target = record_key if record_key is not None else (group_id if group_id else user_id)
 
         async def send_one(msg, _idx):
             if group_id:
@@ -29,15 +51,6 @@ class ReplyDispatchMixin:
             return await self.sender.send_private_message(user_id, msg)
 
         def after_sent(_idx, _res):
-            """成功发出后的记账：连续回复计数 + 上下文 + 最近回复。
-
-            默认**一条记一次**（调用点不要再重复记录，否则连续回复会被双倍计数）。
-            count_as_one（切分/流式段，C1）：一轮分段回复 = 一次逻辑发言 ——
-            只在首条发出后记一次合并文本：上下文不再出现「半句 半句」碎片，
-            MAX_CONSECUTIVE_REPLIES 也不会被同一轮分段提前触发（用户下一句被吞）。
-            """
-            # record_key：私聊用虚拟群号记账（发送目标仍是 user_id，互不影响）
-            target = record_key if record_key is not None else (group_id if group_id else user_id)
             if plan.count_as_one:
                 if _idx != 0:
                     return
@@ -56,4 +69,91 @@ class ReplyDispatchMixin:
         except MultiReplyError as exc:
             logger.warning("multi_reply_partial sent=%d failed_at=%d", len(exc.sent), exc.failed_index)
             return False
-        return all(bool(r) for r in results) if results else False
+        ok = all(bool(r) for r in results) if results else False
+        if overflow and ok:
+            kwargs = {"group_id": group_id} if group_id else {"user_id": user_id}
+            if record_key is not None:
+                kwargs["record_key"] = record_key
+            asyncio.create_task(self._send_overflow(overflow, **kwargs))
+            logger.info("fragment_overflow count=%d", len(overflow))
+        # 表情包：文本发完后再单独发一条纯图（框架内部指令 → 独立消息）
+        if ok and sticker_names and group_id:
+            await self._send_sticker_files(group_id, sticker_names)
+        return ok
+
+    async def _maybe_attach_random_sticker(self, group_id: int, *, summoned: bool) -> None:
+        """被召唤回复后按概率附一张随机表情包（受群级冷却约束）。"""
+        if not summoned:
+            return
+        sm = getattr(self, "sticker_manager", None)
+        if sm is None or not sm.is_enabled():
+            return
+        prob = float(getattr(self.config, "STICKER_REPLY_PROBABILITY", 0.0) or 0.0)
+        if prob <= 0 or random.random() >= prob or not sm.can_send(group_id):
+            return
+        stickers = sm.repository.list_ok(limit=200)
+        if not stickers:
+            return
+        pick = random.choice(stickers)
+        path = sm.extract_sticker("[STICKER:%s]" % pick["filename"])
+        if not path:
+            return
+        sm.mark_sent(group_id)
+        if await self.sender.send_group_message_with_image(group_id, None, path):
+            logger.info("sticker_attached group=%s file=%s", group_id, pick["filename"],
+                        extra={"event": "sticker_attached"})
+
+    async def _send_sticker_files(self, group_id: int, names: list) -> bool:
+        """只发表情包（无正文）：解析层产出「仅图」回复时走这里。"""
+        _sm = getattr(self, "sticker_manager", None)
+        if _sm is None or not _sm.is_enabled() or not names:
+            return False
+        ok_any = False
+        for name in names[:1]:
+            if not _sm.can_send(group_id):
+                logger.debug("sticker cooldown, skip %s", name)
+                break
+            path = _sm.extract_sticker("[STICKER:%s]" % name)
+            if not path:
+                logger.warning("sticker not found: %s", name)
+                continue
+            _sm.mark_sent(group_id)
+            if await self.sender.send_group_message_with_image(group_id, None, path):
+                ok_any = True
+                try:
+                    self.policy_engine.record_bot_reply(group_id)
+                    self.policy_engine.add_context(group_id, 0, "[表情包]", is_bot=True)
+                    self.policy_engine.add_recent_reply(group_id, "[表情包]")
+                except Exception:
+                    logger.debug("record sticker reply failed")
+                logger.info("sticker_sent_only group=%s file=%s", group_id, name,
+                            extra={"event": "sticker_sent_only"})
+        return ok_any
+
+    async def _send_overflow(self, messages, *, group_id=None, user_id=None,
+                             record_key=None) -> None:
+        """Send buffered overflow fragments with a 4-6s delay before each."""
+        target = record_key if record_key is not None else (group_id if group_id else user_id)
+        for msg in messages:
+            await asyncio.sleep(random.uniform(_OVERFLOW_MIN_DELAY, _OVERFLOW_MAX_DELAY))
+            try:
+                _sm = getattr(self, "sticker_manager", None)
+                if _sm is not None and _sm.is_enabled() and "[STICKER:" in str(msg):
+                    _path = _sm.extract_sticker(str(msg))
+                    if _path and _sm.can_send(group_id or 0):
+                        _txt = _sm.strip_sticker_marker(str(msg))
+                        _sm.mark_sent(group_id or 0)
+                        msg = (_txt or None, _path)  # 图片发送元组
+                if isinstance(msg, tuple):
+                    ok = await self.sender.send_group_message_with_image(
+                        group_id, msg[0], msg[1]) if group_id else False
+                elif group_id:
+                    ok = await self.sender.send_group_message(group_id, msg)
+                else:
+                    ok = await self.sender.send_private_message(user_id, msg)
+                if ok:
+                    self.policy_engine.record_bot_reply(target)
+                    self.policy_engine.add_context(target, 0, msg, is_bot=True)
+                    self.policy_engine.add_recent_reply(target, msg)
+            except Exception:
+                logger.warning("overflow send failed: %s", str(msg)[:60])

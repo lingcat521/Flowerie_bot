@@ -8,6 +8,39 @@
 - **启动校验**（`src/config.py:validate_config()`，fail-fast，见文末「启动校验」）：必填缺失/占位值、端口冲突、枚举非法、区间越界一律拒绝启动。
 - 下表「默认」= 代码默认值；说明标 **重启** 的项改后需重启，其余热更新（完整重启清单见文末）。
 
+## 已移除的配置键（v2.18.0）
+
+以下键在 v2.18.0 被删除（框架不再支持对应机制），Web UI 中已不可见；
+若 `.env` 里仍保留，启动时会当作未知键跳过（`config_persisted_unknown`），不影响运行。
+
+| 键 | 原机制 | 现状 |
+| :--- | :--- | :--- |
+| `STREAM_REPLY_ENABLED` / `_MIN_FLUSH` / `_MAX_FLUSH` | 流式分句回复 | 删除（框架本身不支持 SSE 增量发送） |
+| `MULTI_REPLY_ENABLED` / `_MAX_MESSAGES` / `_INTERVAL_MODE` / `_MIN_INTERVAL` / `_MAX_INTERVAL` | AI 自主多条（JSON messages） | 删除，拆分统一由分句规则完成 |
+| `SPLIT_REPLY_SEGMENT_LIMIT` / `SPLIT_REPLY_INTERVAL_MODE` | 分段长度/间隔 | 删除，长度由解析层规则决定、溢出用 4~6 秒缓存补发 |
+
+## 新增的配置键（v2.18.0）
+
+| 键 | 默认 | 说明 |
+| :--- | :--- | :--- |
+| `SPLIT_REPLY_LOWER` | `40` | 低于此长度才分句 |
+| `SPLIT_REPLY_DISABLE_AT` | `100` | 高于此长度整条发（不分句） |
+| `SPLIT_REPLY_MAX_MESSAGES` | `3` | 单次最多分句条数，超出进缓存隔 4~6 秒补发 |
+| `REPLY_PROBABILITY` | `1.0` | 接话概率（0~1） |
+| `MENTION_REPLY_GATE_ENABLED` | `false` | @ 门控。默认关＝真实 @ 必回（NapCat）；官方桥接部署需开启并配 `REPLY_PROBABILITY` |
+| `DEEPSEEK_MAX_TOKENS` | `200` | AI 输出 token 上限 |
+| `VISION_ROUTE_MODE` | `auto` | `auto`／`external`／`native` 识图路由 |
+| `NATIVE_VISION_MODELS` | 空 | 主模型原生识图白名单（逗号分隔） |
+| `VISION_CHAT_MAX_TOKENS` | `4000` | 主模型直看时的独立 token 预算 |
+| `VISION_REPLY_ON_IMAGE` | `false` | 纯图片消息是否触发回复（默认不回，防刷屏） |
+| `STICKER_MARKER_ENABLED` | `true` | 允许 `[STICKER:文件名]` 标记选图（标记始终剥离，不外发） |
+| `STICKER_REPLY_PROBABILITY` | `0.10` | 被 @／叫名字后附随机图概率 |
+| `STICKER_INDEX_LIMIT` | `30` | 单次扫描新索引上限（0=不限） |
+| `STICKER_INDEX_WORKERS` | `4` | 索引并发数 |
+| `STICKER_NATIVE_MAX_IMAGES` | `4` | 直看模式下内联候选图张数 |
+| `AI_STICKER_ENABLED` | `false` | AI 可用 `sticker_search`／`sticker_send` 工具 |
+| `MAX_CONSECUTIVE_REPLIES` / `BOT_CONSECUTIVE_REPLY_COOLDOWN` | `3` / `60` | 连回上限与封群时长（@ 召唤已绕过节流） |
+
 ## 必填
 
 | 变量 | 说明 |

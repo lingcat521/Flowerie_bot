@@ -4,6 +4,72 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.18.0] - 2026-11-04
+
+> 一句话题眼：**回复表达层重做（分句规则化）+ 表情包全链路（文字标记 / 概率附图 / 工具调用）+
+> 识图双路由（主模型直看 or 外部识图）**。删除流式回复与 AI 自主多条两套并行机制，
+> 协议层零改动。
+
+### 变更（BREAKING：配置键移除）
+
+- **删除流式分句回复**（框架本身不支持 SSE 增量发送）：移除 `STREAM_REPLY_*` 五个配置键、
+  `src/core/stream_reply.py`、`src/services/ai_streaming.py`、`AIClient.chat_stream`、
+  `AiGateway.guarded_stream`
+- **删除 AI 自主多条（MULTI_REPLY）**：移除 `MULTI_REPLY_*` 五个配置键与原生 Reply Tool
+  （`ReplyToolCapture` 注入分支）；回复拆分统一由 `reply_parser` 按规则完成
+- **简化分句规则**（只保留三条）：
+  1. 总长 > `SPLIT_REPLY_DISABLE_AT`(100) → 整条发送，不拆
+  2. 总长 < `SPLIT_REPLY_LOWER`(40) → 按**空格 + 句末标点**（`。！？!?；;`）拆分
+  3. 之间 → 整条发送
+  - 逗号 / 顿号 / 小数点 / 括号不再作为切点（此前会把 `3.5`、`（气鼓鼓）` 切碎）
+  - 单次最多 `SPLIT_REPLY_MAX_MESSAGES`(3) 条，溢出片段进缓存，隔 4~6 秒逐条补发
+- `SPLIT_REPLY_SEGMENT_LIMIT` / `SPLIT_REPLY_INTERVAL_MODE` 移除（分段长度改由解析层规则决定）
+
+### 新功能：表情包全链路
+
+- **控制标记剥离进解析层**（与分句开关解耦）：`[STICKER:文件名]` 在 `parse_reply_content`
+  第一步就被剥出，文本永不带标记；产出结构化 `SplitSegments.stickers`，发送层据此**单独发图**
+  （文本一条、图片一条）
+- **三种发表情包通道**（可独立开关）：
+  1. 模型文本标记 `[STICKER:xxx]`（`STICKER_MARKER_ENABLED`）
+  2. 被 @ / 叫名字回复后按概率附随机图（`STICKER_REPLY_PROBABILITY`，默认 0.10）
+  3. **AI 工具调用**（`AI_STICKER_ENABLED`，Web UI「自动化」抽屉）：`sticker_search`
+     按关键词检索、`sticker_send` 发图，受群级冷却约束
+- 索引侧新增 `STICKER_INDEX_LIMIT`（单次新索引上限）与 `STICKER_INDEX_WORKERS`（并发数），
+  支持大目录分批索引；`STICKER_NATIVE_MAX_IMAGES` 控制直看模式下内联的候选图张数
+- 表情包描述改为**详细描述**（80–150 字：外观/动作/表情/氛围/适用场景），替换原先 25 字短句
+
+### 新功能：识图双路由
+
+- `VISION_ROUTE_MODE`：`auto`（主模型在白名单 → 自己看图；否则走外部识图）/
+  `external`（永远外部）/ `native`（强制主模型直看）
+- `NATIVE_VISION_MODELS`：主模型原生识图白名单（逗号分隔）
+- `VISION_CHAT_MAX_TOKENS`：直看模式的独立 token 预算（识图推理开销远大于纯文本；
+  实测推理型模型单图约消耗 500–3000 reasoning tokens）
+- `VISION_REPLY_ON_IMAGE`：纯图片消息（无文本）默认**只识图记上下文、不触发回复**（防刷屏）
+
+### 新功能：接话频率与节流
+
+- `REPLY_PROBABILITY`：接话概率（0~1）
+- `MENTION_REPLY_GATE_ENABLED`：@ 门控开关。**默认关**（真实 @ 必回，NapCat 场景）；
+  官方桥接部署下桥接器会给每条消息注入 @，开启此键并配合 `REPLY_PROBABILITY` 才能限频
+- **@ 召唤绕过节流**：`is_mentioned` / 直接回复 bot 时不再受连回上限与冷却约束
+  （节流只约束自发接话）；`MAX_CONSECUTIVE_REPLIES` 默认上限仍为 3 次/封 60 秒可配
+- `DEEPSEEK_MAX_TOKENS`：AI 输出 token 上限（此前硬编码 1024）
+
+### 修复
+
+- `reply_dispatch` 分段发送路径补齐表情包标记处理（此前分段消息里的标记会原样发给用户）
+- `ai_client` 支持 `file://` 本地图片转 base64 内联（多模态段），GIF 自动取首帧降采样
+- 配置读取顺序（db > .env > 代码默认）在长驻看守（watcher）场景下的陷阱说明：
+  看守进程持旧 shell 函数会一直用旧环境变量拉子进程，**改配置请走 settings.db / Web UI**
+
+### 文档
+
+- `docs/features/stickers.md` 重写（三通道 + 索引参数 + 描述规范）
+- `docs/guides/configuration.md` 补齐新增键与移除键说明
+- README 版本与徽章同步
+
 ## [2.17.3] - 2026-10-31
 
 ### 新功能

@@ -88,6 +88,25 @@ class _RecordingAI:
         return "回复", None
 
 
+class FakeConfig:
+    """最小配置桩（原引用自已删除的 test_native_reply_tool）。"""
+
+    AI_MAX_RETRIES = 1
+    AI_TIMEOUT = 30
+    AI_RETRY_BACKOFF = 0
+    MAX_REPLY_LENGTH = 40
+    MAX_AI_INPUT_CHARS = 8000
+    PERSONA_DEFAULT = "flowerie"
+    MAX_PERSONA_PROMPT_LENGTH = 8000
+    GROUP_STYLE_RULES = ""
+    BOT_NICKNAME = "花璃"
+    AI_ENABLED = True
+    MEMORY_ENABLED = True
+    MULTI_REPLY_ENABLED = False
+    SPLIT_REPLY_ENABLED = False
+    AI_TOOL_PROMPT = False
+
+
 class _FakeBudget:
     def check(self, *a, **k):
         return True, "ok"
@@ -121,7 +140,6 @@ async def test_guarded_chat_injects_group_identity_for_positional_call():
     `bot_nickname` / `default_nickname` / `group_style_rules` 真的传到了 AI 客户端。
     """
     from src.core.ai_gateway import AiGateway
-    from tests.test_native_reply_tool import FakeConfig
 
     client = _RecordingAI()
     gateway = AiGateway(FakeConfig(), client, _FakeBudget(), prompt_manager=None,

@@ -19,6 +19,12 @@ class SplitSegments(list):
     是 list 子类：所有 isinstance(reply, list) 的既有消费者无需改动。
     """
 
+    def __init__(self, *args):
+        super().__init__(*args)
+        # 结构化控制指令：表情包文件名列表（由 extract_stickers 从文本剥离）
+        self.stickers: List[str] = []
+
+
 # 句尾标点（强边界）：句号/问号/感叹号（中英全角）+ 分号
 _SENTENCE_PUNCT = "。！？!?；;"
 # 弱边界：逗号（中英）与顿号
@@ -29,58 +35,38 @@ _MIN_TAIL = 2
 _TRAILING_PUNCT = re.compile(r"[\s。！？!?；;，,、…~～]+$")
 
 
-def split_by_boundary(text: str, limit: int) -> List[str]:
-    """把 text 切成若干段，每段长度 <= limit。
+def fragment_split(text: str) -> List[str]:
+    """Split a short reply into fragments by spaces and punctuation.
 
-    切点优先级（在 limit 范围内从右往左找最近者）：
-    1. 换行（段落边界，最优先）
-    2. 句尾标点（。！？!?；;）
-    3. 逗号（，,、）
-    4. 空格（人设下的主要边界）
-    5. 都没有 → 硬切（保证不超 limit）
-
-    段首段尾空白被去掉，空段被丢弃。limit<=0 时按「不切」处理（调用方自证）。
+    Only used when SPLIT_REPLY_ENABLED and the reply is under the lower threshold.
+    Punctuation stays attached to the preceding fragment. Empty frags dropped.
     """
-    if limit <= 0:
-        return [text] if text else []
-    text = text or ""
-    if len(text) <= limit:
-        return [text] if text.strip() else []
+    if not text or not str(text).strip():
+        return []
+    parts = re.split(r"[ 	]+", str(text).strip())
+    out: List[str] = []
+    for part in parts:
+        if not part:
+            continue
+        # further split after sentence-ending punctuation only: keep the punct with the preceding piece
+        # 逗号/顿号/小数点不拆（它们是句内成分，拆了反而碎）
+        pieces = re.split(r"(?<=[。！？!?；;])", part)
+        out.extend(p for p in pieces if p)
+    return out
 
-    parts: List[str] = []
-    rest = text
-    while len(rest) > limit:
-        cut = _find_cut(rest, limit)
-        parts.append(rest[:cut].strip())
-        rest = _TRAILING_PUNCT.sub("", rest[cut:]) if cut < len(rest) else ""
-    if rest.strip():
-        parts.append(rest.strip())
-    return [p for p in parts if p]
-
-
-def _find_cut(rest: str, limit: int) -> int:
-    """在 rest 的 [limit*0.4, limit] 区间内找最佳切点；返回切点下标（切点字符含在前段）。"""
-    lo = max(1, int(limit * 0.4))
-    hi = min(limit, len(rest))
-    for chars in ("\n", _SENTENCE_PUNCT, _COMMA_PUNCT, " "):
-        idx = _last_index_of_any(rest, chars, lo, hi)
-        if idx > 0 and (len(rest) - idx >= _MIN_TAIL or chars == "\n"):
-            return idx + 1
-    return hi  # 无候选 → 硬切
+# 控制标记：[STICKER:文件名] —— 不是聊天文本，属框架内部指令
+_STICKER_TAG_RE = re.compile(r"\[STICKER:\s*([^\]]+?)\s*\]")
 
 
-def _last_index_of_any(text: str, chars: str, lo: int, hi: int) -> int:
-    """在 text[lo:hi] 范围内找任一 chars 字符的最后出现位置（-1 表示未找到）。"""
-    best = -1
-    for ch in chars:
-        idx = text.rfind(ch, lo, hi)
-        if idx > best:
-            best = idx
-    return best
+def extract_stickers(text):
+    """把 [STICKER:文件名] 控制标记从文本中剥离。
 
-
-
-def needs_split(text: str, limit: int) -> bool:
-    """是否需要切分（供调用方决定走旧截断还是新切分）。"""
-    return bool(text) and len(text) > limit
-
+    返回 (纯聊天文本, 表情包文件名列表)；标记绝不进入发给用户的文本。
+    """
+    raw = str(text or "")
+    names = [m.strip() for m in _STICKER_TAG_RE.findall(raw) if m and m.strip()]
+    clean = _STICKER_TAG_RE.sub("", raw)
+    # 剥离标记后清理多余空白/空行（标记常独占一行）
+    clean = re.sub(r"[ \t]+\n", "\n", clean)
+    clean = re.sub(r"\n{2,}", "\n", clean).strip()
+    return clean, names

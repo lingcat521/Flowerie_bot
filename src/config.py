@@ -73,6 +73,13 @@ class Settings(BaseSettings):
     VISION_ENABLED: bool = True       # 图片识图总开关（关闭：不描述群图/转发图，省 token+隐私）
     VISION_MODEL: Optional[str] = "deepseek-flash"
     VISION_TIMEOUT: int = 30
+    # 识图路由：auto=主模型支持时直看/不支持走外部；external=永远外部识图；native=强制主模型直看
+    VISION_ROUTE_MODE: str = "auto"
+    # 主模型原生识图白名单（VISION_ROUTE_MODE=auto 时据此判断 DEEPSEEK_MODEL 是否支持识图）
+    NATIVE_VISION_MODELS: str = "Agents-A1,Sage-A1.5"  # 逗号分隔
+    # 纯图片消息（无文本）是否触发 AI 回复：False=只识图记录上下文不回（防刷屏）；True=每图必回
+    VISION_REPLY_ON_IMAGE: bool = False
+    VISION_CHAT_MAX_TOKENS: int = 8000
 
     # 是否识别合并转发（聊天记录）里的图片（默认关闭，可省视觉 token；想开在 .env 里设 true）
     VISION_FORWARD_IMAGES: bool = False
@@ -128,6 +135,7 @@ class Settings(BaseSettings):
     AI_QZONE_AUTO_ENABLED: bool = False    # AI 定时自己发说说（像真人一样偶尔发动态）
     AI_QZONE_AUTO_INTERVAL_HOURS: int = 24 # 自主发动态间隔（小时）
     AI_ADMIN_ENABLED: bool = False         # AI 可自主禁言/解禁（仍要求发起人是群主/管理员）
+    AI_STICKER_ENABLED: bool = False        # AI 可自主调用工具搜索/发送表情包（仍受群级冷却约束）
     AI_MEMORY_ENABLED: bool = False        # AI 可主动读取当前用户的群记忆
     AI_SEARCH_ENABLED: bool = False        # AI 搜索工具开关（v2.15.0：web_search/web_fetch）
     AI_GROUP_INFO_ENABLED: bool = False    # AI 查看群成员名单（v2.17.0）
@@ -171,32 +179,24 @@ class Settings(BaseSettings):
     ONLY_REPLY_WHEN_AT: bool = False
     USER_COOLDOWN: int = 5
     BOT_COOLDOWN: int = 2
+    # 接话频率：群消息被 @ 时按此概率决定是否接话；1.0=句句都回
+    # 注意：仅在 MENTION_REPLY_GATE_ENABLED=True 时对 @ 生效（官方桥接部署才需要，
+    # 因为桥接器对每条官方消息都注入 @；NapCat 等真实 @ 场景保持默认 False，@ 必回）
+    REPLY_PROBABILITY: float = 0.35
+    MENTION_REPLY_GATE_ENABLED: bool = False
     MAX_REPLY_LENGTH: int = 40
     MAX_CONSECUTIVE_REPLIES: int = 3
-    # 长回复边界切分（Layer A，对齐 dsh-qq-bridge splitText）：默认 False=旧行为
-    # （超 MAX_REPLY_LENGTH 截断 + "..."，行为零变化）；True=按「换行→句尾标点→
-    # 逗号→空格→硬切」优先级切多条独立消息发送，内容零丢失，条数受 clamped 限制。
-    SPLIT_REPLY_ENABLED: bool = False
-    # 切分单条段长上限（v2.7.0 C2：默认 200，与人设短聊风格解耦——40=MAX_REPLY_LENGTH
-    # 时模型输出几乎都低于上限，切分功能事实休眠；开启切分时模型被允许写长回复分段发出）
-    SPLIT_REPLY_SEGMENT_LIMIT: int = 200
-    # 切分最大条数（防爆屏；超过的尾部段被丢弃，不再截断成 "..."）
-    SPLIT_REPLY_MAX_MESSAGES: int = 8
-    # 切分/流式段的发送间隔（v2.7.0 C5：none=立即发送保流式及时性；
-    # AI 自主多条仍用 MULTI_REPLY_INTERVAL_MODE，两者互不影响）
-    SPLIT_REPLY_INTERVAL_MODE: str = "none"   # none / fixed / random
-    # 流式分句回复（Layer B，对齐 dsh-qq-bridge 流式缓冲）：默认 False=整轮完成后
-    # 单条回复（旧行为零变化）；True=边生成边按句发送。需要 Provider 支持 SSE。
-    STREAM_REPLY_ENABLED: bool = False
-    # 句子缓冲参数：累积达 MIN_FLUSH 且命中句尾标点/换行才发；无边界时 MAX_FLUSH 强制发
-    STREAM_REPLY_MIN_FLUSH: int = 8
-    STREAM_REPLY_MAX_FLUSH: int = 200
-    # 多条回复（Multi-Reply）：一次回复拆成 1~N 条独立消息，按间隔策略逐条发送
-    MULTI_REPLY_ENABLED: bool = False
-    MULTI_REPLY_MAX_MESSAGES: int = 3
-    MULTI_REPLY_INTERVAL_MODE: str = "random"   # none / fixed / random
-    MULTI_REPLY_MIN_INTERVAL: float = 1.5
-    MULTI_REPLY_MAX_INTERVAL: float = 4.0
+    # 分句发送（Fragment Split）：短回复按空格与标点拆成多条独立消息，
+    # 对齐群友连发短句的风格。仅以下三条规则，其余切分逻辑已移除：
+    # 1) 总长 > SPLIT_REPLY_DISABLE_AT（100）：整条发送，不拆
+    # 2) 总长 < SPLIT_REPLY_LOWER（40）：按空格与标点拆分
+    # 3) 40~100：整条发送
+    SPLIT_REPLY_ENABLED: bool = True
+    SPLIT_REPLY_LOWER: int = 40        # 低于此长度才拆分
+    SPLIT_REPLY_DISABLE_AT: int = 100  # 高于此长度不拆分（整条发送）
+    SPLIT_REPLY_MAX_MESSAGES: int = 3  # 单次最多 3 条；多出的进缓存隔 4~6s 发送
+    # AI 输出 token 上限（max_tokens）
+    DEEPSEEK_MAX_TOKENS: int = 200
     CONTEXT_SIZE: int = 300
     LOG_LEVEL: str = "INFO"
     # 日志格式：text=开发环境人类可读；json=生产环境 JSON lines（含 trace_id/event 字段）
@@ -269,6 +269,16 @@ class Settings(BaseSettings):
     STICKER_DIR: str = ""
     STICKER_DB_PATH: str = "./data/stickers.db"
     STICKER_ENABLED: bool = False
+    # 主模型原生识图时，选表情包上下文里内联的图片本体张数（防 token 爆炸）
+    STICKER_NATIVE_MAX_IMAGES: int = 4
+    # 被 @ 或叫名字回复后，附带一张随机表情包的概率（0~1，默认 0.10）
+    STICKER_REPLY_PROBABILITY: float = 0.10
+    # 允许模型用文本标记 [STICKER:文件名] 选表情包（与分句开关无关；标记永远剥离，不发给用户）
+    STICKER_MARKER_ENABLED: bool = True
+    # 表情包扫描时新索引的数量上限（native 识图每张都要花模型调用；0=不限）
+    STICKER_INDEX_LIMIT: int = 30
+    # 表情包索引并发数（主模型每张约 60-90s；并发 4 路约 1.5h 完成 280 张）
+    STICKER_INDEX_WORKERS: int = 4
     STICKER_COOLDOWN: int = 60          # 同一群两次表情包的最小间隔（秒）
     STICKER_MAX_LIST: int = 30          # 提供给模型的可用表情包描述上限（防 token 膨胀）
     # 网页搜索（v2.15.0：免 key 原生引擎；Web UI「网页搜索」页试搜/自检）

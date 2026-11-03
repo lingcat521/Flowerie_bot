@@ -112,23 +112,18 @@ def first_text(reply) -> str:
 
 
 def plan_from_config(reply, config, *, from_ai: bool = False) -> ReplyPlan:
-    """按配置把回复包装成计划（统一入口，避免各处自己读配置）。"""
-    max_messages = int(getattr(config, "MULTI_REPLY_MAX_MESSAGES", 3) or 3)
-    enabled = bool(getattr(config, "MULTI_REPLY_ENABLED", False))
-    mode = str(getattr(config, "MULTI_REPLY_INTERVAL_MODE", INTERVAL_RANDOM) or INTERVAL_RANDOM)
-    lo = float(getattr(config, "MULTI_REPLY_MIN_INTERVAL", 1.5) or 0.0)
-    hi = float(getattr(config, "MULTI_REPLY_MAX_INTERVAL", 4.0) or 0.0)
-    plan = ReplyPlan.of(reply, interval_mode=mode, min_interval=lo, max_interval=hi, from_ai=from_ai)
-    plan.normalize_mode()
+    """Wrap a reply into a send plan (single entry point).
+
+    Only SplitSegments (fragment splitting) carries multi-message plans;
+    plain strings are single-message. Cap is SPLIT_REPLY_MAX_MESSAGES (default 3)
+    to prevent flooding; overflow fragments are buffered by the dispatcher.
+    """
+    plan = ReplyPlan.of(reply, interval_mode=INTERVAL_NONE)
     if isinstance(reply, SplitSegments):
-        # 切分/流式段（C1/C3/C5）：独立上限与间隔，不受 MULTI_REPLY 门控影响——
-        # 切分段不是 AI 自主多条，防刷屏上限各归各；整轮记一次连续回复，零段间隔保流式及时性。
-        # （SPLIT_REPLY_ENABLED 关闭也可能收到 SplitSegments：流式路径的段同属此类）
         plan.count_as_one = True
-        split_mode = str(getattr(config, "SPLIT_REPLY_INTERVAL_MODE", INTERVAL_NONE) or INTERVAL_NONE)
-        plan.interval_mode = split_mode if split_mode in VALID_INTERVAL_MODES else INTERVAL_NONE
-        return plan.clamped(int(getattr(config, "SPLIT_REPLY_MAX_MESSAGES", 8) or 8))
-    if not enabled:
-        # 未启用：只发第一条（多条能力对现有行为零影响）
+        cap = int(getattr(config, "SPLIT_REPLY_MAX_MESSAGES", 3) or 3)
+        plan = plan.clamped(cap)
+    else:
         plan = plan.clamped(1)
-    return plan.clamped(max_messages)
+    return plan
+
