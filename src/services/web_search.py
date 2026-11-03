@@ -375,7 +375,7 @@ class WebSearchService:
         path = "/search?q=" + _quote(query)
         adlt = self._safe_search()
         if adlt != "off":
-            url += "&adlt=" + adlt
+            path += "&adlt=" + adlt
         try:
             html = await self._fetch_html("https://www.bing.com" + path)
         except Exception:

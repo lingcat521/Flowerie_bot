@@ -1,5 +1,4 @@
 import json
-import os
 from typing import Any, List, Optional, Tuple
 
 import httpx
@@ -9,7 +8,7 @@ from src.services import reply_parser
 from src.services.memory_manager import MemoryManager
 from src.services.prompt_builder import build_system_prompt
 from src.services.toxic_detector import ToxicDetector
-from src.services.multimodal import build_user_content, native_image_urls, native_vision_active
+from src.services.multimodal import build_user_content, native_image_urls
 from src.services.vision import VisionService
 from src.utils.llm_headers import auth_headers
 from src.utils.logging_setup import get_logger

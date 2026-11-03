@@ -199,8 +199,6 @@ class AiGateway:
         # 跨 attempt 复用；retry 不会重新获得新额度（tool_quota.used 持续累加）。
         mcp_max_calls = max(0, int(getattr(self.config, "MCP_MAX_TOOL_CALLS", 5)))
         tool_quota: Optional[dict] = None
-        # Native Reply Tool 已随 MULTI_REPLY 移除：回复拆分只由 reply_parser 按规则做
-        reply_tools_off = False  # provider 拒绝 tools 时降级为纯文本（Phase 9）
         # 工具使用说明（v2.12.3）：只注入给「已启用内置工具」的会话，作为低优先级补充
         _tool_block = ""
         if getattr(self.config, "AI_TOOL_PROMPT", True):
@@ -275,8 +273,6 @@ class AiGateway:
                 builtin_tools = _registry.schemas()
                 builtin_caller = _registry.call_tool
             tool_payload = list(mcp_tools) + list(builtin_tools)
-            if False:
-                pass
             # 每次 attempt 单独组装：降级后不带 tools，也不污染 kwargs
             attempt_kwargs = dict(kwargs)
             if tool_payload:
@@ -291,24 +287,6 @@ class AiGateway:
                     "tool_quota": tool_quota,
                 })
             reply, memory_update = await self.ai_client.chat_once(**attempt_kwargs)
-            # Native Reply Tool 捕获优先：以 List[str] 回到既有回复链路
-            # （与旧式 JSON 多条完全同型 → plan_from_config 的门控/clamped 照常生效）
-            if False:
-                reply = list(reply_capture.messages)
-            # Phase 9：provider 拒绝 tools（不可重试的 4xx）→ 同一次 attempt 内立即退回纯文本。
-            # 仅在「本次只带了内部 reply 工具（无 MCP 工具）」时触发，MCP 语义完全不变；
-            # 工具路径本身就是一次预算内的多轮 HTTP 请求（见 AIClient.chat_with_messages），
-            # 且此处不消耗新的重试额度，所以不会绕过预算闸门。
-            if (False and not mcp_tools
-                    and not first_text(reply) and not getattr(self.ai_client, "_retryable", True)):
-                reply_tools_off = True
-                logger.warning(
-                    "reply_tool_downgrade group=%s user=%s attempt=%d",
-                    group_id, user_id, attempt + 1,
-                    extra={"event": "reply_tool_downgrade", "attempt": attempt + 1},
-                )
-                reply, memory_update = await self.ai_client.chat_once(
-                    **{k: v for k, v in attempt_kwargs.items() if k not in _TOOL_KWARGS})
             if first_text(reply) or (memory_update and reply is None):
                 # 纯记忆回合（reply 空但有记忆产出）视为成功，不再浪费预算重试
                 latency = time.monotonic() - started

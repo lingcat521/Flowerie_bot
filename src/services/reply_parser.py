@@ -109,7 +109,6 @@ def parse_reply_content(content: str, config) -> Tuple[Optional[Any], Optional[s
     # 2) 文本分句（可选的表达增强，与标记无关）
     frags = None
     if getattr(config, "SPLIT_REPLY_ENABLED", False):
-        disable_at = int(getattr(config, "SPLIT_REPLY_DISABLE_AT", 100) or 100)
         lower = int(getattr(config, "SPLIT_REPLY_LOWER", 40) or 40)
         n = len(reply_content)
         if n < lower:
