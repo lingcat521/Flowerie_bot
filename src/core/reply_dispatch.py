@@ -13,8 +13,8 @@ import random
 from typing import Optional
 
 from src.core.reply_plan import plan_from_config
-from src.core.reply_splitter import SplitSegments
 from src.core.reply_sender import MultiReplyError, send_plan
+from src.core.reply_splitter import SplitSegments
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)

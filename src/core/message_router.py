@@ -17,8 +17,7 @@ from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
 from src.core.private_chat import handle_private_event
 from src.core.reply_dispatch import ReplyDispatchMixin
-from src.core.reply_guard import (is_image_only_message, is_summoned,
-                                    mention_gate_allows)
+from src.core.reply_guard import is_image_only_message, is_summoned, mention_gate_allows
 from src.core.reply_plan import first_text
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage

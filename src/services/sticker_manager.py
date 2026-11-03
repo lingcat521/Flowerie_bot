@@ -7,8 +7,8 @@
 - 选择：聊天时把"可用表情包描述列表"（文字）交给模型，模型通过回复标记
   [STICKER:<filename>] 选择；只传描述，不传图片本体
 """
-import hashlib
 import asyncio
+import hashlib
 import os
 import re
 from typing import Optional
