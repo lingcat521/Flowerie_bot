@@ -4,6 +4,24 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.18.1] - 2026-11-04
+
+### 修复
+
+- **bing 安全搜索参数从未生效**：`_search_bing` 把 `adlt` 拼到了未定义的 `url` 变量上
+  （应为 `path`），触发 `F821 undefined name`；修复后 `SEARCH_SAFE_SEARCH` 对 bing 真正起作用
+- **ai_gateway 残留死代码**：Native Reply Tool 移除后遗留 `reply_capture` 引用、
+  `reply_tools_off` 变量与两处 `if False:` 空分支，一并删除（`F821` / `F841` 清零）
+- `ai_client` 移除迁走后遗留的 `os` / `native_vision_active` 导入；
+  `reply_parser` 移除未使用的 `disable_at`
+
+### 代码风格
+
+- 修 `ruff` `I001` 导入排序（sticker_manager / message_router / reply_dispatch / ai_client），
+  验收恢复全绿
+
+> 验收：Acceptance 37/37、CI pytest 2673 passed（GitHub Actions）
+
 ## [2.18.0] - 2026-11-04
 
 > 一句话题眼：**回复表达层重做（分句规则化）+ 表情包全链路（文字标记 / 概率附图 / 工具调用）+
