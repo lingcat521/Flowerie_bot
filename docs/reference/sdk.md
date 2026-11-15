@@ -1,5 +1,7 @@
 # Flowerie Bot SDK 开发手册（Plugin API v1 · 版本 2.8.0）
 
+画像、搜索、QQ 空间、自动化、私聊及群管理的调用方法与权限见[插件平台 API](plugin-platform-api.md)。
+
 > 讲 **`flowerie_sdk` 这一层怎么用**。运行时与协议（Manifest / 生命周期 / 打包 / 任意语言）见 [plugin-developer-guide.md](../plugins/plugin-developer-guide.md)，
 > 协议本身见 [plugin-protocol.md](plugin-protocol.md)，多语言总览见 [plugin-sdk.md](../plugins/plugin-sdk.md)。所有 API 名都对着 `plugin_sdk/flowerie_sdk/` 核实过；
 > 示例与 `tests/plugins/doc_example/` 同源，由 `tests/test_doc_example_plugin.py`（真加载 + 真路由）与 `tests/test_api_gap_consistency.py`（入口一致性）钉住。

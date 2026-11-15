@@ -8,6 +8,7 @@
 - 生命周期事件：task_started / task_finished / task_failed / task_cancelled
 """
 import asyncio
+import time
 from typing import Awaitable, Callable, Dict
 
 from src.utils.logging_setup import get_logger
@@ -23,6 +24,12 @@ class BackgroundTaskManager:
     def __init__(self) -> None:
         self._tasks: Dict[str, asyncio.Task] = {}
         self._closed = False
+        self._last: Dict[str, dict] = {}
+
+    def status(self) -> dict:
+        return {name: {"active": name in self._tasks and not self._tasks[name].done(),
+                       "last": dict(self._last[name]) if name in self._last else None}
+                for name in sorted(self._tasks.keys() | self._last.keys())}
 
     def register(self, name: str, coro: Awaitable) -> asyncio.Task:
         """注册并启动一个后台任务。name 需唯一（重复注册会取消旧任务）。"""
@@ -46,6 +53,8 @@ class BackgroundTaskManager:
             # 从注册表移除自己（避免引用旧任务）
             if self._tasks.get(name) is task:
                 self._tasks.pop(name, None)
+                self._last[name] = {"at": time.time(), "state": (
+                    "cancelled" if task.cancelled() else "failed" if task.exception() else "finished")}
             if task.cancelled():
                 logger.info("task_cancelled name=%s", name, extra={"event": "task_finished", "task": name})
                 return

@@ -85,27 +85,13 @@ def test_communication_panel_visible(logged_in, webui_server):
 
 
 def test_document_title_contract(logged_in, webui_server):
-    """§8 要求断言 document.title。
-
-    实测现状：插件页面路由返回的是**面板壳片段** —— 响应里没有 <html>/<head>/<title>
-    （净化器把插件文件里的这些标签全部丢弃，drop 报告见 tests/e2e 报告），所以浏览器标题是空串。
-    这里断言三件事，任何一件变了都会红：
-      1) 插件页面文件里写的 <title> 文本**不会**变成浏览器标题（插件不能控制标签页）；
-      2) 若面板壳将来补上 <title>，在 CI 里设置 E2E_EXPECT_DOCUMENT_TITLE 后必须完全相等；
-      3) 用户可见的页面标题（壳的 h1.page-title）必须存在且是当前页 —— 标题信息不缺失。
-    """
+    """标签页标题和可见标题都由宿主根据 manifest 生成。"""
     page = _goto(logged_in, webui_server, "index")
-    title = page.title()
-    expected = os.environ.get("E2E_EXPECT_DOCUMENT_TITLE")
-    if expected is not None:
-        assert title == expected, "document.title=%r，期望 %r" % (title, expected)
-    else:
-        assert title == "", (
-            "面板壳当前不输出 <title>（片段响应），document.title 应为空串，实际 %r；"
-            "如果壳已经补上 <title>，请设置环境变量 E2E_EXPECT_DOCUMENT_TITLE 并更新 tests/e2e/README.md"
-            % title)
-    assert "总览" not in title, "插件页面文件里的 <title> 不应成为浏览器标题"
-    assert page.locator("h1.page-title").inner_text().strip().startswith("总览")
+    manifest = H.read_manifest(os.path.join(H.FIXTURE_PLUGINS_DIR, PLUGIN_ID))
+    title = next(item["title"] for item in manifest["web_ui"]["pages"] if item["id"] == "index")
+    expected = os.environ.get("E2E_EXPECT_DOCUMENT_TITLE", f'花璃 · {manifest["name"]} · {title}')
+    assert page.title() == expected
+    assert page.locator("h1.page-title").inner_text().strip() == title
 
 
 def test_zero_javascript_policy_in_real_browser(logged_in, webui_server):

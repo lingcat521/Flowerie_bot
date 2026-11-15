@@ -38,12 +38,12 @@ def test_panel_css_placeholder_is_substituted():
 def test_panel_css_has_key_layout_rules():
     """曾经踩过的布局坑，规则必须还在。"""
     for rule in (
-        "grid-template-columns:minmax(180px,260px)",   # .row 自适应两列
-        "table{width:100%",                            # 表格不再塌缩
-        "pre{white-space:pre-wrap",                    # 示例文本不溢出
-        ".nick-grid{",                                 # 群昵称卡片网格
+        "grid-template-columns:216px minmax(0,1fr)",   # .row 自适应两列
+        "table {width:100%",                            # 表格不再塌缩
+        "pre,.log-box {white-space:pre-wrap",                    # 示例文本不溢出
+        ".nick-grid {",                                 # 群昵称卡片网格
         "w-gid",                                       # 宽度工具类
-        "@media (max-width:860px)",                    # 平板断点
+        "@media (min-width:768px)",                    # 平板断点
     ):
         assert rule in PANEL_CSS, rule
 
@@ -84,11 +84,12 @@ def test_panel_page_keeps_dynamic_bits():
 
 # ---------- 分辨率自适应（PC / 平板 / 手机）----------
 
-def _css_without_media_blocks(css: str) -> str:
+def _css_without_conditional_blocks(css: str) -> str:
     """去掉 @media 块后的基础 CSS（用于检查「无条件的固定宽度」）。"""
     out, i = [], 0
     while True:
-        at = css.find("@media", i)
+        match = re.search(r"@(?:media|container)\b", css[i:])
+        at = i + match.start() if match else -1
         if at < 0:
             out.append(css[i:])
             break
@@ -108,7 +109,7 @@ def _css_without_media_blocks(css: str) -> str:
 def test_no_fixed_width_can_overflow_a_phone():
     """无条件的固定宽度不得 ≥320px —— 否则 360px 宽的手机必然横向溢出。"""
     import re
-    base = _css_without_media_blocks(PANEL_CSS)
+    base = _css_without_conditional_blocks(PANEL_CSS)
     offenders = [(m.group(1), int(m.group(2)))
                  for m in re.finditer(r"(?<![a-z-])(width|min-width)\s*:\s*(\d+)px", base)
                  if int(m.group(2)) >= 320]
@@ -117,19 +118,15 @@ def test_no_fixed_width_can_overflow_a_phone():
 
 def test_has_all_responsive_breakpoints():
     """四档断点必须齐全：宽屏 PC / 平板横屏 / 平板竖屏 / 手机 / 小屏手机。"""
-    for bp in ("min-width:1440px", "max-width:1023px", "max-width:980px",
-               "max-width:860px", "max-width:720px", "max-width:420px"):
-        assert bp in PANEL_CSS, bp
+    for breakpoint in (480, 768, 1024, 1440):
+        assert f"min-width:{breakpoint}px" in PANEL_CSS
 
 
 def test_layout_stacks_on_narrow_screens():
-    """窄屏必须堆叠：.row / .rule-add / .form-inline / .nick-add 变单列。"""
-    narrow = PANEL_CSS[PANEL_CSS.find("@media (max-width:860px)"):]
-    assert ".row{grid-template-columns:minmax(0,1fr)" in narrow
-    assert ".rule-add{grid-template-columns:minmax(0,1fr)}" in narrow
-    assert ".form-inline{grid-template-columns:minmax(0,1fr)}" in narrow
-    assert ".nick-add{grid-template-columns:minmax(0,1fr)}" in narrow
-    assert ".w-sm,.w-gid,.w-md,.w-lg{max-width:none}" in narrow
+    base = _css_without_conditional_blocks(PANEL_CSS)
+    assert ".row {display:grid;grid-template-columns:minmax(0,1fr)" in base
+    assert ".form-inline,.rule-add,.nick-add {display:grid;grid-template-columns:minmax(0,1fr)" in base
+    assert ".desktop-sidebar {display:none}" in base
 
 
 def test_templates_declare_viewport():
@@ -178,62 +175,46 @@ def test_panel_asset_body_rejects_traversal_names():
         assert panel_asset_body(bad) is None, bad
 
 
-# ---------- 导航抽屉（v2.13.0：纯 CSS，零 JS） ----------
-def test_panel_has_css_only_drawer_nav():
-    """窄屏 ☰ 抽屉：checkbox + label 实现，不能引入任何脚本。"""
+def test_panel_has_native_navigation_and_landmarks():
     html = render_panel_page(theme_class="theme-default", bg_rules="", msg_html="",
                              body_html="<div>body</div>", active_tab="config")
-    assert 'id="nav-toggle"' in html
-    assert 'class="nav-btn"' in html and 'for="nav-toggle"' in html
-    assert 'class="nav-overlay"' in html
-    assert '<nav class="tabs" id="nav">' in html
-    # 遮罩必须与抽屉同属 .topbar 层叠上下文（v2.14.3 修）：
-    # 早前遮罩是 header 的兄弟，z-index 50 直接盖住 topbar（z-index 1）里的抽屉，
-    # 导致点抽屉按钮实际点到遮罩、抽屉还被打暗。
-    header_start = html.find("<header")
-    header_end = html.find("</header>")
-    overlay_at = html.find('class="nav-overlay"')
-    assert header_start < overlay_at < header_end, "遮罩必须在 .topbar 内部"
-    assert "<script" not in html.lower()
-    assert "onclick=" not in html.lower()
+    assert '<aside class="desktop-sidebar"' in html
+    assert '<details class="mobile-navigation">' in html
+    assert '<summary>导航 <span>当前：配置</span></summary>' in html
+    assert 'href="#main-content"' in html
+    assert html.count('id="main-content"') == 1
+    assert not re.search(r'<script\b|\son\w+=|javascript:', html, re.I)
 
 
-def test_drawer_css_rules_present():
-    for rule in (
-        "@media (max-width:760px)",
-        ".wrap:has(#nav-toggle:checked) .tabs{transform:translateX(0)}",
-        ".wrap:has(#nav-toggle:checked) .topbar{z-index:100}",
-        ".wrap:has(#nav-toggle:checked) .nav-overlay{",
-        "@media (min-width:761px){.nav-toggle,.nav-btn,.nav-overlay{display:none}}",
-        "position:fixed;top:0;left:0;bottom:0;width:min(78vw,300px)",
-    ):
-        assert rule in PANEL_CSS, rule
-    # 旧浏览器兜底：不支持 :has() 时不隐藏导航（退化为可换行胶囊）
-    assert "@supports not selector(:has(*))" in PANEL_CSS
+def test_both_navigations_list_the_same_pages():
+    from src.services.webui_render.pages import _TABS
 
-
-def test_drawer_nav_lists_all_tabs():
     html = render_panel_page(theme_class="", bg_rules="", msg_html="",
                              body_html="", active_tab="qzone")
-    for label in ("配置", "人格", "群聊知识", "群友画像", "群管理", "QQ空间",
-                  "群昵称", "插件", "外观", "日志", "用户状态", "退出"):
-        assert label in html, label
-    assert 'class="tab active" href="/panel?tab=qzone"' in html
+    assert len(_TABS) == 15
+    assert ("files", "/panel?tab=files", "文件解析") in _TABS
+    for key, url, _ in _TABS:
+        variant = ' active' if key == 'qzone' else ''
+        assert html.count(f'class="tab{variant}" href="{url}"') == 2
+    assert html.count('href="/panel?tab=qzone" aria-current="page"') == 2
+    assert html.count('href="/panel/logout"') == 2
+    assert html.count('class="heading-art"') == 1
 
 
-def test_config_category_nav_is_folded_and_flat():
-    """v2.14.4：分类导航折叠成一行（窄屏），宽屏铺开网格，不再是 25 个胶囊气泡。"""
+def test_config_category_nav_is_folded_and_grouped():
+    """手机可折叠分类，桌面直接展示按用途分组的同一组链接。"""
     from src.services.webui_render.config_panel import _render_cat_nav
 
     html = _render_cat_nav("AI", ["AI", "Bot"],
                            {"AI": "AI / Provider 配置", "Bot": "基础配置"})
     assert '<details class="cats-fold">' in html
-    assert "分类导航" in html and "当前：AI / Provider 配置" in html
-    assert 'class="cats cats-wide"' in html
+    assert "配置分类" in html and "当前：AI / Provider 配置" in html
+    assert 'class="cfg-nav cats-wide"' in html
+    assert html.count("接入与模型") == 2
     assert 'class="cat active"' in html
 
 
 def test_config_category_nav_css_rules():
-    for rule in (".cats-fold{", ".cats-summary{", ".cats-wide{display:none}",
-                 "@media (min-width:761px){", ".cfg-caret::before"):
+    for rule in (".cats-summary", ".cats-wide {display:none;",
+                 ".cats-wide {display:grid}", ".cfg-group[open]>.cfg-summary>.cfg-caret"):
         assert rule in PANEL_CSS, rule

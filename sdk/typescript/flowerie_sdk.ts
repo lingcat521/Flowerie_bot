@@ -267,8 +267,40 @@ function normalizeCancelResult(res: unknown): CommCancelResult {
   return out;
 }
 
-/** WebUI 应答允许透传的字段（其余字段一律丢弃，不把插件内部对象塞进协议）。 */
-const WEBUI_PAYLOAD_KEYS = ["html", "vars", "context", "message", "content_type", "body",
+export type WebuiFieldKind = "text" | "textarea" | "integer" | "boolean" | "select";
+export type WebuiChoice = { value: string; label: string };
+export type WebuiField = {
+  name: string; label: string; type: WebuiFieldKind;
+  value?: string | number | boolean | null; required?: boolean; options?: WebuiChoice[];
+};
+export type WebuiForm = { action: string; fields: WebuiField[]; submit: string };
+export type WebuiBlock =
+  | { type: "text" | "status" | "log"; text: string }
+  | { type: "table"; columns: string[]; rows: unknown[][]; page_size: number };
+
+export const webuiView = {
+  field(name: string, label: string, type: WebuiFieldKind = "text",
+        options: Omit<WebuiField, "name" | "label" | "type"> = {}): WebuiField {
+    return { ...options, name, label, type };
+  },
+  form(action: string, fields: WebuiField[], submit = "保存"): WebuiForm {
+    return { action, fields, submit };
+  },
+  table(columns: string[], rows: unknown[][], pageSize = 20): WebuiBlock {
+    return { type: "table", columns, rows, page_size: pageSize };
+  },
+  text(text: string, type: "text" | "status" | "log" = "text"): WebuiBlock {
+    return { type, text };
+  },
+  page(blocks: WebuiBlock[] = [], form?: WebuiForm,
+       options: { message?: string; storage_set?: Record<string, unknown>;
+                  config_set?: Record<string, unknown> } = {}) {
+    return { ...options, view: { blocks, form } };
+  },
+};
+
+/** WebUI 应答允许透传的字段。 */
+const WEBUI_PAYLOAD_KEYS = ["html", "view", "vars", "context", "message", "content_type", "body",
   "base64", "config_set", "storage_set"];
 
 function normalizeWebuiResult(result: unknown): Record<string, unknown> {
@@ -436,6 +468,347 @@ export class PluginContext {
   qzoneDelete(tid: string): Promise<Record<string, unknown>> {
     return this.action("qzone_delete", { tid });
   }
+  profileGet(groupId: number | string, userId: number | string): Promise<Record<string, unknown>> {
+    return this.action("profile_get", { group_id: groupId, user_id: userId });
+  }
+
+  profileSetSection(groupId: number | string, userId: number | string, label: string, text: string, nickname = ""): Promise<Record<string, unknown>> {
+    return this.action("profile_set_section", { group_id: groupId, user_id: userId, label, text, nickname });
+  }
+
+  profileDelete(groupId: number | string, userId: number | string): Promise<Record<string, unknown>> {
+    return this.action("profile_delete", { group_id: groupId, user_id: userId });
+  }
+
+  webSearch(query: string, limit = 5): Promise<Record<string, unknown>> {
+    return this.action("web_search", { query, limit });
+  }
+
+  knowledgeList(groupId: number | string, query = "", limit = 20): Promise<Record<string, unknown>> {
+    return this.action("knowledge_list", { group_id: groupId, query, limit });
+  }
+
+  personaResolve(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("persona_resolve", { group_id: groupId });
+  }
+
+  nicknameResolve(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("nickname_resolve", { group_id: groupId });
+  }
+
+  fileParse(filename: string, contentBase64: string) {
+    return this.action("file_parse", { filename, content_base64: contentBase64 });
+  }
+  fileParseLocal(path: string) { return this.action("file_parse_local", { path }); }
+  fileParseStatus() { return this.action("file_parse_status", {}); }
+  qzoneHistory(limit = 20): Promise<Record<string, unknown>> {
+    return this.action("qzone_history", { limit });
+  }
+
+  qzoneRights(): Promise<Record<string, unknown>> {
+    return this.action("qzone_rights");
+  }
+
+  automationStatus(): Promise<Record<string, unknown>> {
+    return this.action("automation_status");
+  }
+
+  scheduleRegister(kind: string, when: number | string, name = ""): Promise<Record<string, unknown>> {
+    return this.action("schedule_register", { kind, when, name });
+  }
+
+  scheduleCancel(scheduleId: string): Promise<Record<string, unknown>> {
+    return this.action("schedule_cancel", { schedule_id: scheduleId });
+  }
+
+  scheduleList(): Promise<Record<string, unknown>> {
+    return this.action("schedule_list");
+  }
+
+  sendPrivateMessage(userId: number | string, message: string): Promise<Record<string, unknown>> {
+    return this.action("send_private_message", { user_id: userId, message });
+  }
+
+  userHistory(userId: number | string, count = 20): Promise<Record<string, unknown>> {
+    return this.action("user_history", { user_id: userId, count });
+  }
+
+  getGroupMembers(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("get_group_members", { group_id: groupId });
+  }
+
+  groupBan(groupId: number | string, userId: number | string, duration = 0): Promise<Record<string, unknown>> {
+    return this.action("group_ban", { group_id: groupId, user_id: userId, duration });
+  }
+
+  groupKick(groupId: number | string, userId: number | string, rejectAdd = false): Promise<Record<string, unknown>> {
+    return this.action("group_kick", { group_id: groupId, user_id: userId, reject_add: rejectAdd });
+  }
+
+  groupAdmin(groupId: number | string, userId: number | string, enable: boolean): Promise<Record<string, unknown>> {
+    return this.action("group_admin", { group_id: groupId, user_id: userId, enable });
+  }
+
+  groupWholeBan(groupId: number | string, enable: boolean): Promise<Record<string, unknown>> {
+    return this.action("group_whole_ban", { group_id: groupId, enable });
+  }
+
+  groupRename(groupId: number | string, name: string): Promise<Record<string, unknown>> {
+    return this.action("group_rename", { group_id: groupId, name });
+  }
+
+  groupCard(groupId: number | string, userId: number | string, card: string): Promise<Record<string, unknown>> {
+    return this.action("group_card", { group_id: groupId, user_id: userId, card });
+  }
+
+  groupTitle(groupId: number | string, userId: number | string, title: string): Promise<Record<string, unknown>> {
+    return this.action("group_title", { group_id: groupId, user_id: userId, title });
+  }
+
+  digestGet(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("digest_get", {group_id: groupId});
+  }
+
+  blossomSearch(groupId: number | string, query: string, topK: number): Promise<Record<string, unknown>> {
+    return this.action("memory_semantic", {group_id: groupId, query, top_k: topK});
+  }
+
+  knowledgeGet(groupId: number | string, knowledgeId: number | string): Promise<Record<string, unknown>> {
+    return this.action("knowledge_get", {group_id: groupId, knowledge_id: knowledgeId});
+  }
+
+  knowledgeDelete(groupId: number | string, knowledgeId: number | string): Promise<Record<string, unknown>> {
+    return this.action("knowledge_delete", {group_id: groupId, knowledge_id: knowledgeId});
+  }
+
+  knowledgeClear(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("knowledge_clear", {group_id: groupId});
+  }
+
+  personaBind(groupId: number | string, personaId: string): Promise<Record<string, unknown>> {
+    return this.action("persona_bind", {group_id: groupId, persona_id: personaId});
+  }
+
+  personaUnbind(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("persona_unbind", {group_id: groupId});
+  }
+
+  personaGet(personaId: string): Promise<Record<string, unknown>> {
+    return this.action("persona_get", {persona_id: personaId});
+  }
+
+  personaDelete(personaId: string): Promise<Record<string, unknown>> {
+    return this.action("persona_delete", {persona_id: personaId});
+  }
+
+  personaSetGlobal(personaId: string): Promise<Record<string, unknown>> {
+    return this.action("persona_set_global", {persona_id: personaId});
+  }
+
+  nicknameList(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("nickname_list", {group_id: groupId});
+  }
+
+  groupPromptGet(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("group_prompt_get", {group_id: groupId});
+  }
+
+  groupPromptSet(groupId: number | string, content: string): Promise<Record<string, unknown>> {
+    return this.action("group_prompt_set", {group_id: groupId, content});
+  }
+
+  groupPromptReset(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("group_prompt_reset", {group_id: groupId});
+  }
+
+  groupRulesGet(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("group_rules_get", {group_id: groupId});
+  }
+
+  groupRulesSet(groupId: number | string, content: string): Promise<Record<string, unknown>> {
+    return this.action("group_rules_set", {group_id: groupId, content});
+  }
+
+  privateMemoryClear(userId: number | string): Promise<Record<string, unknown>> {
+    return this.action("private_memory_clear", {user_id: userId});
+  }
+
+  webFetch(url: string, maxChars: number): Promise<Record<string, unknown>> {
+    return this.action("web_fetch", {url, max_chars: maxChars});
+  }
+
+  globalPromptSet(content: string): Promise<Record<string, unknown>> {
+    return this.action("global_prompt_set", {content});
+  }
+
+  profileClear(groupId: number | string): Promise<Record<string, unknown>> {
+    return this.action("profile_clear", {group_id: groupId});
+  }
+
+  personaList(): Promise<Record<string, unknown>> {
+    return this.action("persona_list", {});
+  }
+
+  privatePolicy(): Promise<Record<string, unknown>> {
+    return this.action("private_policy", {});
+  }
+
+  automationTasks(): Promise<Record<string, unknown>> {
+    return this.action("automation_tasks", {});
+  }
+
+  globalPromptGet(): Promise<Record<string, unknown>> {
+    return this.action("global_prompt_get", {});
+  }
+
+  globalPromptReset(): Promise<Record<string, unknown>> {
+    return this.action("global_prompt_reset", {});
+  }
+
+  stickerSearch(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("sticker_search", payload);
+  }
+
+  stickerSend(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("sticker_send", payload);
+  }
+
+  knowledgeMatch(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("knowledge_match", payload);
+  }
+
+  knowledgeAdd(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("knowledge_add", payload);
+  }
+
+  knowledgeUpdate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("knowledge_update", payload);
+  }
+
+  profileList(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("profile_list", payload);
+  }
+
+  nicknameSet(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("nickname_set", payload);
+  }
+
+  privateUsers(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("private_users", payload);
+  }
+
+  privateAllowlistSet(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("private_allowlist_set", payload);
+  }
+
+  automationSetFlags(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("automation_set_flags", payload);
+  }
+
+  personaCreate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("persona_create", payload);
+  }
+
+  personaUpdate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("persona_update", payload);
+  }
+
+  mcpResource(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("mcp_resource", payload);
+  }
+
+  mcpPrompt(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("mcp_prompt", payload);
+  }
+
+  groupNoticeSend(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_notice_send", payload);
+  }
+
+  groupNoticeGet(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_notice_get", payload);
+  }
+
+  groupNoticeUpdate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_notice_update", payload);
+  }
+
+  groupNoticeDelete(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_notice_delete", payload);
+  }
+
+  groupFiles(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_files", payload);
+  }
+
+  groupFilesIn(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_files_in", payload);
+  }
+
+  groupFileUrl(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_file_url", payload);
+  }
+
+  groupFileUpload(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_file_upload", payload);
+  }
+
+  groupFileRename(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_file_rename", payload);
+  }
+
+  groupFileDelete(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_file_delete", payload);
+  }
+
+  groupFileMove(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_file_move", payload);
+  }
+
+  groupFolderCreate(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_folder_create", payload);
+  }
+
+  groupFolderDelete(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_folder_delete", payload);
+  }
+
+  groupFolderRename(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_folder_rename", payload);
+  }
+
+  friendRemark(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("friend_remark", payload);
+  }
+
+  friendDelete(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("friend_delete", payload);
+  }
+
+  friendDetail(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("friend_detail", payload);
+  }
+
+  userPoke(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("user_poke", payload);
+  }
+
+  userForward(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("user_forward", payload);
+  }
+
+  groupForward(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_forward", payload);
+  }
+
+  groupInvite(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("group_invite", payload);
+  }
+
+  webSearchOptions(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.action("web_search", payload);
+  }
+
   /** MCP facade：与 Python 的 bot.mcp、Go/Rust/Java 的 ctx.mcp() 语义一致（认证状态不含密钥）。 */
   get mcp(): McpFacade {
     return this.client.mcp;

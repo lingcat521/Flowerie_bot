@@ -26,6 +26,12 @@ _HEADER = (
 )
 
 
+_BOOTSTRAP_NOTES = {
+    "WEB_UI_USERNAME": "Web UI 管理员初始用户名。面板中保存的管理员账号优先生效。",
+    "WEB_UI_PASSWORD": "Web UI 初始密码。留空时首次打开面板可注册管理员，建议通过面板设置密码。",
+}
+
+
 def format_value(value: Any) -> str:
     """把配置值渲染成 .env 里的字面量（bool 用 true/false，list/dict 用 JSON）。"""
     if isinstance(value, bool):
@@ -52,7 +58,9 @@ def render_env_template(schema: Mapping[str, tuple],
     lines.append("")
     rendered = set()
 
-    for cat in category_order:
+    # Web UI 将部分配置放在独立页面，env 模板仍按其原分类生成。
+    categories = dict.fromkeys([*category_order, *(meta[0] for meta in schema.values())])
+    for cat in categories:
         keys = [k for k, meta in schema.items() if meta[0] == cat and k not in rendered]
         if not keys:
             continue
@@ -80,8 +88,9 @@ def render_env_template(schema: Mapping[str, tuple],
     # SCHEMA 未覆盖但 Settings 里存在的字段：追加到末尾，保证「全量导出」不退化
     rest = [k for k in defaults if k not in rendered]
     if rest:
-        lines.append("# ========== 其它（Settings 模型里的常量，通常无需修改） ==========")
+        lines.append("# ========== 启动专用与其他配置 ==========")
         for key in rest:
+            lines.append("# " + _BOOTSTRAP_NOTES.get(key, "Settings 启动配置项。"))
             lines.append("%s=%s" % (key, format_value(defaults.get(key, ""))))
         lines.append("")
 

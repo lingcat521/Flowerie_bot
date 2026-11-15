@@ -5,6 +5,7 @@
 
 （见 docs/reference/sdk.md 最小示例）
 """
+from flowerie_sdk import webui as webui
 from flowerie_sdk.bot import BotAPIError, FlowerieBot
 from flowerie_sdk.event import BotEvent
 from flowerie_sdk.matcher import (
@@ -20,7 +21,7 @@ from flowerie_sdk.message import BotMessage
 
 __all__ = ["FlowerieBot", "BotEvent", "BotMessage",
            "command", "keyword", "regex", "prefix", "exact", "rule",
-           "require_permission", "BotAPIError"]
+           "require_permission", "BotAPIError", "webui"]
 
 # v2.1 缺口 SDK（分面/上下文/任务/组合器/明确 NS）——重导出（显式别名满足 F401/可移植）
 from flowerie_sdk.gap_sdk import Conversation as Conversation

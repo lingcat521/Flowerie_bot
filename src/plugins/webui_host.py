@@ -273,8 +273,8 @@ class PluginWebUIHost:
 
         三种页面形态（任务书第 1 份 §4-§8 + 第 3 份 §三）：
         - **文件页面**（manifest `pages[].file`）：引擎读文件 → 净化 → 受控变量替换；
-        - **插件页面**（manifest `pages[].render = "plugin"`）：引擎经 `webui.page` 取 HTML，
-          同样先净化再替换变量；
+        - **插件页面**（manifest `pages[].render = "plugin"`）：引擎经 `webui.page` 取 HTML 或 view，
+          HTML 先净化再替换变量，view 由宿主生成 HTML；
         - **DSL 页面**（无 file / render，旧 compat）：走 `web_ui.entry` hook 返回组件树。
 
         顺序是**先净化、后替换变量**：变量值由模板渲染器 escape，无法借替换注入标记。
@@ -318,9 +318,12 @@ class PluginWebUIHost:
                                                    {"page": page_meta, "context": context})
             if perr:
                 return None, perr
+            if "view" in payload:
+                return await self._render_view(plugin_id, page, page_meta, context, approved, action_name,
+                                               params or {}, values or {}, payload)
             raw_html, extra_vars, hook_error = self._webui_read_payload(payload)
             if raw_html is None:
-                return None, "插件未返回页面内容（webui.page 需要 html 字段）"
+                return None, "插件未返回页面内容（webui.page 需要 html 或 view 字段）"
         if is_action:
             if self._webui_supports(rt, "webui.action"):
                 payload, perr = await self._webui_call(plugin_id, "webui.action", {
@@ -366,6 +369,44 @@ class PluginWebUIHost:
         return {"mode": "html", "render": render_kind, "html": html, "page": page,
                 "vars": context_vars, "dropped": dropped, "unresolved": unresolved,
                 "hook_error": hook_error, "warnings": warnings}, ""
+
+    async def _render_view(self, plugin_id, page, page_meta, context, approved, action, query, values, payload):
+        from src.plugins.webui_view import WebUIView, WebUIViewError
+
+        url = f"/panel/plugins/webui/{plugin_id}/{page_meta['id']}"
+        submitted, errors, warnings = None, {}, []
+        message = payload.get("message")
+        try:
+            if "html" in payload:
+                raise WebUIViewError("view 与 html 只能选择一种")
+            view = WebUIView(payload["view"])
+            if action != "get":
+                view.render(url, query)
+                form, errors = view.parse(action, values)
+                submitted = values
+                if not errors:
+                    response, err = await self._webui_call(plugin_id, "webui.action", {
+                        "page": page_meta, "context": context, "action": action, "form": form,
+                    })
+                    if err:
+                        message = err
+                    else:
+                        if "html" in response:
+                            raise WebUIViewError("view 页面提交后须返回 view 或反馈")
+                        if "view" in response:
+                            view = WebUIView(response["view"])
+                            submitted = None
+                        message = response.get("message")
+                        # Validate the resulting view before applying response writes.
+                        view.render(url, query, submitted=submitted, message=message)
+                        warnings = await self._webui_apply_writes(plugin_id, response, approved)
+                        if warnings:
+                            message = ""
+            html = view.render(url, query, submitted=submitted, errors=errors, message=message)
+        except WebUIViewError as exc:
+            return None, f"插件 Web UI 组件无效：{exc}"
+        return {"mode": "html", "render": "plugin", "html": html, "page": page,
+                "warnings": warnings}, ""
 
     def plugin_webui_page_file(self, plugin_id: str, page_id: str) -> Optional[str]:
         """页面声明的相对路径（没有 = DSL 页面）。给面板/测试做模式判定用。"""

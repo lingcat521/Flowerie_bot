@@ -127,6 +127,9 @@ def build_minimal(lang):
     sdk_root = os.path.join(_BUILD_ROOT, "repo", "sdk")
     if not os.path.isdir(sdk_root):
         shutil.copytree(os.path.join(ROOT, "sdk"), sdk_root)
+    if lang == "python":
+        shutil.copytree(os.path.join(ROOT, "plugin_sdk", "flowerie_sdk"),
+                        os.path.join(work, "flowerie_sdk"), ignore=shutil.ignore_patterns("__pycache__"))
     if not os.path.isfile(script):
         _BUILD_CACHE[lang] = {"ok": True, "dir": work, "note": "python runner 直接加载源码，无需构建"}
         return _BUILD_CACHE[lang]

@@ -1,6 +1,7 @@
 """私聊面板渲染（v2.14.0）：开关状态 / 允许名单 / 每人记忆清空。零 JavaScript。"""
 from typing import Any, Dict, List
 
+from src.services.webui_render.graphics import empty_state, icon
 from src.services.webui_render.util import _esc
 
 
@@ -24,23 +25,26 @@ def render_private_tab(*, enabled: bool, allowed: List[int], admins: List[int],
             '<button class="btn small danger" type="submit">清空私聊记忆</button>'
             '</form></td></tr>' % (qq, notes, qq)
         )
-    if not rows:
-        rows = '<tr><td colspan="3">还没有私聊记录（只统计有记忆的用户）</td></tr>'
+    users_html = (
+        '<div class="table-wrap" tabindex="0" role="region" aria-label="私聊用户表格">'
+        '<table><thead><tr><th scope="col">QQ</th><th scope="col">记忆条数</th>'
+        f'<th scope="col">操作</th></tr></thead><tbody>{rows}</tbody></table></div>'
+        if rows else empty_state("private", "还没有私聊记录（只统计有记忆的用户）。")
+    )
     return (
         msg_html +
-        '<div class="group"><h2>私聊状态</h2>'
+        f'<div class="group"><h2 class="archive-title"><span class="icon-frame">{icon("private")}</span>私聊状态</h2>'
         '<p>开关：<b>%s</b>　冷却：<b>%d 秒</b>　上下文：<b>%d 条</b>　记忆：<b>%s</b></p>'
         '<p>允许私聊 QQ：%s</p><p>管理员（自动允许）：%s</p>'
         '<p class="hint">私聊与群聊完全隔离：每位 QQ 用独立的虚拟会话 key（负数）存上下文/记忆/预算，'
         '互不可见。开关与冷却等配置在 <a href="/panel?cat=PrivateChat">配置 · 私聊</a>。</p></div>' % (
             _esc(state), int(cooldown), int(context_size), _esc("开" if memory_enabled else "关"),
             _esc(allow_text), _esc(admin_text)) +
-        '<div class="group"><h2>允许名单</h2>'
-        '<p class="hint">每行一个 QQ，或用逗号分隔；留空表示只允许 ADMIN_QQ_IDS。</p>'
+        '<div class="group"><h2><label for="private-allowlist">允许名单</label></h2>'
+        '<p class="hint" id="private-allowlist-help">每行一个 QQ，或用逗号分隔；留空表示只允许 ADMIN_QQ_IDS。</p>'
         '<form method="post" action="/panel/private/allowlist">'
-        '<textarea name="qqs" rows="5" placeholder="123456&#10;234567">%s</textarea>'
+        '<textarea id="private-allowlist" aria-describedby="private-allowlist-help" name="qqs" rows="5" placeholder="123456&#10;234567">%s</textarea>'
         '<button class="btn" type="submit">保存允许名单</button></form></div>' % _esc(", ".join(str(x) for x in allowed)) +
         '<div class="group"><h2>私聊用户</h2>'
-        '<table><thead><tr><th>QQ</th><th>记忆条数</th><th>操作</th></tr></thead>'
-        '<tbody>%s</tbody></table></div>' % rows
+        f'{users_html}</div>'
     )

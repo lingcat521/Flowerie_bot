@@ -25,8 +25,63 @@
 import re
 from typing import Dict, Optional
 
+PLATFORM_ACTION_PERMISSIONS = {
+    "file_parse": "parse_files",
+    "file_parse_local": "parse_files",
+    "file_parse_status": "parse_files",
+    "persona_get": "read_persona_content",
+    "persona_create": "manage_personas",
+    "persona_update": "manage_personas",
+    "persona_delete": "manage_personas",
+    "persona_set_global": "manage_personas",
+    "global_prompt_get": "read_global_prompt",
+    "global_prompt_set": "write_global_prompt",
+    "global_prompt_reset": "write_global_prompt",
+    "private_allowlist_set": "manage_private_policy",
+    "automation_set_flags": "manage_automation",
+    "digest_get": "read_daily_digest",
+    "sticker_search": "read_sticker_library",
+    "sticker_send": "send_sticker",
+    "knowledge_get": "read_group_knowledge",
+    "knowledge_match": "read_group_knowledge",
+    "knowledge_add": "write_group_knowledge",
+    "knowledge_update": "write_group_knowledge",
+    "knowledge_delete": "write_group_knowledge",
+    "knowledge_clear": "write_group_knowledge",
+    "profile_list": "read_member_profile",
+    "profile_clear": "write_member_profile",
+    "persona_list": "read_group_info",
+    "persona_bind": "manage_group_persona",
+    "persona_unbind": "manage_group_persona",
+    "nickname_list": "read_group_info",
+    "nickname_set": "manage_group_persona",
+    "group_prompt_get": "read_group_prompt",
+    "group_prompt_set": "write_group_prompt",
+    "group_prompt_reset": "write_group_prompt",
+    "group_rules_get": "read_group_prompt",
+    "group_rules_set": "write_group_prompt",
+    "private_users": "read_private_memory",
+    "private_policy": "read_private_memory",
+    "private_memory_clear": "write_private_memory",
+    "web_fetch": "web_search",
+    "automation_tasks": "scheduler",
+    "profile_get": "read_member_profile",
+    "profile_set_section": "write_member_profile",
+    "profile_delete": "write_member_profile",
+    "web_search": "web_search",
+    "qzone_history": "read_qzone_history",
+    "qzone_rights": "read_qzone_history",
+    "knowledge_list": "read_group_knowledge",
+    "persona_resolve": "read_group_info",
+    "nickname_resolve": "read_group_info",
+    "automation_status": "scheduler",
+}
+
 # 完整权限集（manifest 校验 + 运行时检查共用）
 ALL_PERMISSIONS = frozenset({
+    *PLATFORM_ACTION_PERMISSIONS.values(),
+    "mcp_read_resource",
+    "mcp_read_prompt",
     "send_message",
     "read_message",
     "read_group_info",
@@ -66,6 +121,7 @@ ALL_PERMISSIONS = frozenset({
 
 # Action 类型 → 所需权限（None = 无需权限：log / test 等无害动作）
 ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
+    **PLATFORM_ACTION_PERMISSIONS,
     "send_message": "send_message",
     "send_reply": "send_message",
     "send_many": "send_message",
@@ -154,8 +210,8 @@ ACTION_PERMISSIONS: Dict[str, Optional[str]] = {
     "mcp_server": "http_request",
     "mcp_tools": "http_request",
     "mcp_call": "http_request",
-    "mcp_resource": "http_request",
-    "mcp_prompt": "http_request",
+    "mcp_resource": "mcp_read_resource",
+    "mcp_prompt": "mcp_read_prompt",
     "mcp_status": "http_request",
     "ai_stream": "ai_chat",
     "ai_vision": "ai_chat",
@@ -368,6 +424,8 @@ class PermissionManager:
 
     def check(self, action: str) -> bool:
         """Action 能否执行（运行时唯一检查点）。"""
+        if action == "file_parse_local" and "filesystem_read" not in self.approved:
+            return False
         if action in _UNIMPLEMENTED:
             return False  # v1 不支持：即使批准也拒绝（诚实接口）
         permission = ACTION_PERMISSIONS.get(action)
@@ -383,6 +441,8 @@ class PermissionManager:
         if permission is None:
             return "" if (action in _BUILTIN_ACTIONS or action in ACTION_PERMISSIONS) \
                 else "未知 action，不允许执行（白名单外）"
+        if action == "file_parse_local" and permission in self.approved:
+            permission = "filesystem_read"
         return f"需要权限 {permission!r}（管理员未批准）"
 
     # ---------- 保护级别对应的资源限制 ----------

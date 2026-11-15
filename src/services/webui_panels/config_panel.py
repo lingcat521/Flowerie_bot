@@ -8,6 +8,22 @@ from urllib.parse import quote
 from aiohttp import web
 
 from src.services.config_service import ConfigService
+from src.services.file_parser import file_parse_error
+
+_STATUS = {"invalid_argument": 400, "file_too_large": 413, "unsupported_format": 415,
+           "parse_failed": 422, "busy": 429, "unavailable": 503}
+
+
+async def _read_bounded(stream, limit):
+    result = bytearray()
+    while True:
+        size = min(65536, limit + 1 - len(result))
+        chunk = await stream(size)
+        if not chunk:
+            return bytes(result)
+        result.extend(chunk)
+        if len(result) > limit:
+            return None
 
 
 class ConfigPanelMixin:
@@ -158,8 +174,60 @@ class ConfigPanelMixin:
                 continue
             if hasattr(form, "getall"):
                 vals = form.getall(name)
-                updates[name] = str(vals[-1]) if vals else ""
+                updates[name] = (",".join(str(value) for value in vals)
+                                 if name == "FILE_PARSE_FORMATS" else str(vals[-1]) if vals else "")
             else:
                 updates[name] = str(form.get(name, ""))
         ok, message = self.config_service.update_many(updates)
         return web.HTTPFound(f"/panel?msg={quote(message)}&err={'1' if not ok else ''}{_catq}")
+
+    async def _handle_api_file_parse_status(self, request):
+        if not self._check_token(request):
+            return web.json_response({"error": "未认证"}, status=401)
+        return web.json_response(self._file_parser.status())
+
+    async def _handle_api_file_parse(self, request):
+        if not self._check_token(request):
+            return web.json_response({"error": "未认证"}, status=401)
+        result = await self._parse_uploaded_document(request, multipart=False)
+        return web.json_response(result, status=200 if result["ok"] else _STATUS[result["code"]],
+                                 headers={"Cache-Control": "no-store"})
+
+    async def _handle_panel_file_preview(self, request):
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        result = await self._parse_uploaded_document(request, multipart=True)
+        return web.Response(
+            text=self._panel_page(msg=result.get("error", ""), err=not result["ok"],
+                                  tab="files", file_result=result),
+            content_type="text/html", charset="utf-8",
+        )
+
+    async def _parse_uploaded_document(self, request, *, multipart):
+        status = self._file_parser.status()
+        if not status["enabled"]:
+            return file_parse_error("unavailable", "文件解析已关闭")
+        limit = status["max_bytes"]
+        try:
+            if multipart:
+                reader = await request.multipart()
+                part = await reader.next()
+                if part is None or part.name != "file" or not part.filename:
+                    return file_parse_error("invalid_argument", "请选择文件")
+                filename = part.filename
+                # BodyPartReader requires a chunk longer than the multipart boundary.
+                raw = await _read_bounded(lambda size: part.read_chunk(max(8192, size)), limit)
+            else:
+                if request.content_type != "application/octet-stream":
+                    return file_parse_error("unsupported_format", "请以 application/octet-stream 提交文件")
+                filename = request.query.get("filename", "")
+                if not filename:
+                    return file_parse_error("invalid_argument", "缺少 filename")
+                if request.content_length is not None and request.content_length > limit:
+                    return file_parse_error("file_too_large", f"文件超过 {limit} 字节")
+                raw = await _read_bounded(request.content.read, limit)
+        except (ValueError, AssertionError):
+            return file_parse_error("invalid_argument", "上传格式错误或文件不完整")
+        if raw is None:
+            return file_parse_error("file_too_large", f"文件超过 {limit} 字节")
+        return await self._file_parser.parse_document(filename, raw)

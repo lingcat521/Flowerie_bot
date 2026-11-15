@@ -18,7 +18,7 @@
 既不需要知道 `file_id`，也不需要知道 `resource_id`。
 """
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, Union
 
 from src.adapters.proto import to_int
 from src.utils.logging_setup import get_logger
@@ -199,13 +199,21 @@ class NullResourceFetcher(ResourceFetcher):
         return b"", False
 
 
+ByteLimit = Union[int, Callable[[], int]]
+
+
+def resolve_byte_limit(limit: ByteLimit) -> int:
+    """Read a live limit once for each resource request."""
+    return max(1, int(limit() if callable(limit) else limit))
+
+
 class LocalPathFetcher(ResourceFetcher):
     """本地路径：直接读文件（stat 先看大小，避免把大文件读进内存）。"""
 
     name = "local-path"
 
-    def __init__(self, max_bytes: int = 2 * 1024 * 1024) -> None:
-        self.max_bytes = max(1, int(max_bytes))
+    def __init__(self, max_bytes: ByteLimit = 2 * 1024 * 1024) -> None:
+        self.max_bytes = max_bytes
 
     async def fetch(self, ref: Any) -> FetchResult:
         target = ResourceRef.coerce(ref)
@@ -215,13 +223,15 @@ class LocalPathFetcher(ResourceFetcher):
         try:
             import os
 
+            limit = resolve_byte_limit(self.max_bytes)
             size = os.path.getsize(path)
-            if size > self.max_bytes:
+            if size > limit:
                 logger.warning("resource_local_too_large path=%s size=%d limit=%d",
-                               path, size, self.max_bytes)
+                               path, size, limit)
                 return b"", False
             with open(path, "rb") as fh:
-                return fh.read(self.max_bytes), True
+                content = fh.read(limit + 1)
+                return (content, True) if len(content) <= limit else (b"", False)
         except OSError as exc:
             logger.warning("resource_local_read_failed path=%s err=%s", path, exc)
             return b"", False
@@ -233,9 +243,9 @@ class URLFetcher(ResourceFetcher):
     name = "url"
 
     def __init__(self, http_get: Optional[Callable[..., Awaitable[FetchResult]]] = None,
-                 max_bytes: int = 2 * 1024 * 1024) -> None:
+                 max_bytes: ByteLimit = 2 * 1024 * 1024) -> None:
         self._http_get = http_get
-        self.max_bytes = max(1, int(max_bytes))
+        self.max_bytes = max_bytes
 
     async def fetch(self, ref: Any) -> FetchResult:
         target = ResourceRef.coerce(ref)
@@ -245,7 +255,7 @@ class URLFetcher(ResourceFetcher):
             logger.warning("resource_url_no_downloader url=%s", target.ref)
             return b"", False
         try:
-            return await self._http_get(target.ref, self.max_bytes)
+            return await self._http_get(target.ref, resolve_byte_limit(self.max_bytes))
         except Exception as exc:  # noqa: BLE001 - 契约：失败返回而不是抛
             logger.warning("resource_url_fetch_failed url=%s err=%s", target.ref, exc)
             return b"", False
@@ -313,7 +323,7 @@ class CompositeResourceFetcher(ResourceFetcher):
 
 
 def build_resource_fetcher(call_api: Any = None, http_get: Any = None,
-                           max_bytes: int = 2 * 1024 * 1024) -> CompositeResourceFetcher:
+                           max_bytes: ByteLimit = 2 * 1024 * 1024) -> CompositeResourceFetcher:
     """组合根辅助：一次接上三种资源形态（本地路径 / URL / 协议 id）。
 
     - `call_api(endpoint, params) -> {"ok","data"}`：协议调用出口（`Sender.call_api`）；

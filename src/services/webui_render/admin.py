@@ -3,6 +3,7 @@
 零 JavaScript：单表单 + select 选择操作，服务端渲染结果。
 操作清单由 GroupAdminService.OPERATIONS 提供（单一事实来源）。
 """
+from src.services.webui_render.graphics import icon
 from src.services.webui_render.util import _esc
 
 
@@ -28,33 +29,33 @@ def render_admin_tab(enabled: bool = True, operations=None, group_id: str = "",
         '<form method="post" action="/panel/admin/run">'
         '<div class="row"><label class="row-info"><span class="row-title">选择操作</span>'
         '<span class="row-key">op</span></label>'
-        '<div class="row-control"><select class="w-gid" name="op" required>'
+        '<div class="row-control"><select class="w-gid" name="op" aria-label="选择操作" required>'
         + opts +
         '</select><span class="hint">操作清单与 NapCat OneBot11 群管动作一一对应</span></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">群号</span>'
         '<span class="row-key">group_id</span></label>'
-        '<div class="row-control"><input class="w-gid" type="text" name="group_id" '
+        '<div class="row-control"><input class="w-gid" type="text" name="group_id" aria-label="群号" '
         'placeholder="群号" required value="%s"></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">成员 QQ 号</span>'
         '<span class="row-key">user_id</span></label>'
-        '<div class="row-control"><input class="w-gid" type="text" name="user_id" '
+        '<div class="row-control"><input class="w-gid" type="text" name="user_id" aria-label="成员 QQ 号" '
         'placeholder="成员 QQ 号（需要时填）"></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">额外参数</span>'
         '<span class="row-key">extra</span></label>'
         '<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-        '<input class="w-md" type="number" name="duration" min="0" placeholder="禁言秒数（0=解除）">'
-        '<input class="w-lg" type="text" name="card" maxlength="20" placeholder="群名片（空=清除）">'
-        '<input class="w-lg" type="text" name="group_name" maxlength="30" placeholder="新群名称">'
-        '<input class="w-lg" type="text" name="title" maxlength="12" placeholder="头衔（空=清除）">'
+        '<input class="w-md" type="number" name="duration" aria-label="禁言秒数" min="0" placeholder="禁言秒数（0=解除）">'
+        '<input class="w-lg" type="text" name="card" aria-label="群名片" maxlength="20" placeholder="群名片（空=清除）">'
+        '<input class="w-lg" type="text" name="group_name" aria-label="新群名称" maxlength="30" placeholder="新群名称">'
+        '<input class="w-lg" type="text" name="title" aria-label="头衔" maxlength="12" placeholder="头衔（空=清除）">'
         '</div><span class="hint">禁言填秒数；名片/群名/头衔按需填写；其余操作留空即可</span></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">附加选项</span>'
-        '<span class="row-key">options</span></label>'
+        '<fieldset class="danger-options"><legend class="archive-title">'
+        f'{icon("admin")}危险操作选项</legend>'
         '<div class="row-control" style="flex-direction:row;gap:16px;flex-wrap:wrap">'
         '<label class="hint" style="display:flex;align-items:center;gap:6px">'
         '<input type="checkbox" name="reject" value="1">踢人时拒绝再次加群</label>'
         '<label class="hint" style="display:flex;align-items:center;gap:6px">'
         '<input type="checkbox" name="dismiss" value="1">群主身份时解散群</label>'
-        '</div></div>'
+        '</div></fieldset>'
         '<div class="group-actions"><button type="submit" class="btn">执行操作</button></div>'
         '</form></fieldset>' % _esc(str(group_id or ""))
     )

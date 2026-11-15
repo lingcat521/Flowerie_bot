@@ -4,11 +4,6 @@
 覆盖：HTTP 200 / Content-Type / HTML 完整 / 页面标题 / Plugin 信息 /
 无模板异常 / 无内部异常堆栈 / 无路径泄露（任务书 §6 逐条）。
 
-**已知引擎限制（如实记录，不掩盖也不放宽）**：插件页由引擎渲染成 /panel 的**子页面片段**
-（src/services/webui_render/plugin_webui.py 只输出页壳 + 内容区；净化器白名单不含
-html/head/body/title），所以响应里没有 <!DOCTYPE html> 与 <title>。任务书 §6 的
-「页面标题」由页壳 <h1 class="page-title"> 承担（test_page_titles_from_manifest_rendered），
-「<title> 元素」用 xfail 单列，供报告里作为引擎限制说明。
 """
 import re
 
@@ -119,8 +114,20 @@ def test_response_security_headers_present(web):
     assert resp.header("x-content-type-options") == "nosniff"
 
 
-@pytest.mark.xfail(reason="已知引擎限制：插件页渲染为 /panel 子页面片段，无 <html>/<head>/<title>"
-                          "（任务书 §6 的标题由 h1.page-title 承担）", strict=False)
 def test_document_title_element_is_present(web):
     text = web.get(web.page_url(web.plugin_a, "index")).text
-    assert "<title>" in text.lower(), "响应里没有 <title> 元素（引擎只输出页壳片段）"
+    assert f'<title>花璃 · {web.manifest_a["name"]} · {_titles(web)["index"]}</title>' in text
+    assert 'name="viewport"' in text
+    assert 'href="/panel/static/panel.css?v=' in text
+
+
+def test_plugin_page_follows_saved_panel_theme(web):
+    path = web.page_url(web.plugin_a, "index")
+    try:
+        for theme in ("sakura", "amoled"):
+            saved = web.post("/panel/appearance", data={"theme": theme})
+            assert saved.status == 302
+            assert f'<body class="theme-{theme}">' in web.get(path).text
+            assert 'aria-current="page"' in web.get(path).text
+    finally:
+        web.post("/panel/appearance", data={"theme": "default"})

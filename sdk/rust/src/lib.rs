@@ -252,6 +252,422 @@ impl Context {
             ("group_id", Json::num(group_id)), ("is_dismiss", Json::Bool(is_dismiss))]))
     }
 
+    pub fn profile_get(&self, group_id: i64, user_id: i64) -> Result<Json, String> {
+        self.action("profile_get", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+        ]))
+    }
+
+    pub fn profile_set_section(&self, group_id: i64, user_id: i64, label: &str, text: &str, nickname: &str) -> Result<Json, String> {
+        self.action("profile_set_section", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+            ("label", Json::str(label)),
+            ("text", Json::str(text)),
+            ("nickname", Json::str(nickname)),
+        ]))
+    }
+
+    pub fn profile_delete(&self, group_id: i64, user_id: i64) -> Result<Json, String> {
+        self.action("profile_delete", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+        ]))
+    }
+
+    pub fn web_search(&self, query: &str, limit: i64) -> Result<Json, String> {
+        self.action("web_search", &Json::obj(vec![
+            ("query", Json::str(query)),
+            ("limit", Json::num(limit)),
+        ]))
+    }
+
+    pub fn knowledge_list(&self, group_id: i64, query: &str, limit: i64) -> Result<Json, String> {
+        self.action("knowledge_list", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("query", Json::str(query)),
+            ("limit", Json::num(limit)),
+        ]))
+    }
+
+    pub fn persona_resolve(&self, group_id: i64) -> Result<Json, String> {
+        self.action("persona_resolve", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+        ]))
+    }
+
+    pub fn nickname_resolve(&self, group_id: i64) -> Result<Json, String> {
+        self.action("nickname_resolve", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+        ]))
+    }
+
+    pub fn file_parse(&self, filename: &str, content_base64: &str) -> Result<Json, String> {
+        self.action("file_parse", &Json::obj(vec![
+            ("filename", Json::str(filename)),
+            ("content_base64", Json::str(content_base64)),
+        ]))
+    }
+
+    pub fn file_parse_local(&self, path: &str) -> Result<Json, String> {
+        self.action("file_parse_local", &Json::obj(vec![("path", Json::str(path))]))
+    }
+
+    pub fn file_parse_status(&self) -> Result<Json, String> {
+        self.action("file_parse_status", &Json::obj(vec![]))
+    }
+
+    pub fn qzone_history(&self, limit: i64) -> Result<Json, String> {
+        self.action("qzone_history", &Json::obj(vec![
+            ("limit", Json::num(limit)),
+        ]))
+    }
+
+    pub fn qzone_rights(&self) -> Result<Json, String> {
+        self.action("qzone_rights", &Json::obj(vec![]))
+    }
+
+    pub fn automation_status(&self) -> Result<Json, String> {
+        self.action("automation_status", &Json::obj(vec![]))
+    }
+
+    pub fn schedule_register(&self, kind: &str, when: Json, name: &str) -> Result<Json, String> {
+        self.action("schedule_register", &Json::obj(vec![
+            ("kind", Json::str(kind)),
+            ("when", when),
+            ("name", Json::str(name)),
+        ]))
+    }
+
+    pub fn schedule_cancel(&self, schedule_id: &str) -> Result<Json, String> {
+        self.action("schedule_cancel", &Json::obj(vec![
+            ("schedule_id", Json::str(schedule_id)),
+        ]))
+    }
+
+    pub fn schedule_list(&self) -> Result<Json, String> {
+        self.action("schedule_list", &Json::obj(vec![]))
+    }
+
+    pub fn send_private_message(&self, user_id: i64, message: &str) -> Result<Json, String> {
+        self.action("send_private_message", &Json::obj(vec![
+            ("user_id", Json::num(user_id)),
+            ("message", Json::str(message)),
+        ]))
+    }
+
+    pub fn user_history(&self, user_id: i64, count: i64) -> Result<Json, String> {
+        self.action("user_history", &Json::obj(vec![
+            ("user_id", Json::num(user_id)),
+            ("count", Json::num(count)),
+        ]))
+    }
+
+    pub fn get_group_members(&self, group_id: i64) -> Result<Json, String> {
+        self.action("get_group_members", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+        ]))
+    }
+
+    pub fn group_ban(&self, group_id: i64, user_id: i64, duration: i64) -> Result<Json, String> {
+        self.action("group_ban", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+            ("duration", Json::num(duration)),
+        ]))
+    }
+
+    pub fn group_kick(&self, group_id: i64, user_id: i64, reject_add: bool) -> Result<Json, String> {
+        self.action("group_kick", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+            ("reject_add", Json::Bool(reject_add)),
+        ]))
+    }
+
+    pub fn group_admin(&self, group_id: i64, user_id: i64, enable: bool) -> Result<Json, String> {
+        self.action("group_admin", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+            ("enable", Json::Bool(enable)),
+        ]))
+    }
+
+    pub fn group_whole_ban(&self, group_id: i64, enable: bool) -> Result<Json, String> {
+        self.action("group_whole_ban", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("enable", Json::Bool(enable)),
+        ]))
+    }
+
+    pub fn group_rename(&self, group_id: i64, name: &str) -> Result<Json, String> {
+        self.action("group_rename", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("name", Json::str(name)),
+        ]))
+    }
+
+    pub fn group_card(&self, group_id: i64, user_id: i64, card: &str) -> Result<Json, String> {
+        self.action("group_card", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+            ("card", Json::str(card)),
+        ]))
+    }
+
+    pub fn group_title(&self, group_id: i64, user_id: i64, title: &str) -> Result<Json, String> {
+        self.action("group_title", &Json::obj(vec![
+            ("group_id", Json::num(group_id)),
+            ("user_id", Json::num(user_id)),
+            ("title", Json::str(title)),
+        ]))
+    }
+
+    pub fn digest_get(&self, group_id: i64) -> Result<Json, String> {
+        self.action("digest_get", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn blossom_search(&self, group_id: i64, query: &str, top_k: i64) -> Result<Json, String> {
+        self.action("memory_semantic", &Json::obj(vec![("group_id", Json::num(group_id)), ("query", Json::str(query)), ("top_k", Json::num(top_k))]))
+    }
+
+    pub fn knowledge_get(&self, group_id: i64, knowledge_id: i64) -> Result<Json, String> {
+        self.action("knowledge_get", &Json::obj(vec![("group_id", Json::num(group_id)), ("knowledge_id", Json::num(knowledge_id))]))
+    }
+
+    pub fn knowledge_delete(&self, group_id: i64, knowledge_id: i64) -> Result<Json, String> {
+        self.action("knowledge_delete", &Json::obj(vec![("group_id", Json::num(group_id)), ("knowledge_id", Json::num(knowledge_id))]))
+    }
+
+    pub fn knowledge_clear(&self, group_id: i64) -> Result<Json, String> {
+        self.action("knowledge_clear", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn persona_bind(&self, group_id: i64, persona_id: &str) -> Result<Json, String> {
+        self.action("persona_bind", &Json::obj(vec![("group_id", Json::num(group_id)), ("persona_id", Json::str(persona_id))]))
+    }
+
+    pub fn persona_unbind(&self, group_id: i64) -> Result<Json, String> {
+        self.action("persona_unbind", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn persona_get(&self, persona_id: &str) -> Result<Json, String> {
+        self.action("persona_get", &Json::obj(vec![("persona_id", Json::str(persona_id))]))
+    }
+
+    pub fn persona_delete(&self, persona_id: &str) -> Result<Json, String> {
+        self.action("persona_delete", &Json::obj(vec![("persona_id", Json::str(persona_id))]))
+    }
+
+    pub fn persona_set_global(&self, persona_id: &str) -> Result<Json, String> {
+        self.action("persona_set_global", &Json::obj(vec![("persona_id", Json::str(persona_id))]))
+    }
+
+    pub fn nickname_list(&self, group_id: i64) -> Result<Json, String> {
+        self.action("nickname_list", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn group_prompt_get(&self, group_id: i64) -> Result<Json, String> {
+        self.action("group_prompt_get", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn group_prompt_set(&self, group_id: i64, content: &str) -> Result<Json, String> {
+        self.action("group_prompt_set", &Json::obj(vec![("group_id", Json::num(group_id)), ("content", Json::str(content))]))
+    }
+
+    pub fn group_prompt_reset(&self, group_id: i64) -> Result<Json, String> {
+        self.action("group_prompt_reset", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn group_rules_get(&self, group_id: i64) -> Result<Json, String> {
+        self.action("group_rules_get", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn group_rules_set(&self, group_id: i64, content: &str) -> Result<Json, String> {
+        self.action("group_rules_set", &Json::obj(vec![("group_id", Json::num(group_id)), ("content", Json::str(content))]))
+    }
+
+    pub fn private_memory_clear(&self, user_id: i64) -> Result<Json, String> {
+        self.action("private_memory_clear", &Json::obj(vec![("user_id", Json::num(user_id))]))
+    }
+
+    pub fn web_fetch(&self, url: &str, max_chars: i64) -> Result<Json, String> {
+        self.action("web_fetch", &Json::obj(vec![("url", Json::str(url)), ("max_chars", Json::num(max_chars))]))
+    }
+
+    pub fn global_prompt_set(&self, content: &str) -> Result<Json, String> {
+        self.action("global_prompt_set", &Json::obj(vec![("content", Json::str(content))]))
+    }
+
+    pub fn profile_clear(&self, group_id: i64) -> Result<Json, String> {
+        self.action("profile_clear", &Json::obj(vec![("group_id", Json::num(group_id))]))
+    }
+
+    pub fn persona_list(&self) -> Result<Json, String> {
+        self.action("persona_list", &Json::obj(vec![]))
+    }
+
+    pub fn private_policy(&self) -> Result<Json, String> {
+        self.action("private_policy", &Json::obj(vec![]))
+    }
+
+    pub fn automation_tasks(&self) -> Result<Json, String> {
+        self.action("automation_tasks", &Json::obj(vec![]))
+    }
+
+    pub fn global_prompt_get(&self) -> Result<Json, String> {
+        self.action("global_prompt_get", &Json::obj(vec![]))
+    }
+
+    pub fn global_prompt_reset(&self) -> Result<Json, String> {
+        self.action("global_prompt_reset", &Json::obj(vec![]))
+    }
+
+    pub fn sticker_search(&self, payload: &Json) -> Result<Json, String> {
+        self.action("sticker_search", payload)
+    }
+
+    pub fn sticker_send(&self, payload: &Json) -> Result<Json, String> {
+        self.action("sticker_send", payload)
+    }
+
+    pub fn knowledge_match(&self, payload: &Json) -> Result<Json, String> {
+        self.action("knowledge_match", payload)
+    }
+
+    pub fn knowledge_add(&self, payload: &Json) -> Result<Json, String> {
+        self.action("knowledge_add", payload)
+    }
+
+    pub fn knowledge_update(&self, payload: &Json) -> Result<Json, String> {
+        self.action("knowledge_update", payload)
+    }
+
+    pub fn profile_list(&self, payload: &Json) -> Result<Json, String> {
+        self.action("profile_list", payload)
+    }
+
+    pub fn nickname_set(&self, payload: &Json) -> Result<Json, String> {
+        self.action("nickname_set", payload)
+    }
+
+    pub fn private_users(&self, payload: &Json) -> Result<Json, String> {
+        self.action("private_users", payload)
+    }
+
+    pub fn private_allowlist_set(&self, payload: &Json) -> Result<Json, String> {
+        self.action("private_allowlist_set", payload)
+    }
+
+    pub fn automation_set_flags(&self, payload: &Json) -> Result<Json, String> {
+        self.action("automation_set_flags", payload)
+    }
+
+    pub fn persona_create(&self, payload: &Json) -> Result<Json, String> {
+        self.action("persona_create", payload)
+    }
+
+    pub fn persona_update(&self, payload: &Json) -> Result<Json, String> {
+        self.action("persona_update", payload)
+    }
+
+    pub fn mcp_resource(&self, payload: &Json) -> Result<Json, String> {
+        self.action("mcp_resource", payload)
+    }
+
+    pub fn mcp_prompt(&self, payload: &Json) -> Result<Json, String> {
+        self.action("mcp_prompt", payload)
+    }
+
+    pub fn group_notice_send(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_notice_send", payload)
+    }
+
+    pub fn group_notice_get(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_notice_get", payload)
+    }
+
+    pub fn group_notice_update(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_notice_update", payload)
+    }
+
+    pub fn group_notice_delete(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_notice_delete", payload)
+    }
+
+    pub fn group_files(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_files", payload)
+    }
+
+    pub fn group_files_in(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_files_in", payload)
+    }
+
+    pub fn group_file_url(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_file_url", payload)
+    }
+
+    pub fn group_file_upload(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_file_upload", payload)
+    }
+
+    pub fn group_file_rename(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_file_rename", payload)
+    }
+
+    pub fn group_file_delete(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_file_delete", payload)
+    }
+
+    pub fn group_file_move(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_file_move", payload)
+    }
+
+    pub fn group_folder_create(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_folder_create", payload)
+    }
+
+    pub fn group_folder_delete(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_folder_delete", payload)
+    }
+
+    pub fn group_folder_rename(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_folder_rename", payload)
+    }
+
+    pub fn friend_remark(&self, payload: &Json) -> Result<Json, String> {
+        self.action("friend_remark", payload)
+    }
+
+    pub fn friend_delete(&self, payload: &Json) -> Result<Json, String> {
+        self.action("friend_delete", payload)
+    }
+
+    pub fn friend_detail(&self, payload: &Json) -> Result<Json, String> {
+        self.action("friend_detail", payload)
+    }
+
+    pub fn user_poke(&self, payload: &Json) -> Result<Json, String> {
+        self.action("user_poke", payload)
+    }
+
+    pub fn user_forward(&self, payload: &Json) -> Result<Json, String> {
+        self.action("user_forward", payload)
+    }
+
+    pub fn group_forward(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_forward", payload)
+    }
+
+    pub fn group_invite(&self, payload: &Json) -> Result<Json, String> {
+        self.action("group_invite", payload)
+    }
+
+    pub fn web_search_options(&self, payload: &Json) -> Result<Json, String> {
+        self.action("web_search", payload)
+    }
+
     /// QQ空间：发表说说（需要 qzone；ugc_right 1/4/16/64/128，16/128 需 target_uins）。
     pub fn qzone_publish(&self, content: &str, images: Vec<Json>, ugc_right: i64,
                          target_uins: Vec<Json>) -> Result<Json, String> {
@@ -347,6 +763,48 @@ impl Default for Plugin {
 /// 处理器拿到引擎给的受控参数（page/context，action 时还有 action/form），
 /// 返回 `Json::Str`（= html 简写）或 `Json::Obj`（白名单字段）。
 /// 路由、权限、校验、净化、隔离全部由引擎负责，插件只负责内容。
+pub mod webui_view {
+    use super::Json;
+
+    pub fn field(name: &str, label: &str, kind: &str, value: Json, required: bool) -> Json {
+        Json::obj(vec![("name", Json::str(name)), ("label", Json::str(label)),
+                       ("type", Json::str(kind)), ("value", value), ("required", Json::Bool(required))])
+    }
+
+    pub fn select(name: &str, label: &str, value: Json, required: bool, options: Vec<Json>) -> Json {
+        let Json::Obj(mut fields) = field(name, label, "select", value, required) else {
+            unreachable!()
+        };
+        fields.insert("options".to_string(), Json::Arr(options));
+        Json::Obj(fields)
+    }
+
+    pub fn choice(value: &str, label: &str) -> Json {
+        Json::obj(vec![("value", Json::str(value)), ("label", Json::str(label))])
+    }
+
+    pub fn form(action: &str, fields: Vec<Json>, submit: &str) -> Json {
+        Json::obj(vec![("action", Json::str(action)), ("fields", Json::Arr(fields)), ("submit", Json::str(submit))])
+    }
+
+    pub fn table(columns: Vec<Json>, rows: Vec<Vec<Json>>, page_size: i64) -> Json {
+        Json::obj(vec![("type", Json::str("table")), ("columns", Json::Arr(columns)),
+            ("rows", Json::Arr(rows.into_iter().map(Json::Arr).collect())), ("page_size", Json::num(page_size))])
+    }
+
+    pub fn text(kind: &str, content: &str) -> Json {
+        Json::obj(vec![("type", Json::str(kind)), ("text", Json::str(content))])
+    }
+
+    pub fn page(blocks: Vec<Json>, form: Option<Json>) -> Json {
+        let mut view = vec![("blocks", Json::Arr(blocks))];
+        if let Some(form) = form {
+            view.push(("form", form));
+        }
+        Json::obj(vec![("view", Json::obj(view))])
+    }
+}
+
 pub struct Webui<'a> {
     plugin: &'a mut Plugin,
 }
@@ -718,7 +1176,7 @@ fn normalize_webui(result: Json) -> Json {
                 return Json::obj(vec![("ok", Json::Bool(false)), ("error", Json::str(message))]);
             }
             let mut pairs: Vec<(&str, Json)> = vec![("ok", Json::Bool(true))];
-            for key in ["html", "vars", "context", "message", "content_type", "body",
+            for key in ["html", "view", "vars", "context", "message", "content_type", "body",
                         "base64", "config_set", "storage_set"] {
                 if let Some(value) = map.get(key) {
                     pairs.push((key, value.clone()));

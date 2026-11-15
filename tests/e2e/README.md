@@ -78,21 +78,18 @@ pytest -q -rs tests/e2e/test_plugin_chain_engine.py
 | :--- | :--- |
 | `E2E_WORK_ROOT` | 工作根目录（必须支持执行位；默认系统临时目录，最后兜底仓库内 `.e2e-work/`） |
 | `E2E_SCREENSHOT_DIR` | 给了就保存链路截图（CI artifact 便于排障） |
-| `E2E_EXPECT_DOCUMENT_TITLE` | 面板壳补上 `<title>` 后，用它把 `document.title` 断言变成严格相等 |
+| `E2E_EXPECT_DOCUMENT_TITLE` | 覆盖宿主根据 manifest 生成的默认标题 |
 | `E2E_CHAIN{1,2,3}_ENTRY` / `E2E_CHAIN{1,2,3}_TARGET` | 覆盖链路两端的插件 id（对接别的插件包时用） |
 
 ## 5. 已知缺口（本机实测，写清楚而不是绕过）
 
-1. **`document.title` 目前是空串**：插件页面路由返回的是面板壳片段，没有 `<html>/<head>/<title>`；
-   插件页面文件里的 `<title>` 会被净化器丢弃（`drop_tag:title`），**标题文本会作为正文显示出来**。
-   建议面板壳补 `<title>`；补上后设置 `E2E_EXPECT_DOCUMENT_TITLE` 即可切到严格断言。
-2. **模板变量不能出现在标签属性位置**：`<input ... {{ notify_checked }}>` 会被 HTMLParser 当成名为 `{{` 的属性丢掉
+1. **模板变量不能出现在标签属性位置**：`<input ... {{ notify_checked }}>` 会被 HTMLParser 当成名为 `{{` 的属性丢掉
    （`drop_attr`），所以"根据状态回显 checked/selected"的写法目前**静默失效**（仓库自带的 `examples/plugins/html_webui_demo` 原先就这么写，现已改成「静态 checkbox + 文本状态回显」）。
    需要条件属性时，要么让插件返回整页 HTML（`render: "plugin"`），要么给模板引擎加受控的条件语法。
-3. **插件看不到引擎侧的 `request_id` / `trace_id`**：SDK 的 `plugin.call()` 只把 `result` 交给插件（失败抛结构化错误），
+2. **插件看不到引擎侧的 `request_id` / `trace_id`**：SDK 的 `plugin.call()` 只把 `result` 交给插件（失败抛结构化错误），
    所以页面上显示的 `request_id` 是**插件侧 call id**（页面上如实标注），`trace_id` 是随请求往返的关联 id。
    引擎侧的 request_id / trace_id / route 由 `test_plugin_chain_engine.py` 通过 `comm_snapshot()` 断言（真实数字）。
-4. **`examples/multilang-sdk/{python,typescript,go,rust,java}` 都有 `index` 与 `communication` 两个
+3. **`examples/multilang-sdk/{python,typescript,go,rust,java}` 都有 `index` 与 `communication` 两个
    `render: "plugin"` 页面** —— §28 的三条链路（Python→Go / TS→Java / Go→Rust）在 CI 上**真跑**：
    `CI / webui-e2e` 装真 Chromium 后 21 passed（含三条链路），日志见
    [plugin-webui-report.md](../../docs/reports/plugin-webui-report.md) §3/§6。

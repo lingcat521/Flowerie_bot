@@ -114,7 +114,7 @@ class PluginPanelMixin:
     async def _handle_panel_plugin_webui(self, request: web.Request) -> web.Response:
         """Plugin WebUI 页面：GET=渲染（params 从 query），POST=form 提交（动态重渲染）。
 
-        零 JS：所有交互都是表单 POST/GET → 插件（webui_page hook）→ DSL → 重渲染。
+        零 JS：通过 GET 渲染页面，POST 提交表单后由宿主再次渲染。
         """
         if not self._check_token(request):
             return web.HTTPFound("/panel")
@@ -128,6 +128,8 @@ class PluginPanelMixin:
         if request.method == "POST":
             form = await request.post()
             action = str(form.get("plugin_action", "") or "")[:64] or "submit"
+            if action == "get":
+                return web.Response(status=400, text="get 为保留动作")
             values = {str(k): str(v) for k, v in form.items() if not str(k).startswith("plugin_")}
         else:
             action, values = "get", {}
@@ -146,7 +148,7 @@ class PluginPanelMixin:
         content_html = ""
         if not err and isinstance(result, dict):
             if mode == "html":
-                content_html = str(result.get("html") or "")     # 已在 manager 内净化 + 变量 escape
+                content_html = str(result.get("html") or "")     # 宿主已净化 HTML 或转义组件内容
             else:
                 from src.services.webui_render.plugin_dsl import render_plugin_dsl
                 content_html = render_plugin_dsl(
@@ -164,7 +166,8 @@ class PluginPanelMixin:
         html = render_plugin_webui_page(
             pname, str(page_meta.get("title") or page),
             str(page_meta.get("description") or ""), content_html,
-            error=err, plugin_id=pid, plugin_tabs=tabs, hook_error=hook_error, mode=mode)
+            error=err, plugin_id=pid, plugin_tabs=tabs, hook_error=hook_error,
+            theme=self._pref("theme", "default"))
         # 插件页面响应加一层浏览器侧防线（任务书 §8/§9）：
         # default-src none 彻底禁脚本；样式/图片只允许同源；表单只能提交回本站。
         # 即便净化器漏掉某个构造，浏览器也不会执行它（纵深防御）。

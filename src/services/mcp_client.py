@@ -165,3 +165,14 @@ class McpClient:
         """调用工具，返回 result。"""
         await self.initialize()
         return await self._rpc("tools/call", {"name": tool_name, "arguments": arguments})
+
+    async def read_catalog(self, namespace: str, selector: str = "", *, cursor: str = "",
+                           arguments: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        if namespace not in ("resources", "prompts"):
+            raise ValueError("unknown MCP namespace")
+        await self.initialize()
+        if not selector:
+            return await self._rpc(f"{namespace}/list", {"cursor": cursor} if cursor else {})
+        if namespace == "resources":
+            return await self._rpc("resources/read", {"uri": selector})
+        return await self._rpc("prompts/get", {"name": selector, "arguments": arguments or {}})

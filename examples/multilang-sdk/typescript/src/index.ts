@@ -1,6 +1,6 @@
 // minimal TypeScript 插件（任务书《插件测试》）：与 Python/Go/Rust/Java 最小插件语义完全一致。
 // 只用 TypeScript SDK（sdk/typescript/flowerie_sdk.ts），零 npm 依赖。
-import { FloweriePlugin } from "../../../sdk/typescript/flowerie_sdk.ts";
+import { FloweriePlugin, webuiView } from "../../../sdk/typescript/flowerie_sdk.ts";
 
 const SDK_VERSION = "1.0.0";
 const RUNTIME = "typescript";      // ping / get_info / WebUI 页面上的 runtime
@@ -76,6 +76,14 @@ async function privateProbe(): Promise<Record<string, unknown>> {
 async function capabilitiesProbe(): Promise<Record<string, unknown>> {
   const ctx = plugin.ctx;
   return {
+    private_history: await safeAction(() => ctx.userHistory(20001, 5)),
+    mute: await safeAction(() => ctx.groupBan(10001, 20001, 60)),
+    digest: await safeAction(() => ctx.digestGet(10001)),
+    profile: await safeAction(() => ctx.profileGet(10001, 20001)),
+    search: await safeAction(() => ctx.webSearch("花璃", 3)),
+    history: await safeAction(() => ctx.qzoneHistory(2)),
+    automation: await safeAction(() => ctx.automationStatus()),
+    schedules: await safeAction(() => ctx.scheduleList()),
     shut: await safeAction(() => ctx.groupShutList(10001)),
     leave: await safeAction(() => ctx.groupLeave(10002, false)),
     publish: await safeAction(() => ctx.qzonePublish("hello from ts", [], 1, [])),
@@ -99,6 +107,11 @@ async function runCommand(text: string): Promise<any> {
                t2: await call(argv[1], "echo", { hello: "world" }),
                t3: await call(argv[2], "ping", {}) };
     case "errors": return await errorProbe(argv[0], argv[1]);
+    case "fileparse": return {
+      inline: await plugin.ctx.fileParse("note.txt", "aGVsbG8="),
+      local: await plugin.ctx.fileParseLocal("document.txt"),
+      status: await plugin.ctx.fileParseStatus(),
+    };
     case "caps": return await capabilitiesProbe();
     case "dm": return await privateProbe();
     default: throw new Error("未知命令: " + head);
@@ -421,9 +434,31 @@ function communicationHtml(v: Record<string, string>): string {
     + '<a id="nav-communication" href="' + base + '/communication">Communication</a></nav>';
 }
 
+function sdkSettings(settings: Record<string, unknown>, saving = false) {
+  const fields = [
+    webuiView.field("nickname", "显示名称", "text", {
+      value: typeof settings.nickname === "string" ? settings.nickname : "Flowerie", required: true,
+    }),
+    webuiView.field("limit", "每日报告上限", "integer", {
+      value: typeof settings.limit === "number" ? settings.limit : 10, required: true,
+    }),
+    webuiView.field("enabled", "启用日报", "boolean", { value: settings.enabled === true }),
+  ];
+  return webuiView.page([
+    webuiView.text("自动化设置", "status"),
+    webuiView.table(["任务", "周期"], [["日报", "每日"], ["周报", "每周"]], 1),
+  ], webuiView.form("save", fields), saving ? {
+    message: "已保存", storage_set: { sdk_settings: settings },
+  } : {});
+}
+
 // webui.page：引擎要 HTML（GET 与 POST 都会调本钩子；POST 的表单在 webui.action 里）
 plugin.webui.page((args) => {
   const pluginId = ctxPluginId(args, String(plugin.ctx.pluginId || ""));
+  if (pageIdOf(args && args.page) === "sdk_settings") {
+    const data = args.context?.data as Record<string, Record<string, unknown>> | undefined;
+    return sdkSettings(data?.sdk_settings ?? {});
+  }
   if (pageIdOf(args && args.page) === "communication") {
     const form = contextForm(args && args.context);
     if (isCallAction(args && args.context) && Object.keys(form).length > 0) {
@@ -440,6 +475,9 @@ plugin.webui.page((args) => {
 // webui.action：调用页的 POST（按钮 name=plugin_action value=call）-> 真调用 -> 重渲染
 plugin.webui.action(async (args) => {
   const pluginId = ctxPluginId(args, String(plugin.ctx.pluginId || ""));
+  if (pageIdOf(args && args.page) === "sdk_settings" && args.action === "save") {
+    return sdkSettings(args.form ?? {}, true);
+  }
   if (pageIdOf(args && args.page) !== "communication") {
     return { ok: false, error: "未知动作: " + String((args && args.action) || "") };
   }

@@ -3,29 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>花璃 · 管理后台</title>
-<!-- 面板样式是真实文件（static/panel.css）；?v= 是内容指纹，CSS 一改就自动失效缓存 -->
+<title>{{page_title}} · 花璃</title>
 <link rel="stylesheet" href="/panel/static/panel.css?v={{css_rev}}">
 <style>{{bg_rules}}</style>
 </head>
 <body class="{{body_class}}"{{inline_style}}>
 <div class="bg-layer" aria-hidden="true"></div>
-<div class="wrap">
-<!-- 抽屉导航（纯 CSS，零 JS）：窄屏 ☰ 滑出；宽屏保持一行胶囊。
-     checkbox 放在 .wrap 下、导航在 .topbar 里，靠 :has() 跨层联动
-     （旧浏览器不支持 :has 时自动退化为可换行的胶囊，不会丢导航）。 -->
-<input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
-<header class="topbar">
-<label class="nav-btn" for="nav-toggle" aria-label="打开导航">☰</label>
-<div class="brand">花璃<small>· 管理后台</small></div>
-<nav class="tabs" id="nav">{{tabs}}<a class="tab danger" href="/panel/logout">退出</a></nav>
-<!-- 遮罩必须和抽屉同属 .topbar 的层叠上下文：否则它会盖住抽屉（点不中按钮 + 抽屉被压暗） -->
-<label class="nav-overlay" for="nav-toggle" aria-label="关闭导航"></label>
+<a class="skip-link" href="#main-content">跳到正文</a>
+<div class="panel-shell">
+<aside class="desktop-sidebar" aria-label="侧栏">
+<a class="brand" href="/panel">{{brand}}<span>花璃<small>FLOWERIE</small></span></a>
+{{navigation}}
+</aside>
+<div class="workspace">
+<header class="mobile-header">
+<a class="brand" href="/panel">{{brand}}<span>花璃<small>FLOWERIE</small></span></a>
+<details class="mobile-navigation">
+<summary>导航 <span>当前：{{nav_current}}</span></summary>
+{{navigation}}
+</details>
 </header>
-<h1 class="page-title">{{page_title}}</h1>
+<div class="wrap">
+<main id="main-content" tabindex="-1">
+<header class="page-heading">
+<div>
+<p class="page-eyebrow">{{page_eyebrow}}</p>
+<h1 class="page-title">{{page_icon}}{{page_title}}</h1>
+<p class="page-description">{{page_description}}</p>
+</div>
+{{page_art}}
+</header>
 {{msg_html}}
-{{body_html}}
+<div class="page-body page-{{page_key}}">{{body_html}}</div>
+</main>
 <footer class="panel-foot">花璃 · 管理后台 · 面板样式 #{{css_rev}}</footer>
+</div>
+</div>
 </div>
 </body>
 </html>

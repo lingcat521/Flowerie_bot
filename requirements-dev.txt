@@ -1,3 +1,13 @@
+# 花璃 Flowerie · 开发与测试依赖
+# 安装：pip install -r requirements.txt -r requirements-dev.txt
+
+# ---------- 测试框架 ----------
 pytest>=8.0
 pytest-asyncio>=0.23
+
+# ---------- 代码风格 ----------
 ruff>=0.6
+
+# ---------- 端到端测试（tests/e2e/）----------
+# 需要额外下载浏览器内核：playwright install chromium
+playwright>=1.40

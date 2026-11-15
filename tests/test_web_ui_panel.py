@@ -11,6 +11,7 @@
 import io
 import json
 import os
+import re
 import tempfile
 
 from aiohttp import web
@@ -237,8 +238,8 @@ async def test_panel_style_glass_toggle():
         assert 'value="glass" checked' in text2
 
 
-async def test_panel_topbar_opaque_over_background():
-    """顶部导航栏应有不透明背景，避免背景图盖住导航栏。"""
+async def test_panel_navigation_opaque_over_background():
+    """桌面侧栏和手机导航使用不透明的主题背景。"""
     with tempfile.TemporaryDirectory() as td:
         _, _, _, server = _make_stack(td)
         cookie = await _login(server)
@@ -247,7 +248,9 @@ async def test_panel_topbar_opaque_over_background():
         # 样式已改为外链真实文件（static/panel.css），规则本体在 CSS 里
         assert "/panel/static/panel.css?v=" in text
         from src.services.webui_render.theme import PANEL_CSS as _CSS
-        assert "background-color:rgb(var(--panel-rgb))" in _CSS
+        for selector in (".desktop-sidebar", ".mobile-header"):
+            assert selector in text or selector[1:] in text
+            assert re.search(rf"{re.escape(selector)}\s*{{[^}}]*background:var\(--ui-bg\)", _CSS)
 
 
 async def test_sakura_theme_default_light_pink_background():
@@ -284,7 +287,7 @@ async def test_dark_themed_black_and_stale_color_cleared():
         assert repo.get_pref("bg_color__dark") in (None, "")
         resp2 = await server._handle_panel(FakeRequest(cookies={"fb_token": cookie}, query={"tab": "appearance"}))
         text = _resp_text(resp2)
-        assert "background-color: #121417" in text  # 深色主题背景为黑
+        assert "background-color: #0C0E14" in text  # 深色主题背景为黑
 
 
 async def test_background_color_uses_text_input_only():

@@ -1,5 +1,7 @@
 # Rust SDK（flowerie · 零 crate 依赖）
 
+画像、搜索、QQ 空间、自动化、私聊及群管理的调用方法与权限见[插件平台 API](../reference/plugin-platform-api.md)。
+
 > 行号说明：下表 `:行号` 是写作时的定位；代码变动后行号会漂移，请按符号名检索（`ctx.action` 等）。
 
 > 总览与通用规则：[plugin-sdk.md](plugin-sdk.md)｜协议：[plugin-protocol.md](../reference/plugin-protocol.md)｜能力矩阵：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)

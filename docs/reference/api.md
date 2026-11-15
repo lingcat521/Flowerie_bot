@@ -3,6 +3,7 @@
 > 由 scripts/gen_api_md.py 生成（AST from PluginApi）；端点名（OneBot）不出现在此。
 > 语义方法若网关无对应端点，运行时返回 `not supported in v1`（绝不静默）。
 > 插件间通信（PluginCommApi：`plugin.call/emit/on/expose/cancel`）不在本索引，见 [plugin-developer-guide.md](plugin-developer-guide.md) §8。
+> 五语言签名和新增平台动作的参数见 [插件平台 API](plugin-platform-api.md)。
 
 
 **消息**
@@ -24,11 +25,15 @@
 | `group_admins(payload)` | 群管理员列表（成员列表本地过滤 admin/owner） | `read_group_info` |
 | `group_apply(payload)` | 群申请处理（等价 handle_group_request） | `request_handle` |
 | `group_ban(payload)` | 群禁言 / 解禁（group_id + user_id + duration 秒，0 表示解禁，上限 2592000）。 | `group_manage` |
+| `group_card(payload)` | 引擎动作 group_card 的语义封装。 | `group_manage` |
 | `group_essence(payload)` | 群精华消息列表（等价 essence_list） | `read_group_info` |
 | `group_file_delete(payload)` | 删除群文件。 | `group_manage` |
 | `group_file_move(payload)` | 移动群文件。 | `group_manage` |
 | `group_file_rename(payload)` | 重命名群文件（v1 无端点→not supported） | `group_manage` |
 | `group_file_upload(payload)` | 上传群文件（v1 无专用端点→not supported） | `group_manage` |
+| `group_file_url(payload)` | 引擎动作 group_file_url 的语义封装。 | `read_group_info` |
+| `group_files(payload)` | 引擎动作 group_files 的语义封装。 | `read_group_info` |
+| `group_files_in(payload)` | 引擎动作 group_files_in 的语义封装。 | `read_group_info` |
 | `group_folder_create(payload)` | 创建群文件文件夹。 | `group_manage` |
 | `group_folder_delete(payload)` | 删除群文件文件夹。 | `group_manage` |
 | `group_folder_rename(payload)` | 重命名群文件文件夹。 | `group_manage` |
@@ -37,25 +42,28 @@
 | `group_info(payload)` | 群信息。 | `read_group_info` |
 | `group_invite(payload)` | 群邀请（v1 无端点→not supported） | `group_manage` |
 | `group_kick(payload)` | 移出群成员（group_id + user_id，可选 reject_add 拒绝其再加群）。 | `group_manage` |
+| `group_leave(payload)` | Bot 退出群聊（group_id，可选 is_dismiss；群主且 is_dismiss=true 时解散）。 | `group_manage` |
 | `group_list(payload)` | 群列表。 | `read_group_info` |
 | `group_member_search(payload)` | 群成员搜索（group_id + query；成员列表本地过滤） | `read_group_info` |
 | `group_member_update(payload)` | 群成员信息更新（user_id + card；等价设置群名片） | `group_manage` |
 | `group_mute_status(payload)` | 群成员禁言状态（v1 无查询端点→not supported） | `read_group_info` |
 | `group_notice_create(payload)` | 创建群公告（等价发送公告） | `group_manage` |
 | `group_notice_delete(payload)` | 删除群公告。 | `group_manage` |
+| `group_notice_get(payload)` | 引擎动作 group_notice_get 的语义封装。 | `read_group_info` |
+| `group_notice_send(payload)` | 引擎动作 group_notice_send 的语义封装。 | `group_manage` |
 | `group_notice_update(payload)` | 更新群公告（删除旧公告+发送新公告组合） | `group_manage` |
 | `group_portrait(payload)` | 修改群头像。 | `group_manage` |
+| `group_prompt_get(payload)` | 引擎动作 group_prompt_get 的语义封装。 | `read_group_prompt` |
+| `group_prompt_reset(payload)` | 引擎动作 group_prompt_reset 的语义封装。 | `write_group_prompt` |
+| `group_prompt_set(payload)` | 引擎动作 group_prompt_set 的语义封装。 | `write_group_prompt` |
+| `group_rename(payload)` | 引擎动作 group_rename 的语义封装。 | `group_manage` |
+| `group_rules_get(payload)` | 引擎动作 group_rules_get 的语义封装。 | `read_group_prompt` |
+| `group_rules_set(payload)` | 引擎动作 group_rules_set 的语义封装。 | `write_group_prompt` |
 | `group_shut_list(payload)` | 当前被禁言成员列表（group_id）。 | `read_group_info` |
-| `group_leave(payload)` | Bot 退出群聊（group_id + is_dismiss；群主且 is_dismiss=true 时解散）。 | `group_manage` |
 | `group_title(payload)` | 群成员头衔（group_id/user_id/title；等价 set_group_special_title） | `group_manage` |
+| `group_whole_ban(payload)` | 引擎动作 group_whole_ban 的语义封装。 | `group_manage` |
 | `is_group_admin(payload)` | 判断成员是否群管理员（group_id + user_id）。 | `read_group_info` |
 | `is_group_owner(payload)` | 判断成员是否群主（group_id + user_id）。 | `read_group_info` |
-
-**QQ空间（v2.10；底层 NapCat send_qzone_msg / delete_qzone_msg）**
-| 方法 | 作用 | 权限 |
-| --- | --- | --- |
-| `qzone_publish(payload)` | 发表说说（content + images[]；ugc_right 1/4/16/64/128；target_uins 权限对象） | `qzone` |
-| `qzone_delete(payload)` | 删除说说（tid）。 | `qzone` |
 
 **关系/用户**
 | 方法 | 作用 | 权限 |
@@ -118,6 +126,13 @@
 | `schedule_list(payload)` | 列出本插件已注册的定时任务。 | `scheduler` |
 | `schedule_register(payload)` | 注册定时任务（kind + when + 可选 name，透传给调度器）。 | `scheduler` |
 
+**文件解析**
+| 方法 | 作用 | 权限 |
+| --- | --- | --- |
+| `file_parse(filename, content_base64)` | 引擎动作 file_parse 的语义封装。 | `parse_files` |
+| `file_parse_local(path)` | 引擎动作 file_parse_local 的语义封装。 | `parse_files + filesystem_read` |
+| `file_parse_status()` | 引擎动作 file_parse_status 的语义封装。 | `parse_files` |
+
 **AI/MCP**
 | 方法 | 作用 | 权限 |
 | --- | --- | --- |
@@ -138,8 +153,8 @@
 | `http_put(payload)` | 发起 HTTP PUT（安全边界与 http_request 相同）。 | `http_request` |
 | `http_request(payload)` | 发起 HTTP 请求（需要 http_request 权限，受超时与响应上限约束）。 | `http_request` |
 | `mcp_call(payload)` | MCP 工具调用（管理员配置服务器；工具白名单） | `http_request` |
-| `mcp_prompt(payload)` | MCP Prompt 模板（v1 未实现→not supported） | `http_request` |
-| `mcp_resource(payload)` | MCP 资源读取（v1 未实现→not supported） | `http_request` |
+| `mcp_prompt(payload)` | MCP Prompt 列表或获取（配置服务器；需要 mcp_read_prompt） | `mcp_read_prompt` |
+| `mcp_resource(payload)` | MCP 资源列表或读取（配置服务器；需要 mcp_read_resource） | `mcp_read_resource` |
 | `mcp_server(payload)` | MCP 服务器列表（已配置；含测试状态） | `http_request` |
 | `mcp_status(payload)` | MCP 服务器状态（在线探测） | `http_request` |
 | `mcp_tools(payload)` | MCP 工具列表（配置声明与在线工具） | `http_request` |
@@ -149,10 +164,15 @@
 | --- | --- | --- |
 | `__init__(payload)` | 构造插件 API：绑定 action 通道、插件 id 与 runner（storage/config/permission/context 走 runner 本地实现）。 | `—` |
 | `audio_info(payload)` | 音频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
+| `automation_set_flags(payload)` | 引擎动作 automation_set_flags 的语义封装。 | `manage_automation` |
+| `automation_status(payload)` | 引擎动作 automation_status 的语义封装。 | `scheduler` |
+| `automation_tasks(payload)` | 引擎动作 automation_tasks 的语义封装。 | `scheduler` |
+| `blossom_search(payload)` | 引擎动作 memory_semantic 的语义封装。 | `read_memory` |
 | `cache_delete(payload)` | 缓存删（等价 KV 删除） | `storage` |
 | `cache_get(payload)` | 缓存读（等价 KV 读取） | `storage` |
 | `cache_set(payload)` | 缓存写（等价 KV 写入） | `storage` |
 | `call(payload)` | 通用语义化动作调用（v1.5；封装唯一，动作名白名单由主进程校验）。 | `—` |
+| `call_action(payload)` | Invoke a named, permission-checked host action. | `—` |
 | `config_get(payload)` | 操作员配置 + 插件覆盖层（操作员的值优先）。 | `—` |
 | `config_set(payload)` | 写插件自己的配置覆盖层（操作员配置优先，插件改不动操作员的值）。 | `—` |
 | `context_info(payload)` | 拉取引擎侧上下文（插件名/版本/已批准权限）。 | `—` |
@@ -161,6 +181,7 @@
 | `db_query(payload)` | 数据查询（插件数据域 JSON 过滤） | `storage` |
 | `db_transaction(payload)` | 事务（原子写；全成或全滚） | `storage` |
 | `debug(payload)` | 调试通道（v1 不支持→not supported） | `plugin_admin` |
+| `digest_get(payload)` | 引擎动作 digest_get 的语义封装。 | `read_daily_digest` |
 | `edit_message(payload)` | 编辑消息（网关需支持；不支持时返回 not supported in v1） | `delete_message` |
 | `favorite_message(payload)` | 收藏消息（网关需支持；当前 v1 无端点→not supported） | `read_message_history` |
 | `file_convert(payload)` | 文件转换（v1 无转换器→not supported） | `filesystem_read` |
@@ -175,20 +196,55 @@
 | `get_group_member(payload)` | 取群成员信息（payload.group_id + user_id）。 | `read_group_info` |
 | `get_group_members(payload)` | 取群成员列表（payload.group_id）。 | `read_group_info` |
 | `get_memory(payload)` | 读长期记忆（payload.user_id + group_id，可按 key 取）。 | `read_memory` |
+| `global_prompt_get(payload)` | 引擎动作 global_prompt_get 的语义封装。 | `read_global_prompt` |
+| `global_prompt_reset(payload)` | 引擎动作 global_prompt_reset 的语义封装。 | `write_global_prompt` |
+| `global_prompt_set(payload)` | 引擎动作 global_prompt_set 的语义封装。 | `write_global_prompt` |
 | `handle_friend_request(payload)` | 处理加好友请求（flag + approve + 可选 remark）。 | `request_handle` |
 | `handle_group_request(payload)` | 处理加群请求（flag + approve + 可选 reason）。 | `request_handle` |
 | `health(payload)` | 健康检查（进程信息） | `plugin_admin` |
 | `image_compress(payload)` | 图片压缩（v1 无图像库→not supported） | `filesystem_read` |
 | `image_resize(payload)` | 图片缩放（v1 无图像库→not supported） | `filesystem_read` |
 | `image_screenshot(payload)` | 图片截图（v1 无图像能力→not supported） | `filesystem_read` |
+| `knowledge_add(payload)` | 引擎动作 knowledge_add 的语义封装。 | `write_group_knowledge` |
+| `knowledge_clear(payload)` | 引擎动作 knowledge_clear 的语义封装。 | `write_group_knowledge` |
+| `knowledge_delete(payload)` | 引擎动作 knowledge_delete 的语义封装。 | `write_group_knowledge` |
+| `knowledge_get(payload)` | 引擎动作 knowledge_get 的语义封装。 | `read_group_knowledge` |
+| `knowledge_list(payload)` | 引擎动作 knowledge_list 的语义封装。 | `read_group_knowledge` |
+| `knowledge_match(payload)` | 引擎动作 knowledge_match 的语义封装。 | `read_group_knowledge` |
+| `knowledge_update(payload)` | 引擎动作 knowledge_update 的语义封装。 | `write_group_knowledge` |
 | `log(payload)` | 写插件日志（level 默认 info，message ≤500 字符；不需要权限）。 | `—` |
 | `mark_message(payload)` | 标记消息（已读/未读；v1 无端点→not supported） | `delete_message` |
 | `merge_message(payload)` | 消息合并（payload 段列表 → 单条消息负载；纯本地语义） | `send_message` |
 | `metrics(payload)` | 指标快照（全量注册表） | `plugin_admin` |
 | `mock_api(payload)` | Mock（SDK 本地测试工具；API 层→not supported） | `plugin_admin` |
+| `nickname_list(payload)` | 引擎动作 nickname_list 的语义封装。 | `read_group_info` |
+| `nickname_resolve(payload)` | 引擎动作 nickname_resolve 的语义封装。 | `read_group_info` |
+| `nickname_set(payload)` | 引擎动作 nickname_set 的语义封装。 | `manage_group_persona` |
 | `now(payload)` | 返回当前时间戳（timestamp + UTC ISO 字符串）。 | `—` |
 | `permission_check(payload)` | 查询管理员是否批准了某权限（只读；无法提权）。 | `—` |
+| `persona_bind(payload)` | 引擎动作 persona_bind 的语义封装。 | `manage_group_persona` |
+| `persona_create(payload)` | 引擎动作 persona_create 的语义封装。 | `manage_personas` |
+| `persona_delete(payload)` | 引擎动作 persona_delete 的语义封装。 | `manage_personas` |
+| `persona_get(payload)` | 引擎动作 persona_get 的语义封装。 | `read_persona_content` |
+| `persona_list(payload)` | 引擎动作 persona_list 的语义封装。 | `read_group_info` |
+| `persona_resolve(payload)` | 引擎动作 persona_resolve 的语义封装。 | `read_group_info` |
+| `persona_set_global(payload)` | 引擎动作 persona_set_global 的语义封装。 | `manage_personas` |
+| `persona_unbind(payload)` | 引擎动作 persona_unbind 的语义封装。 | `manage_group_persona` |
+| `persona_update(payload)` | 引擎动作 persona_update 的语义封装。 | `manage_personas` |
+| `private_allowlist_set(payload)` | 引擎动作 private_allowlist_set 的语义封装。 | `manage_private_policy` |
+| `private_memory_clear(payload)` | 引擎动作 private_memory_clear 的语义封装。 | `write_private_memory` |
+| `private_policy(payload)` | 引擎动作 private_policy 的语义封装。 | `read_private_memory` |
+| `private_users(payload)` | 引擎动作 private_users 的语义封装。 | `read_private_memory` |
+| `profile_clear(payload)` | 引擎动作 profile_clear 的语义封装。 | `write_member_profile` |
+| `profile_delete(payload)` | 引擎动作 profile_delete 的语义封装。 | `write_member_profile` |
+| `profile_get(payload)` | 引擎动作 profile_get 的语义封装。 | `read_member_profile` |
+| `profile_list(payload)` | 引擎动作 profile_list 的语义封装。 | `read_member_profile` |
+| `profile_set_section(payload)` | 引擎动作 profile_set_section 的语义封装。 | `write_member_profile` |
 | `quote_chain(payload)` | 引用链解析（message_id 逐条回溯引用，≤3 层，纯本地语义） | `read_message_history` |
+| `qzone_delete(payload)` | 删除 QQ空间说说（tid）。 | `qzone` |
+| `qzone_history(payload)` | 引擎动作 qzone_history 的语义封装。 | `read_qzone_history` |
+| `qzone_publish(payload)` | 发表 QQ空间说说（content + images[]；ugc_right 1/4/16/64/128；target_uins 权限对象）。 | `qzone` |
+| `qzone_rights(payload)` | 引擎动作 qzone_rights 的语义封装。 | `read_qzone_history` |
 | `random_choice(payload)` | 从 choices 数组里随机取一个（空数组报错）。 | `—` |
 | `random_int(payload)` | 返回 [low, high] 内的随机整数（要求 low ≤ high）。 | `—` |
 | `read_status(payload)` | 消息已读状态查询（v1 无端点→not supported） | `read_message_history` |
@@ -201,6 +257,8 @@
 | `split_reply(payload)` | 长回复边界感知切分（Layer A：换行→句尾标点→逗号→空格→硬切，内容零丢失） | `read_message` |
 | `sse(payload)` | SSE 通道（v1 明确不支持→not supported） | `plugin_admin` |
 | `static_file(payload)` | 静态文件（插件 WebUI 空间；列/取链接） | `plugin_admin` |
+| `sticker_search(payload)` | 引擎动作 sticker_search 的语义封装。 | `read_sticker_library` |
+| `sticker_send(payload)` | 引擎动作 sticker_send 的语义封装。 | `send_sticker` |
 | `storage_delete(payload)` | 删除本插件私有存储的一个键（键不存在也算成功）。 | `—` |
 | `storage_get(payload)` | 读取本插件存储（与 TypeScript/Go/Rust/Java 的 ctx.storageGet 同名同义）。 | `—` |
 | `storage_list(payload)` | 列出本插件私有存储的键名（可按前缀过滤）。 | `—` |
@@ -211,6 +269,9 @@
 | `task_status(payload)` | 任务状态（任务运行在插件进程内；v1 主进程无句柄→not supported） | `plugin_admin` |
 | `trace(payload)` | 链路追踪（trace_id 查近期日志） | `plugin_admin` |
 | `video_info(payload)` | 视频信息（大小/格式；时长需网关辅助） | `filesystem_read` |
+| `web_fetch(payload)` | 引擎动作 web_fetch 的语义封装。 | `web_search` |
+| `web_search(payload)` | 引擎动作 web_search 的语义封装。 | `web_search` |
+| `web_search_options(payload)` | 引擎动作 web_search 的语义封装。 | `web_search` |
 | `webhook(payload)` | Webhook 发送（等价 http_request）；接收注册 v1 不支持 | `webhook` |
 | `write_memory(payload)` | 写长期记忆（payload.user_id + group_id + key + value）。 | `write_memory` |
 | `ws(payload)` | WebSocket 通道（v1 明确不支持→not supported） | `plugin_admin` |

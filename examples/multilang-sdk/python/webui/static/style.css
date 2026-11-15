@@ -4,15 +4,15 @@
 .flowerie-webui {
   margin: 0.5rem 0;
   padding: 0.75rem 1rem;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--panel-border, #d0d7de);
   border-radius: 6px;
-  background: #f6f8fa;
+  background: var(--ui-surface, #f6f8fa);
   line-height: 1.6;
 }
 
 .flowerie-webui dt {
   font-weight: 600;
-  color: #57606a;
+  color: var(--secondary, #57606a);
 }
 
 .flowerie-webui dd {

@@ -1,5 +1,6 @@
 """webui_render 用户状态页：当前账户 / 注销 / 服务器与集成状态（零 JS）。"""
 
+from src.services.webui_render.graphics import icon
 from src.services.webui_render.util import _esc
 
 
@@ -11,21 +12,24 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
 
     # ---- 账户信息 + 修改账号 + 注销 ----
     account_block = (
-        '<fieldset class="group"><legend>当前管理员</legend>'
-        '<div class="row"><label class="row-info"><span class="row-title">登录账号</span>'
-        '<span class="row-key">username</span></label>'
-        f'<div class="row-control"><code>{_esc(username)}</code>'
-        f'<span class="hint">凭据来源：{_esc(credential_source)}</span></div></div>'
+        '<section class="group account-identity"><header>'
+        f'<span class="icon-frame">{icon("account")}</span><h2>{_esc(username)}</h2>'
+        '<span class="badge">当前管理员</span></header>'
+        '<dl class="identity-data"><div><dt>凭据来源</dt>'
+        f'<dd>{_esc(credential_source)}</dd></div></dl>'
         '<div class="row"><label class="row-info"><span class="row-title">修改登录账号</span>'
         '<span class="row-key">credentials</span></label>'
         '<div class="row-control">'
         '<form method="post" action="/panel/account/credentials">'
         '<div class="row-control" style="flex-direction:column;gap:8px;align-items:stretch">'
-        '<input type="text" name="username" placeholder="新用户名（3~32 字符）" '
+        '<label for="account-new-user">新用户名</label>'
+        '<input type="text" name="username" id="account-new-user" placeholder="新用户名（3~32 字符）" '
         'autocomplete="username" required>'
-        '<input type="password" name="password" placeholder="新密码（至少 6 位）" '
+        '<label for="account-new-password">新密码</label>'
+        '<input type="password" name="password" id="account-new-password" placeholder="新密码（至少 6 位）" '
         'autocomplete="new-password" required>'
-        '<input type="password" name="current_password" placeholder="当前密码（用于确认）" '
+        '<label for="account-password">当前密码</label>'
+        '<input type="password" name="current_password" id="account-password" placeholder="当前密码（用于确认）" '
         'autocomplete="current-password" required>'
         '<button type="submit" class="btn">修改账号</button></div>'
         '<span class="hint">已初始化的系统不允许公开注册；此处是唯一的账号修改入口'
@@ -36,14 +40,15 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
         '<div class="row-control">'
         '<form method="post" action="/panel/account/unregister">'
         '<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-        '<input class="w-md" type="password" name="password" placeholder="输入当前密码确认注销" '
+        '<label for="account-unregister">当前密码</label>'
+        '<input class="w-md" type="password" name="password" id="account-unregister" placeholder="输入当前密码确认注销" '
         'autocomplete="current-password" required>'
         '<button type="submit" class="btn danger">注销账号</button></div>'
         '<span class="hint">注销将<strong>只清除管理账号与密码</strong>（settings.db 与 .env 中的 '
         '<code>WEB_UI_USERNAME</code>/<code>WEB_UI_PASSWORD</code>），其他环境配置（API Key 等）一律不动；'
         '注销=显式重置，系统回到 UNINITIALIZED（可重新首次注册）。'
         '若 <code>WEB_UI_ENABLED=true</code>，注销后需重新配置密码或注册才能登录。</span>'
-        '</form></div></div></fieldset>'
+        '</form></div></div></section>'
     )
 
     # ---- 服务器状态 ----
@@ -88,10 +93,7 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
         )
 
     # ---- API 厂商连接状态（连通性测试） ----
-    result = ""
-    if msg:
-        result = ('<p style="color:%s"><b>%s</b></p>'
-                  % ("#d73a49" if err else "#2ea043", _esc(msg)))
+    result = f'<p class="alert {"err" if err else "ok"}">{_esc(msg)}</p>' if msg else ""
     api_block = (
         '<fieldset class="group"><legend>API 厂商连接状态（连通性测试）</legend>'
         + _api_card("DeepSeek（聊天主厂商）", api_status.get("deepseek"), "deepseek")

@@ -1,6 +1,7 @@
 """webui_render 人格页：默认/全局人格 / 人格 CRUD / 群绑定 / 群聊 Prompt。"""
 
 from src.services.webui_render.config_panel import _render_config_row
+from src.services.webui_render.graphics import icon
 from src.services.webui_render.util import _esc
 
 
@@ -27,7 +28,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<form method="post" action="/panel/persona/default">'
         '<div class="row"><label class="row-info"><span class="row-title">兜底人格</span>'
         '<span class="row-key">PERSONA_DEFAULT</span></label>'
-        f'<div class="row-control"><select name="persona_id">{def_opts}</select>'
+        f'<div class="row-control"><select name="persona_id" aria-label="人格">{def_opts}</select>'
         '<span class="hint">没有设置全局人格、且该群没有群聊人格时，使用此兜底人格；'
         '保存后<strong>立即生效</strong>（热更新，无需重启），并写入 .env 的 <code>PERSONA_DEFAULT</code></span>'
         '</div></div>'
@@ -61,7 +62,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '短句为主 极少用感叹号和波浪号表达语气 不可过度使用</pre>'
         '<b>不能覆盖安全策略</b>：运行时记忆校验 / 注入清洗 / 预算限制等不受此文本影响。</p>'
         '<form method="post" action="/panel/persona/admin-rules">'
-        f'<textarea name="rules" rows="6" placeholder="每条规则占一行">{_esc(rules_text or "")}</textarea>'
+        f'<textarea name="rules" aria-label="发言规则" rows="6" placeholder="每条规则占一行">{_esc(rules_text or "")}</textarea>'
         '<div class="group-actions"><button type="submit" class="btn">保存发言规则</button></div>'
         '</form>'
         + (f'<div class="mcp-card-meta">当前规则（{len(admin_rules or [])} 条）：</div>'
@@ -72,7 +73,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
     # ---- 群专属发言规则（按群覆盖；零 JS） ----
     gr = group_rules or {}
     gr_rows = "".join(
-        f'<tr><td>{_esc(g)}</td><td><textarea name="rule_{g}" rows="3">{_esc(r)}</textarea></td></tr>'
+        f'<tr><td>{_esc(g)}</td><td><textarea name="rule_{g}" aria-label="群 {_esc(g)} 的规则" rows="3">{_esc(r)}</textarea></td></tr>'
         for g, r in sorted(gr.items(), key=lambda kv: int(kv[0])))
     gopts = "".join(f'<option value="{_esc(g)}">' for g in (group_gids or []))
     group_rules_block = (
@@ -80,9 +81,9 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<p class="hint">优先级：群专属 &gt; 管理员补充规则 &gt; 内置默认。</p>'
         '<form method="post" action="/panel/persona/grouprules">'
         '<div class="table-wrap"><table class="rules-table"><thead><tr><th>群号</th><th>规则（多行）</th></tr></thead><tbody>' + gr_rows + '</tbody></table></div>'
-        '<div class="rule-add"><input list="gidlist" name="group_id" placeholder="群号" pattern="[0-9]+">'
+        '<div class="rule-add"><input list="gidlist" name="group_id" aria-label="群号" placeholder="群号" pattern="[0-9]+">'
         f'<datalist id="gidlist">{gopts}</datalist>'
-        '<textarea name="rules" rows="4" placeholder="该群专属发言规则"></textarea>'
+        '<textarea name="rules" aria-label="发言规则" rows="4" placeholder="该群专属发言规则"></textarea>'
         '<button type="submit" class="btn small">保存</button></div>'
         '</form></fieldset>'
     )
@@ -127,7 +128,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<form method="post" action="/panel/prompt/global">'
         '<div class="row"><label class="row-info"><span class="row-title">内容</span>'
         '<span class="row-key">global_prompt</span></label>'
-        f'<div class="row-control"><textarea name="content" rows="6">{global_prompt_esc}</textarea></div></div>'
+        f'<div class="row-control"><textarea name="content" aria-label="Prompt 内容" rows="6">{global_prompt_esc}</textarea></div></div>'
         '<div class="group-actions">'
         '<button type="submit" name="action" value="set" class="btn">保存全局 Prompt</button>'
         '<button type="submit" name="action" value="reset" class="btn danger">重置（恢复默认）</button>'
@@ -141,15 +142,15 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<div class="row"><label class="row-info"><span class="row-title">查看某群 Prompt</span>'
         '<span class="row-key">group_id</span></label>'
         '<div class="row-control form-inline">'
-        f'<input class="w-gid" type="text" name="prompt_gid" placeholder="群号" required{gid_placeholder}>'
+        f'<input class="w-gid" type="text" name="prompt_gid" aria-label="查看某群 Prompt" placeholder="群号" required{gid_placeholder}>'
         '<button type="submit" class="btn small">查看</button></div></div></form>'
         '<form method="post" action="/panel/prompt/group">'
         '<div class="row"><label class="row-info"><span class="row-title">群号</span>'
         '<span class="row-key">group_id</span></label>'
-        f'<div class="row-control"><input class="w-gid" type="text" name="group_id" placeholder="群号" required{gid_placeholder}></div></div>'
+        f'<div class="row-control"><input class="w-gid" type="text" name="group_id" placeholder="群号" required{gid_placeholder} aria-label="群号"></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">内容</span>'
         '<span class="row-key">group_prompt</span></label>'
-        f'<div class="row-control"><textarea name="content" rows="6">{group_prompt_esc}</textarea>'
+        f'<div class="row-control"><textarea name="content" aria-label="Prompt 内容" rows="6">{group_prompt_esc}</textarea>'
         '<span class="hint">先在上方输入群号点「查看」载入该群当前 Prompt 再编辑；'
         '保存/重置只作用于填写的群，与其他群完全隔离</span></div></div>'
         '<div class="group-actions">'
@@ -169,7 +170,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<form method="post" action="/panel/persona/global">'
         '<div class="row"><label class="row-info"><span class="row-title">当前全局人格</span>'
         '<span class="row-key">global_persona</span></label>'
-        f'<div class="row-control"><select name="persona_id">{opts}</select>'
+        f'<div class="row-control"><select name="persona_id" aria-label="人格">{opts}</select>'
         '<span class="hint">没有群聊特殊设置时，所有群使用全局人格；删除群绑定时自动回退到这里</span>'
         '</div></div>'
         '<div class="group-actions"><button type="submit" class="btn">保存全局人格</button></div>'
@@ -182,7 +183,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         p = edit_persona or {}
         pid = _esc(p.get("id", ""))
         is_builtin = bool(p.get("builtin"))
-        id_field = (f'<input type="text" name="persona_id" value="{pid}" required '
+        id_field = (f'<input type="text" name="persona_id" aria-label="人格" value="{pid}" required '
                     'placeholder="小写字母/数字/下划线/短横线">'
                     '<span class="hint">创建后不可修改</span>'
                     if new else
@@ -190,7 +191,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
                     + ('<span class="badge">内置</span>' if is_builtin else ''))
         legend = "新建人格" if new else f"编辑人格：{_esc(p.get('name'))}"
         edit_block = (
-            f'<fieldset class="group"><legend>{legend}</legend>'
+            f'<fieldset class="group persona-editor"><legend>{legend}</legend>'
             '<form method="post" action="/panel/persona/save">'
             f'<input type="hidden" name="action" value="{"create" if new else "update"}">'
             '<div class="row"><label class="row-info"><span class="row-title">人格 ID</span>'
@@ -198,23 +199,23 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
             f'<div class="row-control">{id_field}</div></div>'
             '<div class="row"><label class="row-info"><span class="row-title">名称</span>'
             '<span class="row-key">name</span></label>'
-            f'<div class="row-control"><input type="text" name="name" value="{_esc(p.get("name", ""))}" required></div></div>'
+            f'<div class="row-control"><input type="text" name="name" aria-label="名称" value="{_esc(p.get("name", ""))}" required></div></div>'
             '<div class="row"><label class="row-info"><span class="row-title">简介</span>'
             '<span class="row-key">description</span></label>'
-            f'<div class="row-control"><input type="text" name="description" value="{_esc(p.get("description", ""))}"></div></div>'
-            '<div class="row"><label class="row-info"><span class="row-title">system_prompt（人格核心文本）</span>'
+            f'<div class="row-control"><input type="text" name="description" aria-label="简介" value="{_esc(p.get("description", ""))}"></div></div>'
+            '<div class="row single"><label class="row-info" for="persona-system-prompt"><span class="row-title">system_prompt（人格核心文本）</span>'
             '<span class="row-key">system_prompt</span></label>'
-            f'<div class="row-control"><textarea name="system_prompt" rows="12" required>{_esc(p.get("system_prompt", ""))}</textarea></div></div>'
+            f'<div class="row-control"><textarea id="persona-system-prompt" name="system_prompt" rows="12" required>{_esc(p.get("system_prompt", ""))}</textarea></div></div>'
             '<div class="row"><label class="row-info"><span class="row-title">词库参考</span>'
             '<span class="row-key">vocabulary</span></label>'
-            f'<div class="row-control"><textarea name="vocabulary" rows="5">{_esc(p.get("vocabulary", ""))}</textarea>'
+            f'<div class="row-control"><textarea name="vocabulary" aria-label="词库参考" rows="5">{_esc(p.get("vocabulary", ""))}</textarea>'
             '<span class="hint">选填；非空且未被 system_prompt 包含时作为「【词库参考】」段注入</span></div></div>'
             '<div class="row"><label class="row-info"><span class="row-title">行为规则</span>'
             '<span class="row-key">behavior_rules</span></label>'
-            f'<div class="row-control"><textarea name="behavior_rules" rows="4">{_esc(p.get("behavior_rules", ""))}</textarea></div></div>'
+            f'<div class="row-control"><textarea name="behavior_rules" aria-label="行为规则" rows="4">{_esc(p.get("behavior_rules", ""))}</textarea></div></div>'
             '<div class="row"><label class="row-info"><span class="row-title">回复风格</span>'
             '<span class="row-key">response_style</span></label>'
-            f'<div class="row-control"><textarea name="response_style" rows="4">{_esc(p.get("response_style", ""))}</textarea></div></div>'
+            f'<div class="row-control"><textarea name="response_style" aria-label="回复风格" rows="4">{_esc(p.get("response_style", ""))}</textarea></div></div>'
             '<div class="group-actions"><button type="submit" class="btn">保存人格</button>'
             '<a class="btn small" href="/panel?tab=persona">取消</a></div>'
             '</form></fieldset>'
@@ -243,7 +244,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
             )
         cards.append(
             '<div class="mcp-card">'
-            f'<div class="mcp-card-head"><b>{name}</b>{builtin_badge}{marks_html}</div>'
+            f'<div class="mcp-card-head"><span class="icon-frame">{icon("persona")}</span><b>{name}</b>{builtin_badge}{marks_html}</div>'
             f'<div class="mcp-card-meta">{pid}</div>'
             f'<div class="mcp-card-url">{desc}</div>'
             '<div class="actions-row">'
@@ -255,7 +256,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
             '</div></div>'
         )
     list_block = (
-        '<fieldset class="group"><legend>人格列表（Persona 资源库）</legend>'
+        '<fieldset class="group persona-list"><legend>人格列表（Persona 资源库）</legend>'
         + "".join(cards)
         + '<div class="actions-row"><a class="btn" href="/panel?tab=persona&new=1">新建人格</a></div>'
         + '</fieldset>'
@@ -288,8 +289,8 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '<div class="row"><label class="row-info"><span class="row-title">绑定人格到群</span>'
         '<span class="row-key">group_id + persona_id</span></label>'
         '<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-        '<input class="w-gid" type="text" name="group_id" placeholder="群号" required>'
-        f'<select class="w-gid" name="persona_id">{gopts}</select>'
+        '<input class="w-gid" type="text" name="group_id" aria-label="群号" placeholder="群号" required>'
+        f'<select class="w-gid" name="persona_id" aria-label="人格">{gopts}</select>'
         '<input type="hidden" name="action" value="set">'
         '<button type="submit" class="btn small">绑定</button></div>'
         '<span class="hint">优先级：本群人格 &gt; 全局人格 &gt; 内置默认；解除绑定自动回退</span>'
@@ -300,5 +301,7 @@ def render_persona_tab(personas, global_id, bindings, edit_persona=None, new=Fal
         '</fieldset>'
     )
 
-    return default_block + global_block + rules_block + group_rules_block + config_block + explain_block + prompt_block + edit_block + list_block + group_block
-
+    utilities = default_block + global_block + rules_block + group_rules_block + config_block + explain_block + prompt_block
+    if edit_block:
+        return f'<div class="persona-workbench">{list_block}{edit_block}</div>' + utilities + group_block
+    return utilities + list_block + group_block

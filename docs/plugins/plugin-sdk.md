@@ -1,5 +1,7 @@
 # Plugin SDK（多语言）
 
+画像、搜索、QQ 空间、自动化、私聊及群管理的调用方法与权限见[插件平台 API](../reference/plugin-platform-api.md)。
+
 > 插件协议**语言无关**：[plugin-protocol.md](../reference/plugin-protocol.md)（线格式 / 方法集 / 错误模型 / 版本协商）。
 > 本文是**通用规则的唯一出处**——五种语言共同的语义只写在这里，单语言文档只写「本语言特有的写法」并链回本文。
 > 源码：`sdk/typescript/flowerie_sdk.ts` · `sdk/go/flowerie/plugin.go` · `sdk/rust/src/lib.rs` · `sdk/java/src/main/java/dev/flowerie/sdk/` · Python 的运行时对端 `src/plugins/runner/python_runner.py`；逐能力状态与证据：[plugin-sdk-capabilities.md](../reference/plugin-sdk-capabilities.md)。
@@ -121,12 +123,14 @@ HTTP / 静态资源 / 页面渲染都由引擎负责，插件只在 stdio 上回
 
 | 方法 | 引擎发 | 插件回 |
 | :--- | :--- | :--- |
-| `webui.page` | `{"page":{id,title}, "context":{...}}` | `{"html": "...", "vars": {...}}` |
+| `webui.page` | `{"page":{id,title}, "context":{...}}` | `{"view": {...}}` 或 `{"html": "...", "vars": {...}}` |
 | `webui.action` | 另带 `action` 与 `form` | 同上，另可带 `config_set` / `storage_set` |
 | `webui.asset` | `{"path": "theme.css"}` | `{"content_type": "...", "body": "..."}`（二进制 `base64`）|
 
 页面两种形态：磁盘文件页（`pages[].file`，首选）与插件渲染页（`pages[].render = "plugin"`）；
 返回对象只透传白名单字段（`html/vars/context/message/content_type/body/base64/config_set/storage_set`）。
+五种语言均可用 [Web UI 组件 SDK](plugin-webui-sdk.md) 构造类型化表单和分页表格。
+
 注册写法见各语言文档 §6；协议与安全边界见 [plugin-webui-protocol.md](plugin-webui-protocol.md)。
 
 ## 7. 插件间通信

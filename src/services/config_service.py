@@ -20,7 +20,7 @@ import secrets as _secrets
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from src.config import Settings
+from src.config import Settings, normalize_file_formats
 from src.repositories.env_store import EnvFileStore
 from src.repositories.settings_repository import SettingsRepository
 from src.services.config_schema import (
@@ -554,7 +554,7 @@ class ConfigService:
             if ctype == "str":
                 if key in self._ENUM_VALUES and raw.lower() not in self._ENUM_VALUES[key]:
                     return None
-                return raw
+                return normalize_file_formats(raw) if key == "FILE_PARSE_FORMATS" else raw
             if ctype == "json":
                 # MCP_SERVERS：必须是合法 JSON 数组（元素级校验交给启动 validate_config）
                 if raw:

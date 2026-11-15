@@ -500,11 +500,11 @@ class PluginApi:
         return self._send_action("mcp_call", payload)
 
     def mcp_resource(self, payload):
-        """MCP 资源读取（v1 未实现→not supported）"""
+        """MCP 资源列表或读取（配置服务器；需要 mcp_read_resource）"""
         return self._send_action("mcp_resource", payload)
 
     def mcp_prompt(self, payload):
-        """MCP Prompt 模板（v1 未实现→not supported）"""
+        """MCP Prompt 列表或获取（配置服务器；需要 mcp_read_prompt）"""
         return self._send_action("mcp_prompt", payload)
 
     def mcp_status(self, payload):
@@ -749,6 +749,187 @@ class PluginApi:
     def qzone_delete(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """删除 QQ空间说说（tid）。"""
         return self._send_action("qzone_delete", payload)
+
+    def profile_get(self, group_id, user_id) -> Dict[str, Any]:
+        return self._send_action("profile_get", {"group_id": group_id, "user_id": user_id})
+
+    def profile_set_section(self, group_id, user_id, label, text, nickname="") -> Dict[str, Any]:
+        return self._send_action("profile_set_section", {"group_id": group_id, "user_id": user_id, "label": label, "text": text, "nickname": nickname})
+
+    def profile_delete(self, group_id, user_id) -> Dict[str, Any]:
+        return self._send_action("profile_delete", {"group_id": group_id, "user_id": user_id})
+
+    def web_search(self, query, limit=5) -> Dict[str, Any]:
+        return self._send_action("web_search", {"query": query, "limit": limit})
+
+    def knowledge_list(self, group_id, query="", limit=20) -> Dict[str, Any]:
+        return self._send_action("knowledge_list", {"group_id": group_id, "query": query, "limit": limit})
+
+    def persona_resolve(self, group_id) -> Dict[str, Any]:
+        return self._send_action("persona_resolve", {"group_id": group_id})
+
+    def nickname_resolve(self, group_id) -> Dict[str, Any]:
+        return self._send_action("nickname_resolve", {"group_id": group_id})
+
+    def file_parse(self, filename: str, content_base64: str) -> Dict[str, Any]:
+        return self._send_action("file_parse", {"filename": filename, "content_base64": content_base64})
+
+    def file_parse_local(self, path: str) -> Dict[str, Any]:
+        return self._send_action("file_parse_local", {"path": path})
+
+    def file_parse_status(self) -> Dict[str, Any]:
+        return self._send_action("file_parse_status", {})
+
+    def qzone_history(self, limit=20) -> Dict[str, Any]:
+        return self._send_action("qzone_history", {"limit": limit})
+
+    def qzone_rights(self) -> Dict[str, Any]:
+        return self._send_action("qzone_rights", {})
+
+    def automation_status(self) -> Dict[str, Any]:
+        return self._send_action("automation_status", {})
+
+    def group_whole_ban(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._send_action("group_whole_ban", payload)
+
+    def group_rename(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._send_action("group_rename", payload)
+
+    def group_card(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return self._send_action("group_card", payload)
+
+    def call_action(self, action: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Invoke a named, permission-checked host action."""
+        return self._send_action(action, payload)
+
+    def digest_get(self, group_id) -> dict:
+        return self._send_action("digest_get", {"group_id": group_id})
+
+    def blossom_search(self, group_id, query, top_k) -> dict:
+        return self._send_action("memory_semantic", {"group_id": group_id, "query": query, "top_k": top_k})
+
+    def knowledge_get(self, group_id, knowledge_id) -> dict:
+        return self._send_action("knowledge_get", {"group_id": group_id, "knowledge_id": knowledge_id})
+
+    def knowledge_delete(self, group_id, knowledge_id) -> dict:
+        return self._send_action("knowledge_delete", {"group_id": group_id, "knowledge_id": knowledge_id})
+
+    def knowledge_clear(self, group_id) -> dict:
+        return self._send_action("knowledge_clear", {"group_id": group_id})
+
+    def persona_bind(self, group_id, persona_id) -> dict:
+        return self._send_action("persona_bind", {"group_id": group_id, "persona_id": persona_id})
+
+    def persona_unbind(self, group_id) -> dict:
+        return self._send_action("persona_unbind", {"group_id": group_id})
+
+    def persona_get(self, persona_id) -> dict:
+        return self._send_action("persona_get", {"persona_id": persona_id})
+
+    def persona_delete(self, persona_id) -> dict:
+        return self._send_action("persona_delete", {"persona_id": persona_id})
+
+    def persona_set_global(self, persona_id) -> dict:
+        return self._send_action("persona_set_global", {"persona_id": persona_id})
+
+    def nickname_list(self, group_id) -> dict:
+        return self._send_action("nickname_list", {"group_id": group_id})
+
+    def group_prompt_get(self, group_id) -> dict:
+        return self._send_action("group_prompt_get", {"group_id": group_id})
+
+    def group_prompt_set(self, group_id, content) -> dict:
+        return self._send_action("group_prompt_set", {"group_id": group_id, "content": content})
+
+    def group_prompt_reset(self, group_id) -> dict:
+        return self._send_action("group_prompt_reset", {"group_id": group_id})
+
+    def group_rules_get(self, group_id) -> dict:
+        return self._send_action("group_rules_get", {"group_id": group_id})
+
+    def group_rules_set(self, group_id, content) -> dict:
+        return self._send_action("group_rules_set", {"group_id": group_id, "content": content})
+
+    def private_memory_clear(self, user_id) -> dict:
+        return self._send_action("private_memory_clear", {"user_id": user_id})
+
+    def web_fetch(self, url, max_chars) -> dict:
+        return self._send_action("web_fetch", {"url": url, "max_chars": max_chars})
+
+    def global_prompt_set(self, content) -> dict:
+        return self._send_action("global_prompt_set", {"content": content})
+
+    def profile_clear(self, group_id) -> dict:
+        return self._send_action("profile_clear", {"group_id": group_id})
+
+    def persona_list(self) -> dict:
+        return self._send_action("persona_list", {})
+
+    def private_policy(self) -> dict:
+        return self._send_action("private_policy", {})
+
+    def automation_tasks(self) -> dict:
+        return self._send_action("automation_tasks", {})
+
+    def global_prompt_get(self) -> dict:
+        return self._send_action("global_prompt_get", {})
+
+    def global_prompt_reset(self) -> dict:
+        return self._send_action("global_prompt_reset", {})
+
+    def sticker_search(self, payload) -> dict:
+        return self._send_action("sticker_search", payload)
+
+    def sticker_send(self, payload) -> dict:
+        return self._send_action("sticker_send", payload)
+
+    def knowledge_match(self, payload) -> dict:
+        return self._send_action("knowledge_match", payload)
+
+    def knowledge_add(self, payload) -> dict:
+        return self._send_action("knowledge_add", payload)
+
+    def knowledge_update(self, payload) -> dict:
+        return self._send_action("knowledge_update", payload)
+
+    def profile_list(self, payload) -> dict:
+        return self._send_action("profile_list", payload)
+
+    def nickname_set(self, payload) -> dict:
+        return self._send_action("nickname_set", payload)
+
+    def private_users(self, payload) -> dict:
+        return self._send_action("private_users", payload)
+
+    def private_allowlist_set(self, payload) -> dict:
+        return self._send_action("private_allowlist_set", payload)
+
+    def automation_set_flags(self, payload) -> dict:
+        return self._send_action("automation_set_flags", payload)
+
+    def persona_create(self, payload) -> dict:
+        return self._send_action("persona_create", payload)
+
+    def persona_update(self, payload) -> dict:
+        return self._send_action("persona_update", payload)
+
+    def group_notice_send(self, payload) -> dict:
+        return self._send_action("group_notice_send", payload)
+
+    def group_notice_get(self, payload) -> dict:
+        return self._send_action("group_notice_get", payload)
+
+    def group_files(self, payload) -> dict:
+        return self._send_action("group_files", payload)
+
+    def group_files_in(self, payload) -> dict:
+        return self._send_action("group_files_in", payload)
+
+    def group_file_url(self, payload) -> dict:
+        return self._send_action("group_file_url", payload)
+
+    def web_search_options(self, payload) -> dict:
+        return self._send_action("web_search", payload)
 
     def matcher_register(self, matchers: list) -> Dict[str, Any]:
         """批量注册 Matcher（SDK 启动时调用；返回注册摘要）。"""
@@ -1413,7 +1594,7 @@ class PluginRunner:
 
         三种合法返回（与其它语言 SDK 语义一致）：
         - 字符串 → 直接当页面 HTML（`{"ok": true, "html": ...}` 的简写）；
-        - 对象 → 透传受支持字段（html / vars / message / content_type / body / base64 /
+        - 对象 → 透传受支持字段（html / view / vars / message / content_type / body / base64 /
           config_set / storage_set），其余字段一律丢弃（不把插件内部对象塞进协议）；
         - `{"__error__": ...}`（钩子缺失或抛异常）→ 操作级错误，不是协议级错误。
         """
@@ -1429,7 +1610,7 @@ class PluginRunner:
                     "ok": False, "error": str(res.get("error") or "插件返回 ok=false")}})
                 return
             payload = {"ok": True}
-            for key in ("html", "vars", "context", "message", "content_type", "body", "base64",
+            for key in ("html", "view", "vars", "context", "message", "content_type", "body", "base64",
                         "config_set", "storage_set"):
                 if key in res:
                     payload[key] = res[key]

@@ -16,7 +16,11 @@
     "read_group_info",
     "group_manage",
     "qzone",
-    "read_user_info"
+    "read_user_info",
+    "webui.storage.read",
+    "webui.storage.write",
+    "parse_files",
+    "filesystem_read"
   ],
   "web_ui": {
     "static": "static",
@@ -30,6 +34,11 @@
       {
         "id": "communication",
         "title": "Communication",
+        "render": "plugin"
+      },
+      {
+        "id": "sdk_settings",
+        "title": "SDK 设置",
         "render": "plugin"
       }
     ]

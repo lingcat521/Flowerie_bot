@@ -41,7 +41,7 @@ class NicknamePanelMixin:
     async def _handle_panel_nicknames(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
             return web.HTTPFound("/panel")
-        return web.Response(text=self._render_nicknames_page(),
+        return web.Response(text=self._panel_page(tab="nicknames"),
                             content_type="text/html", charset="utf-8")
 
     def _render_nicknames_page(self, msg: str = "") -> str:
@@ -74,9 +74,9 @@ class NicknamePanelMixin:
         form = await request.post()
         store = self._nickname_store
         if store is None:
-            return web.Response(text=self._render_nicknames_page(msg="未初始化（重启后重试）"),
+            return web.Response(text=self._panel_page(tab="nicknames", msg="未初始化（重启后重试）", err=True),
                                 content_type="text/html", charset="utf-8")
         saved = apply_nicknames_form(store, form)
         msg = f"已保存 {saved} 个群的昵称" if saved else "无变更"
-        return web.Response(text=self._render_nicknames_page(msg=msg),
+        return web.Response(text=self._panel_page(tab="nicknames", msg=msg),
                             content_type="text/html", charset="utf-8")

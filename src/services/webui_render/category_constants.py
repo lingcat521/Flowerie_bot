@@ -1,14 +1,14 @@
 """Web UI 配置分类常量（单源；无 pydantic 依赖——config_schema 与渲染层共用）。"""
 
-CATEGORY_ORDER = [
-    "AI", "Bot", "Connection", "Behavior", "Stability", "Memory", "BlossomMemory", "Context",
-    "Sticker", "MCP", "WebUI", "Logging", "Budget", "ActiveChat", "Repeat",
-    "Poke", "FileParse", "Security", "Whitelist", "Archive", "Paths",
-    "Admin", "PrivateChat", "Search",
-    # 注意：Persona/Knowledge/Plugin 分类的配置项已在 SCHEMA 中，但不在配置页展示——
-    # 它们由「人格」「群聊知识」「插件」页的专属配置区块管理（见 webui_panels/* 等）
-    # v2.16.0：Automation（AI 内置工具层 + QQ空间配套）由「自动化」页管理
-]
+CATEGORY_GROUPS = (
+    ("接入与模型", ("Bot", "Connection", "AI")),
+    ("回复与互动", ("Behavior", "ActiveChat", "Repeat", "Poke", "Sticker", "PrivateChat")),
+    ("内容处理", ("FileParse", "Vision", "Forward", "MCP", "Search")),
+    ("上下文与数据", ("Context", "Memory", "BlossomMemory", "Archive", "Paths")),
+    ("权限与运行维护", ("Whitelist", "Admin", "Budget", "Stability", "Security", "Logging", "WebUI")),
+)
+# 专页管理的 Persona / Knowledge / Plugin / Automation 不在通用配置区展示。
+CATEGORY_ORDER = [category for _, categories in CATEGORY_GROUPS for category in categories]
 
 CATEGORY_LABELS = {
     "AI": "AI / Provider 配置",
@@ -28,6 +28,8 @@ CATEGORY_LABELS = {
     "Repeat": "复读与防刷",
     "Poke": "戳戳",
     "FileParse": "文件解析",
+    "Vision": "识图与图片限制",
+    "Forward": "合并转发",
     "Security": "安全与资源限制",
     "Whitelist": "白名单与隐私",
     "Archive": "消息存档",

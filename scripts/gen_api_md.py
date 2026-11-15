@@ -13,7 +13,15 @@ GROUPS = {
     "社交互动": ("react", "tap", "poke", "like", "pin", "unpin", "emoji", "essence"),
     "记忆/存储": ("memory", "mem_", "kv_"),
     "插件运行时": ("matcher_", "schedule_", "plugin", "kv_"),
+    "文件解析": ("file_parse",),
     "AI/MCP": ("ai_", "http_", "http_request", "mcp_"),
+}
+
+
+_SIGNATURES = {
+    "file_parse": "filename, content_base64",
+    "file_parse_local": "path",
+    "file_parse_status": "",
 }
 
 
@@ -58,6 +66,10 @@ def main():
              "> 由 scripts/gen_api_md.py 生成（AST from PluginApi）；端点名（OneBot）不出现在此。",
              "> 语义方法若网关无对应端点，运行时返回 `not supported in v1`（绝不静默）。",
              "> 插件间通信（PluginCommApi：`plugin.call/emit/on/expose/cancel`）不在本索引，见 [plugin-developer-guide.md](plugin-developer-guide.md) §8。", "", ""]
+    lines[5:5] = ["> 五语言签名和新增平台动作的参数见 [插件平台 API](plugin-platform-api.md)。"]
+    perms["blossom_search"] = perms["memory_semantic"]
+    perms["web_search_options"] = perms["web_search"]
+    perms["file_parse_local"] += " + filesystem_read"
     used = set()
     for group, prefixes in GROUPS.items():
         members = [m for m in sorted(api) if m not in used and m.startswith(prefixes)]
@@ -69,7 +81,7 @@ def main():
         lines.append("| --- | --- | --- |")
         for m in members:
             doc = _describe(m, api[m])
-            lines.append(f"| `{m}(payload)` | {doc} | `{perms.get(m, '—')}` |")
+            lines.append(f"| `{m}({_SIGNATURES.get(m, 'payload')})` | {doc} | `{perms.get(m, '—')}` |")
         lines.append("")
     rest = [m for m in sorted(api) if m not in used]
     if rest:
@@ -78,7 +90,7 @@ def main():
         lines.append("| --- | --- | --- |")
         for m in rest:
             doc = _describe(m, api[m])
-            lines.append(f"| `{m}(payload)` | {doc} | `{perms.get(m, '—')}` |")
+            lines.append(f"| `{m}({_SIGNATURES.get(m, 'payload')})` | {doc} | `{perms.get(m, '—')}` |")
         lines.append("")
     OUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"api.md 生成：{len(api)} 方法 → {OUT}")

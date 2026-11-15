@@ -140,9 +140,28 @@ def webui_page(page_id, action, params, values):
     return {"vars": _index_vars({})}
 
 
+def _sdk_settings(settings, *, saving=False):
+    from flowerie_sdk import webui
+
+    fields = [
+        webui.field("nickname", "显示名称", value=settings.get("nickname", "Flowerie"), required=True),
+        webui.field("limit", "每日报告上限", "integer", value=settings.get("limit", 10), required=True),
+        webui.field("enabled", "启用日报", "boolean", value=settings.get("enabled", False)),
+    ]
+    return webui.page(
+        webui.text("自动化设置", "status"),
+        webui.table(["任务", "周期"], [["日报", "每日"], ["周报", "每周"]], page_size=1),
+        form=webui.form("save", fields),
+        message="已保存" if saving else "",
+        storage={"sdk_settings": settings} if saving else None,
+    )
+
+
 def webui_render(page, context):
     """webui.page：插件渲染页（引擎要 HTML，插件返回 HTML + 受控模板变量）。"""
     plugin_id = _context_plugin_id(context)
+    if _page_id(page) == "sdk_settings":
+        return _sdk_settings(context.get("data", {}).get("sdk_settings", {}))
     if _page_id(page) == "communication":
         form = _context_form(context)
         # 引擎在 POST 时也会调本钩子（但不带表单；真正的调用在 webui.action）；
@@ -383,6 +402,8 @@ def webui_action(page, action, form, context):
     """webui.action：调用页的 POST（按钮 name=plugin_action value=call）-> 真调用 -> 重渲染。"""
     plugin_id = _context_plugin_id(context)
     form = form if isinstance(form, dict) else {}
+    if _page_id(page) == "sdk_settings" and action == "save":
+        return _sdk_settings(form, saving=True)
     if _page_id(page) != "communication":
         return {"ok": False, "error": "未知动作: %s" % (action or "")}
     if str(action or "") == "call" or str(form.get("plugin_action") or "") == "call":
@@ -454,6 +475,11 @@ def _run_command(text):
                 "t3": _call(argv[2], "ping")}
     if head == "errors":
         return _errors(argv[0], argv[1])
+    if head == "fileparse":
+        api = _api()
+        return {"inline": api.file_parse("note.txt", "aGVsbG8="),
+                "local": api.file_parse_local("document.txt"),
+                "status": api.file_parse_status()}
     if head == "caps":
         return _capabilities()
     if head == "dm":
@@ -491,6 +517,14 @@ def _capabilities():
             return {"ok": False, "error": "%s: %s" % (type(exc).__name__, exc)}
 
     return {
+        "private_history": _safe(lambda: api.user_history(20001, 5)),
+        "mute": _safe(lambda: api.group_ban({"group_id": 10001, "user_id": 20001, "duration": 60})),
+        "digest": _safe(lambda: api.digest_get(10001)),
+        "profile": _safe(lambda: api.profile_get(10001, 20001)),
+        "search": _safe(lambda: api.web_search("花璃", 3)),
+        "history": _safe(lambda: api.qzone_history(2)),
+        "automation": _safe(api.automation_status),
+        "schedules": _safe(api.schedule_list),
         "shut": _safe(lambda: api.group_shut_list({"group_id": 10001})),
         "leave": _safe(lambda: api.group_leave({"group_id": 10002, "is_dismiss": False})),
         "publish": _safe(lambda: api.qzone_publish({"content": "hello from python",

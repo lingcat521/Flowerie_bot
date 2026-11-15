@@ -66,3 +66,8 @@ def on_startup(context=None, api=None):
     """插件启动钩子（可选）：确保 data 目录存在。"""
     os.makedirs(os.path.dirname(_state_path()), exist_ok=True)
     return None
+
+
+def webui_action(page, action, form, context):
+    """处理 WebUI Protocol 的表单提交，复用文件页的数据钩子。"""
+    return webui_page(page["id"], action, {}, form)

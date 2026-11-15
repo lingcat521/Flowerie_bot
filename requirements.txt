@@ -1,10 +1,34 @@
+# 花璃 Flowerie · 运行时依赖
+# 安装：pip install -r requirements.txt
+# 说明：Python 3.14+（标准库 3.9+ 特性已在代码中使用，如 zoneinfo / match）
+
+# ---------- HTTP / WebSocket ----------
 aiohttp>=3.9.0
 httpx>=0.27.0
 websockets>=12.0
+
+# ---------- 配置 / 校验 ----------
 pydantic>=2.0
 pydantic-settings>=2.0
 python-dotenv>=1.0
+
+# ---------- 日志 ----------
 loguru>=0.7.0
+
+# ---------- 文档解析（file_parser）----------
 pypdf>=3.0.0
 python-docx>=1.1.0
 openpyxl>=3.1.0
+
+# ---------- 时区数据库 ----------
+# zoneinfo 依赖系统 tzdata；容器 / Termux / 精简镜像里通常没有，
+# 没有它 daily_digest 等使用 ZoneInfo 的模块会抛 ZoneInfoNotFoundError
+tzdata>=2024.1
+
+# ---------- 图像处理 ----------
+# 表情包索引与多模态识图：GIF 首帧转 PNG（src/services/multimodal.py）
+Pillow>=10.0
+
+# ---------- 可选：PostgreSQL 存储后端 ----------
+# 仅当 STORAGE_BACKEND=postgres 时需要，默认 SQLite 无需安装
+# psycopg[binary]>=3.1.0

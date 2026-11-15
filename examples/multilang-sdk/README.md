@@ -28,3 +28,11 @@ pytest -q -s tests/sdk/
 
 > Go 目录不在仓库里保留 `go.mod`：`build.sh` 在 `.build/src` 生成临时模块（绝对路径 replace SDK），
 > 这样插件目录可以整体拷到任意位置构建，也不会给仓库引入新的 Go 依赖图。
+
+## 试用 SDK 设置页
+
+进入任一示例插件的「SDK 设置」页，修改显示名称、报告上限和启用状态。保存后重新进入页面可以读回设置，任务表格可独立翻页。安装此示例时批准 `web_ui`、`webui.storage.read` 和 `webui.storage.write`。打包 Python 示例时，把仓库中的 `plugin_sdk/flowerie_sdk/` 一并复制到插件目录。
+
+[Web UI SDK 指南](../../docs/plugins/plugin-webui-sdk.md)列出了五种语言的构造入口和字段类型。
+
+`/sdk@<插件 id> fileparse` 演示查询配置、解析内联 Base64 和插件 `data/document.txt`。需批准 `parse_files`、`filesystem_read`，以及示例收发消息所需权限。

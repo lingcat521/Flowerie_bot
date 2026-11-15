@@ -1,12 +1,30 @@
 # 配置说明
 
-> 当前版本 **v2.14.2**。优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
+> 优先级：**Web UI 持久化配置 > 环境变量（`.env`）> 代码默认值**。
 > Web UI 保存 = 写回项目根 `.env`（原子更新、保留注释与原有变量）+ 同步 `data/settings.db`，重启后仍优先生效。
 
 - **首次启动**（项目根无 `.env`）自动释放完整模板：`main.ensure_env_template()` → `src/services/env_template.py`，
-  由 `src/services/config_schema.py:SCHEMA` 渲染（**227 项**配置，每项带中文说明 + 分类，与 Web UI 配置页同源）；已有 `.env` 不覆盖。
+  由 `src/services/config_schema.py:SCHEMA` 渲染（配置项带中文说明和分类，与 Web UI 配置页同源）；已有 `.env` 不覆盖。
 - **启动校验**（`src/config.py:validate_config()`，fail-fast，见文末「启动校验」）：必填缺失/占位值、端口冲突、枚举非法、区间越界一律拒绝启动。
 - 下表「默认」= 代码默认值；说明标 **重启** 的项改后需重启，其余热更新（完整重启清单见文末）。
+
+## 文件解析
+
+Web UI 入口为 **工具与扩展 → 文件解析**。可保存开关、格式及资源上限，并用当前设置上传文件预览提取结果。
+
+| 配置 | 默认 | 作用 |
+|---|---|---|
+| `FILE_PARSE_ENABLED` | `true` | 群文件、管理预览、HTTP 和插件 API 的总开关 |
+| `FILE_PARSE_GROUP_UPLOAD_ENABLED` | `true` | 允许读取群内上传文件，并把提取文本纳入同一群、同一上传者后续消息的上下文 |
+| `FILE_PARSE_FORMATS` | `txt,pdf,docx,xlsx,csv` | 逗号分隔；空值禁用所有格式 |
+| `FILE_PARSE_TEXT_FALLBACK` | `true` | 启用 TXT 时，其他扩展名尝试使用 UTF-8 解码 |
+| `MAX_FILE_DOWNLOAD_BYTES` | `2097152` | 文件输入字节上限 |
+| `MAX_FILE_TEXT_CHARS` | `8000` | 输出文本字符上限 |
+| `MAX_PDF_PAGES` | `100` | PDF 最多读取页数 |
+| `MAX_EXCEL_CELLS` | `50000` | XLSX 最多读取单元格数 |
+| `MAX_CSV_ROWS` | `10000` | CSV 最多读取行数 |
+
+通过 Web UI 保存立即生效。关闭群文件开关可保留手动预览和 API，同时停止群文件自动解析。API 与 SDK 用法见[文件解析接口](../reference/plugin-platform-api.md#文件解析)。
 
 ## 已移除的配置键（v2.18.0）
 

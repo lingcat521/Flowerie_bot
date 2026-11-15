@@ -201,6 +201,7 @@ class DailyDigestService:
                  context_manager=None, tz_name: str = "", profile_service=None,
                  budget=None):
         self.config = config
+        self.last_run = None
         self.ai = ai_client
         self.store = store
         # 共享 AI 预算（可选）：摘要属于后台批量任务，耗尽时跳过、计入不通知
@@ -434,7 +435,9 @@ class DailyDigestService:
                 break
             try:
                 stats = await self.run_once()
+                self.last_run = {"at": time.time(), "result": stats}
                 logger.info("digest_run %s", stats, extra={"event": "digest_run"})
             except Exception as exc:  # noqa: BLE001 - 单轮失败不杀循环
+                self.last_run = {"at": time.time(), "status": "failed"}
                 logger.error("digest_loop_error: %s", exc,
                              extra={"event": "digest_error"})

@@ -159,14 +159,14 @@ class ProfileStore:
             (group_id, user_id, nickname, json.dumps(sections, ensure_ascii=False), time.time()))
         conn.commit()
 
-    def group_profiles(self, group_id: int, limit: int = 8) -> List[Tuple[int, Dict]]:
+    def group_profiles(self, group_id: int, limit: int = 8, *, offset: int = 0) -> List[Tuple[int, Dict]]:
         """群里最近更新的画像（注入用；limit 控制块大小）。"""
         conn = self._ensure()
         if conn is None:
             return []
         rows = conn.execute(
             "SELECT user_id, nickname, sections FROM profiles WHERE group_id = ?"
-            " ORDER BY updated_at DESC LIMIT ?", (group_id, limit)).fetchall()
+            " ORDER BY updated_at DESC, user_id LIMIT ? OFFSET ?", (group_id, limit, offset)).fetchall()
         out = []
         for uid, nick, secs in rows:
             out.append((uid, {"nickname": nick, "sections": self._decode(secs)}))
@@ -440,9 +440,9 @@ class MemberProfileService:
     def enabled(self) -> bool:
         return bool(getattr(self.config, "PROFILE_ENABLED", False))
 
-    def list_group_profiles(self, group_id: int) -> List[Dict]:
+    def list_group_profiles(self, group_id: int, *, limit: int = 500, offset: int = 0) -> List[Dict]:
         """群里全部画像（Web UI 展示用；带字段级时间戳）。"""
-        rows = self.store.group_profiles(group_id, limit=500)
+        rows = self.store.group_profiles(group_id, limit=limit, offset=offset)
         out = []
         for uid, profile in rows:
             secs = profile.get("sections") or {}

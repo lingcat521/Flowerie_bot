@@ -1,4 +1,5 @@
 import dev.flowerie.sdk.FloweriePlugin;
+import dev.flowerie.sdk.FloweriePlugin.WebUIView;
 import dev.flowerie.sdk.Json;
 
 import java.io.IOException;
@@ -80,6 +81,10 @@ public final class MinimalPlugin {
         // 插件渲染页（index / communication）：Plugin 取受控 context 的 plugin id。
         plugin.webUI().page(webuiArgs -> {
             String id = ctxPluginId(webuiArgs, pluginId(plugin));
+            if ("sdk_settings".equals(pageIdOf(webuiArgs.get("page")))) {
+                Map<String, Object> data = castMap(castMap(webuiArgs.get("context")).get("data"));
+                return sdkSettings(castMap(data.get("sdk_settings")), false);
+            }
             if ("communication".equals(pageIdOf(webuiArgs.get("page")))) {
                 Map<String, Object> context = castMap(webuiArgs.get("context"));
                 Map<String, Object> form = contextForm(context);
@@ -93,6 +98,9 @@ public final class MinimalPlugin {
             // 调用页的 POST（按钮 name=plugin_action value=call）-> 真调用 -> 重渲染。
             String id = ctxPluginId(webuiArgs, pluginId(plugin));
             String action = text(webuiArgs.get("action"));
+            if ("sdk_settings".equals(pageIdOf(webuiArgs.get("page"))) && "save".equals(action)) {
+                return sdkSettings(castMap(webuiArgs.get("form")), true);
+            }
             if (!"communication".equals(pageIdOf(webuiArgs.get("page")))) {
                 return Json.obj("ok", Boolean.FALSE, "error", "未知动作: " + action);
             }
@@ -109,6 +117,21 @@ public final class MinimalPlugin {
         });
 
         plugin.run();
+    }
+
+    private static Map<String, Object> sdkSettings(Map<String, Object> settings, boolean saving) {
+        var fields = List.of(
+                WebUIView.field("nickname", "显示名称", "text", settings.getOrDefault("nickname", "Flowerie"), true),
+                WebUIView.field("limit", "每日报告上限", "integer", settings.getOrDefault("limit", 10), true),
+                WebUIView.field("enabled", "启用日报", "boolean", settings.getOrDefault("enabled", false), false));
+        var page = WebUIView.page(List.of(WebUIView.text("status", "自动化设置"),
+                WebUIView.table(List.of("任务", "周期"), List.of(List.of("日报", "每日"), List.of("周报", "每周")), 1)),
+                WebUIView.form("save", fields, "保存"));
+        if (saving) {
+            page.put("message", "已保存");
+            page.put("storage_set", Map.of("sdk_settings", settings));
+        }
+        return page;
     }
 
     // ================= WebUI 最小页面（任务书《plugin_to_webui》§23） =================
@@ -651,6 +674,11 @@ public final class MinimalPlugin {
         if ("errors".equals(head)) {
             return errors(plugin, arg(argv, 0), arg(argv, 1));
         }
+        if ("fileparse".equals(head)) {
+            FloweriePlugin.Context ctx = plugin.context();
+            return Json.obj("inline", ctx.fileParse("note.txt", "aGVsbG8="),
+                    "local", ctx.fileParseLocal("document.txt"), "status", ctx.fileParseStatus());
+        }
         if ("caps".equals(head)) {
             return capabilities(plugin);
         }
@@ -676,6 +704,14 @@ public final class MinimalPlugin {
     private static Object capabilities(final FloweriePlugin plugin) {
         FloweriePlugin.Context ctx = plugin.context();
         Map<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("private_history", safeCap(() -> ctx.userHistory(20001, 5)));
+        out.put("mute", safeCap(() -> ctx.groupBan(10001, 20001, 60)));
+        out.put("digest", safeCap(() -> ctx.digestGet(10001)));
+        out.put("profile", safeCap(() -> ctx.profileGet(10001, 20001)));
+        out.put("search", safeCap(() -> ctx.webSearch("花璃", 3)));
+        out.put("history", safeCap(() -> ctx.qzoneHistory(2)));
+        out.put("automation", safeCap(ctx::automationStatus));
+        out.put("schedules", safeCap(ctx::scheduleList));
         out.put("shut", safeCap(() -> ctx.groupShutList(Integer.valueOf(10001))));
         out.put("leave", safeCap(() -> ctx.groupLeave(Integer.valueOf(10002), false)));
         out.put("publish", safeCap(() -> ctx.qzonePublish("hello from java",

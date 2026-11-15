@@ -158,6 +158,19 @@ class QzoneService:
         return {"ok": True, "tid": clean}
 
     # ---------- 本地历史 ----------
+    def record_gateway_action(self, action: str, payload: dict, result: dict) -> None:
+        """Reflect plugin gateway actions in the same local history as panel posts."""
+        if not result.get("ok"):
+            return
+        if action == "qzone_delete":
+            self._drop(str(payload.get("tid") or ""))
+            return
+        data = result.get("data")
+        tid = result.get("tid") or (data.get("tid") if isinstance(data, dict) else None)
+        if tid:
+            self._record(str(tid), str(payload.get("content") or "").strip(),
+                         int(payload.get("ugc_right") or 1), len(payload.get("images") or []))
+
     def history(self) -> List[Dict[str, Any]]:
         with self._lock:
             return [dict(item) for item in self._items]

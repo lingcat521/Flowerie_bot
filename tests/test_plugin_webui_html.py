@@ -409,12 +409,14 @@ def test_shipped_example_plugin_renders(tmp_path):
     result, err = asyncio.run(mgr.plugin_webui_render("html_webui_demo", "index", "get", {}, {}))
     assert err == "" and result["mode"] == "html"
     html = result["html"]
-    assert "HTML WebUI 示例" in html and "flowerie-plugin-webui" in html
+    assert "<h2>运行状态</h2>" in html and "你好" in html
+    assert 'href="/panel/plugins/webui/html_webui_demo/static/style.css"' in html
     assert "{{" not in html                      # 所有占位符都被替换（缺失的替换为空）而不是原样漏出
     assert "<script" not in html.lower()
 
     css, mime = mgr.plugin_webui_static_file("html_webui_demo", "style.css")
     assert mime.startswith("text/css") and ".flowerie-plugin-webui" in css.decode("utf-8")
+    assert b"var(--accent," in css and b"/* " in css and b"*/" in css
 
 
 def test_img_tag_attrs_follow_global_rules():

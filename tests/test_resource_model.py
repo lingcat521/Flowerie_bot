@@ -274,7 +274,7 @@ class _FileParser:
         self.ok = ok
         self.calls = []
 
-    def decode_bytes(self, content_bytes, file_name):
+    async def decode_async(self, content_bytes, file_name):
         self.calls.append((content_bytes, file_name))
         return self.text, self.ok
 
@@ -411,3 +411,24 @@ def test_decode_base64_json_file_response_stays_strict():
 
     body = '{"retcode":0,"data":{"base64":"%s"}}' % _b64.b64encode(b"ok-content").decode()
     assert fp.decode_base64_json_file_response(body, "a.txt") == ("ok-content", True)
+
+
+@pytest.mark.parametrize("override", [
+    {"FILE_PARSE_ENABLED": False},
+    {"FILE_PARSE_GROUP_UPLOAD_ENABLED": False},
+    {"FILE_PARSE_FORMATS": "csv"},
+])
+async def test_disabled_group_file_is_not_fetched(override):
+    from src.core.message_assembler import MessageAssembler
+
+    config = _Cfg()
+    for name, value in override.items():
+        setattr(config, name, value)
+    state = _GS()
+    state.pending_files["2_1"] = {"file_name": "sample.txt", "file_size": 5,
+                                 "resource": ResourceRef.from_protocol_id("f1", origin="onebot11")}
+    fetcher = _Fetcher()
+    assembler = MessageAssembler(config, None, _FileParser(), state, resource_fetcher=fetcher)
+    assert await assembler._assemble_pending_file(2, 1) == ""
+    assert not fetcher.refs
+    assert not state.pending_files

@@ -22,7 +22,7 @@ from src.core.reply_plan import first_text
 from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
-from src.services.file_parser import FileParser
+from src.services.file_parser import FileParser, group_file_parse_enabled
 from src.services.mcp_tool_manager import McpToolManager
 from src.services.meme_knowledge_manager import MemeKnowledgeManager
 from src.services.meme_summary import MemeSummaryService
@@ -495,7 +495,7 @@ class MessageRouter(ReplyDispatchMixin):
     # ---------- 文件上传 ----------
     def _handle_group_upload(self, event: InternalEvent):
         file_data = event.notice_file or {}
-        if not file_data:
+        if not file_data or not group_file_parse_enabled(self.config):
             return
         group_id = event.group_id
         if not self._in_whitelist(group_id):

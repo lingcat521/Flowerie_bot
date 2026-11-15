@@ -5,6 +5,7 @@
 - 任何「启用/禁用/卸载/安装」按钮都必须经过认证处理器（管理员）
 - 用户无 JavaScript 影响：全部为 form + input/checkbox/radio
 """
+from src.services.webui_render.graphics import empty_state, icon
 from src.services.webui_render.util import _esc
 
 _PROTECTION_LABELS = {"normal": "Normal（推荐：完整限制）",
@@ -62,9 +63,9 @@ def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
             badges.append(f'<span class="badge ok">已启用 · {_esc(p["status"])}</span>')
         else:
             badges.append(f'<span class="badge">禁用 · {_esc(p["status"])}</span>')
-        head = (f'<div class="mcp-card-head"><b>{_esc(p["name"])}</b>'
-                f'<span class="mcp-card-meta">{pid} · {"".join(badges)}</span></div>')
-        desc = (f'<div class="mcp-card-url">{_esc(p["description"])}</div>'
+        head = (f'<header class="mcp-card-head"><span class="icon-frame">{icon("plugins")}</span><b>{_esc(p["name"])}</b></header>'
+                f'<span class="mcp-card-meta">{pid} · {"".join(badges)}</span>')
+        desc = (f'<div class="registry-description">{_esc(p["description"])}</div>'
                 if p["description"] else "")
         meta = (f'<div class="mcp-card-meta">声明权限：{_esc(", ".join(p["declared_permissions"]) or "无")}'
                 f' · 已批准：{_esc(", ".join(p["approved_permissions"]) or "无")}'
@@ -94,16 +95,17 @@ def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
             '<button type="submit" class="btn danger">卸载（删除文件与注册）</button></form>'
         )
         cards.append(
-            f'<div class="mcp-card">{head}{desc}{meta}'
-            f'<div class="range-row">{"".join(actions)}</div></div>'
+            f'<article class="mcp-card registry-card">{head}{desc}{meta}'
+            f'<div class="actions-row">{"".join(actions)}</div></article>'
         )
     parts.append(
         '<fieldset class="group"><legend>插件列表（Plugin Registry）</legend>'
         '<p class="hint">本地目录中放入插件后点「刷新扫描」即可发现；'
         '<b>发现 ≠ 自动执行</b>：新插件默认禁用，由管理员明确启用并批准权限。</p>'
         '<form method="post" action="/panel/plugins/refresh" style="margin-bottom:10px">'
-        '<button type="submit" class="btn">刷新扫描插件目录</button></form>'
-        + ("".join(cards) if cards else '<p class="hint">暂无插件</p>')
+        '<button type="submit" class="btn secondary">刷新扫描插件目录</button></form>'
+        + (f'<div class="registry-grid"><div class="registry-items">{"".join(cards)}</div></div>'
+           if cards else empty_state("plugins", "暂无插件。可刷新目录或在下方导入。"))
         + '</fieldset>'
     )
     # ---------- 安装 ----------
@@ -112,13 +114,13 @@ def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
         '<p class="hint">支持：本地 ZIP 包（含 manifest.json）或单个 manifest.json（声明式 JSON 插件）。'
         '安装后默认禁用，需手动启用并批准权限。</p>'
         '<form method="post" action="/panel/plugins/upload" enctype="multipart/form-data">'
-        '<label class="row-label">本地文件：</label>'
-        '<input type="file" name="plugin_file" accept=".zip,.json" required> '
+        '<label class="row-label" for="registry-upload">本地文件：</label>'
+        '<input type="file" name="plugin_file" id="registry-upload" accept=".zip,.json" required> '
         '<button type="submit" class="btn">上传并安装</button></form>'
         '<form method="post" action="/panel/plugins/install-url" style="margin-top:8px">'
-        '<label class="row-label">URL：</label>'
-        '<input type="url" name="url" placeholder="https://example.com/plugin.zip" '
-        'required style="width:60%"> '
+        '<label class="row-label" for="registry-url">URL：</label>'
+        '<input type="url" name="url" id="registry-url" placeholder="https://example.com/plugin.zip" '
+        'required> '
         '<button type="submit" class="btn">下载并安装</button>'
         '<p class="hint">下载受到 SSRF 防护（拒绝内网/回环/私网/重定向）、大小上限、'
         '超时与 Content-Type/扩展名检查。</p></form>'
@@ -136,7 +138,7 @@ def render_plugin_tab(plugins, protection: str = "normal", plugin_configs=None,
         cfg_rows += (
             '<div class="row single"><div class="row-info"><div class="row-title">'
             f'{_esc(key)}</div><div class="small">{_esc(entry.get("description", ""))}</div></div>'
-            f'<div class="row-control"><input type="text" name="{_esc(key)}" value="{_esc(entry.get("current", ""))}"></div></div>'
+            f'<div class="row-control"><input type="text" name="{_esc(key)}" aria-label="{_esc(entry.get("description") or key)}" value="{_esc(entry.get("current", ""))}"></div></div>'
         )
     parts.append(
         '<fieldset class="group"><legend>插件系统配置</legend>'

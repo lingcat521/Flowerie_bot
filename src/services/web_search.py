@@ -534,7 +534,7 @@ class WebSearchService:
         if not query:
             return {"ok": False, "error": "query is required"}
         limit = self._max_results(max_results)
-        key = self._cache_key(query, limit, time_range)
+        key = self._cache_key(query, limit, time_range) + (engine,)
         cached = self._cache_get(key)
         if cached is not None:
             return dict(cached, cached=True)

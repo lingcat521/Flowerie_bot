@@ -21,6 +21,7 @@ from aiohttp import web
 
 from src.config import Settings
 from src.services.config_service import ConfigService, verify_password
+from src.services.file_parser import FileParser
 from src.services.web_ui_assets import (
     THEMES,
     background_rules,
@@ -54,6 +55,9 @@ from src.services.webui_panels import (
 
 # 兼容导出：拆分后常量/辅助函数移入 webui_panels.appearance_panel
 from src.services.webui_panels.appearance_panel import MAX_UPLOAD_BYTES  # noqa: F401
+from src.services.webui_render.file_parse import render_file_preview
+from src.services.webui_render.graphics import empty_state
+from src.services.webui_render.pages import render_message
 from src.services.webui_static import handle_panel_static, no_store_html
 from src.utils.logging_setup import get_logger, get_recent_logs
 
@@ -74,8 +78,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
                  persona_manager=None, meme_manager=None, prompt_manager=None,
                  plugin_manager=None, group_nicknames=None, group_style_rules=None,
                  profile_service=None, admin_service=None, qzone_service=None,
-                 memory_manager=None, search_service=None):
+                 memory_manager=None, search_service=None, file_parser=None):
         self.config = config
+        self._file_parser = file_parser if file_parser is not None else FileParser(config)
         self.group_nicknames = group_nicknames
         # 群专属发言规则 store（与 MessageRouter 共享同一实例；按 群+人设 解析）
         self.group_style_rules = group_style_rules
@@ -87,7 +92,6 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         self._runner: Optional[web.AppRunner] = None
         self._site: Optional[web.TCPSite] = None
         self._started_at: float = time.time()
-        # 外观资源持久化目录（背景图片），测试可注入临时目录
         self._data_dir = str(data_dir)
         # 运行中 MCP 工具管理器（读取各 server 已同步工具数，用于卡片显示真实数量）
         self._tool_manager = tool_manager
@@ -99,12 +103,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         self._prompt_manager = prompt_manager
         # 插件系统（受控插件运行时；未注入时插件页提示不可用）
         self._plugin_manager = plugin_manager
-        # 群友画像（未注入/未开启时画像页提示不可用）
         self._profile_service = profile_service
-        # 群管理控制台 / QQ空间（v2.10；未注入时对应页提示不可用）
         self._admin_service = admin_service
         self._qzone_service = qzone_service
-        # 私聊面板数据源（v2.14.0；未注入时页面提示不可用）
         self._memory_manager = memory_manager
 
     def _issue_token(self) -> str:
@@ -168,13 +169,15 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app = web.Application(middlewares=[no_store_html])
         app.router.add_get("/", self._handle_root_redirect)
         app.router.add_get("/webui", self._handle_root_redirect)  # 旧 JS 版入口 → /panel
-        # 无 JS 兼容面板（服务端渲染，任何浏览器可用，含禁用 JS 的手机浏览器）
         app.router.add_get("/panel", self._handle_panel)
         app.router.add_get("/panel/docs/quick-start", self._handle_doc_quickstart)
         app.router.add_post("/panel/login", self._handle_panel_login)
         app.router.add_get("/panel/register", self._handle_panel_register_page)
         app.router.add_post("/panel/register", self._handle_panel_register)
         app.router.add_post("/panel/save", self._handle_panel_save)
+        app.router.add_post("/panel/files/preview", self._handle_panel_file_preview)
+        app.router.add_get("/api/files/status", self._handle_api_file_parse_status)
+        app.router.add_post("/api/files/parse", self._handle_api_file_parse)
         app.router.add_post("/panel/test/model", self._handle_panel_model_test)
         # 静态资源与页面是两条独立通道：静态路由必须**先**注册（否则会被 {page} 吃掉）
         app.router.add_get("/panel/plugins/webui/{pid}/static/{path:.*}",
@@ -190,7 +193,6 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/panel/account/unregister", self._handle_panel_unregister)
         # 修改登录账号（登录态；Bootstrap Lock 下唯一的改密入口）
         app.router.add_post("/panel/account/credentials", self._handle_panel_change_credentials)
-        # 外观美化（主题 / 背景颜色 / 背景图片 / 透明度）
         app.router.add_post("/panel/appearance", self._handle_panel_appearance_save)
         app.router.add_post("/panel/appearance/restore", self._handle_panel_appearance_restore)
         app.router.add_post("/panel/appearance/delete-image", self._handle_panel_appearance_delete_image)
@@ -297,11 +299,13 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         tab = request.query.get("tab", "")
         if tab not in ("appearance", "logs", "persona", "knowledge", "account", "plugins",
                        "nicknames", "profiles", "admin", "qzone", "private", "search",
-                       "automation"):
+                       "automation", "files"):
             tab = "config"
         cat = request.query.get("cat", "")
         if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
             cat = ""
+        if tab == "config" and cat == "FileParse":
+            tab = "files"
         try:
             mcp_edit = int(request.query.get("edit", ""))
         except (TypeError, ValueError):
@@ -329,7 +333,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
     def _panel_page(self, msg: str = "", err: bool = False, tab: str = "config", cat: str = "",
                     mcp_edit=None, edit_id: str = "", new_persona: bool = False,
                     gid: Optional[int] = None, search: str = "",
-                    prompt_gid: Optional[int] = None) -> str:
+                    prompt_gid: Optional[int] = None, file_result=None) -> str:
         prefs = self._get_prefs()
         theme = str(prefs["theme"])
         if theme not in THEMES:
@@ -357,11 +361,13 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             str(prefs["size"]),
             str(prefs["position"]),
         )
-        msg_html = ""
-        if msg:
-            msg_html = f'<div class="msg {"ok" if not err else "err"}">{_html.escape(msg)}</div>'
+        msg_html = render_message(msg, not err)
         panel_style = "glass" if str(prefs.get("panel_style", "")) == "glass" else "clear"
-        if tab == "appearance":
+        if tab == "files":
+            body_html = render_config_sections(self.config_service.list_configs(), active_cat="FileParse",
+                                               show_nav=False)
+            body_html += render_file_preview(self._file_parser.status(), file_result)
+        elif tab == "appearance":
             body_html = render_appearance(
                 theme, bg_color, int(prefs["opacity"]),
                 str(prefs["size"]), str(prefs["position"]),
@@ -370,7 +376,15 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             )
         elif tab == "logs":
             logs = "\n".join(get_recent_logs(200))
-            body_html = f'<pre class="log">{_html.escape(logs)}</pre>'
+            log_content = (
+                f'<pre class="log" tabindex="0" aria-label="运行日志">{_html.escape(logs)}</pre>'
+                if logs else empty_state("logs", "暂无运行日志。")
+            )
+            body_html = (
+                '<div class="log-toolbar"><span>最近 200 条</span>'
+                '<a href="/panel?tab=logs" class="btn secondary">刷新</a></div>'
+                f'<section class="log-frame"><h2>运行日志</h2>{log_content}</section>'
+            )
         elif tab == "account":
             body_html = self._render_account_page(msg=msg, err=err)
         elif tab == "persona":

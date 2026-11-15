@@ -1,5 +1,7 @@
 # Plugin SDK 能力矩阵（Capability Matrix）
 
+画像、搜索、QQ 空间、自动化、私聊及群管理的调用方法与权限见[插件平台 API](plugin-platform-api.md)。
+
 > 状态词只有四个：**SUPPORTED**（有自动化证据）/ **PARTIAL**（部分实现或证据不足）/
 > **UNSUPPORTED**（明确不支持）/ **UNKNOWN**（未验证）。**禁止为了让表格「全绿」而虚假声明**：
 > 每一格 SUPPORTED 都必须能指到下面某条绿色输出或 CI 记录，指不到就降级。

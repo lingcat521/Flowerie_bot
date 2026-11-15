@@ -5,6 +5,8 @@
 """
 from html import escape
 
+from src.services.webui_render.graphics import empty_state, icon
+
 
 def _pid_label(personas, pid):
     """人设 id → 展示名（找不到则原样 id）。"""
@@ -39,13 +41,14 @@ def render_nicknames_tab(nicknames: dict, default: str, msg: str = "",
             badge = '<span class="nick-persona group">群级</span>'
         cards.append(
             '<div class="mcp-card nick-card">'
-            f'<div class="nick-head"><span class="nick-gid">群 {escape(gid_s)}</span>{badge}</div>'
+            f'<div class="nick-head"><span class="nick-gid">{icon("nicknames")}群 {escape(gid_s)}</span>{badge}</div>'
+            '<label>群昵称'
             f'<input type="text" name="{input_name}" value="{escape(nicknames[key])}"'
-            ' maxlength="20" placeholder="留空恢复默认">'
+            ' maxlength="20" placeholder="留空恢复默认"></label>'
             '</div>')
 
     hint = f'<p class="alert ok">{escape(msg)}</p>' if msg else ""
-    empty = ('<p class="hint">还没有配置——在下面选群（或填群号）新增一条即可。</p>'
+    empty = (empty_state("nicknames", "还没有配置。可使用下方表单新增一条昵称。")
              if not cards else "")
     save_row = ('<div class="group-actions"><button type="submit" class="btn">保存全部修改</button>'
                 '</div>' if cards else "")
@@ -58,10 +61,10 @@ def render_nicknames_tab(nicknames: dict, default: str, msg: str = "",
         '<div class="nick-head"><b>新增 / 覆盖</b>'
         '<span class="hint">昵称留空＝删除该条目</span></div>'
         '<div class="nick-add">'
-        '<input list="gidlist" name="group_id" placeholder="群号" pattern="[0-9]+">'
+        '<label>群号<input list="gidlist" name="group_id" placeholder="群号" pattern="[0-9]+"></label>'
         f'<datalist id="gidlist">{gopts}</datalist>'
-        f'<select name="persona_id">{popts}</select>'
-        '<input type="text" name="nickname" maxlength="20" placeholder="昵称（留空删除）">'
+        f'<label>人格<select name="persona_id">{popts}</select></label>'
+        '<label>昵称<input type="text" name="nickname" maxlength="20" placeholder="昵称（留空删除）"></label>'
         '<button type="submit" class="btn small">添加 / 覆盖</button>'
         '</div></div>'
     )

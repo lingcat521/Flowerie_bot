@@ -91,3 +91,22 @@ def test_real_schema_has_placeholders_for_required():
     for key in REQUIRED_PLACEHOLDERS:
         assert key in REAL_SCHEMA, "必填项不在 SCHEMA 里: %s" % key
 
+
+
+def test_checked_in_example_has_every_setting_and_comment():
+    from io import StringIO
+    from pathlib import Path
+
+    from dotenv import dotenv_values
+
+    from src.config import Settings
+    from src.services.env_template import default_env_text
+
+    example = (Path(__file__).resolve().parents[1] / ".env_example").read_text(encoding="utf-8")
+    assert example == default_env_text(Settings)
+    assert set(dotenv_values(stream=StringIO(example))) == set(Settings.model_fields)
+    lines = example.splitlines()
+    assignments = [i for i, line in enumerate(lines) if line and not line.startswith("#")]
+    assert len(assignments) == len(Settings.model_fields)
+    for index in assignments:
+        assert lines[index - 1].startswith("# "), lines[index]

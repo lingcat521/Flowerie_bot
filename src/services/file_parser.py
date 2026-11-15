@@ -1,11 +1,15 @@
+import asyncio
 import base64
 import json
+import os
+import zipfile
 from io import BytesIO, StringIO
+from itertools import islice
 from typing import Dict, List, Optional, Tuple
 
 import httpx
 
-from src.config import Settings
+from src.config import DEFAULT_FILE_PARSE_FORMATS, FILE_PARSE_FORMAT_NAMES, Settings
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -29,9 +33,42 @@ except ImportError:
     csv = None
 
 
+PLUGIN_FILE_BYTES = 32 * 1024  # JSON-Lines transport has a 64 KiB line limit.
+PLUGIN_TEXT_CHARS = 8000
+
+
+def group_file_parse_enabled(config) -> bool:
+    return (getattr(config, "FILE_PARSE_ENABLED", True)
+            and getattr(config, "FILE_PARSE_GROUP_UPLOAD_ENABLED", True))
+
+
+def file_parse_format(config, filename: str, *, fallback: bool) -> str:
+    extension = filename.rpartition(".")[2].lower() if "." in filename else ""
+    fmt = extension or "txt"
+    if fmt not in FILE_PARSE_FORMAT_NAMES:
+        if not fallback or not getattr(config, "FILE_PARSE_TEXT_FALLBACK", True):
+            return ""
+        fmt = "txt"
+    allowed = getattr(config, "FILE_PARSE_FORMATS", DEFAULT_FILE_PARSE_FORMATS)
+    return fmt if fmt in allowed.split(",") else ""
+
+
+def file_parse_error(code, error):
+    return {"ok": False, "code": code, "error": error}
+
+
+def _office_size_ok(content: bytes) -> bool:
+    try:
+        with zipfile.ZipFile(BytesIO(content)) as archive:
+            return sum(entry.file_size for entry in archive.infolist()) <= 64 * 1024 * 1024
+    except zipfile.BadZipFile:
+        return False
+
+
 class FileParser:
     def __init__(self, config: Settings):
         self.config = config
+        self._parse_slots = asyncio.Semaphore(2)
         self._client: Optional[httpx.AsyncClient] = None  # 复用的 HTTP 客户端（懒创建）
 
     def _get_client(self, timeout: float = 30) -> httpx.AsyncClient:
@@ -55,6 +92,66 @@ class FileParser:
             return text[:limit] + "\n...(内容过长已截断)"
         return text
 
+    def status(self) -> dict:
+        available = {"txt": True, "pdf": PyPDF2 is not None, "docx": docx is not None,
+                     "xlsx": openpyxl is not None, "csv": csv is not None}
+        enabled = getattr(self.config, "FILE_PARSE_FORMATS", DEFAULT_FILE_PARSE_FORMATS).split(",")
+        max_bytes = getattr(self.config, "MAX_FILE_DOWNLOAD_BYTES", 2 * 1024 * 1024)
+        max_chars = getattr(self.config, "MAX_FILE_TEXT_CHARS", 8000)
+        return {
+            "ok": True,
+            "enabled": bool(getattr(self.config, "FILE_PARSE_ENABLED", True)),
+            "group_upload_enabled": bool(group_file_parse_enabled(self.config)),
+            "text_fallback": bool(getattr(self.config, "FILE_PARSE_TEXT_FALLBACK", True) and "txt" in enabled),
+            "formats": {name: {"enabled": name in enabled, "available": ready}
+                        for name, ready in available.items()},
+            "max_bytes": max_bytes,
+            "max_text_chars": max_chars,
+            "max_pdf_pages": getattr(self.config, "MAX_PDF_PAGES", 100),
+            "max_excel_cells": getattr(self.config, "MAX_EXCEL_CELLS", 50000),
+            "max_csv_rows": getattr(self.config, "MAX_CSV_ROWS", 10000),
+            "plugin_local_supported": os.open in os.supports_dir_fd and hasattr(os, "O_NOFOLLOW"),
+            "plugin_max_bytes": min(PLUGIN_FILE_BYTES, max_bytes),
+            "plugin_max_text_chars": min(PLUGIN_TEXT_CHARS, max_chars),
+        }
+
+    async def parse_document(self, filename: str, content: bytes, *, plugin: bool = False) -> dict:
+        status = self.status()
+        if not status["enabled"]:
+            return file_parse_error("unavailable", "文件解析已关闭")
+        if (not isinstance(filename, str) or not filename.strip() or len(filename) > 255
+                or "/" in filename or "\\" in filename
+                or any(ord(ch) < 32 or 0xD800 <= ord(ch) <= 0xDFFF for ch in filename)):
+            return file_parse_error("invalid_argument", "需要合法文件名（不含路径）")
+        fmt = file_parse_format(self.config, filename, fallback=True)
+        if not fmt:
+            return file_parse_error("unsupported_format", "该文件格式未启用或不支持")
+        if not status["formats"][fmt]["available"]:
+            return file_parse_error("unavailable", "当前环境缺少该格式的解析依赖")
+        limit = status["max_bytes"]
+        if len(content) > limit:
+            return file_parse_error("file_too_large", f"文件超过 {limit} 字节")
+        if not content:
+            return file_parse_error("invalid_argument", "文件为空")
+        decoded = await self.decode_async(content, filename)
+        if decoded is None:
+            return file_parse_error("busy", "文件解析繁忙，请稍后重试")
+        text, ok = decoded
+        if not ok:
+            return file_parse_error("parse_failed", "解析失败，请检查文件完整性及格式")
+        cap = status["plugin_max_text_chars" if plugin else "max_text_chars"]
+        return {"ok": True, "filename": filename, "format": fmt, "bytes": len(content),
+                "text": text[:cap], "truncated": len(text) > cap}
+
+    async def decode_async(self, content: bytes, filename: str) -> Optional[Tuple[str, bool]]:
+        """Run a shared decoder slot. Cancellation does not free a slot until its worker exits."""
+        if self._parse_slots.locked():
+            return None
+        await self._parse_slots.acquire()
+        worker = asyncio.create_task(asyncio.to_thread(self.decode_bytes, content, filename))
+        worker.add_done_callback(lambda _: self._parse_slots.release())
+        return await asyncio.shield(worker)
+
     # ========== 通用：URL 下载（协议无关；Gate R 的 ResourceRef(URL) 走这里） ==========
     async def fetch_url_bytes(self, url: str, max_bytes: int = 2 * 1024 * 1024) -> Tuple[bytes, bool]:
         """下载 URL 内容（流式 + 字节上限；任何异常都返回 (b"", False)，不抛给调用方）。
@@ -63,17 +160,17 @@ class FileParser:
         """
         try:
             client = self._get_client(timeout=30)
-            body = b""
+            body = bytearray()
             async with client.stream("GET", url) as resp:
                 if resp.status_code != 200:
                     logger.error(f"Fetch url failed: HTTP {resp.status_code}")
                     return b"", False
                 async for chunk in resp.aiter_bytes():
-                    body += chunk
-                    if len(body) > max_bytes:
+                    if len(body) + len(chunk) > max_bytes:
                         logger.error(f"Fetch url response exceeds limit ({max_bytes} bytes), aborted")
                         return b"", False
-            return body, True
+                    body.extend(chunk)
+            return bytes(body), True
         except httpx.TimeoutException:
             logger.error("Fetch url timeout")
             return b"", False
@@ -96,6 +193,9 @@ class FileParser:
             if len(content_bytes) > max_bytes:
                 logger.error(f"File decode bytes exceed limit: {len(content_bytes)} > {max_bytes}")
                 return "", False
+            if not getattr(self.config, "FILE_PARSE_ENABLED", True) or not file_parse_format(
+                    self.config, file_name, fallback=True):
+                return "", False
             ext = file_name.split('.')[-1].lower() if '.' in file_name else ''
             extracted_text = ""
 
@@ -113,7 +213,7 @@ class FileParser:
                     return "", False
                 try:
                     pdf_reader = PyPDF2.PdfReader(BytesIO(content_bytes))
-                    pages = [page.extract_text() or "" for page in pdf_reader.pages[:self.config.MAX_PDF_PAGES]]
+                    pages = [page.extract_text() or "" for page in islice(pdf_reader.pages, self.config.MAX_PDF_PAGES)]
                     extracted_text = self._cap("\n".join(pages))
                     return extracted_text, True
                 except Exception as e:
@@ -121,7 +221,7 @@ class FileParser:
                     return "", False
 
             elif ext == 'docx':
-                if docx is None:
+                if docx is None or not _office_size_ok(content_bytes):
                     return "", False
                 try:
                     doc = docx.Document(BytesIO(content_bytes))
@@ -133,32 +233,31 @@ class FileParser:
                     return "", False
 
             elif ext == 'xlsx':
-                if openpyxl is None:
+                if openpyxl is None or not _office_size_ok(content_bytes):
                     return "", False
                 try:
-                    # zip 炸弹预检：综合解压尺寸上限（xlsx 是 zip，解压可膨胀数百倍）
-                    import zipfile as _zip
+                    wb = openpyxl.load_workbook(BytesIO(content_bytes), read_only=True, data_only=True)
                     try:
-                        with _zip.ZipFile(BytesIO(content_bytes)) as zf:
-                            total_uncompressed = sum(i.file_size for i in zf.infolist())
-                            if total_uncompressed > 512 * 1024 * 1024:
-                                logger.warning("xlsx decompression bomb: %s", total_uncompressed)
-                                return "", False
-                    except _zip.BadZipFile:
-                        return "", False
-                    wb = openpyxl.load_workbook(BytesIO(content_bytes), data_only=True)
-                    rows = []
-                    cell_count = 0
-                    for sheet in wb.worksheets:
-                        rows.append(f"--- 工作表: {sheet.title} ---")
-                        for row in sheet.iter_rows(values=True):
-                            rows.append("\t".join([str(cell) if cell is not None else "" for cell in row]))
-                            cell_count += len(row)
-                            if cell_count >= self.config.MAX_EXCEL_CELLS:
-                                rows.append("...(已达到解析上限)")
+                        rows = []
+                        remaining = self.config.MAX_EXCEL_CELLS
+                        for sheet in wb.worksheets:
+                            rows.append(f"--- 工作表: {sheet.title} ---")
+                            if sheet.max_column == 0:
+                                continue
+                            for row in sheet.iter_rows(max_col=min(sheet.max_column or remaining, remaining),
+                                                       values_only=True):
+                                if not row:
+                                    continue
+                                limited = row[:remaining]
+                                rows.append("\t".join(str(cell) if cell is not None else "" for cell in limited))
+                                remaining -= len(limited)
+                                if remaining == 0:
+                                    rows.append("...(已达到解析上限)")
+                                    break
+                            if remaining == 0:
                                 break
-                        if cell_count >= self.config.MAX_EXCEL_CELLS:
-                            break
+                    finally:
+                        wb.close()
                     extracted_text = self._cap("\n".join(rows))
                     return extracted_text, True
                 except Exception as e:
@@ -178,7 +277,7 @@ class FileParser:
                     else:
                         text_content = content_bytes.decode('utf-8', errors='ignore')
                     reader = csv.reader(StringIO(text_content))
-                    rows = [",".join(row) for row in reader][:self.config.MAX_CSV_ROWS]
+                    rows = [",".join(row) for row in islice(reader, self.config.MAX_CSV_ROWS)]
                     extracted_text = self._cap("\n".join(rows))
                     return extracted_text, True
                 except Exception as e:

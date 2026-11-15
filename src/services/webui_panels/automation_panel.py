@@ -9,25 +9,13 @@ from urllib.parse import quote
 
 from aiohttp import web
 
+from src.services.automation_config import AUTOMATION_KEYS
 from src.services.webui_render.config_panel import _render_config_row
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
 
 #: 本页管理的键（与 config_schema.py 的 Automation 分类同源，显式声明便于校验）
-AUTOMATION_KEYS = (
-    "AI_QZONE_ENABLED", "AI_QZONE_MAX_PER_DAY",
-    "AI_SEARCH_ENABLED",
-    "AI_QZONE_AUTO_ENABLED", "AI_QZONE_AUTO_INTERVAL_HOURS",
-    "AI_ADMIN_ENABLED", "AI_MEMORY_ENABLED", "AI_TOOL_PROMPT",
-    "AI_GROUP_INFO_ENABLED", "AI_PROFILES_ENABLED",
-    "AI_KNOWLEDGE_ENABLED", "AI_POKE_ENABLED", "AI_STICKER_ENABLED",
-    "QZONE_IMAGE_DIR", "QZONE_IMAGE_INDEX_PATH",
-    "QZONE_IMAGE_MAX", "QZONE_IMAGE_DESCRIBE_LIMIT",
-    "QZONE_ENABLED", "QZONE_DEFAULT_UGC_RIGHT",
-    "QZONE_HISTORY_PATH", "QZONE_MAX_HISTORY",
-)
-
 #: 分组展示（兼容老导入名；键与 AUTOMATION_KEYS 一致）
 AUTOMATION_KEYS_LIST = list(AUTOMATION_KEYS)
 
@@ -41,14 +29,18 @@ class AutomationPanelMixin:
         # 按声明顺序排（表单字段顺序稳定）
         order = {k: i for i, k in enumerate(AUTOMATION_KEYS)}
         configs.sort(key=lambda c: order.get(c["key"], 999))
-        rows = "".join(_render_config_row(c) for c in configs)
+        capabilities = "".join(_render_config_row(c) for c in configs if c["key"].startswith("AI_"))
+        qzone = "".join(_render_config_row(c) for c in configs if c["key"].startswith("QZONE_"))
         hint = (
             '<div class="hint">AI 内置工具默认全部关闭——打开对应开关后，模型才能在对话中'
             '自主调用 QQ空间 / 群管理 / 记忆 / 搜索工具。保存即刻生效（写入 .env）。</div>')
         return (
             "<h2>自动化（AI 内置工具层）</h2>" + hint
             + '<form method="post" action="/panel/automation/save">'
-            + rows
+            + '<div class="automation-panels">'
+            + f'<fieldset class="group"><legend>AI 工具与执行条件</legend>{capabilities}</fieldset>'
+            + f'<fieldset class="group"><legend>QQ空间参数</legend>{qzone}</fieldset>'
+            + '</div>'
             + '<div class="group-actions"><button type="submit" class="btn">保存自动化配置</button></div>'
             + "</form>")
 

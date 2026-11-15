@@ -13,13 +13,17 @@
 
 | 方法 | params | result |
 | :--- | :--- | :--- |
-| `webui.page` | `{"page":{"id","title","description"},"context":{…}}` | `{"html":"…","vars":{…},"message":"…"}` |
+| `webui.page` | `{"page":{"id","title","description"},"context":{…}}` | `{"view":{…}}` 或 `{"html":"…","vars":{…},"message":"…"}` |
 | `webui.action` | `{"page":{…},"action":"save","form":{…},"context":{…}}` | 同上，另可带 `config_set` / `storage_set` |
 | `webui.asset` | `{"path":"theme.css"}` | `{"content_type":"text/css","body":"…"}`（二进制用 `base64`） |
 
 返回归一化（五种语言 SDK 同一实现）：返回**字符串** = `{"html": …}` 简写；返回**对象**只透传白名单字段
-`html / vars / context / message / content_type / body / base64 / config_set / storage_set`，其余丢弃；
+`html / view / vars / context / message / content_type / body / base64 / config_set / storage_set`，其余丢弃；
 返回 `{"ok":false,"error":"…"}` 是**操作级**失败（未知方法/参数非法才是**协议级**错误）；引擎侧调用超时 **4s**。
+
+插件渲染页可使用 [五语言 Web UI SDK](plugin-webui-sdk.md) 构造 `view`。引擎根据初始
+`view.form` 将提交转换为类型化 `form`，校验通过后才调用 `webui.action`。
+`view` 与 `html` 互斥。`view` 不经过模板变量替换。
 
 ## 2. 目录、manifest 与三种页面形态
 
@@ -38,7 +42,7 @@ my-plugin/{manifest.json, plugin.py|.ts|main.go|lib.rs|Plugin.java,
 | 形态 | 声明方式 | HTML 来源 |
 | :--- | :--- | :--- |
 | 文件页（首选） | `pages[].file`（或 `render:"file"`） | 磁盘 `webui/pages/*.html` + 受控模板变量 |
-| 插件渲染页 | `pages[].render = "plugin"` | 插件进程经 `webui.page` 返回 |
+| 插件渲染页 | `pages[].render = "plugin"` | 插件进程返回 HTML，或宿主根据 `view` 生成 |
 | DSL 页（deprecated 兼容层） | 既不写 `file` 也不写 `render` | 插件 `web_ui.entry` hook 返回组件树 |
 
 manifest 校验（**加载前**就拒，不等到 HTTP 请求）：页面 id `^[a-z][a-z0-9_-]{0,31}$`、页数 ≤ 8、

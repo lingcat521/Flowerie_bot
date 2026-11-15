@@ -5,6 +5,7 @@
 - 现在放成真实文件（static/panel.css、templates/*.html），改样式只动文件；
 - 打包（PyInstaller --onefile）会把资源解到 sys._MEIPASS，所以路径必须兼容两种运行方式。
 """
+import re
 import sys
 from pathlib import Path
 
@@ -49,7 +50,11 @@ def read_template(name: str) -> str:
 
 def render_template(name: str, **ctx) -> str:
     """极简模板渲染：把 {{key}} 替换成上下文值（不引第三方模板引擎，保持零依赖）。"""
-    text = read_template(name)
-    for key, value in ctx.items():
-        text = text.replace("{{" + key + "}}", "" if value is None else str(value))
-    return text
+    def substitute(match):
+        key = match.group(1)
+        if key not in ctx:
+            return match.group(0)
+        value = ctx[key]
+        return "" if value is None else str(value)
+
+    return re.sub(r"\{\{(\w+)\}\}", substitute, read_template(name))

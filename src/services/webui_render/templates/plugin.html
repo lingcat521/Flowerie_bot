@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{document_title}}</title>
+<link rel="stylesheet" href="/panel/static/panel.css?v={{css_rev}}">
+</head>
+<body class="{{theme_class}}">
+<main class="wrap plugin-workspace">
+<div class="page">
+<nav aria-label="当前位置" class="breadcrumb">
+<a href="/panel?tab=plugins" class="doc-link">插件管理</a>
+<span aria-hidden="true">›</span>
+<span class="crumb-here">{{plugin_name}}</span>
+</nav>
+<header class="plugin-heading">
+<div>
+<h1 class="page-title">{{page_title}}</h1>
+{{description}}
+</div>
+{{heading_art}}
+</header>
+{{tabs}}
+{{feedback}}
+<div class="plugin-page flowerie-plugin-webui">{{content}}</div>
+</div>
+</main>
+</body>
+</html>

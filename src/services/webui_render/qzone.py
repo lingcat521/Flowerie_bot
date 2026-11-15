@@ -5,6 +5,7 @@
 """
 import time
 
+from src.services.webui_render.graphics import empty_state, icon
 from src.services.webui_render.util import _esc
 
 
@@ -22,14 +23,15 @@ def _history_card(item: dict) -> str:
     images = int(item.get("images") or 0)
     ts = _fmt_ts(item.get("ts"))
     return (
-        '<div class="row"><label class="row-info"><span class="row-title">%s</span>'
-        '<span class="row-key">%s · 权限 %d · %d 图</span></label>'
-        '<div class="row-control">'
+        '<article class="mcp-card qzone-entry"><header class="archive-title">'
+        f'<span class="icon-frame">{icon("qzone")}</span>'
+        '<div><h3>发布记录</h3><time>%s</time></div></header>'
+        '<p>%s</p><div class="group-actions"><span class="hint">权限 %d · %d 图</span>'
         '<form method="post" action="/panel/qzone/delete" style="display:inline">'
         '<input type="hidden" name="tid" value="%s">'
-        '<button type="submit" class="btn small">删除</button></form>'
-        '<span class="hint">%s</span></div></div>'
-        % (content or "（无正文）", ts, right, images, tid, tid)
+        '<button type="submit" class="btn small danger">删除</button></form>'
+        '<span class="hint">%s</span></div></article>'
+        % (ts, content or "（无正文）", right, images, tid, tid)
     )
 
 
@@ -57,22 +59,22 @@ def render_qzone_tab(enabled: bool = True, rights=None, default_right: int = 1,
         '<form method="post" action="/panel/qzone/publish">'
         '<div class="row"><label class="row-info"><span class="row-title">说说正文</span>'
         '<span class="row-key">content</span></label>'
-        '<div class="row-control"><textarea name="content" rows="4" maxlength="2000" required '
+        '<div class="row-control"><textarea name="content" aria-label="说说正文" rows="4" maxlength="2000" required '
         'placeholder="想说点什么…（最多 2000 字）"></textarea></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">图片（每行一个）</span>'
         '<span class="row-key">images</span></label>'
-        '<div class="row-control"><textarea name="images" rows="3" '
+        '<div class="row-control"><textarea name="images" aria-label="图片地址" rows="3" '
         'placeholder="file:///sdcard/a.jpg&#10;https://example.com/b.png&#10;base64://..."></textarea>'
         '<span class="hint">支持 本地绝对路径（自动转 file://）/ file:// / http(s):// / base64://；'
         '最多 9 张</span>'
         '</div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">查看权限</span>'
         '<span class="row-key">ugc_right</span></label>'
-        '<div class="row-control"><select class="w-md" name="ugc_right">%s</select>'
+        '<div class="row-control"><select class="w-md" name="ugc_right" aria-label="查看权限">%s</select>'
         '<span class="hint">16/128 需在下方填写权限对象 QQ 号</span></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">权限对象</span>'
         '<span class="row-key">target_uins</span></label>'
-        '<div class="row-control"><input class="w-lg" type="text" name="target_uins" '
+        '<div class="row-control"><input class="w-lg" type="text" name="target_uins" aria-label="权限对象" '
         'placeholder="QQ号，逗号分隔（权限 16/128 时必填）"></div></div>'
         '<div class="group-actions"><button type="submit" class="btn">发表说说</button></div>'
         '</form></fieldset>' % opts
@@ -85,5 +87,5 @@ def render_qzone_tab(enabled: bool = True, rights=None, default_right: int = 1,
         )
     else:
         history_block = ('<fieldset class="group"><legend>本机发布历史</legend>'
-                         '<div class="msg">暂无记录（历史只记录通过本机面板发布的说说）</div></fieldset>')
+                         + empty_state("qzone", "暂无记录。此处显示通过本机面板发布的说说。") + '</fieldset>')
     return msg_html + last + publish_block + history_block

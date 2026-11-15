@@ -1,6 +1,6 @@
 # 开发
 
-> 当前版本 **v2.14.2**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
+> 当前版本 **v2.19.0**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
 > 历史审计报告见 [archive/](../archive/README.md)。
 
 > **v2.14.x 新增**：私聊（按 QQ 号完全隔离的上下文 / 记忆 / 人格 / 预算）与 Web UI 第 12 页签「私聊」；
@@ -27,7 +27,7 @@ pytest -m "not real_device"               # 排除实机用例
 
 | 层 | 位置 | 命令 | 当前状态 |
 | :--- | :--- | :--- | :--- |
-| unit / 静态（含架构 Gate） | `tests/test_*.py` | `pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e` | **v2.14.2 CI 实测 2552 passed / 22 skipped**（CI 的 pytest 步骤就是这个口径；数字口径见下方注） |
+| unit / 静态（含架构 Gate） | `tests/test_*.py` | `pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e` | **v2.19.0 本地全量实测 2580 passed / 167 skipped**（CI 的 pytest 步骤就是这个口径；数字口径见下方注） |
 | 多语言 SDK 最小插件实测 | `tests/sdk/` | `pytest -q -s tests/sdk/` | **61**：真 build（go/rustc/javac/tsc…）→ 真加载 → ping/echo/event/call/权限/关机 + 群管/QQ空间/私聊动作 |
 | Plugin WebUI（真服务器 + 真插件进程） | `tests/webui/` | `pytest -q -s tests/webui/` | **102**：HTTP / 静态 / 安全 / 隔离 / 动作 / 插件间通信 |
 | 真浏览器 E2E（Playwright Chromium） | `tests/e2e/` | `pytest -q -rs -s tests/e2e/` | **21**：真 WebUI 服务器 + 真插件进程 + 真 Chromium；缺浏览器即 `BLOCKED BY ENVIRONMENT` skip（**绝不写 PASS**） |
@@ -48,8 +48,8 @@ PYTHONPATH=$HOME python3 -m pytest -p stubplug tests/ -q            # 最小 stu
 PYTHONPATH=$HOME python3 -m pytest -p stubplug -p stubio tests/ -q  # 追加 aiohttp/websockets stub（跑更宽的导入链）
 ```
 
-> **数字口径**（重要）：上表 unit 行是 **v2.14.2（commit 57f2f03）CI 实测**
-> `2552 passed / 22 skipped`（CI 装 go/rustc/javac/tsc 等工具链，skip 更少）。
+> **数字口径**（重要）：上表 unit 行是 **v2.19.0 本地全量实测**
+> `2580 passed / 167 skipped`（本地口径；CI 装 go/rustc/javac/tsc 等工具链，skip 更少、passed 更多）。
 > 本机（Termux）全量 `pytest tests/` 为 `2531 passed / 143 skipped / 1 xfailed`（go/dotnet/R 本机不可用即 skip；
 > 另有 1 项 perl 插件 30s 超时 + ruff 未安装属本机环境限制）；
 > skip 数随本机装了哪些工具链而变，**不是失败**。以 CI 日志的实际汇总行为准。

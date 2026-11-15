@@ -9,6 +9,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from src.core.sanitizer import validate_mcp_server_url
 from src.services.mcp_auth import build_auth
 
+FILE_PARSE_FORMAT_NAMES = ("txt", "pdf", "docx", "xlsx", "csv")
+DEFAULT_FILE_PARSE_FORMATS = ",".join(FILE_PARSE_FORMAT_NAMES)
+
+
+def normalize_file_formats(value: str) -> str:
+    formats = dict.fromkeys(item.strip().lower() for item in value.split(",") if item.strip())
+    if any(item not in FILE_PARSE_FORMAT_NAMES for item in formats):
+        raise ValueError("支持的格式为 txt、pdf、docx、xlsx、csv")
+    return ",".join(formats)
+
 
 class Settings(BaseSettings):
     # ---- 功能总开关（Web UI 可切换；运行时门控见各组件判断点）----
@@ -381,11 +391,15 @@ class Settings(BaseSettings):
 
     # ===== 安全审计加固（P1/P2/P3）=====
     # 资源限制：防止超大文件/超长输入消耗 CPU/RAM/Token
-    MAX_FILE_TEXT_CHARS: int = 8000        # 文件解析后提取文本的最大字符数
-    MAX_FILE_DOWNLOAD_BYTES: int = 2097152  # 文件下载解码字节兜底上限（2MB，防 NapCat 返回超预期内容）
-    MAX_PDF_PAGES: int = 100               # PDF 最多解析页数
-    MAX_EXCEL_CELLS: int = 50000           # Excel 最多解析单元格数
-    MAX_CSV_ROWS: int = 10000              # CSV 最多解析行数
+    FILE_PARSE_ENABLED: bool = True
+    FILE_PARSE_GROUP_UPLOAD_ENABLED: bool = True
+    FILE_PARSE_FORMATS: str = DEFAULT_FILE_PARSE_FORMATS
+    FILE_PARSE_TEXT_FALLBACK: bool = True
+    MAX_FILE_TEXT_CHARS: int = Field(default=8000, ge=1, le=1000000)        # 文件解析后提取文本的最大字符数
+    MAX_FILE_DOWNLOAD_BYTES: int = Field(default=2097152, ge=1, le=104857600)  # 文件下载解码字节兜底上限（2MB，防 NapCat 返回超预期内容）
+    MAX_PDF_PAGES: int = Field(default=100, ge=1, le=10000)               # PDF 最多解析页数
+    MAX_EXCEL_CELLS: int = Field(default=50000, ge=1, le=10000000)           # Excel 最多解析单元格数
+    MAX_CSV_ROWS: int = Field(default=10000, ge=1, le=1000000)              # CSV 最多解析行数
     MAX_AI_INPUT_CHARS: int = 8000         # 单次 AI 输入（上下文+消息）最大字符数
     MAX_IMAGES_PER_MESSAGE: int = 10       # 单条消息最多识图张数（防图片轰炸）
     # 转发解析预算（防套娃转发 DoS）：深度/消息数/节点数/拉取次数四重上限
@@ -425,6 +439,11 @@ class Settings(BaseSettings):
                 return []
             return [x.strip().lower() for x in v.split(",") if x.strip()]
         return v
+
+    @field_validator("FILE_PARSE_FORMATS")
+    @classmethod
+    def validate_file_parse_formats(cls, value: str) -> str:
+        return normalize_file_formats(value)
 
     @field_validator("LOG_FORMAT", mode="before")
     @classmethod

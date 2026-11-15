@@ -393,6 +393,354 @@ public class FloweriePlugin {
             return action("group_leave", Json.obj("group_id", groupId, "is_dismiss", Boolean.valueOf(isDismiss)));
         }
 
+        public Object profileGet(long groupId, long userId) throws IOException {
+            return action("profile_get", Json.obj("group_id", groupId, "user_id", userId));
+        }
+
+        public Object profileSetSection(long groupId, long userId, String label, String text, String nickname) throws IOException {
+            return action("profile_set_section", Json.obj("group_id", groupId, "user_id", userId, "label", label, "text", text, "nickname", nickname));
+        }
+
+        public Object profileDelete(long groupId, long userId) throws IOException {
+            return action("profile_delete", Json.obj("group_id", groupId, "user_id", userId));
+        }
+
+        public Object webSearch(String query, int limit) throws IOException {
+            return action("web_search", Json.obj("query", query, "limit", limit));
+        }
+
+        public Object knowledgeList(long groupId, String query, int limit) throws IOException {
+            return action("knowledge_list", Json.obj("group_id", groupId, "query", query, "limit", limit));
+        }
+
+        public Object personaResolve(long groupId) throws IOException {
+            return action("persona_resolve", Json.obj("group_id", groupId));
+        }
+
+        public Object nicknameResolve(long groupId) throws IOException {
+            return action("nickname_resolve", Json.obj("group_id", groupId));
+        }
+
+        public Object fileParse(String filename, String contentBase64) throws IOException {
+            return action("file_parse", Json.obj("filename", filename, "content_base64", contentBase64));
+        }
+
+        public Object fileParseLocal(String path) throws IOException {
+            return action("file_parse_local", Json.obj("path", path));
+        }
+
+        public Object fileParseStatus() throws IOException {
+            return action("file_parse_status", Json.obj());
+        }
+
+        public Object qzoneHistory(int limit) throws IOException {
+            return action("qzone_history", Json.obj("limit", limit));
+        }
+
+        public Object qzoneRights() throws IOException {
+            return action("qzone_rights", Json.obj());
+        }
+
+        public Object automationStatus() throws IOException {
+            return action("automation_status", Json.obj());
+        }
+
+        public Object scheduleRegister(String kind, Object when, String name) throws IOException {
+            return action("schedule_register", Json.obj("kind", kind, "when", when, "name", name));
+        }
+
+        public Object scheduleCancel(String scheduleId) throws IOException {
+            return action("schedule_cancel", Json.obj("schedule_id", scheduleId));
+        }
+
+        public Object scheduleList() throws IOException {
+            return action("schedule_list", Json.obj());
+        }
+
+        public Object sendPrivateMessage(long userId, String message) throws IOException {
+            return action("send_private_message", Json.obj("user_id", userId, "message", message));
+        }
+
+        public Object userHistory(long userId, int count) throws IOException {
+            return action("user_history", Json.obj("user_id", userId, "count", count));
+        }
+
+        public Object getGroupMembers(long groupId) throws IOException {
+            return action("get_group_members", Json.obj("group_id", groupId));
+        }
+
+        public Object groupBan(long groupId, long userId, int duration) throws IOException {
+            return action("group_ban", Json.obj("group_id", groupId, "user_id", userId, "duration", duration));
+        }
+
+        public Object groupKick(long groupId, long userId, boolean rejectAdd) throws IOException {
+            return action("group_kick", Json.obj("group_id", groupId, "user_id", userId, "reject_add", rejectAdd));
+        }
+
+        public Object groupAdmin(long groupId, long userId, boolean enable) throws IOException {
+            return action("group_admin", Json.obj("group_id", groupId, "user_id", userId, "enable", enable));
+        }
+
+        public Object groupWholeBan(long groupId, boolean enable) throws IOException {
+            return action("group_whole_ban", Json.obj("group_id", groupId, "enable", enable));
+        }
+
+        public Object groupRename(long groupId, String name) throws IOException {
+            return action("group_rename", Json.obj("group_id", groupId, "name", name));
+        }
+
+        public Object groupCard(long groupId, long userId, String card) throws IOException {
+            return action("group_card", Json.obj("group_id", groupId, "user_id", userId, "card", card));
+        }
+
+        public Object groupTitle(long groupId, long userId, String title) throws IOException {
+            return action("group_title", Json.obj("group_id", groupId, "user_id", userId, "title", title));
+        }
+
+        public Object digestGet(long groupId) throws IOException {
+            return action("digest_get", Json.obj("group_id", groupId));
+        }
+
+        public Object blossomSearch(long groupId, String query, int topK) throws IOException {
+            return action("memory_semantic", Json.obj("group_id", groupId, "query", query, "top_k", topK));
+        }
+
+        public Object knowledgeGet(long groupId, long knowledgeId) throws IOException {
+            return action("knowledge_get", Json.obj("group_id", groupId, "knowledge_id", knowledgeId));
+        }
+
+        public Object knowledgeDelete(long groupId, long knowledgeId) throws IOException {
+            return action("knowledge_delete", Json.obj("group_id", groupId, "knowledge_id", knowledgeId));
+        }
+
+        public Object knowledgeClear(long groupId) throws IOException {
+            return action("knowledge_clear", Json.obj("group_id", groupId));
+        }
+
+        public Object personaBind(long groupId, String personaId) throws IOException {
+            return action("persona_bind", Json.obj("group_id", groupId, "persona_id", personaId));
+        }
+
+        public Object personaUnbind(long groupId) throws IOException {
+            return action("persona_unbind", Json.obj("group_id", groupId));
+        }
+
+        public Object personaGet(String personaId) throws IOException {
+            return action("persona_get", Json.obj("persona_id", personaId));
+        }
+
+        public Object personaDelete(String personaId) throws IOException {
+            return action("persona_delete", Json.obj("persona_id", personaId));
+        }
+
+        public Object personaSetGlobal(String personaId) throws IOException {
+            return action("persona_set_global", Json.obj("persona_id", personaId));
+        }
+
+        public Object nicknameList(long groupId) throws IOException {
+            return action("nickname_list", Json.obj("group_id", groupId));
+        }
+
+        public Object groupPromptGet(long groupId) throws IOException {
+            return action("group_prompt_get", Json.obj("group_id", groupId));
+        }
+
+        public Object groupPromptSet(long groupId, String content) throws IOException {
+            return action("group_prompt_set", Json.obj("group_id", groupId, "content", content));
+        }
+
+        public Object groupPromptReset(long groupId) throws IOException {
+            return action("group_prompt_reset", Json.obj("group_id", groupId));
+        }
+
+        public Object groupRulesGet(long groupId) throws IOException {
+            return action("group_rules_get", Json.obj("group_id", groupId));
+        }
+
+        public Object groupRulesSet(long groupId, String content) throws IOException {
+            return action("group_rules_set", Json.obj("group_id", groupId, "content", content));
+        }
+
+        public Object privateMemoryClear(long userId) throws IOException {
+            return action("private_memory_clear", Json.obj("user_id", userId));
+        }
+
+        public Object webFetch(String url, int maxChars) throws IOException {
+            return action("web_fetch", Json.obj("url", url, "max_chars", maxChars));
+        }
+
+        public Object globalPromptSet(String content) throws IOException {
+            return action("global_prompt_set", Json.obj("content", content));
+        }
+
+        public Object profileClear(long groupId) throws IOException {
+            return action("profile_clear", Json.obj("group_id", groupId));
+        }
+
+        public Object personaList() throws IOException {
+            return action("persona_list", Json.obj());
+        }
+
+        public Object privatePolicy() throws IOException {
+            return action("private_policy", Json.obj());
+        }
+
+        public Object automationTasks() throws IOException {
+            return action("automation_tasks", Json.obj());
+        }
+
+        public Object globalPromptGet() throws IOException {
+            return action("global_prompt_get", Json.obj());
+        }
+
+        public Object globalPromptReset() throws IOException {
+            return action("global_prompt_reset", Json.obj());
+        }
+
+        public Object stickerSearch(Map<String, Object> payload) throws IOException {
+            return action("sticker_search", payload);
+        }
+
+        public Object stickerSend(Map<String, Object> payload) throws IOException {
+            return action("sticker_send", payload);
+        }
+
+        public Object knowledgeMatch(Map<String, Object> payload) throws IOException {
+            return action("knowledge_match", payload);
+        }
+
+        public Object knowledgeAdd(Map<String, Object> payload) throws IOException {
+            return action("knowledge_add", payload);
+        }
+
+        public Object knowledgeUpdate(Map<String, Object> payload) throws IOException {
+            return action("knowledge_update", payload);
+        }
+
+        public Object profileList(Map<String, Object> payload) throws IOException {
+            return action("profile_list", payload);
+        }
+
+        public Object nicknameSet(Map<String, Object> payload) throws IOException {
+            return action("nickname_set", payload);
+        }
+
+        public Object privateUsers(Map<String, Object> payload) throws IOException {
+            return action("private_users", payload);
+        }
+
+        public Object privateAllowlistSet(Map<String, Object> payload) throws IOException {
+            return action("private_allowlist_set", payload);
+        }
+
+        public Object automationSetFlags(Map<String, Object> payload) throws IOException {
+            return action("automation_set_flags", payload);
+        }
+
+        public Object personaCreate(Map<String, Object> payload) throws IOException {
+            return action("persona_create", payload);
+        }
+
+        public Object personaUpdate(Map<String, Object> payload) throws IOException {
+            return action("persona_update", payload);
+        }
+
+        public Object mcpResource(Map<String, Object> payload) throws IOException {
+            return action("mcp_resource", payload);
+        }
+
+        public Object mcpPrompt(Map<String, Object> payload) throws IOException {
+            return action("mcp_prompt", payload);
+        }
+
+        public Object groupNoticeSend(Map<String, Object> payload) throws IOException {
+            return action("group_notice_send", payload);
+        }
+
+        public Object groupNoticeGet(Map<String, Object> payload) throws IOException {
+            return action("group_notice_get", payload);
+        }
+
+        public Object groupNoticeUpdate(Map<String, Object> payload) throws IOException {
+            return action("group_notice_update", payload);
+        }
+
+        public Object groupNoticeDelete(Map<String, Object> payload) throws IOException {
+            return action("group_notice_delete", payload);
+        }
+
+        public Object groupFiles(Map<String, Object> payload) throws IOException {
+            return action("group_files", payload);
+        }
+
+        public Object groupFilesIn(Map<String, Object> payload) throws IOException {
+            return action("group_files_in", payload);
+        }
+
+        public Object groupFileUrl(Map<String, Object> payload) throws IOException {
+            return action("group_file_url", payload);
+        }
+
+        public Object groupFileUpload(Map<String, Object> payload) throws IOException {
+            return action("group_file_upload", payload);
+        }
+
+        public Object groupFileRename(Map<String, Object> payload) throws IOException {
+            return action("group_file_rename", payload);
+        }
+
+        public Object groupFileDelete(Map<String, Object> payload) throws IOException {
+            return action("group_file_delete", payload);
+        }
+
+        public Object groupFileMove(Map<String, Object> payload) throws IOException {
+            return action("group_file_move", payload);
+        }
+
+        public Object groupFolderCreate(Map<String, Object> payload) throws IOException {
+            return action("group_folder_create", payload);
+        }
+
+        public Object groupFolderDelete(Map<String, Object> payload) throws IOException {
+            return action("group_folder_delete", payload);
+        }
+
+        public Object groupFolderRename(Map<String, Object> payload) throws IOException {
+            return action("group_folder_rename", payload);
+        }
+
+        public Object friendRemark(Map<String, Object> payload) throws IOException {
+            return action("friend_remark", payload);
+        }
+
+        public Object friendDelete(Map<String, Object> payload) throws IOException {
+            return action("friend_delete", payload);
+        }
+
+        public Object friendDetail(Map<String, Object> payload) throws IOException {
+            return action("friend_detail", payload);
+        }
+
+        public Object userPoke(Map<String, Object> payload) throws IOException {
+            return action("user_poke", payload);
+        }
+
+        public Object userForward(Map<String, Object> payload) throws IOException {
+            return action("user_forward", payload);
+        }
+
+        public Object groupForward(Map<String, Object> payload) throws IOException {
+            return action("group_forward", payload);
+        }
+
+        public Object groupInvite(Map<String, Object> payload) throws IOException {
+            return action("group_invite", payload);
+        }
+
+        public Object webSearchOptions(Map<String, Object> payload) throws IOException {
+            return action("web_search", payload);
+        }
+
         /** QQ空间：发表说说（需要 qzone；ugcRight 1/4/16/64/128，16/128 需 targetUins）。 */
         public Object qzonePublish(String content, List<String> images, int ugcRight,
                                    List<Object> targetUins) throws IOException {
@@ -539,6 +887,47 @@ public class FloweriePlugin {
         Object handle(Map<String, Object> args) throws IOException;
     }
 
+    /** Builders for host-rendered, zero-JavaScript plugin views. */
+    public static final class WebUIView {
+        private WebUIView() {}
+
+        public static Map<String, Object> field(String name, String label, String type,
+                                               Object value, boolean required) {
+            return Json.obj("name", name, "label", label, "type", type, "value", value, "required", required);
+        }
+
+        public static Map<String, Object> choice(String value, String label) {
+            return Json.obj("value", value, "label", label);
+        }
+
+        public static Map<String, Object> select(String name, String label, String value,
+                                                 boolean required, List<?> options) {
+            Map<String, Object> field = field(name, label, "select", value, required);
+            field.put("options", options);
+            return field;
+        }
+
+        public static Map<String, Object> form(String action, List<?> fields, String submit) {
+            return Json.obj("action", action, "fields", fields, "submit", submit);
+        }
+
+        public static Map<String, Object> table(List<?> columns, List<?> rows, int pageSize) {
+            return Json.obj("type", "table", "columns", columns, "rows", rows, "page_size", pageSize);
+        }
+
+        public static Map<String, Object> text(String type, String content) {
+            return Json.obj("type", type, "text", content);
+        }
+
+        public static Map<String, Object> page(List<?> blocks, Map<String, Object> form) {
+            Map<String, Object> view = Json.obj("blocks", blocks);
+            if (form != null) {
+                view.put("form", form);
+            }
+            return Json.obj("view", view);
+        }
+    }
+
     /** WebUI 注册入口：`plugin.webUI().page(args -> ...).action(args -> ...)`。 */
     public WebUI webUI() {
         return new WebUI();
@@ -602,7 +991,7 @@ public class FloweriePlugin {
         }
     }
 
-    private static final List<String> WEBUI_PAYLOAD_KEYS = List.of("html", "vars", "context",
+    private static final List<String> WEBUI_PAYLOAD_KEYS = List.of("html", "view", "vars", "context",
             "message", "content_type", "body", "base64", "config_set", "storage_set");
 
     /** 把 WebUI 处理器返回值归一成协议应答（String = html 简写，白名单字段透传）。 */

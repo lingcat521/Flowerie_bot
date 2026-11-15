@@ -127,7 +127,7 @@ def test_model_status_badges():
                                   category_order=["BlossomMemory"],
                                   category_labels={"BlossomMemory": "花语记忆"})
     assert "已配置" in html, "embedding 配置齐全应显示已配置"
-    assert "⚠️ 缺模型或地址" in html, "reranker 缺配置应显示警告"
+    assert "缺模型或地址" in html, "reranker 缺配置应显示警告"
 
 
 def test_model_status_badge_disabled():

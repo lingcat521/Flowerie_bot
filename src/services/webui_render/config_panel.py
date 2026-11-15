@@ -1,5 +1,7 @@
 """webui_render 配置页：分组表单 + MCP 卡片编辑器（零 JS）。"""
 
+from src.config import FILE_PARSE_FORMAT_NAMES
+from src.services.webui_render.category_constants import CATEGORY_GROUPS
 from src.services.webui_render.category_constants import (  # 单源
     CATEGORY_LABELS as _DEFAULT_LABELS,
 )
@@ -31,11 +33,11 @@ def _blossom_model_status_badge(cfgs, c: dict) -> str:
     url_ok = bool(cur.get(url_key, "").strip())
     if model_ok and url_ok:
         return '<span class="badge ok">已配置</span>'
-    return '<span class="badge warn">⚠️ 缺模型或地址</span>'
+    return '<span class="badge warn">缺模型或地址</span>'
 
 
 def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_test_status=None, mcp_tool_counts=None,
-                           category_order=None, category_labels=None) -> str:
+                           category_order=None, category_labels=None, *, show_nav=True) -> str:
     """按分类渲染配置分组表单，顶部带分类导航（点某个分类只看那一类，避免全部堆在一屏）。
 
     active_cat: "all" 显示全部分类；否则只显示该分类。纯 HTML + 链接跳转，零 JS。
@@ -50,7 +52,7 @@ def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_
     cats = [cat for cat in order if by_cat.get(cat)]
     if active_cat not in ("all", "") and active_cat not in by_cat:
         active_cat = "all"
-    nav = _render_cat_nav(active_cat, cats, labels)
+    nav = _render_cat_nav(active_cat, cats, labels) if show_nav else ""
     shown_cats = [active_cat] if active_cat in by_cat else cats
     sections = []
     for cat in shown_cats:
@@ -143,7 +145,9 @@ def _cat_status_badge(cfgs) -> str:
     for c in cfgs:
         if c["key"].endswith("_ENABLED") and c.get("type") == "bool":
             on = str(c.get("current") or "").lower() in ("true", "1")
-            badges.append(f'<span class="badge{" warn" if not on else ""}">{_esc(c["key"].replace("_", " ").lower())}: {"ON" if on else "OFF"}</span>')
+            names = {"FILE_PARSE_ENABLED": "解析总开关", "FILE_PARSE_GROUP_UPLOAD_ENABLED": "群文件自动解析"}
+            label = names.get(c["key"], c["key"].replace("_", " ").lower())
+            badges.append(f'<span class="badge{" warn" if not on else ""}">{_esc(label)} {"ON" if on else "OFF"}</span>')
     return f'<span class="badges">{"".join(badges)}</span>' if badges else ""
 
 #: MCP 认证方式（value → 中文标签）。OAuth 未实现，故不列出。
@@ -243,6 +247,7 @@ def _mcp_test_status_html(test_status) -> str:
 
 def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
     idx = "" if index is None else str(index)
+    prefix = f"mcp-{idx or 'new'}"
     name = _esc(s.get("name", ""))
     url = _esc(s.get("url", ""))
     tools = _esc(s.get("allowed_tools", ""))
@@ -257,24 +262,24 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
                 else "粘贴 token")
     pwd_ph = ("********（留空保持原值）" if str(auth.get("password") or "").strip() else "basic 密码")
     auth_rows = (
-        '<div class="row"><label class="row-info"><span class="row-title">认证方式</span>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_auth_type"><span class="row-title">认证方式</span>'
         '<span class="row-key">auth.type</span></label>'
-        f'<div class="row-control"><select name="mcp_auth_type">{_mcp_auth_options_html(auth_type)}</select></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">Token / 值</span>'
+        f'<div class="row-control"><select name="mcp_auth_type" id="{prefix}-mcp_auth_type">{_mcp_auth_options_html(auth_type)}</select></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_auth_token"><span class="row-title">Token / 值</span>'
         '<span class="row-key">auth.token</span></label>'
-        f'<div class="row-control"><input type="password" name="mcp_auth_token" value="" placeholder="{token_ph}" autocomplete="new-password"></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">Header 名</span>'
+        f'<div class="row-control"><input type="password" name="mcp_auth_token" id="{prefix}-mcp_auth_token" value="" placeholder="{token_ph}" autocomplete="new-password"></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_auth_header"><span class="row-title">Header 名</span>'
         '<span class="row-key">auth.header</span></label>'
-        f'<div class="row-control"><input type="text" name="mcp_auth_header" value="{auth_header_val}" placeholder="X-API-Key（api_key）或自定义 header 名"></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">Basic 用户名</span>'
+        f'<div class="row-control"><input type="text" name="mcp_auth_header" id="{prefix}-mcp_auth_header" value="{auth_header_val}" placeholder="X-API-Key（api_key）或自定义 header 名"></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_auth_username"><span class="row-title">Basic 用户名</span>'
         '<span class="row-key">auth.username</span></label>'
-        f'<div class="row-control"><input type="text" name="mcp_auth_username" value="{auth_user_val}" placeholder="basic 用户名（非密钥，可回显）"></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">Basic 密码</span>'
+        f'<div class="row-control"><input type="text" name="mcp_auth_username" id="{prefix}-mcp_auth_username" value="{auth_user_val}" placeholder="basic 用户名（非密钥，可回显）"></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_auth_password"><span class="row-title">Basic 密码</span>'
         '<span class="row-key">auth.password</span></label>'
-        f'<div class="row-control"><input type="password" name="mcp_auth_password" value="" placeholder="{pwd_ph}" autocomplete="new-password"></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">清除密钥</span>'
+        f'<div class="row-control"><input type="password" name="mcp_auth_password" id="{prefix}-mcp_auth_password" value="" placeholder="{pwd_ph}" autocomplete="new-password"></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_auth_clear"><span class="row-title">清除密钥</span>'
         '<span class="row-key">auth.clear</span></label>'
-        '<div class="row-control"><input type="checkbox" name="mcp_auth_clear" value="1">'
+        f'<div class="row-control"><input type="checkbox" name="mcp_auth_clear" id="{prefix}-mcp_auth_clear" value="1">'
         '<span class="hint">勾选后保存将删除已保存的密钥</span></div></div>'
     )
     hint = ('<span class="hint">名称唯一；地址支持 http(s)/SSE；工具白名单逗号分隔（留空=放行所有工具）；超时秒。'
@@ -286,16 +291,16 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
         f'<fieldset class="group"><legend>{_esc(title)} MCP 服务器</legend>'
         '<form method="post" action="/panel/mcp/edit">'
         f'<input type="hidden" name="mcp_index" value="{idx}">'
-        '<div class="row"><label class="row-info"><span class="row-title">名称</span><span class="row-key">name</span></label>'
-        f'<div class="row-control"><input type="text" name="mcp_name" value="{name}" placeholder="如 github" required></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">地址</span><span class="row-key">url</span></label>'
-        f'<div class="row-control"><input type="text" name="mcp_url" value="{url}" placeholder="https://mcp.example.com/mcp" required></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">工具白名单</span><span class="row-key">allowed_tools</span></label>'
-        f'<div class="row-control"><input type="text" name="mcp_tools" value="{tools}" placeholder="web_search, fetch_page（逗号分隔，留空=放行所有）"></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">超时（秒）</span><span class="row-key">timeout</span></label>'
-        f'<div class="row-control"><div class="range-row"><input class="w-sm" type="number" name="mcp_timeout" min="1" max="3600" value="{timeout}"></div></div></div>'
-        '<div class="row"><label class="row-info"><span class="row-title">启用</span><span class="row-key">enabled</span></label>'
-        f'<div class="row-control"><input type="checkbox" name="mcp_enabled" value="1"{checked}></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_name"><span class="row-title">名称</span><span class="row-key">name</span></label>'
+        f'<div class="row-control"><input type="text" name="mcp_name" id="{prefix}-mcp_name" value="{name}" placeholder="如 github" required></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_url"><span class="row-title">地址</span><span class="row-key">url</span></label>'
+        f'<div class="row-control"><input type="text" name="mcp_url" id="{prefix}-mcp_url" value="{url}" placeholder="https://mcp.example.com/mcp" required></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_tools"><span class="row-title">工具白名单</span><span class="row-key">allowed_tools</span></label>'
+        f'<div class="row-control"><input type="text" name="mcp_tools" id="{prefix}-mcp_tools" value="{tools}" placeholder="web_search, fetch_page（逗号分隔，留空=放行所有）"></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_timeout"><span class="row-title">超时（秒）</span><span class="row-key">timeout</span></label>'
+        f'<div class="row-control"><div class="range-row"><input class="w-sm" type="number" name="mcp_timeout" id="{prefix}-mcp_timeout" min="1" max="3600" value="{timeout}"></div></div></div>'
+        f'<div class="row"><label class="row-info" for="{prefix}-mcp_enabled"><span class="row-title">启用</span><span class="row-key">enabled</span></label>'
+        f'<div class="row-control"><input type="checkbox" name="mcp_enabled" id="{prefix}-mcp_enabled" value="1"{checked}></div></div>'
         + auth_rows +
         f'<p class="hint">{hint}</p>'
         '<div class="group-actions">'
@@ -305,27 +310,38 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
     )
 
 def _render_cat_nav(active: str, cats, labels) -> str:
-    """顶部分类导航：折叠成一行摘要，展开后是扁平链接网格（零 JS）。
+    """配置入口按用途分组；窄屏可折叠，宽屏显示同一组链接。"""
+    current = "全部配置" if active in ("all", "") else labels.get(active, active)
 
-    为什么改：25 个半透明胶囊在手机上一屏全是"气泡"，首屏全被导航吃掉。
-    现在窄屏默认收起（只占一行，显示当前分类），点开才列出全部；
-    宽屏用 CSS 强制展开内容、隐藏 summary，保持一眼可选。
-    """
-    current = "全部" if active in ("all", "") else labels.get(active, active)
-    links = [f'<a class="cat{" active" if active in ("all", "") else ""}" href="/panel?cat=all">全部</a>']
-    for cat in cats:
-        label = labels.get(cat, cat)
-        active_cls = " active" if cat == active else ""
-        links.append(f'<a class="cat{active_cls}" href="/panel?cat={_esc(cat)}">{_esc(label)}</a>')
-    links_html = "".join(links)
-    # 两份：窄屏用 <details> 折叠（一行摘要）；宽屏直接铺开网格（媒体查询二选一显示）
+    def link(category, label):
+        selected = category == active or (category == "all" and not active)
+        css = "cat active" if selected else "cat"
+        marker = ' aria-current="page"' if selected else ""
+        return f'<a class="{css}" href="/panel?cat={_esc(category)}"{marker}>{_esc(label)}</a>'
+
+    def group(title, categories):
+        links = "".join(link(key, labels.get(key, key)) for key in categories)
+        heading = f'<span class="cfg-nav-label">{_esc(title)}</span>' if title else ""
+        return f'<div class="cfg-nav-group">{heading}<div class="cats">{links}</div></div>'
+
+    known = {key for _, keys in CATEGORY_GROUPS for key in keys}
+    groups = ['<div class="cats">' + link("all", "全部配置") + '</div>']
+    for title, keys in CATEGORY_GROUPS:
+        shown = [key for key in cats if key in keys]
+        if shown:
+            groups.append(group(title, shown))
+    additional = [key for key in cats if key not in known]
+    if additional:
+        groups.append(group("", additional))
+    links_html = "".join(groups)
     return (
         '<details class="cats-fold">'
-        '<summary class="cats-summary"><span class="cats-title">分类导航</span>'
+        '<summary class="cats-summary"><span class="cats-title">配置分类</span>'
         f'<span class="cats-current">当前：{_esc(str(current))}</span></summary>'
-        f'<nav class="cats">{links_html}</nav></details>'
-        f'<nav class="cats cats-wide">{links_html}</nav>'
+        f'<nav class="cfg-nav" aria-label="配置分类">{links_html}</nav></details>'
+        f'<nav class="cfg-nav cats-wide" aria-label="配置分类">{links_html}</nav>'
     )
+
 
 def _render_config_row(c: dict, extra_badges: str = "") -> str:
     key = c["key"]
@@ -338,14 +354,30 @@ def _render_config_row(c: dict, extra_badges: str = "") -> str:
     if not c.get("hot_reload"):
         badges.append('<span class="badge warn">需重启</span>')
     badges_html = f'<span class="badges">{"".join(badges)}</span>' if badges else ""
-    control_suffix = ""
     ctype = c["type"]
+    input_id = f"cfg-{_esc(key)}"
+    has_hint = ctype == "secret" or not c.get("hot_reload")
+    control_attrs = f'id="{input_id}"'
+    if has_hint:
+        control_attrs += f' aria-describedby="{input_id}-help"'
     if ctype == "bool":
+        control_attrs += f' aria-labelledby="{input_id}-label"'
+    format_picker = key == "FILE_PARSE_FORMATS"
+    if format_picker:
+        formats = set(str(cur).split(","))
+        choices = "".join(
+            f'<label class="opt"><input type="checkbox" name="{key}" value="{name}"'
+            f'{" checked" if name in formats else ""}>{name.upper()}</label>'
+            for name in FILE_PARSE_FORMAT_NAMES
+        )
+        control = (f'<div class="file-parse-picker" role="group" aria-labelledby="{input_id}-label">'
+                   f'<input type="hidden" name="{key}" value="">{choices}</div>')
+    elif ctype == "bool":
         checked = ' checked' if str(cur).lower() in ("true", "1") else ""
         control = (f'<input type="hidden" name="{key}" value="false">'
-                   f'<input type="checkbox" name="{key}" value="true"{checked}>')
+                   f'<input type="checkbox" name="{key}" value="true"{checked} {control_attrs}>')
     elif ctype == "secret":
-        control = (f'<input type="password" name="{key}" placeholder="留空 = 不修改" autocomplete="new-password">'
+        control = (f'<input type="password" name="{key}" {control_attrs} placeholder="留空 = 不修改" autocomplete="new-password">'
                    f'<span class="masked">当前：{_esc(cur) if cur else "未设置"}（不显示明文）</span>')
     elif ctype in ("int", "float"):
         attrs = ""
@@ -354,28 +386,36 @@ def _render_config_row(c: dict, extra_badges: str = "") -> str:
         if c.get("max") is not None:
             attrs += f' max="{c["max"]}"'
         attrs += f' step="{c.get("step", 1)}"'
-        control = f'<input type="number" name="{key}" value="{_esc(cur)}"{attrs}>'
+        control = f'<input type="number" name="{key}" {control_attrs} value="{_esc(cur)}"{attrs}>'
     elif ctype in ("textarea", "json"):
         rows = c.get("rows", 6)
-        control = f'<textarea name="{key}" rows="{rows}">{_esc(cur)}</textarea>'
+        control = f'<textarea name="{key}" {control_attrs} rows="{rows}">{_esc(cur)}</textarea>'
     elif c.get("options"):
         opts = "".join(
             f'<option value="{_esc(o)}"{" selected" if str(o).lower() == str(cur).lower() else ""}>{_esc(o)}</option>'
             for o in c["options"]
         )
-        control = f'<select name="{key}">{opts}</select>'
+        control = f'<select name="{key}" {control_attrs}>{opts}</select>'
     else:
-        control = f'<input type="text" name="{key}" value="{_esc(cur)}">'
+        control = f'<input type="text" name="{key}" {control_attrs} value="{_esc(cur)}">'
     hint = ""
     if ctype == "secret":
-        hint = '<span class="hint">密钥不显示明文；留空提交不会覆盖现有值</span>'
+        hint = f'<span id="{input_id}-help" class="hint">密钥不显示明文；留空提交不会覆盖现有值</span>'
     elif not c.get("hot_reload"):
-        hint = '<span class="hint">已保存到 .env，部分配置将在服务器重启后生效</span>'
+        hint = f'<span id="{input_id}-help" class="hint">已保存到 .env，部分配置将在服务器重启后生效</span>'
+    checkbox = ctype == "bool"
+    label = (
+        f'<span class="row-title" id="{input_id}-label">{_esc(c["description"])}</span>'
+        if checkbox or format_picker else
+        f'<label class="row-title" for="{input_id}">{_esc(c["description"])}</label>'
+    )
+    if checkbox:
+        control = f'<label for="{input_id}" class="check-control">{control}</label>'
     return (
         '<div class="row">'
-        f'<label class="row-info"><span class="row-title">{_esc(c["description"])}</span>'
-        f'<span class="row-key">{_esc(key)}</span>{badges_html}</label>'
-        f'<div class="row-control">{control}{control_suffix}{hint}</div>'
+        f'<div class="row-info">{label}'
+        f'<span class="row-key">{_esc(key)}</span>{badges_html}</div>'
+        f'<div class="row-control">{control}{hint}</div>'
         '</div>'
     )
 

@@ -10,6 +10,7 @@
 - 任何异常只记日志，不打断主循环。
 """
 import asyncio
+import time
 import json
 from typing import Any, Callable, Dict, Optional
 
@@ -47,6 +48,7 @@ class QzoneAutoPoster:
     def __init__(self, config, registry_provider: Callable[[], Any],
                  chat: Callable[..., Any], context_provider=None, persona_provider=None):
         self.config = config
+        self.last_run = None
         self._registry = registry_provider
         self._chat = chat
         self._context = context_provider
@@ -64,8 +66,11 @@ class QzoneAutoPoster:
         await asyncio.sleep(min(300, hours * 3600))
         while True:
             try:
-                await self.once()
+                result = await self.once()
+                self.last_run = {"at": time.time(), "status": (
+                    "skipped" if result is None else "done" if result.get("ok") else "failed")}
             except Exception as e:  # noqa: BLE001 —— 自主任务失败不能打崩主循环
+                self.last_run = {"at": time.time(), "status": "failed"}
                 logger.warning("qzone_auto_failed err=%s: %s", type(e).__name__, e)
             await asyncio.sleep(max(60, hours * 3600))
 

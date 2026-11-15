@@ -1,14 +1,15 @@
 # Flowerie 文档
 
-> 对应 **v2.14.2**（2026-10-28）：**私聊（按 QQ 号完全隔离）+ AI 自主工具层**——Web UI 新增「私聊」页签（共 12 个），窄屏导航收成纯 CSS 抽屉；
-> AI 可自主调用 QQ空间 / 群管 / 记忆工具，并可按间隔自己发说说；SDK 新增私聊方法与 `get_private_history`，五语言最小插件矩阵扩到 61 条。
-> 更早版本（群管理控制台 / QQ空间 / 群友画像 / 每日摘要）见 `CHANGELOG.md`；历史版本见 [archive/](archive/README.md)。
+> 对应 **v2.19.0**（2026-11-15）：**插件生态平台化**——插件 WebUI SDK（五语言统一组件式页面，
+> 宿主渲染 + 转义 + 表单校验）、插件平台 API（25 个 action：画像 / 搜索 / 知识 / QQ空间 / 自动化 /
+> 私聊 / 群管理 / 文档解析）、夜间控制台 UI（侧栏 + 手机导航 + 内联 SVG）、文件解析开关与格式白名单。
+> 协议仍是 **v1**，旧插件零改动。更早版本见 `CHANGELOG.md`；历史报告见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走
 
 | 你的目标 | 按顺序读 |
 | --- | --- |
-| 🧩 **写插件** | [quick-start](guides/quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugins/plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugins/plugin-webui.md) / [sdk](reference/sdk.md) / [api](reference/api.md)；**不用 Python/Node？** 直接看 [plugin-developer-guide](plugins/plugin-developer-guide.md) §12.2（13 种语言最小实现，照抄即可） |
+| 🧩 **写插件** | [quick-start](guides/quick-start.md)（10 分钟小白版）→ [plugin-developer-guide](plugins/plugin-developer-guide.md)（完整参考）→ 按需查 [plugin-webui](plugins/plugin-webui.md) / [plugin-webui-sdk](plugins/plugin-webui-sdk.md) / [plugin-platform-api](reference/plugin-platform-api.md) / [sdk](reference/sdk.md) / [api](reference/api.md)；**不用 Python/Node？** 直接看 [plugin-developer-guide](plugins/plugin-developer-guide.md) §12.2（13 种语言最小实现，照抄即可） |
 | 🔧 **部署运维** | 安装（[Windows](guides/install-release-windows.md) · [Linux/macOS/Termux 资产](guides/install-release-guide.md) · [**Termux 权威步骤**](guides/install-termux.md)）→ [configuration](guides/configuration.md) → [web-ui](features/web-ui.md) → [security](reference/security.md) |
 | 🛠 **改代码** | [development](guides/development.md)（目录结构 / 测试 / CI）→ [sdk](reference/sdk.md)（三层架构）→ [archive/](archive/README.md)（历史审计） |
 
@@ -41,6 +42,8 @@
 | [client-compatibility-report.md](reports/client-compatibility-report.md) | **客户端兼容扩展最终报告**：§二十四 全部量化指标 + 证据等级分层 + BLOCKED 清单 + §二十二 禁令自查 | 评审 |
 | [client-profiles.md](reference/client-profiles.md) | **客户端档案**：一个协议基线 + 多个客户端实现的已验证差异（四态 + quirks）、出站序列化怎么用、新客户端接入清单 | 协议/适配层开发者 |
 | [client-compatibility.md](reference/client-compatibility.md) | **Client Compatibility Matrix**：逐能力 × 逐客户端（SUPPORTED/PARTIAL/UNSUPPORTED/UNKNOWN + 证据）| 协议/适配层开发者 |
+| [plugin-webui-sdk.md](plugins/plugin-webui-sdk.md) | **五语言 Web UI SDK**（组件、类型化表单、分页与可运行示例） | 插件开发者 |
+| [plugin-platform-api.md](reference/plugin-platform-api.md) | **插件平台 API（v2.19.0）**：25 个 action 的参数 / 权限 / 返回字段 —— 画像读写、网页搜索、群知识、人格与昵称解析、QQ空间、自动化状态与定时、私聊、群成员与群管理、文档解析 | 想让插件调用平台能力的开发者 |
 | [plugin-webui-protocol.md](plugins/plugin-webui-protocol.md) | **统一 Plugin WebUI 协议**：`webui.page/action/asset` 三个协议方法 + 六项 `webui.*` 权限 + 受控 context + 20 类安全用例落点（五种语言同一套） | 插件开发者 |
 | [plugin-protocol.md](reference/plugin-protocol.md) | **Plugin Protocol v1 规范**：JSON-Lines 线格式 / 必需 4 + 可选 14 方法（含插件间通信 3 项）/ 错误模型 / 版本与能力协商 / 选型理由 | 插件开发者 |
 | [plugin-communication.md](plugins/plugin-communication.md) | **插件间通信协议**：五类消息 / 请求·响应·错误模型 / 12 个错误码 / 语言无关类型与 DTO / 十四节权限 / LOCAL·CORE·AUTO 路由 / 五语言 API 对照 | 插件开发者 |

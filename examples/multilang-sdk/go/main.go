@@ -118,6 +118,12 @@ func main() {
 	// 插件渲染页（index / communication）：Plugin 取受控 context 的 plugin id。
 	app.plugin.WebUI().Page(func(args map[string]any) any {
 		pluginID := ctxPluginID(args, app.pluginID())
+		if pageID(args["page"]) == "sdk_settings" {
+			context, _ := args["context"].(map[string]any)
+			data, _ := context["data"].(map[string]any)
+			settings, _ := data["sdk_settings"].(map[string]any)
+			return sdkSettings(settings, false)
+		}
 		if pageID(args["page"]) == "communication" {
 			context, _ := args["context"].(map[string]any)
 			form := contextForm(context)
@@ -133,6 +139,10 @@ func main() {
 		// 调用页的 POST（按钮 name=plugin_action value=call）-> 真调用 -> 重渲染。
 		pluginID := ctxPluginID(args, app.pluginID())
 		action := textOf(args["action"])
+		if pageID(args["page"]) == "sdk_settings" && action == "save" {
+			form, _ := args["form"].(map[string]any)
+			return sdkSettings(form, true)
+		}
 		if pageID(args["page"]) != "communication" {
 			return map[string]any{"ok": false, "error": "未知动作: " + action}
 		}
@@ -295,8 +305,8 @@ func webuiHTML(pluginID string) string {
 
 const (
 	defaultRequest = `{"hello": "world"}` // 默认请求（与 tests/e2e 的链路请求同形）
-	callTimeoutMs  = 2500                // 引擎给 webui.action 的上限是 4s，这里留足余量
-	traceKey       = "_e2e_trace"        // 随请求往返的关联 id（与 tests/e2e 夹具插件同一约定）
+	callTimeoutMs  = 2500                 // 引擎给 webui.action 的上限是 4s，这里留足余量
+	traceKey       = "_e2e_trace"         // 随请求往返的关联 id（与 tests/e2e 夹具插件同一约定）
 	unreturned     = "（对端未回传）"
 )
 
@@ -313,6 +323,31 @@ func newCallID() string {
 }
 
 // pageID 取 page 的 id（引擎给的是对象 {id,title,description}）。
+func sdkSettings(settings map[string]any, saving bool) map[string]any {
+	nickname := settings["nickname"]
+	if nickname == nil {
+		nickname = "Flowerie"
+	}
+	limit := settings["limit"]
+	if limit == nil {
+		limit = 10
+	}
+	enabled, _ := settings["enabled"].(bool)
+	form := &flowerie.WebUIForm{Action: "save", Fields: []flowerie.WebUIField{
+		{Name: "nickname", Label: "显示名称", Kind: "text", Value: nickname, Required: true},
+		{Name: "limit", Label: "每日报告上限", Kind: "integer", Value: limit, Required: true},
+		{Name: "enabled", Label: "启用日报", Kind: "boolean", Value: enabled},
+	}}
+	page := flowerie.WebUIPage(form,
+		flowerie.WebUIText("status", "自动化设置"),
+		flowerie.WebUITable([]string{"任务", "周期"}, [][]any{{"日报", "每日"}, {"周报", "每周"}}, 1))
+	if saving {
+		page["message"] = "已保存"
+		page["storage_set"] = map[string]any{"sdk_settings": settings}
+	}
+	return page
+}
+
 func pageID(page any) string {
 	if obj, ok := page.(map[string]any); ok {
 		if id, ok := obj["id"].(string); ok && id != "" {
@@ -447,9 +482,9 @@ func (m *minimal) callTarget(target, method, requestText, routePolicy string) ma
 		routeSource = "调用方请求的路由策略"
 	}
 	return map[string]any{"response": jsonString(map[string]any{"ok": true, "result": result}),
-		"response_ok": "ok",
+		"response_ok":    "ok",
 		"target_runtime": m.observedRuntime(target, routePolicy, result),
-		"request_id": requestID, "request_id_source": requestSource,
+		"request_id":     requestID, "request_id_source": requestSource,
 		"trace_id": traceID, "trace_id_source": traceSource,
 		"route": route, "route_source": routeSource}
 }
@@ -750,6 +785,21 @@ func (m *minimal) runCommand(text string) (any, error) {
 		}
 		return m.errorProbes(granted, denied), nil
 
+	case "fileparse":
+		ctx := m.plugin.Context()
+		inline, err := ctx.FileParse("note.txt", "aGVsbG8=")
+		if err != nil {
+			return nil, err
+		}
+		local, err := ctx.FileParseLocal("document.txt")
+		if err != nil {
+			return nil, err
+		}
+		status, err := ctx.FileParseStatus()
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"inline": inline, "local": local, "status": status}, nil
 	case "caps":
 		return m.capabilitiesProbe(), nil
 	case "dm":
@@ -791,10 +841,18 @@ func (m *minimal) capabilitiesProbe() map[string]any {
 		return res
 	}
 	return map[string]any{
-		"shut":    safe(func() (map[string]any, error) { return ctx.GroupShutList(10001) }),
-		"leave":   safe(func() (map[string]any, error) { return ctx.GroupLeave(10002, false) }),
-		"publish": safe(func() (map[string]any, error) { return ctx.QzonePublish("hello from go", nil, 1, nil) }),
-		"remove":  safe(func() (map[string]any, error) { return ctx.QzoneDelete("TX") }),
+		"private_history": safe(func() (map[string]any, error) { return ctx.UserHistory(20001, 5) }),
+		"mute":            safe(func() (map[string]any, error) { return ctx.GroupBan(10001, 20001, 60) }),
+		"digest":          safe(func() (map[string]any, error) { return ctx.DigestGet(10001) }),
+		"profile":         safe(func() (map[string]any, error) { return ctx.ProfileGet(10001, 20001) }),
+		"search":          safe(func() (map[string]any, error) { return ctx.WebSearch("花璃", 3) }),
+		"history":         safe(func() (map[string]any, error) { return ctx.QzoneHistory(2) }),
+		"automation":      safe(ctx.AutomationStatus),
+		"schedules":       safe(ctx.ScheduleList),
+		"shut":            safe(func() (map[string]any, error) { return ctx.GroupShutList(10001) }),
+		"leave":           safe(func() (map[string]any, error) { return ctx.GroupLeave(10002, false) }),
+		"publish":         safe(func() (map[string]any, error) { return ctx.QzonePublish("hello from go", nil, 1, nil) }),
+		"remove":          safe(func() (map[string]any, error) { return ctx.QzoneDelete("TX") }),
 	}
 }
 

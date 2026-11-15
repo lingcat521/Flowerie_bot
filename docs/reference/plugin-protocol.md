@@ -1,5 +1,7 @@
 # Plugin Protocol v1（语言无关插件协议）
 
+画像、搜索、QQ 空间、自动化、私聊及群管理的调用方法与权限见[插件平台 API](plugin-platform-api.md)。
+
 > **权威规范**：线格式与信封全仓只在**本文件**定义一次。单一事实来源是代码 ——
 > `src/plugins/protocol.py`（常量与校验）、`src/plugins/runtime.py`（连接与 initialize 协商）、
 > `src/plugins/manager.py`（反向 op 策略）、`src/plugins/runner/python_runner.py`（Python 参考实现）。

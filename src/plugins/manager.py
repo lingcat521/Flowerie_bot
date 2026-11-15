@@ -33,7 +33,8 @@ from src.plugins import comm
 from src.plugins.http_action import plugin_http_request, redact_url
 from src.plugins.installer import PluginInstaller, PluginInstallError
 from src.plugins.manifest import PluginManifest, PluginManifestError
-from src.plugins.permissions import PermissionManager
+from src.plugins.permissions import PLATFORM_ACTION_PERMISSIONS, PermissionManager
+from src.plugins.platform_actions import PlatformActions
 from src.plugins.router import PluginBus, PluginRouter
 from src.plugins.runtime import PluginRuntime
 from src.plugins.scheduler import PluginScheduler
@@ -73,7 +74,7 @@ def _payload_hop(payload: dict) -> int:
 
 # 事件类型 → 需要权限（未批准则事件不投递）
 _EVENT_PERMISSION = {"message": "read_message", "group_message": "read_message",
-                     "notice": "read_message", "command": "read_message"}
+                     "notice": "read_message", "command": "read_message", "schedule": "scheduler"}
 # 声明式插件支持的模板字段（值只能来自事件 payload，绝不执行代码）
 _TEMPLATE_FIELDS = ("group_id", "user_id", "text", "message_name", "message")
 
@@ -93,11 +94,13 @@ class PluginManager:
                  bot_factory: Optional[Any] = None,
                  ai_client: Optional[Any] = None):
         self.config = config
+        self.platform_actions = PlatformActions(config)
         self.repository = repository
         self.sender = sender
         self._start_ts = time.time()
         self._plugin_services = {}
         self.memory_manager = memory_manager
+        self.blossom_memory = None
         # state_provider: (kind, id) -> dict | None（get_group/get_user 的数据源，由 main 注入）
         self.state_provider = state_provider
         self.installer = installer or PluginInstaller(self._plugin_dir())
@@ -697,13 +700,15 @@ class PluginManager:
             if not row.get("enabled"):
                 continue
             record_id = row["id"]
+            if event_type == "schedule" and payload.get("plugin_id") != record_id:
+                continue
             approved = set((row.get("approved_permissions") or "").split(","))
             if required not in approved:
                 continue  # 事件权限未批准：不投递（权限不是提示文字）
             manifest = self._manifest_of(row)
             # SDK 模式：插件注册过 matcher → 只投递命中事件（payload 附带 matched 列表）
             matchers = self._matchers.get(record_id)
-            if matchers:
+            if matchers and event_type != "schedule":
                 hits = await self._match_plugin_payload(record_id, matchers, event_type, payload)
                 if not hits:
                     continue
@@ -1365,7 +1370,7 @@ class PluginManager:
             p2["value"] = p2.get("value") or "1"
             return await self._sender_forward(plugin_id, "kv_set", p2)
         if action in ("memory_search", "memory_semantic"):
-            mm = getattr(self, "memory_manager", None)
+            mm = self.blossom_memory
             if mm is None:
                 return {"ok": False, "error": "memory_search: 花语记忆未启用"}
             try:
@@ -1408,7 +1413,7 @@ class PluginManager:
                             "allowed_tools": [t.strip() for t in tools_wildcard.split(",")]})
             return {"ok": True, "tools": out}
         if action in ("mcp_resource", "mcp_prompt"):
-            return {"ok": False, "error": f"{action}: v1 未实现（not supported）"}
+            return await self._mcp_read(action, payload, servers)
         if action in ("mcp_status", "mcp_call"):
             name = str(payload.get("server") or payload.get("name") or "")
             server = next((s for s in servers if s.get("name") == name), None)
@@ -1462,6 +1467,41 @@ class PluginManager:
             except httpx.HTTPError as e:
                 return {"ok": False, "error": f"mcp_call: {type(e).__name__}: {e}"}
         return {"ok": False, "error": f"{action}: 未知语义"}
+
+    async def _mcp_read(self, action, payload, servers):
+        from src.services.mcp_client import McpClient, McpError
+
+        if not getattr(self.config, "MCP_ENABLED", False):
+            return {"ok": False, "code": "unavailable", "error": "MCP 未启用"}
+        name = payload.get("server")
+        server = next((item for item in servers if item.get("name") == name and item.get("enabled", True)), None)
+        if server is None:
+            return {"ok": False, "error": "未找到已启用的 MCP 服务器"}
+        key = "uri" if action == "mcp_resource" else "name"
+        selector = payload.get(key, "")
+        cursor = payload.get("cursor", "")
+        arguments = payload.get("arguments", {})
+        if (not isinstance(selector, str) or len(selector) > 2048 or not isinstance(cursor, str)
+                or len(cursor) > 1024 or not isinstance(arguments, dict) or len(json.dumps(arguments)) > 8192):
+            return {"ok": False, "code": "invalid_argument", "error": "MCP 参数格式不合法"}
+        client = None
+        try:
+            client = McpClient(
+                server["url"], name=name,
+                timeout=max(3, min(30, int(getattr(self.config, "MCP_TIMEOUT", 15) or 15))),
+                allowed_hosts=list(getattr(self.config, "MCP_ALLOWED_HOSTS", None) or []),
+                auth=build_auth(server.get("auth")),
+            )
+            namespace = "resources" if action == "mcp_resource" else "prompts"
+            result = await client.read_catalog(namespace, selector, cursor=cursor, arguments=arguments)
+            if len(json.dumps(result, ensure_ascii=False).encode()) > 64 * 1024:
+                return {"ok": False, "error": "MCP 响应超过 64 KiB"}
+            return {"ok": True, "result": result}
+        except (McpError, McpAuthError, httpx.HTTPError, ValueError):
+            return {"ok": False, "error": "MCP 服务器读取失败或不支持该能力"}
+        finally:
+            if client is not None:
+                await client.close()
 
     async def _ext_ai(self, plugin_id: str, action: str, payload: dict) -> dict:
         """AI 语义（真实现：复用生产 AiClient/Vision/花语客户端/指标/预算配置）。"""
@@ -1840,8 +1880,18 @@ class PluginManager:
 
     async def _run_action(self, plugin_id: str, action_type: str, payload: Dict[str, Any]) -> dict:
         """action 具体实现（按类型；全部结果回传插件，不执行任何未实现动作）。"""
+        if action_type == "file_parse_local":
+            if not _PLUGIN_ID_RE.fullmatch(plugin_id):
+                return {"ok": False, "code": "invalid_argument", "error": "插件 id 非法"}
+            return await self.platform_actions.parse_local_file(
+                os.path.realpath(self.plugin_dir), plugin_id, payload.get("path"))
+        if action_type in PLATFORM_ACTION_PERMISSIONS:
+            return await self.platform_actions.run(action_type, payload)
         if action_type in _SENDER_ACTIONS:
-            return await self._sender_forward(plugin_id, action_type, payload)
+            result = await self._sender_forward(plugin_id, action_type, payload)
+            if action_type in ("qzone_publish", "qzone_delete") and self.platform_actions.qzone is not None:
+                self.platform_actions.qzone.record_gateway_action(action_type, payload, result)
+            return result
         if action_type in self._MSG_FRIEND_EXT:
             return await self._ext_msg_friend(plugin_id, action_type, payload)
         if action_type in self._GROUP_EXT:

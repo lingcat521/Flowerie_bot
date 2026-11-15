@@ -284,3 +284,46 @@ async def test_private_actions_roundtrip(tmp_path, lang):
         hist = [c for c in rig.sender.calls if c["endpoint"] == "get_friend_msg_history"]
         assert hist and hist[-1]["args"]["user_id"] == 20001, rig.sender.calls
         _record(lang, "Private", "PASS")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lang", LANGS)
+async def test_platform_capabilities_roundtrip(tmp_path, lang):
+    """Exercise new SDK methods in a real plugin process with isolated services."""
+    from types import SimpleNamespace
+
+    from src.plugins.platform_actions import PlatformActions
+
+    reason = missing_reason(lang)
+    if reason:
+        pytest.skip(reason)
+    async with RigCtx(tmp_path) as rig:
+        async def search(query, max_results):
+            assert (query, max_results) == ("花璃", 3)
+            return {"ok": True, "sources": [{"title": query}]}
+
+        permissions = _CAPS_PERMS + ["read_member_profile", "web_search", "read_qzone_history", "scheduler", "read_user_info", "read_daily_digest"]
+        plugin_id = await rig.load(lang, declared=permissions, approved=permissions)
+        rig.mgr.config.DIGEST_ENABLED = True
+        rig.mgr.platform_actions = PlatformActions(
+            rig.mgr.config,
+            profiles=SimpleNamespace(enabled=lambda: True, profile_of=lambda gid, uid: {"ids": [gid, uid]}),
+            search=SimpleNamespace(enabled=lambda: True, search=search),
+            digest=SimpleNamespace(store=SimpleNamespace(load=lambda gid: ("2026-11-15", str(gid)))),
+            qzone=SimpleNamespace(enabled=lambda: True,
+                                  history=lambda: [{"tid": "T1"}, {"tid": "T2"}, {"tid": "T3"}]),
+        )
+        async def mute(group_id, user_id, duration):
+            assert (group_id, user_id, duration) == (10001, 20001, 60)
+            return True
+
+        rig.sender.set_group_ban = mute
+        result = await rig.send("/sdk@%s caps" % plugin_id)
+        assert result["private_history"]["messages"][0]["text"] == "hi"
+        assert result["mute"]["duration"] == 60 and result["mute"]["ok"]
+        assert result["digest"] == {"ok": True, "digest": {"date": "2026-11-15", "text": "10001"}}
+        assert result["profile"] == {"ok": True, "profile": {"ids": [10001, 20001]}}
+        assert result["search"] == {"ok": True, "sources": [{"title": "花璃"}]}
+        assert result["history"] == {"ok": True, "items": [{"tid": "T1"}, {"tid": "T2"}]}
+        assert result["schedules"] == {"ok": True, "schedules": []}
+        assert result["automation"]["features"]["AI_SEARCH_ENABLED"] is False

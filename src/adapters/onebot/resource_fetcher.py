@@ -15,7 +15,14 @@ OneBot 端点、解析 NapCat 响应，属协议耦合，也是"Core 依赖 file
 import base64
 from typing import Any, Optional
 
-from src.adapters.resource import FetchResult, LocalPathFetcher, ResourceFetcher, ResourceRef
+from src.adapters.resource import (
+    ByteLimit,
+    FetchResult,
+    LocalPathFetcher,
+    ResourceFetcher,
+    ResourceRef,
+    resolve_byte_limit,
+)
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -26,13 +33,13 @@ class OneBotResourceFetcher(ResourceFetcher):
 
     name = "onebot11-resource"
 
-    def __init__(self, call_api: Any, max_bytes: int = 2 * 1024 * 1024,
+    def __init__(self, call_api: Any, max_bytes: ByteLimit = 2 * 1024 * 1024,
                  endpoint: str = "get_file", id_field: str = "file_id",
                  local_fetcher: Optional[ResourceFetcher] = None) -> None:
         if call_api is None:
             raise ValueError("OneBotResourceFetcher 需要注入 call_api（协议调用出口）")
         self._call_api = call_api
-        self.max_bytes = max(1, int(max_bytes))
+        self.max_bytes = max_bytes
         self.endpoint = endpoint
         self.id_field = id_field
         self._local = local_fetcher or LocalPathFetcher(max_bytes=self.max_bytes)
@@ -57,8 +64,9 @@ class OneBotResourceFetcher(ResourceFetcher):
 
         b64 = data.get("base64") or ""
         if b64:
+            limit = resolve_byte_limit(self.max_bytes)
             # base64 文本 ≈ 原始字节 × 4/3：先按文本长度拒绝超大响应，避免无谓解码
-            cap = self.max_bytes * 4 // 3 + 4096
+            cap = limit * 4 // 3 + 4096
             if len(b64) > cap:
                 logger.warning("onebot_get_file_base64_too_large ref=%s len=%d cap=%d",
                                target.ref, len(b64), cap)
@@ -68,9 +76,9 @@ class OneBotResourceFetcher(ResourceFetcher):
             except Exception as exc:  # noqa: BLE001
                 logger.warning("onebot_get_file_base64_invalid ref=%s err=%s", target.ref, exc)
                 return b"", False
-            if len(content) > self.max_bytes:
+            if len(content) > limit:
                 logger.warning("onebot_get_file_bytes_too_large ref=%s size=%d limit=%d",
-                               target.ref, len(content), self.max_bytes)
+                               target.ref, len(content), limit)
                 return b"", False
             return content, True
 

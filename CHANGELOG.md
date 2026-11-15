@@ -4,6 +4,106 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.19.0] - 2026-11-15
+
+> 题眼：**插件生态平台化**——插件不再只能收发消息，而是能画自己的管理页、调用宿主的
+> 画像/搜索/QQ空间/群管理能力；控制台同时换成夜间工作台布局。协议仍是 v1，旧插件零改动。
+
+### 新功能一：插件 Web UI SDK（五语言统一组件式页面）
+
+插件不再手写 HTML/CSS —— 只声明**内容**，宿主负责渲染 HTML、跟随控制台主题、校验表单、
+显示字段错误。页面在没有浏览器 JavaScript 的情况下即可操作。
+
+```python
+from flowerie_sdk import webui
+
+def webui_render(page, context):
+    return webui.page(
+        webui.text("日报设置", "status"),
+        form=webui.form("save", [
+            webui.field("limit", "每日报告上限", "integer", required=True),
+            webui.field("enabled", "启用日报", "boolean"),
+        ]),
+    )
+```
+
+| SDK | 页面构造入口 |
+| :--- | :--- |
+| Python | `flowerie_sdk.webui.page(*blocks, form=...)` |
+| TypeScript | `webuiView.page(blocks, form, options)` |
+| Go | `flowerie.WebUIPage(form, blocks...)` |
+| Rust | `webui_view::page(blocks, Some(form))` |
+| Java | `FloweriePlugin.WebUIView.page(blocks, form)` |
+
+- 组件：文字 / 状态 / 日志 / 表格（1–12 列 × 500 行，分页 1–50，默认 20）
+- 表单：每页 1 个，1–32 字段；类型 `text` / `textarea` / `integer` / `boolean` / `select`
+- 边界：字段名 `[a-zA-Z][a-zA-Z0-9_.-]{0,63}`，保留 `plugin_` 前缀与 `get` 动作名；
+  渲染后 HTML 总计 ≤ 512 KiB
+- **所有展示值由宿主转义**（`WebUIView` 注释即承诺，`<script>` / 属性引号全部转成实体）
+- 权限：`webui.view` / `webui.action` / `webui.storage.read|write` / `webui.config.write`；
+  旧权限 `web_ui` 继续兼容页面访问与提交
+
+### 新功能二：插件平台 API（25 个 action）
+
+插件从"能说话"升级为"能调平台能力"，全部走权限闸门（manifest 声明 + 管理员批准）：
+
+| 类别 | action |
+| :--- | :--- |
+| 画像 | `profile_get` / `profile_set_section` / `profile_delete` |
+| 搜索 | `web_search` |
+| 知识 | `knowledge_list` |
+| 人格/昵称 | `persona_resolve` / `nickname_resolve` |
+| QQ空间 | `qzone_history` / `qzone_rights` / `qzone_publish` |
+| 自动化 | `automation_status` / `schedule_register` / `schedule_list` / `schedule_cancel` |
+| 私聊 | `send_private_message` / `user_history` |
+| 群管理 | `get_group_members` / `group_ban` / `group_kick` / `group_admin` / `group_whole_ban` / `group_rename` / `group_card` / `group_title` / `group_shut_list` |
+| 文档解析 | `file_parse` / `file_parse_local` / `file_parse_status`（权限 `parse_files`） |
+
+支撑层同步改造：自动化模块统一输出 `last_run`（供 `automation_status`）、
+画像支持按群分页（`group_profiles` / `list_group_profiles`）、
+MCP 客户端支持读取 `resources` / `prompts`（原来只有 `tools`）、
+QQ空间动作落审计（`record_gateway_action`）。
+
+### 新功能三：夜间控制台 UI
+
+Web UI 从"顶部文字标签页"改成**桌面侧栏 + 手机底部导航**的双布局：
+
+- 面板页 HTML 1.7 KB → 15 KB，34 个**内联 SVG 图标**（`aria-hidden`，零外链）
+- 新增 `skip-link`（跳到正文）、品牌区花标
+- 登录页也带品牌花标（883 B → 2448 B）
+- `graphics.py`（125 行）：花标 + 每页图标，纯 `math` 计算，无第三方依赖
+- `theme.py` 从 255 行精简到 163 行
+- **仍是零 JavaScript、零外部资源**
+
+### 新功能四：文件解析开关与格式白名单
+
+- `FILE_PARSE_ENABLED`：文件解析总开关（默认 `true`）——此前**没有开关**，只有上限参数
+- `FILE_PARSE_GROUP_UPLOAD_ENABLED`：群文件自动解析单独控制
+- `FILE_PARSE_FORMATS`：允许格式白名单（默认 `txt,pdf,docx,xlsx,csv`），
+  `normalize_file_formats()` 校验并规范化
+- Web UI「文件解析」页把这两个开关置顶为「解析总开关」/「群文件自动解析」
+- 顺手修 `message_assembler` 的 `KeyError`：`pending_files.pop(key)` → `pop(key, None)`
+
+### 依赖
+
+- 新增 `tzdata>=2024.1`：`zoneinfo` 在精简环境（容器 / Termux）没有系统时区库，
+  缺它时 `daily_digest` 等模块直接抛 `ZoneInfoNotFoundError`
+- 新增 `Pillow>=10.0`：GIF 首帧转 PNG（多模态识图 / 表情包）
+- 开发依赖新增 `playwright>=1.40`（`tests/e2e/` 真浏览器测试）
+
+### 兼容性
+
+- **Plugin Protocol 仍是 v1**（`plugin-protocol.md` 仅 2 行措辞调整），旧插件无需改动
+- 新增 action / 权限均为增量，未改动既有 action 的入参或返回结构
+- 配置键全部有默认值，旧 `.env` 可直接沿用
+
+### 文档
+
+- 新增 `docs/plugins/plugin-webui-sdk.md`（81 行）：五语言页面构造入口 + 组件/表单规范
+- 新增 `docs/reference/plugin-platform-api.md`（61 行起，含 25 个 action 的参数/权限/返回表）
+- 新增 `scripts/generate_env_example.py`：从 SCHEMA 生成 `.env_example`
+- `docs/features/web-ui.md`、`docs/guides/configuration.md` 同步
+
 ## [2.18.1] - 2026-11-04
 
 ### 修复

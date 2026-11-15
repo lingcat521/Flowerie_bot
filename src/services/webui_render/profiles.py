@@ -6,6 +6,7 @@
 import time
 
 from src.services.webui_render.config_panel import _render_config_row
+from src.services.webui_render.graphics import empty_state, icon
 from src.services.webui_render.util import _esc
 
 
@@ -20,11 +21,11 @@ def _member_card(group_id: int, member: dict) -> str:
     """单个群友画像卡片：昵称 + 各字段（含上次更新时间）+ 编辑/删除表单。"""
     uid = member.get("user_id", 0)
     nick = _esc(member.get("nickname") or "")
-    head = '<fieldset class="group"><legend>用户 %d' % uid
-    if nick:
-        head += '（%s）' % nick
-    head += '</legend>'
-    parts = [head]
+    parts = [
+        '<article class="group profile-card"><header class="profile-header">'
+        f'<span class="icon-frame">{icon("persona")}</span>'
+        f'<div><h3>{nick or f"用户 {uid}"}</h3><span class="row-key">QQ {uid}</span></div></header>'
+    ]
     for sec in member.get("sections") or []:
         label = _esc(sec.get("label") or "")
         name = _esc(sec.get("name") or label)
@@ -39,19 +40,19 @@ def _member_card(group_id: int, member: dict) -> str:
             '<input type="hidden" name="label" value="%s">'
             '<input type="hidden" name="nickname" value="%s">'
             '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-            '<input class="w-lg" type="text" name="text" value="%s" maxlength="120">'
+            '<input class="w-lg" type="text" name="text" value="%s" maxlength="120" aria-label="%s">'
             '<button type="submit" class="btn small">保存</button>'
             '</div><span class="hint">上次更新 %s</span></form></div>'
-            % (name, label, group_id, uid, label, nick, text, ts))
+            % (name, label, group_id, uid, label, nick, text, name, ts))
     if not (member.get("sections") or []):
-        parts.append('<div class="msg">该群友暂无画像字段</div>')
+        parts.append(empty_state("profiles", "该群友暂无画像字段。"))
     parts.append(
         '<div class="group-actions">'
         '<form method="post" action="/panel/profile/delete" style="display:inline">'
         '<input type="hidden" name="group_id" value="%d">'
         '<input type="hidden" name="user_id" value="%d">'
-        '<button type="submit" class="btn small">删除该群友画像</button></form>'
-        '</div></fieldset>' % (group_id, uid))
+        '<button type="submit" class="btn small danger">删除该群友画像</button></form>'
+        '</div></article>' % (group_id, uid))
     return "".join(parts)
 
 
@@ -63,10 +64,10 @@ def render_profile_tab(group_id, members, enabled=True, count=0, groups=None,
     view_block = (
         '<fieldset class="group"><legend>群友画像（Member Profile：性格/喜好/个人生活/特点）</legend>'
         '<form method="post" action="/panel/profile/view">'
-        '<div class="row"><label class="row-info"><span class="row-title">查看指定群的画像</span>'
+        '<div class="row"><label class="row-info" for="profile-group"><span class="row-title">查看指定群的画像</span>'
         '<span class="row-key">group_id</span></label>'
         '<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-        '<input class="w-gid" type="text" name="group_id" placeholder="群号" required'
+        '<input class="w-gid" type="text" name="group_id" id="profile-group" placeholder="群号" required'
         + (f' value="{_esc(group_id)}"' if group_id else '') + '>'
         '<button type="submit" class="btn small">查看</button></div>'
         '<span class="hint">画像按群隔离，由每日摘要自动提炼，也可在此手工修正</span>'
@@ -83,11 +84,11 @@ def render_profile_tab(group_id, members, enabled=True, count=0, groups=None,
         return view_block
     members_html = "".join(_member_card(int(group_id), m) for m in (members or []))
     clear_block = (
-        '<fieldset class="group"><legend>清空本群画像</legend>'
+        '<fieldset class="group danger-options"><legend>清空本群画像</legend>'
         '<form method="post" action="/panel/profile/clear">'
         f'<input type="hidden" name="group_id" value="{_esc(group_id)}">'
         '<span class="hint">删除本群全部画像（不可恢复）；单人删除请用卡片内的按钮</span>'
-        '<div class="group-actions"><button type="submit" class="btn small">清空本群画像</button></div>'
+        '<div class="group-actions"><button type="submit" class="btn small danger">清空本群画像</button></div>'
         '</form></fieldset>'
     )
     config_block = ""
@@ -104,4 +105,6 @@ def render_profile_tab(group_id, members, enabled=True, count=0, groups=None,
         f'<div class="mcp-card-meta">当前群 {_esc(group_id)}：已建档 {count} 位群友'
         '（注入对话的活跃成员上限见 PROFILE_MAX_MEMBERS）</div>'
     )
-    return view_block + header + members_html + clear_block + config_block
+    archive = (f'<div class="profile-grid">{members_html}</div>' if members_html
+               else empty_state("profiles", "该群暂无画像记录。"))
+    return view_block + header + archive + clear_block + config_block

@@ -9,6 +9,7 @@ from urllib.parse import quote
 from aiohttp import web
 
 from src.services.web_search import ENGINE_IDS, ENGINE_LABELS
+from src.services.webui_render.graphics import empty_state
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -28,13 +29,13 @@ class SearchPanelMixin:
                             probe: Optional[dict] = None) -> str:
         svc = self._search_service()
         enabled = bool(svc is not None and svc.enabled())
-        engine_order = svc._engine_order() if svc is not None else list(ENGINE_IDS)
+        engine_order = svc._engine_order() if svc is not None else ()
         rows = []
         for eng in ENGINE_IDS:
             label = ENGINE_LABELS.get(eng, eng)
             in_order = eng in engine_order
             badge = ('<span class="badge ok">已启用</span>' if in_order else
-                     '<span class="badge">停用</span>')
+                     f'<span class="badge">{"未接入" if svc is None else "停用"}</span>')
             rows.append(
                 f'<div class="row"><label class="row-info">'
                 f'<span class="row-title">{label}</span>'
@@ -43,19 +44,20 @@ class SearchPanelMixin:
         state_hint = (
             '<div class="hint">AI 搜索已开启：模型在需要实时信息时可自主调用 web_search / web_fetch。</div>'
             if enabled else
-            '<div class="hint">AI 搜索未开启：在「配置管理 → 网页搜索」打开 AI_SEARCH_ENABLED 后，模型才能使用搜索工具。</div>')
+            '<div class="alert warn">AI 搜索未开启，可在「自动化」页打开 AI_SEARCH_ENABLED。</div>')
+        if svc is None:
+            state_hint = '<div class="alert warn">搜索服务未接入。</div>'
         # 试搜结果（不可信外部输入：仅文本回显，不做任何渲染）
         probe = probe if probe is not None else getattr(self, "_search_probe_cache", None)
         probe_html = ""
         if probe:
             if probe.get("ok"):
                 items = "".join(
-                    f'<div class="row"><label class="row-info">'
-                    f'<span class="row-title">{_t(s.get("title", ""))}</span>'
-                    f'<span class="row-key">{_t(s.get("url", ""))}</span></label>'
-                    f'<div class="row-control"><span class="hint">{_t(s.get("snippet", ""))}</span></div></div>'
+                    f'<article class="search-result"><h3>{_t(s.get("title", ""))}</h3>'
+                    f'<div class="row-key">{_t(s.get("url", ""))}</div>'
+                    f'<p>{_t(s.get("snippet", ""))}</p></article>'
                     for s in (probe.get("sources") or [])[:5])
-                empty_hint = '<div class="hint">无结果</div>'
+                empty_hint = empty_state("search", "无结果，可尝试其他关键词。")
                 probe_html = (
                     f'<details class="cfg-group" open><summary class="cfg-summary">'
                     f'<span class="cfg-caret" aria-hidden="true"></span>试搜结果'
@@ -92,8 +94,8 @@ class SearchPanelMixin:
             f'<details class="cfg-group" open><summary class="cfg-summary">'
             f'<span class="cfg-caret" aria-hidden="true"></span>试搜 / 自检</summary>'
             '<form method="post" action="/panel/search/probe">'
-            '<div class="row"><label class="row-info"><span class="row-title">试搜关键词</span></label>'
-            f'<div class="row-control"><input type="text" name="query" value="{_PROBE_QUERY}">'
+            '<div class="row search-query"><label class="row-info" for="search-query"><span class="row-title">试搜关键词</span></label>'
+            f'<div class="row-control"><input type="text" name="query" id="search-query" value="{_PROBE_QUERY}">'
             '<button type="submit" class="btn">试搜</button></div></div></form>'
             '<form method="post" action="/panel/search/test">'
             '<div class="row"><label class="row-info"><span class="row-title">逐引擎自检</span>'

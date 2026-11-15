@@ -61,6 +61,7 @@ class MemeSummaryService:
                  max_candidates: int = 20, interval_hours: int = 24,
                  max_retries: int = 3, budget=None):
         self.config = config
+        self.last_run = None
         self.ai_client = ai_client
         self.meme_manager = meme_manager
         self.tool_manager = tool_manager
@@ -85,8 +86,10 @@ class MemeSummaryService:
             except asyncio.CancelledError:
                 break
             try:
-                await self.run_once()
+                stats = await self.run_once()
+                self.last_run = {"at": time.time(), "result": stats}
             except Exception as e:  # noqa: BLE001 - 单轮失败不杀循环
+                self.last_run = {"at": time.time(), "status": "failed"}
                 logger.error("meme_summary_loop_error: %s", e, extra={"event": "meme_summary_error"})
 
     # ---------- 单轮执行（可测试入口） ----------

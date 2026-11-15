@@ -21,7 +21,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use flowerie::{parse_json, CallOptions, Context, Json, Plugin, PluginCommError, PROTOCOL_VERSION};
+use flowerie::{webui_view, parse_json, CallOptions, Context, Json, Plugin, PluginCommError, PROTOCOL_VERSION};
 
 /// SDK 版本（SDK 本身没导出这个常量；与其它四种语言的最小插件取同一个值）。
 const SDK_VERSION: &str = "1.0.0";
@@ -60,6 +60,30 @@ fn seen_lock() -> std::sync::MutexGuard<'static, SeenState> {
 }
 
 // ==================== 入口 ====================
+
+fn sdk_settings(settings: &Json, saving: bool) -> Json {
+    let fields = vec![
+        webui_view::field("nickname", "显示名称", "text",
+                          settings.get("nickname").cloned().unwrap_or_else(|| Json::str("Flowerie")), true),
+        webui_view::field("limit", "每日报告上限", "integer",
+                          settings.get("limit").cloned().unwrap_or_else(|| Json::num(10)), true),
+        webui_view::field("enabled", "启用日报", "boolean",
+                          settings.get("enabled").cloned().unwrap_or(Json::Bool(false)), false),
+    ];
+    let blocks = vec![
+        webui_view::text("status", "自动化设置"),
+        webui_view::table(vec![Json::str("任务"), Json::str("周期")],
+            vec![vec![Json::str("日报"), Json::str("每日")], vec![Json::str("周报"), Json::str("每周")]], 1),
+    ];
+    let mut page = webui_view::page(blocks, Some(webui_view::form("save", fields, "保存")));
+    if saving {
+        if let Json::Obj(ref mut result) = page {
+            result.insert("message".to_string(), Json::str("已保存"));
+            result.insert("storage_set".to_string(), Json::obj(vec![("sdk_settings", settings.clone())]));
+        }
+    }
+    page
+}
 
 fn main() {
     let mut plugin = Plugin::new();
@@ -112,6 +136,11 @@ fn main() {
         .page(|ctx: &Context, args: &Json| {
             let id = ctx_plugin_id(args, &plugin_id(ctx));
             let page = args.get("page").cloned().unwrap_or(Json::Null);
+            if page_id(&page) == "sdk_settings" {
+                let settings = args.get("context").and_then(|ctx| ctx.get("data"))
+                    .and_then(|data| data.get("sdk_settings")).unwrap_or(&Json::Null);
+                return sdk_settings(settings, false);
+            }
             if page_id(&page) == "communication" {
                 let context = args.get("context").cloned().unwrap_or_else(|| Json::obj(vec![]));
                 let form = context_form(&context);
@@ -136,6 +165,9 @@ fn main() {
             let id = ctx_plugin_id(args, &plugin_id(ctx));
             let action = args.get("action").and_then(|value| value.as_str()).unwrap_or("").to_string();
             let page = args.get("page").cloned().unwrap_or(Json::Null);
+            if page_id(&page) == "sdk_settings" && action == "save" {
+                return sdk_settings(args.get("form").unwrap_or(&Json::Null), true);
+            }
             if page_id(&page) != "communication" {
                 return Json::obj(vec![("ok", Json::Bool(false)),
                                       ("error", Json::str(&format!("未知动作: {}", action)))]);
@@ -780,6 +812,11 @@ fn run_command(ctx: &Context, command: &str) -> Result<Json, PluginCommError> {
             let (denied, _) = split_token(rest);
             Ok(probe_errors(ctx, granted, denied))
         }
+        "fileparse" => Ok(Json::obj(vec![
+            ("inline", ctx.file_parse("note.txt", "aGVsbG8=").map_err(|err| command_error(&err))?),
+            ("local", ctx.file_parse_local("document.txt").map_err(|err| command_error(&err))?),
+            ("status", ctx.file_parse_status().map_err(|err| command_error(&err))?),
+        ])),
         "caps" => Ok(capabilities_probe(ctx)),
         "dm" => Ok(private_probe(ctx)),
         other => Err(command_error(&format!("未知命令: {}", other))),
@@ -826,6 +863,14 @@ fn capabilities_probe(ctx: &Context) -> Json {
         }
     }
     Json::obj(vec![
+        ("private_history", safe(|| ctx.user_history(20001, 5))),
+        ("mute", safe(|| ctx.group_ban(10001, 20001, 60))),
+        ("digest", safe(|| ctx.digest_get(10001))),
+        ("profile", safe(|| ctx.profile_get(10001, 20001))),
+        ("search", safe(|| ctx.web_search("花璃", 3))),
+        ("history", safe(|| ctx.qzone_history(2))),
+        ("automation", safe(|| ctx.automation_status())),
+        ("schedules", safe(|| ctx.schedule_list())),
         ("shut", safe(|| ctx.group_shut_list(10001))),
         ("leave", safe(|| ctx.group_leave(10002, false))),
         ("publish", safe(|| {

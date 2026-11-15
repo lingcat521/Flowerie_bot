@@ -274,9 +274,8 @@ async def test_html_only_interaction_forms_present():
         page3 = await server._handle_panel(FakeRequest(query={"tab": "persona", "edit": "atri"},
                                                       cookies={"fb_token": cookie}))
         text3 = _resp_text(page3)
-        form_start = text3.index("编辑人格：亚托莉")
-        # 注意：区别说明卡片里也有「人格列表」字样，锚点用列表区块的完整标题
-        form_end = text3.index("人格列表（Persona 资源库）") if "人格列表（Persona 资源库）" in text3 else len(text3)
+        form_start = text3.index('<fieldset class="group persona-editor">')
+        form_end = text3.index("</fieldset>", form_start)
         edit_zone = text3[form_start:form_end]
         assert 'action="/panel/persona/save"' in edit_zone
         assert 'action="/panel/persona/delete"' not in edit_zone

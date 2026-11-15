@@ -195,7 +195,10 @@ func mustGetwd() string {
 // ---------------- 钩子注册 ----------------
 
 // OnStartup 注册启动钩子（initialize 时调用）。
-func (p *Plugin) OnStartup(fn func(*Context)) *Plugin { p.startupHooks = append(p.startupHooks, fn); return p }
+func (p *Plugin) OnStartup(fn func(*Context)) *Plugin {
+	p.startupHooks = append(p.startupHooks, fn)
+	return p
+}
 
 // OnShutdown 注册退出钩子。
 func (p *Plugin) OnShutdown(fn func(*Context)) *Plugin {
@@ -271,7 +274,6 @@ func (p *Plugin) RegisterHook(name string, fn func(args ...any) any) *Plugin {
 	return p
 }
 
-
 // WebUI 是 Plugin WebUI Protocol 的注册入口（任务书第 3 份 §六）：
 //
 //	plugin.WebUI().Page(func(args map[string]any) any { return "<h1>hi</h1>" })
@@ -281,6 +283,50 @@ func (p *Plugin) RegisterHook(name string, fn func(args ...any) any) *Plugin {
 // 路由、权限、校验、净化、隔离全部由引擎负责，插件只负责内容。
 type WebUI struct {
 	p *Plugin
+}
+
+// WebUIField describes one host-rendered input.
+type WebUIField struct {
+	Name     string        `json:"name"`
+	Label    string        `json:"label"`
+	Kind     string        `json:"type"`
+	Value    any           `json:"value,omitempty"`
+	Required bool          `json:"required,omitempty"`
+	Options  []WebUIChoice `json:"options,omitempty"`
+}
+
+type WebUIChoice struct {
+	Value string `json:"value"`
+	Label string `json:"label"`
+}
+
+type WebUIForm struct {
+	Action string       `json:"action"`
+	Fields []WebUIField `json:"fields"`
+	Submit string       `json:"submit,omitempty"`
+}
+
+func WebUITable(columns []string, rows [][]any, pageSize int) map[string]any {
+	if rows == nil {
+		rows = [][]any{}
+	}
+	return map[string]any{"type": "table", "columns": columns, "rows": rows, "page_size": pageSize}
+}
+
+func WebUIText(kind, text string) map[string]any {
+	return map[string]any{"type": kind, "text": text}
+}
+
+// WebUIPage builds a view response. Add message, storage_set or config_set to it as needed.
+func WebUIPage(form *WebUIForm, blocks ...map[string]any) map[string]any {
+	view := map[string]any{}
+	if form != nil {
+		view["form"] = form
+	}
+	if blocks != nil {
+		view["blocks"] = blocks
+	}
+	return map[string]any{"view": view}
 }
 
 // WebUI 返回 WebUI 注册器。
@@ -639,7 +685,7 @@ func normalizeWebuiResult(res any) map[string]any {
 			return map[string]any{"ok": false, "error": message}
 		}
 		out := map[string]any{"ok": true}
-		for _, key := range []string{"html", "vars", "context", "message", "content_type",
+		for _, key := range []string{"html", "view", "vars", "context", "message", "content_type",
 			"body", "base64", "config_set", "storage_set"} {
 			if value, ok := typed[key]; ok {
 				out[key] = value
@@ -732,6 +778,441 @@ func (c *Context) Action(actionType string, params map[string]any) (map[string]a
 }
 
 // ---------------- v2.10.0：群管理扩展 + QQ空间（能力对齐 Python SDK） ----------------
+
+// ProfileGet calls the profile_get plugin action.
+func (c *Context) ProfileGet(groupId int64, userId int64) (map[string]any, error) {
+	return c.Action("profile_get", map[string]any{"group_id": groupId, "user_id": userId})
+}
+
+// ProfileSetSection calls the profile_set_section plugin action.
+func (c *Context) ProfileSetSection(groupId int64, userId int64, label string, text string, nickname string) (map[string]any, error) {
+	return c.Action("profile_set_section", map[string]any{"group_id": groupId, "user_id": userId, "label": label, "text": text, "nickname": nickname})
+}
+
+// ProfileDelete calls the profile_delete plugin action.
+func (c *Context) ProfileDelete(groupId int64, userId int64) (map[string]any, error) {
+	return c.Action("profile_delete", map[string]any{"group_id": groupId, "user_id": userId})
+}
+
+// WebSearch calls the web_search plugin action.
+func (c *Context) WebSearch(query string, limit int) (map[string]any, error) {
+	return c.Action("web_search", map[string]any{"query": query, "limit": limit})
+}
+
+// KnowledgeList calls the knowledge_list plugin action.
+func (c *Context) KnowledgeList(groupId int64, query string, limit int) (map[string]any, error) {
+	return c.Action("knowledge_list", map[string]any{"group_id": groupId, "query": query, "limit": limit})
+}
+
+// PersonaResolve calls the persona_resolve plugin action.
+func (c *Context) PersonaResolve(groupId int64) (map[string]any, error) {
+	return c.Action("persona_resolve", map[string]any{"group_id": groupId})
+}
+
+// NicknameResolve calls the nickname_resolve plugin action.
+func (c *Context) NicknameResolve(groupId int64) (map[string]any, error) {
+	return c.Action("nickname_resolve", map[string]any{"group_id": groupId})
+}
+
+// FileParse extracts text from base64-encoded file bytes.
+func (c *Context) FileParse(filename, contentBase64 string) (map[string]any, error) {
+	return c.Action("file_parse", map[string]any{"filename": filename, "content_base64": contentBase64})
+}
+
+// FileParseLocal extracts text from a file relative to the plugin data directory.
+func (c *Context) FileParseLocal(path string) (map[string]any, error) {
+	return c.Action("file_parse_local", map[string]any{"path": path})
+}
+
+// FileParseStatus returns file parsing settings and format availability.
+func (c *Context) FileParseStatus() (map[string]any, error) {
+	return c.Action("file_parse_status", nil)
+}
+
+// QzoneHistory calls the qzone_history plugin action.
+func (c *Context) QzoneHistory(limit int) (map[string]any, error) {
+	return c.Action("qzone_history", map[string]any{"limit": limit})
+}
+
+// QzoneRights calls the qzone_rights plugin action.
+func (c *Context) QzoneRights() (map[string]any, error) {
+	return c.Action("qzone_rights", map[string]any{})
+}
+
+// AutomationStatus calls the automation_status plugin action.
+func (c *Context) AutomationStatus() (map[string]any, error) {
+	return c.Action("automation_status", map[string]any{})
+}
+
+// ScheduleRegister calls the schedule_register plugin action.
+func (c *Context) ScheduleRegister(kind string, when any, name string) (map[string]any, error) {
+	return c.Action("schedule_register", map[string]any{"kind": kind, "when": when, "name": name})
+}
+
+// ScheduleCancel calls the schedule_cancel plugin action.
+func (c *Context) ScheduleCancel(scheduleId string) (map[string]any, error) {
+	return c.Action("schedule_cancel", map[string]any{"schedule_id": scheduleId})
+}
+
+// ScheduleList calls the schedule_list plugin action.
+func (c *Context) ScheduleList() (map[string]any, error) {
+	return c.Action("schedule_list", map[string]any{})
+}
+
+// SendPrivateMessage calls the send_private_message plugin action.
+func (c *Context) SendPrivateMessage(userId int64, message string) (map[string]any, error) {
+	return c.Action("send_private_message", map[string]any{"user_id": userId, "message": message})
+}
+
+// UserHistory calls the user_history plugin action.
+func (c *Context) UserHistory(userId int64, count int) (map[string]any, error) {
+	return c.Action("user_history", map[string]any{"user_id": userId, "count": count})
+}
+
+// GetGroupMembers calls the get_group_members plugin action.
+func (c *Context) GetGroupMembers(groupId int64) (map[string]any, error) {
+	return c.Action("get_group_members", map[string]any{"group_id": groupId})
+}
+
+// GroupBan calls the group_ban plugin action.
+func (c *Context) GroupBan(groupId int64, userId int64, duration int) (map[string]any, error) {
+	return c.Action("group_ban", map[string]any{"group_id": groupId, "user_id": userId, "duration": duration})
+}
+
+// GroupKick calls the group_kick plugin action.
+func (c *Context) GroupKick(groupId int64, userId int64, rejectAdd bool) (map[string]any, error) {
+	return c.Action("group_kick", map[string]any{"group_id": groupId, "user_id": userId, "reject_add": rejectAdd})
+}
+
+// GroupAdmin calls the group_admin plugin action.
+func (c *Context) GroupAdmin(groupId int64, userId int64, enable bool) (map[string]any, error) {
+	return c.Action("group_admin", map[string]any{"group_id": groupId, "user_id": userId, "enable": enable})
+}
+
+// GroupWholeBan calls the group_whole_ban plugin action.
+func (c *Context) GroupWholeBan(groupId int64, enable bool) (map[string]any, error) {
+	return c.Action("group_whole_ban", map[string]any{"group_id": groupId, "enable": enable})
+}
+
+// GroupRename calls the group_rename plugin action.
+func (c *Context) GroupRename(groupId int64, name string) (map[string]any, error) {
+	return c.Action("group_rename", map[string]any{"group_id": groupId, "name": name})
+}
+
+// GroupCard calls the group_card plugin action.
+func (c *Context) GroupCard(groupId int64, userId int64, card string) (map[string]any, error) {
+	return c.Action("group_card", map[string]any{"group_id": groupId, "user_id": userId, "card": card})
+}
+
+// GroupTitle calls the group_title plugin action.
+func (c *Context) GroupTitle(groupId int64, userId int64, title string) (map[string]any, error) {
+	return c.Action("group_title", map[string]any{"group_id": groupId, "user_id": userId, "title": title})
+}
+
+// DigestGet invokes the digest_get action.
+func (c *Context) DigestGet(groupId int64) (map[string]any, error) {
+	return c.Action("digest_get", map[string]any{"group_id": groupId})
+}
+
+// BlossomSearch invokes the memory_semantic action.
+func (c *Context) BlossomSearch(groupId int64, query string, topK int) (map[string]any, error) {
+	return c.Action("memory_semantic", map[string]any{"group_id": groupId, "query": query, "top_k": topK})
+}
+
+// KnowledgeGet invokes the knowledge_get action.
+func (c *Context) KnowledgeGet(groupId int64, knowledgeId int64) (map[string]any, error) {
+	return c.Action("knowledge_get", map[string]any{"group_id": groupId, "knowledge_id": knowledgeId})
+}
+
+// KnowledgeDelete invokes the knowledge_delete action.
+func (c *Context) KnowledgeDelete(groupId int64, knowledgeId int64) (map[string]any, error) {
+	return c.Action("knowledge_delete", map[string]any{"group_id": groupId, "knowledge_id": knowledgeId})
+}
+
+// KnowledgeClear invokes the knowledge_clear action.
+func (c *Context) KnowledgeClear(groupId int64) (map[string]any, error) {
+	return c.Action("knowledge_clear", map[string]any{"group_id": groupId})
+}
+
+// PersonaBind invokes the persona_bind action.
+func (c *Context) PersonaBind(groupId int64, personaId string) (map[string]any, error) {
+	return c.Action("persona_bind", map[string]any{"group_id": groupId, "persona_id": personaId})
+}
+
+// PersonaUnbind invokes the persona_unbind action.
+func (c *Context) PersonaUnbind(groupId int64) (map[string]any, error) {
+	return c.Action("persona_unbind", map[string]any{"group_id": groupId})
+}
+
+// PersonaGet invokes the persona_get action.
+func (c *Context) PersonaGet(personaId string) (map[string]any, error) {
+	return c.Action("persona_get", map[string]any{"persona_id": personaId})
+}
+
+// PersonaDelete invokes the persona_delete action.
+func (c *Context) PersonaDelete(personaId string) (map[string]any, error) {
+	return c.Action("persona_delete", map[string]any{"persona_id": personaId})
+}
+
+// PersonaSetGlobal invokes the persona_set_global action.
+func (c *Context) PersonaSetGlobal(personaId string) (map[string]any, error) {
+	return c.Action("persona_set_global", map[string]any{"persona_id": personaId})
+}
+
+// NicknameList invokes the nickname_list action.
+func (c *Context) NicknameList(groupId int64) (map[string]any, error) {
+	return c.Action("nickname_list", map[string]any{"group_id": groupId})
+}
+
+// GroupPromptGet invokes the group_prompt_get action.
+func (c *Context) GroupPromptGet(groupId int64) (map[string]any, error) {
+	return c.Action("group_prompt_get", map[string]any{"group_id": groupId})
+}
+
+// GroupPromptSet invokes the group_prompt_set action.
+func (c *Context) GroupPromptSet(groupId int64, content string) (map[string]any, error) {
+	return c.Action("group_prompt_set", map[string]any{"group_id": groupId, "content": content})
+}
+
+// GroupPromptReset invokes the group_prompt_reset action.
+func (c *Context) GroupPromptReset(groupId int64) (map[string]any, error) {
+	return c.Action("group_prompt_reset", map[string]any{"group_id": groupId})
+}
+
+// GroupRulesGet invokes the group_rules_get action.
+func (c *Context) GroupRulesGet(groupId int64) (map[string]any, error) {
+	return c.Action("group_rules_get", map[string]any{"group_id": groupId})
+}
+
+// GroupRulesSet invokes the group_rules_set action.
+func (c *Context) GroupRulesSet(groupId int64, content string) (map[string]any, error) {
+	return c.Action("group_rules_set", map[string]any{"group_id": groupId, "content": content})
+}
+
+// PrivateMemoryClear invokes the private_memory_clear action.
+func (c *Context) PrivateMemoryClear(userId int64) (map[string]any, error) {
+	return c.Action("private_memory_clear", map[string]any{"user_id": userId})
+}
+
+// WebFetch invokes the web_fetch action.
+func (c *Context) WebFetch(url string, maxChars int) (map[string]any, error) {
+	return c.Action("web_fetch", map[string]any{"url": url, "max_chars": maxChars})
+}
+
+// GlobalPromptSet invokes the global_prompt_set action.
+func (c *Context) GlobalPromptSet(content string) (map[string]any, error) {
+	return c.Action("global_prompt_set", map[string]any{"content": content})
+}
+
+// ProfileClear invokes the profile_clear action.
+func (c *Context) ProfileClear(groupId int64) (map[string]any, error) {
+	return c.Action("profile_clear", map[string]any{"group_id": groupId})
+}
+
+// PersonaList invokes the persona_list action.
+func (c *Context) PersonaList() (map[string]any, error) {
+	return c.Action("persona_list", map[string]any{})
+}
+
+// PrivatePolicy invokes the private_policy action.
+func (c *Context) PrivatePolicy() (map[string]any, error) {
+	return c.Action("private_policy", map[string]any{})
+}
+
+// AutomationTasks invokes the automation_tasks action.
+func (c *Context) AutomationTasks() (map[string]any, error) {
+	return c.Action("automation_tasks", map[string]any{})
+}
+
+// GlobalPromptGet invokes the global_prompt_get action.
+func (c *Context) GlobalPromptGet() (map[string]any, error) {
+	return c.Action("global_prompt_get", map[string]any{})
+}
+
+// GlobalPromptReset invokes the global_prompt_reset action.
+func (c *Context) GlobalPromptReset() (map[string]any, error) {
+	return c.Action("global_prompt_reset", map[string]any{})
+}
+
+// StickerSearch invokes the sticker_search action.
+func (c *Context) StickerSearch(payload map[string]any) (map[string]any, error) {
+	return c.Action("sticker_search", payload)
+}
+
+// StickerSend invokes the sticker_send action.
+func (c *Context) StickerSend(payload map[string]any) (map[string]any, error) {
+	return c.Action("sticker_send", payload)
+}
+
+// KnowledgeMatch invokes the knowledge_match action.
+func (c *Context) KnowledgeMatch(payload map[string]any) (map[string]any, error) {
+	return c.Action("knowledge_match", payload)
+}
+
+// KnowledgeAdd invokes the knowledge_add action.
+func (c *Context) KnowledgeAdd(payload map[string]any) (map[string]any, error) {
+	return c.Action("knowledge_add", payload)
+}
+
+// KnowledgeUpdate invokes the knowledge_update action.
+func (c *Context) KnowledgeUpdate(payload map[string]any) (map[string]any, error) {
+	return c.Action("knowledge_update", payload)
+}
+
+// ProfileList invokes the profile_list action.
+func (c *Context) ProfileList(payload map[string]any) (map[string]any, error) {
+	return c.Action("profile_list", payload)
+}
+
+// NicknameSet invokes the nickname_set action.
+func (c *Context) NicknameSet(payload map[string]any) (map[string]any, error) {
+	return c.Action("nickname_set", payload)
+}
+
+// PrivateUsers invokes the private_users action.
+func (c *Context) PrivateUsers(payload map[string]any) (map[string]any, error) {
+	return c.Action("private_users", payload)
+}
+
+// PrivateAllowlistSet invokes the private_allowlist_set action.
+func (c *Context) PrivateAllowlistSet(payload map[string]any) (map[string]any, error) {
+	return c.Action("private_allowlist_set", payload)
+}
+
+// AutomationSetFlags invokes the automation_set_flags action.
+func (c *Context) AutomationSetFlags(payload map[string]any) (map[string]any, error) {
+	return c.Action("automation_set_flags", payload)
+}
+
+// PersonaCreate invokes the persona_create action.
+func (c *Context) PersonaCreate(payload map[string]any) (map[string]any, error) {
+	return c.Action("persona_create", payload)
+}
+
+// PersonaUpdate invokes the persona_update action.
+func (c *Context) PersonaUpdate(payload map[string]any) (map[string]any, error) {
+	return c.Action("persona_update", payload)
+}
+
+// McpResource invokes the mcp_resource action.
+func (c *Context) McpResource(payload map[string]any) (map[string]any, error) {
+	return c.Action("mcp_resource", payload)
+}
+
+// McpPrompt invokes the mcp_prompt action.
+func (c *Context) McpPrompt(payload map[string]any) (map[string]any, error) {
+	return c.Action("mcp_prompt", payload)
+}
+
+// GroupNoticeSend invokes the group_notice_send action.
+func (c *Context) GroupNoticeSend(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_notice_send", payload)
+}
+
+// GroupNoticeGet invokes the group_notice_get action.
+func (c *Context) GroupNoticeGet(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_notice_get", payload)
+}
+
+// GroupNoticeUpdate invokes the group_notice_update action.
+func (c *Context) GroupNoticeUpdate(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_notice_update", payload)
+}
+
+// GroupNoticeDelete invokes the group_notice_delete action.
+func (c *Context) GroupNoticeDelete(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_notice_delete", payload)
+}
+
+// GroupFiles invokes the group_files action.
+func (c *Context) GroupFiles(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_files", payload)
+}
+
+// GroupFilesIn invokes the group_files_in action.
+func (c *Context) GroupFilesIn(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_files_in", payload)
+}
+
+// GroupFileUrl invokes the group_file_url action.
+func (c *Context) GroupFileUrl(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_file_url", payload)
+}
+
+// GroupFileUpload invokes the group_file_upload action.
+func (c *Context) GroupFileUpload(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_file_upload", payload)
+}
+
+// GroupFileRename invokes the group_file_rename action.
+func (c *Context) GroupFileRename(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_file_rename", payload)
+}
+
+// GroupFileDelete invokes the group_file_delete action.
+func (c *Context) GroupFileDelete(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_file_delete", payload)
+}
+
+// GroupFileMove invokes the group_file_move action.
+func (c *Context) GroupFileMove(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_file_move", payload)
+}
+
+// GroupFolderCreate invokes the group_folder_create action.
+func (c *Context) GroupFolderCreate(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_folder_create", payload)
+}
+
+// GroupFolderDelete invokes the group_folder_delete action.
+func (c *Context) GroupFolderDelete(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_folder_delete", payload)
+}
+
+// GroupFolderRename invokes the group_folder_rename action.
+func (c *Context) GroupFolderRename(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_folder_rename", payload)
+}
+
+// FriendRemark invokes the friend_remark action.
+func (c *Context) FriendRemark(payload map[string]any) (map[string]any, error) {
+	return c.Action("friend_remark", payload)
+}
+
+// FriendDelete invokes the friend_delete action.
+func (c *Context) FriendDelete(payload map[string]any) (map[string]any, error) {
+	return c.Action("friend_delete", payload)
+}
+
+// FriendDetail invokes the friend_detail action.
+func (c *Context) FriendDetail(payload map[string]any) (map[string]any, error) {
+	return c.Action("friend_detail", payload)
+}
+
+// UserPoke invokes the user_poke action.
+func (c *Context) UserPoke(payload map[string]any) (map[string]any, error) {
+	return c.Action("user_poke", payload)
+}
+
+// UserForward invokes the user_forward action.
+func (c *Context) UserForward(payload map[string]any) (map[string]any, error) {
+	return c.Action("user_forward", payload)
+}
+
+// GroupForward invokes the group_forward action.
+func (c *Context) GroupForward(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_forward", payload)
+}
+
+// GroupInvite invokes the group_invite action.
+func (c *Context) GroupInvite(payload map[string]any) (map[string]any, error) {
+	return c.Action("group_invite", payload)
+}
+
+// WebSearchOptions invokes the web_search action.
+func (c *Context) WebSearchOptions(payload map[string]any) (map[string]any, error) {
+	return c.Action("web_search", payload)
+}
 
 // GroupShutList 当前被禁言成员列表（需要 read_group_info 权限）。
 func (c *Context) GroupShutList(groupID any) (map[string]any, error) {
@@ -1609,8 +2090,8 @@ type McpTool struct {
 
 // McpCallResult 是工具调用结果（OK=false 时 Error 为原因，不含密钥）。
 type McpCallResult struct {
-	OK     bool `json:"ok"`
-	Result any  `json:"result,omitempty"`
+	OK     bool   `json:"ok"`
+	Result any    `json:"result,omitempty"`
 	Error  string `json:"error,omitempty"`
 }
 

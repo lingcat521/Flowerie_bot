@@ -6,7 +6,7 @@ from src.core.sanitizer import sanitize_untrusted_text
 from src.models import GlobalState
 from src.services import privacy_archive
 from src.services.ai_client import AIClient
-from src.services.file_parser import FileParser
+from src.services.file_parser import FileParser, file_parse_format, group_file_parse_enabled
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -303,11 +303,13 @@ class MessageAssembler:
     # ---------- 待解析文件 ----------
     async def _assemble_pending_file(self, user_id: int, group_id: int) -> str:
         pending_key = f"{user_id}_{group_id}"
-        if pending_key not in self.global_state.pending_files:
+        file_info = self.global_state.pending_files.pop(pending_key, None)
+        if not file_info or not group_file_parse_enabled(self.config):
             return ""
-        file_info = self.global_state.pending_files.pop(pending_key)
         resource = file_info.get("resource")          # 边界层给的统一资源引用（协议中立）
-        file_name = file_info.get("file_name", "未命名文件")
+        file_name = str(file_info.get("file_name") or "未命名文件")
+        if not file_parse_format(self.config, file_name, fallback=True):
+            return ""
         try:
             file_size = int(file_info.get("file_size") or 0)
         except (TypeError, ValueError):
@@ -320,8 +322,13 @@ class MessageAssembler:
             content_bytes, fetched = await self._fetch_resource(resource)
             file_content, success = ("", False)
             if fetched and content_bytes:
-                file_content, success = self.file_parser.decode_bytes(content_bytes, file_name)
-            if success and file_content:
+                if not group_file_parse_enabled(self.config):
+                    return ""
+                decoded = await self.file_parser.decode_async(content_bytes, file_name)
+                if decoded is None:
+                    return ""
+                file_content, success = decoded
+            if success and file_content and group_file_parse_enabled(self.config):
                 # 代码层防注入：文件内容清洗后再进上下文（文件是最高危注入载体）
                 file_content, inject_hit = sanitize_untrusted_text(file_content)
                 if inject_hit:

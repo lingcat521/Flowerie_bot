@@ -7,159 +7,67 @@ from typing import Optional
 
 from src.services.webui_render.assets import asset_path, read_asset
 
+# Keep the existing variable names used by the renderers and plugin pages.
+_LIGHT = {
+    "--ui-bg": "#F4F5FA", "--ui-surface": "#FFFFFF", "--ui-raised": "#EDEFF7",
+    "--input-bg": "#FFFFFF", "--panel-border": "#D5D9E5", "--input-border": "#7A849B",
+    "--heading": "#202536", "--text": "#30384B", "--secondary": "#536079", "--text-muted": "#606D85",
+    "--accent": "#6546BC", "--accent-hover": "#5335A4", "--accent-soft": "#EEE8FC", "--on-accent": "#FFFFFF",
+    "--ok": "#176B49", "--ok-bg": "#E7F5ED", "--warn": "#815600", "--warn-bg": "#FFF4DC",
+    "--err": "#AE2940", "--err-bg": "#FCE9ED", "color-scheme": "light",
+}
+_DARK = {
+    "--ui-bg": "#0C0E14", "--ui-surface": "#151923", "--ui-raised": "#1D2330",
+    "--input-bg": "#10141D", "--panel-border": "#303849", "--input-border": "#65718A",
+    "--heading": "#F4F5FB", "--text": "#E4E7F0", "--secondary": "#B0B9CD", "--text-muted": "#929DB5",
+    "--accent": "#B6A0FF", "--accent-hover": "#C9B8FF", "--accent-soft": "#272138", "--on-accent": "#151020",
+    "--ok": "#6ED5AC", "--ok-bg": "#142D27", "--warn": "#EAC178", "--warn-bg": "#30291C",
+    "--err": "#FF96A2", "--err-bg": "#321E29", "color-scheme": "dark",
+}
+
+
+def _theme(label, description, palette, overrides=None):
+    values = {**palette, **(overrides or {})}
+    surface = values["--ui-surface"].lstrip("#")
+    rgb = ",".join(str(int(surface[i:i + 2], 16)) for i in (0, 2, 4))
+    return {
+        "label": label, "desc": description, "bg": values["--ui-bg"],
+        "vars": {
+            **values, "--panel-rgb": rgb, "--panel-alpha": "1",
+            "--panel-bg": "rgba(var(--panel-rgb),var(--panel-alpha))",
+            "--shadow": "none",
+        },
+    }
+
+
 THEMES = {
-    "default": {
-        "label": "默认",
-        "desc": "明亮清爽的默认配色",
-        "bg": "#F4F6FB",
-        "vars": {
-            "--panel-rgb": "255,255,255",
-            "--panel-alpha": "0.9",
-            "--panel-border": "#E3E7EF",
-            "--text": "#3A4456",
-            "--text-muted": "#7C8798",
-            "--heading": "#1F2637",
-            "--accent": "#5B8DEF",
-            "--accent-hover": "#4A7AE0",
-            "--accent-soft": "rgba(91, 141, 239, 0.12)",
-            "--input-bg": "#FFFFFF",
-            "--input-border": "#D9DEEA",
-            "--ok": "#1A7F37",
-            "--err": "#CF222E",
-            "--shadow": "0 10px 30px rgba(50, 60, 90, .12)",
-        },
-    },
-    "dark": {
-        "label": "深色",
-        "desc": "更深的近黑风格，护眼",
-        "bg": "#121417",
-        "vars": {
-            "--panel-rgb": "24,27,31",
-            "--panel-alpha": "0.9",
-            "--panel-border": "#2a2f37",
-            "--text": "#c9d1d9",
-            "--text-muted": "#768390",
-            "--heading": "#e1e6ec",
-            "--accent": "#6cb6ff",
-            "--accent-hover": "#539bf5",
-            "--accent-soft": "rgba(108, 182, 255, 0.13)",
-            "--input-bg": "#1c2026",
-            "--input-border": "#333a45",
-            "--ok": "#57ab5a",
-            "--err": "#e5534b",
-            "--shadow": "0 10px 30px rgba(0,0,0,.5)",
-        },
-    },
-    "light": {
-        "label": "浅色",
-        "desc": "明亮清爽的日间风格",
-        "bg": "#eef1f6",
-        "vars": {
-            "--panel-rgb": "255,255,255",
-            "--panel-alpha": "0.9",
-            "--panel-border": "#d9dee8",
-            "--text": "#333a45",
-            "--text-muted": "#7a8290",
-            "--heading": "#1f2733",
-            "--accent": "#3b82f6",
-            "--accent-hover": "#2563eb",
-            "--accent-soft": "rgba(59, 130, 246, 0.1)",
-            "--input-bg": "#f7f9fc",
-            "--input-border": "#ccd3de",
-            "--ok": "#1a7f37",
-            "--err": "#cf222e",
-            "--shadow": "0 10px 30px rgba(30, 41, 59, .12)",
-        },
-    },
-    "sakura": {
-        "label": "Sakura",
-        "desc": "樱花粉，明亮的浅粉少女系",
-        "bg": "#FDEEF3",
-        "vars": {
-            "--panel-rgb": "255,255,255",
-            "--panel-alpha": "0.82",
-            "--panel-border": "#f4d8e2",
-            "--text": "#7a4b5e",
-            "--text-muted": "#b08a98",
-            "--heading": "#5a2e42",
-            "--accent": "#e75480",
-            "--accent-hover": "#d64072",
-            "--accent-soft": "rgba(231, 84, 128, 0.14)",
-            "--input-bg": "#ffffff",
-            "--input-border": "#f4d8e2",
-            "--ok": "#1a7f37",
-            "--err": "#cf222e",
-            "--shadow": "0 10px 30px rgba(231, 84, 128, 0.2)",
-        },
-    },
-    "ocean": {
-        "label": "Ocean",
-        "desc": "明亮天空蓝，清澈惬意",
-        "bg": "#E7F3FC",
-        "vars": {
-            "--panel-rgb": "255,255,255",
-            "--panel-alpha": "0.88",
-            "--panel-border": "#C9E3F6",
-            "--text": "#24475F",
-            "--text-muted": "#6B8FA8",
-            "--heading": "#15354D",
-            "--accent": "#0B93E7",
-            "--accent-hover": "#0284C7",
-            "--accent-soft": "rgba(11, 147, 231, 0.12)",
-            "--input-bg": "#FFFFFF",
-            "--input-border": "#C6E1F4",
-            "--ok": "#1A7F37",
-            "--err": "#CF222E",
-            "--shadow": "0 10px 30px rgba(40, 100, 150, .14)",
-        },
-    },
-    "forest": {
-        "label": "Forest",
-        "desc": "明亮草绿，清新自然",
-        "bg": "#EAF6EC",
-        "vars": {
-            "--panel-rgb": "255,255,255",
-            "--panel-alpha": "0.9",
-            "--panel-border": "#CFE9D6",
-            "--text": "#2F5A39",
-            "--text-muted": "#7A9C82",
-            "--heading": "#1F3D27",
-            "--accent": "#2FA85A",
-            "--accent-hover": "#228B46",
-            "--accent-soft": "rgba(47, 168, 90, 0.12)",
-            "--input-bg": "#FFFFFF",
-            "--input-border": "#CBE7D2",
-            "--ok": "#1A7F37",
-            "--err": "#CF222E",
-            "--shadow": "0 10px 30px rgba(60, 120, 80, .14)",
-        },
-    },
-    "amoled": {
-        "label": "AMOLED",
-        "desc": "纯黑，OLED 屏最省电",
-        "bg": "#000000",
-        "vars": {
-            "--panel-rgb": "16,16,16",
-            "--panel-alpha": "0.92",
-            "--panel-border": "#262626",
-            "--text": "#d4d4d4",
-            "--text-muted": "#7a7a7a",
-            "--heading": "#f0f0f0",
-            "--accent": "#8b5cf6",
-            "--accent-hover": "#7c3aed",
-            "--accent-soft": "rgba(139, 92, 246, 0.16)",
-            "--input-bg": "#111111",
-            "--input-border": "#2e2e2e",
-            "--ok": "#34d399",
-            "--err": "#f87171",
-            "--shadow": "0 10px 30px rgba(0,0,0,.8)",
-        },
-    },
+    "default": _theme("默认", "清爽的蓝灰配色", _LIGHT, {
+        "--ui-bg": "#F4F6FB", "--accent": "#315DAE", "--accent-hover": "#25498E", "--accent-soft": "#E6EDFA",
+    }),
+    "dark": _theme("深色", "夜航控制台 · 鸢尾紫", _DARK),
+    "light": _theme("浅色", "冷灰底色与鸢尾紫", _LIGHT),
+    "sakura": _theme("Sakura", "浅粉底色与玫瑰色", _LIGHT, {
+        "--ui-bg": "#FDEEF3", "--ui-raised": "#F9E7EF", "--panel-border": "#EBD0DD", "--text-muted": "#58657D",
+        "--accent": "#A12E62", "--accent-hover": "#832350", "--accent-soft": "#F8E0EA",
+    }),
+    "ocean": _theme("Ocean", "海蓝底色与深蓝色", _LIGHT, {
+        "--ui-bg": "#E7F3FC", "--ui-raised": "#E3F0F9", "--panel-border": "#C9E3F6", "--text-muted": "#58657D",
+        "--accent": "#08608B", "--accent-hover": "#0A4E72", "--accent-soft": "#D8EDF8",
+    }),
+    "forest": _theme("Forest", "浅绿底色与常青色", _LIGHT, {
+        "--ui-bg": "#EAF6EC", "--ui-raised": "#E5F1E7", "--panel-border": "#CFE9D6", "--text-muted": "#58657D",
+        "--accent": "#256638", "--accent-hover": "#1B512B", "--accent-soft": "#DCF0E0",
+    }),
+    "amoled": _theme("AMOLED", "纯黑背景与浅紫色", _DARK, {
+        "--ui-bg": "#000000", "--ui-surface": "#101010", "--ui-raised": "#1C1C1C",
+        "--input-bg": "#090909", "--panel-border": "#303030", "--accent": "#C4A9FF",
+        "--accent-hover": "#D5C2FF", "--accent-soft": "#261D36",
+    }),
 }
 
 DEFAULT_THEME = "default"
+THEME_ORDER = list(THEMES)
 
-THEME_ORDER = ["default", "dark", "light", "sakura", "ocean", "forest", "amoled"]
 
 def theme_body_class(name: str) -> str:
     return f"theme-{name}" if name in THEMES else f"theme-{DEFAULT_THEME}"
@@ -172,11 +80,11 @@ def theme_default_alpha(name: str) -> float:
     """主题默认的面板不透明度（0~1）。"""
     t = THEMES.get(name)
     if not t:
-        return 0.9
+        return 1.0
     try:
-        return float(t["vars"].get("--panel-alpha", "0.9"))
+        return float(t["vars"].get("--panel-alpha", "1"))
     except (TypeError, ValueError):
-        return 0.9
+        return 1.0
 
 def theme_css_block() -> str:
     """生成全部主题的 CSS variables（body.theme-xxx 作用域）。"""

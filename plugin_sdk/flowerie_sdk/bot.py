@@ -479,12 +479,12 @@ class FlowerieBot:
                                    "arguments": arguments or {}}) if self._api else self._no_api()
 
     def mcp_resource(self, server, uri):
-        """MCP 资源读取（v1 未实现）。"""
+        """MCP 资源读取或列表。"""
         return self._api.mcp_resource({"server": server,
                                        "uri": uri}) if self._api else self._no_api()
 
     def mcp_prompt(self, server, name, arguments=None):
-        """MCP Prompt 模板（v1 未实现）。"""
+        """MCP Prompt 模板读取或列表。"""
         return self._api.mcp_prompt({"server": server, "name": name,
                                      "arguments": arguments or {}}) if self._api else self._no_api()
 
@@ -685,6 +685,228 @@ class FlowerieBot:
     def qzone_delete(self, tid):
         """删除 QQ空间说说（tid）。"""
         return self._api.qzone_delete({"tid": str(tid)}) if self._api else self._no_api()
+
+    def profile_get(self, group_id, user_id) -> dict:
+        return self._api.profile_get(group_id, user_id) if self._api else self._no_api()
+
+    def profile_set_section(self, group_id, user_id, label, text, nickname="") -> dict:
+        return self._api.profile_set_section(group_id, user_id, label, text, nickname) if self._api else self._no_api()
+
+    def profile_delete(self, group_id, user_id) -> dict:
+        return self._api.profile_delete(group_id, user_id) if self._api else self._no_api()
+
+    def web_search(self, query, limit=5) -> dict:
+        return self._api.web_search(query, limit) if self._api else self._no_api()
+
+    def knowledge_list(self, group_id, query="", limit=20) -> dict:
+        return self._api.knowledge_list(group_id, query, limit) if self._api else self._no_api()
+
+    def persona_resolve(self, group_id) -> dict:
+        return self._api.persona_resolve(group_id) if self._api else self._no_api()
+
+    def nickname_resolve(self, group_id) -> dict:
+        return self._api.nickname_resolve(group_id) if self._api else self._no_api()
+
+    def file_parse(self, filename: str, content_base64: str) -> dict:
+        return self._api.file_parse(filename, content_base64) if self._api else self._no_api()
+
+    def file_parse_local(self, path: str) -> dict:
+        return self._api.file_parse_local(path) if self._api else self._no_api()
+
+    def file_parse_status(self) -> dict:
+        return self._api.file_parse_status() if self._api else self._no_api()
+
+    def qzone_history(self, limit=20) -> dict:
+        return self._api.qzone_history(limit) if self._api else self._no_api()
+
+    def qzone_rights(self) -> dict:
+        return self._api.qzone_rights() if self._api else self._no_api()
+
+    def automation_status(self) -> dict:
+        return self._api.automation_status() if self._api else self._no_api()
+
+    def schedule_register(self, kind, when, name="") -> dict:
+        return self._api.schedule_register(kind, when, name) if self._api else self._no_api()
+
+    def send_private_message(self, user_id, message) -> dict:
+        return self._api.send_private_message({"user_id": user_id, "message": message}) if self._api else self._no_api()
+
+    def group_ban(self, group_id, user_id, duration=0) -> dict:
+        return self._api.group_ban({"group_id": group_id, "user_id": user_id, "duration": duration}) if self._api else self._no_api()
+
+    def group_kick(self, group_id, user_id, reject_add=False) -> dict:
+        return self._api.group_kick({"group_id": group_id, "user_id": user_id, "reject_add": reject_add}) if self._api else self._no_api()
+
+    def group_admin(self, group_id, user_id, enable) -> dict:
+        return self._api.group_admin({"group_id": group_id, "user_id": user_id, "enable": enable}) if self._api else self._no_api()
+
+    def group_whole_ban(self, group_id, enable) -> dict:
+        return self._api.group_whole_ban({"group_id": group_id, "enable": enable}) if self._api else self._no_api()
+
+    def group_rename(self, group_id, name) -> dict:
+        return self._api.group_rename({"group_id": group_id, "name": name}) if self._api else self._no_api()
+
+    def group_card(self, group_id, user_id, card) -> dict:
+        return self._api.group_card({"group_id": group_id, "user_id": user_id, "card": card}) if self._api else self._no_api()
+
+    def user_history(self, user_id, count=20) -> dict:
+        return self._api.user_history(user_id, count) if self._api else self._no_api()
+
+    def digest_get(self, group_id) -> dict:
+        return self._api.digest_get(group_id) if self._api else self._no_api()
+
+    def blossom_search(self, group_id, query, top_k) -> dict:
+        return self._api.blossom_search(group_id, query, top_k) if self._api else self._no_api()
+
+    def knowledge_get(self, group_id, knowledge_id) -> dict:
+        return self._api.knowledge_get(group_id, knowledge_id) if self._api else self._no_api()
+
+    def knowledge_delete(self, group_id, knowledge_id) -> dict:
+        return self._api.knowledge_delete(group_id, knowledge_id) if self._api else self._no_api()
+
+    def knowledge_clear(self, group_id) -> dict:
+        return self._api.knowledge_clear(group_id) if self._api else self._no_api()
+
+    def persona_bind(self, group_id, persona_id) -> dict:
+        return self._api.persona_bind(group_id, persona_id) if self._api else self._no_api()
+
+    def persona_unbind(self, group_id) -> dict:
+        return self._api.persona_unbind(group_id) if self._api else self._no_api()
+
+    def persona_get(self, persona_id) -> dict:
+        return self._api.persona_get(persona_id) if self._api else self._no_api()
+
+    def persona_delete(self, persona_id) -> dict:
+        return self._api.persona_delete(persona_id) if self._api else self._no_api()
+
+    def persona_set_global(self, persona_id) -> dict:
+        return self._api.persona_set_global(persona_id) if self._api else self._no_api()
+
+    def nickname_list(self, group_id) -> dict:
+        return self._api.nickname_list(group_id) if self._api else self._no_api()
+
+    def group_prompt_get(self, group_id) -> dict:
+        return self._api.group_prompt_get(group_id) if self._api else self._no_api()
+
+    def group_prompt_set(self, group_id, content) -> dict:
+        return self._api.group_prompt_set(group_id, content) if self._api else self._no_api()
+
+    def group_prompt_reset(self, group_id) -> dict:
+        return self._api.group_prompt_reset(group_id) if self._api else self._no_api()
+
+    def group_rules_get(self, group_id) -> dict:
+        return self._api.group_rules_get(group_id) if self._api else self._no_api()
+
+    def group_rules_set(self, group_id, content) -> dict:
+        return self._api.group_rules_set(group_id, content) if self._api else self._no_api()
+
+    def private_memory_clear(self, user_id) -> dict:
+        return self._api.private_memory_clear(user_id) if self._api else self._no_api()
+
+    def web_fetch(self, url, max_chars) -> dict:
+        return self._api.web_fetch(url, max_chars) if self._api else self._no_api()
+
+    def global_prompt_set(self, content) -> dict:
+        return self._api.global_prompt_set(content) if self._api else self._no_api()
+
+    def profile_clear(self, group_id) -> dict:
+        return self._api.profile_clear(group_id) if self._api else self._no_api()
+
+    def persona_list(self) -> dict:
+        return self._api.persona_list() if self._api else self._no_api()
+
+    def private_policy(self) -> dict:
+        return self._api.private_policy() if self._api else self._no_api()
+
+    def automation_tasks(self) -> dict:
+        return self._api.automation_tasks() if self._api else self._no_api()
+
+    def global_prompt_get(self) -> dict:
+        return self._api.global_prompt_get() if self._api else self._no_api()
+
+    def global_prompt_reset(self) -> dict:
+        return self._api.global_prompt_reset() if self._api else self._no_api()
+
+    def sticker_search(self, payload) -> dict:
+        return self._api.call_action("sticker_search", payload) if self._api else self._no_api()
+
+    def sticker_send(self, payload) -> dict:
+        return self._api.call_action("sticker_send", payload) if self._api else self._no_api()
+
+    def knowledge_match(self, payload) -> dict:
+        return self._api.call_action("knowledge_match", payload) if self._api else self._no_api()
+
+    def knowledge_add(self, payload) -> dict:
+        return self._api.call_action("knowledge_add", payload) if self._api else self._no_api()
+
+    def knowledge_update(self, payload) -> dict:
+        return self._api.call_action("knowledge_update", payload) if self._api else self._no_api()
+
+    def profile_list(self, payload) -> dict:
+        return self._api.call_action("profile_list", payload) if self._api else self._no_api()
+
+    def nickname_set(self, payload) -> dict:
+        return self._api.call_action("nickname_set", payload) if self._api else self._no_api()
+
+    def private_users(self, payload) -> dict:
+        return self._api.call_action("private_users", payload) if self._api else self._no_api()
+
+    def private_allowlist_set(self, payload) -> dict:
+        return self._api.call_action("private_allowlist_set", payload) if self._api else self._no_api()
+
+    def automation_set_flags(self, payload) -> dict:
+        return self._api.call_action("automation_set_flags", payload) if self._api else self._no_api()
+
+    def persona_create(self, payload) -> dict:
+        return self._api.call_action("persona_create", payload) if self._api else self._no_api()
+
+    def persona_update(self, payload) -> dict:
+        return self._api.call_action("persona_update", payload) if self._api else self._no_api()
+
+    def group_notice_send(self, payload) -> dict:
+        return self._api.call_action("group_notice_send", payload) if self._api else self._no_api()
+
+    def group_notice_get(self, payload) -> dict:
+        return self._api.call_action("group_notice_get", payload) if self._api else self._no_api()
+
+    def group_notice_delete(self, payload) -> dict:
+        return self._api.call_action("group_notice_delete", payload) if self._api else self._no_api()
+
+    def group_files(self, payload) -> dict:
+        return self._api.call_action("group_files", payload) if self._api else self._no_api()
+
+    def group_files_in(self, payload) -> dict:
+        return self._api.call_action("group_files_in", payload) if self._api else self._no_api()
+
+    def group_file_url(self, payload) -> dict:
+        return self._api.call_action("group_file_url", payload) if self._api else self._no_api()
+
+    def group_file_delete(self, payload) -> dict:
+        return self._api.call_action("group_file_delete", payload) if self._api else self._no_api()
+
+    def group_file_move(self, payload) -> dict:
+        return self._api.call_action("group_file_move", payload) if self._api else self._no_api()
+
+    def group_folder_create(self, payload) -> dict:
+        return self._api.call_action("group_folder_create", payload) if self._api else self._no_api()
+
+    def group_folder_delete(self, payload) -> dict:
+        return self._api.call_action("group_folder_delete", payload) if self._api else self._no_api()
+
+    def group_folder_rename(self, payload) -> dict:
+        return self._api.call_action("group_folder_rename", payload) if self._api else self._no_api()
+
+    def user_poke(self, payload) -> dict:
+        return self._api.call_action("user_poke", payload) if self._api else self._no_api()
+
+    def user_forward(self, payload) -> dict:
+        return self._api.call_action("user_forward", payload) if self._api else self._no_api()
+
+    def group_forward(self, payload) -> dict:
+        return self._api.call_action("group_forward", payload) if self._api else self._no_api()
+
+    def web_search_options(self, payload) -> dict:
+        return self._api.call_action("web_search", payload) if self._api else self._no_api()
 
     def sdk(self, base_dir: str = "") -> dict:
         """缺口 SDK 分面（ai/memory/mcp/db/cache/task/i18n/config/...）。"""

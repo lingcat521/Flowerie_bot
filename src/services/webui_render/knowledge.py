@@ -1,6 +1,7 @@
 """webui_render 群聊知识页：按群查看 / 搜索 / 增删改（严格隔离）。"""
 
 from src.services.webui_render.config_panel import _render_config_row
+from src.services.webui_render.graphics import empty_state, icon
 from src.services.webui_render.util import _esc
 
 
@@ -16,7 +17,7 @@ def render_knowledge_tab(group_id, rows, search="", count=0, max_memes=500,
         '<div class="row"><label class="row-info"><span class="row-title">查看指定群的知识</span>'
         '<span class="row-key">group_id</span></label>'
         '<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-        '<input class="w-gid" type="text" name="group_id" placeholder="群号" required'
+        '<input class="w-gid" type="text" name="group_id" aria-label="群号" placeholder="群号" required'
         + (f' value="{_esc(group_id)}"' if group_id else '') + '>'
         '<button type="submit" class="btn small">查看</button></div>'
         '<span class="hint">知识按群完全隔离：查看/编辑/删除都只作用于输入的群，其他群的数据不可见</span>'
@@ -34,7 +35,7 @@ def render_knowledge_tab(group_id, rows, search="", count=0, max_memes=500,
         f'<input type="hidden" name="tab" value="knowledge">'
         f'<input type="hidden" name="gid" value="{_esc(group_id)}">'
         '<div class="row"><div class="row-control" style="flex-direction:row;gap:10px">'
-        f'<input class="w-md" type="text" name="q" placeholder="按词条/含义搜索" value="{q}">'
+        f'<input class="w-md" type="text" name="q" aria-label="搜索词条或含义" placeholder="按词条/含义搜索" value="{q}">'
         '<button type="submit" class="btn small">搜索</button>'
         '<a class="btn small" href="/panel?tab=knowledge&gid=' + _esc(group_id) + '">全部</a>'
         '</div></div></form></fieldset>'
@@ -47,13 +48,13 @@ def render_knowledge_tab(group_id, rows, search="", count=0, max_memes=500,
         f'<input type="hidden" name="group_id" value="{_esc(group_id)}">'
         '<div class="row"><label class="row-info"><span class="row-title">词条</span>'
         '<span class="row-key">term</span></label>'
-        '<div class="row-control"><input type="text" name="term" required placeholder="如：电子宠物"></div></div>'
+        '<div class="row-control"><input type="text" name="term" aria-label="词条" required placeholder="如：电子宠物"></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">含义</span>'
         '<span class="row-key">meaning</span></label>'
-        '<div class="row-control"><textarea name="meaning" rows="2" required></textarea></div></div>'
+        '<div class="row-control"><textarea name="meaning" aria-label="含义" rows="2" required></textarea></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">例句</span>'
         '<span class="row-key">examples</span></label>'
-        '<div class="row-control"><textarea name="examples" rows="2"></textarea></div></div>'
+        '<div class="row-control"><textarea name="examples" aria-label="例句" rows="2"></textarea></div></div>'
         '<div class="row"><label class="row-info"><span class="row-title">可信度</span>'
         '<span class="row-key">confidence</span></label>'
         '<div class="row-control" style="flex-direction:row;gap:18px;flex-wrap:wrap">'
@@ -84,42 +85,40 @@ def render_knowledge_tab(group_id, rows, search="", count=0, max_memes=500,
             for s, label in (("active", "活跃"), ("inactive", "停用"))
         )
         rows_html += (
-            '<div class="mcp-card">'
-            f'<div class="mcp-card-head"><b>{term}</b>'
-            f'<span class="badge">可信度：{conf_label}</span>'
+            '<article class="mcp-card knowledge-entry">'
+            f'<div class="mcp-card-head">{icon("knowledge")}<b>{term}</b>'
+            f'<span class="badge">可信度：{_esc(conf_label)}</span>'
             + ('<span class="badge warn">停用</span>' if status != "active" else '')
             + '</div>'
             f'<div class="mcp-card-meta">来源：{_esc(r.get("source") or "manual")} · '
             f'更新：{_esc(r.get("updated_at") or "")}</div>'
-            f'<div class="mcp-card-url">{meaning}</div>'
-            + (f'<div class="mcp-card-test ok">例句：{examples}</div>' if examples else '')
-            + '<form method="post" action="/panel/knowledge/save">'
+            f'<p class="knowledge-body">{meaning}</p>'
+            + (f'<p class="knowledge-example">例句：{examples}</p>' if examples else '')
+            + '<details><summary>编辑知识</summary><form method="post" action="/panel/knowledge/save">'
             f'<input type="hidden" name="id" value="{rid}">'
             f'<input type="hidden" name="group_id" value="{_esc(group_id)}">'
             '<div class="row"><label class="row-info"><span class="row-title">含义</span>'
             '<span class="row-key">meaning</span></label>'
-            f'<div class="row-control"><textarea name="meaning" rows="2">{meaning}</textarea></div></div>'
+            f'<div class="row-control"><textarea name="meaning" aria-label="含义" rows="2">{meaning}</textarea></div></div>'
             '<div class="row"><label class="row-info"><span class="row-title">例句</span>'
             '<span class="row-key">examples</span></label>'
-            f'<div class="row-control"><textarea name="examples" rows="2">{examples}</textarea></div></div>'
+            f'<div class="row-control"><textarea name="examples" aria-label="例句" rows="2">{examples}</textarea></div></div>'
             '<div class="row"><label class="row-info"><span class="row-title">可信度/状态</span>'
             '<span class="row-key">confidence/status</span></label>'
             f'<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-            f'<select class="w-sm" name="confidence">{conf_opts}</select>'
-            f'<select class="w-sm" name="status">{status_opts}</select>'
-            '<button type="submit" class="btn small">保存</button></div></div></form>'
+            f'<select class="w-sm" name="confidence" aria-label="可信度">{conf_opts}</select>'
+            f'<select class="w-sm" name="status" aria-label="状态">{status_opts}</select>'
+            '<button type="submit" class="btn small">保存</button></div></div></form></details>'
             '<div class="actions-row">'
             '<form method="post" action="/panel/knowledge/delete" class="inline-form">'
             f'<input type="hidden" name="id" value="{rid}">'
             f'<input type="hidden" name="group_id" value="{_esc(group_id)}">'
             '<button type="submit" class="btn small danger">删除</button></form>'
-            '</div></div>'
+            '</div></article>'
         )
     if not rows_html:
-        rows_html = '<div class="row"><div class="row-control"><span class="hint">该群暂无知识'
-        if search:
-            rows_html += f'（搜索「{q}」无结果）'
-        rows_html += '</span></div></div>'
+        description = f"搜索「{q}」无结果。" if search else "该群暂无知识，可使用上方表单添加。"
+        rows_html = empty_state("knowledge", description)
     list_block = (
         '<fieldset class="group"><legend>知识列表</legend>' + rows_html +
         '<div class="actions-row">'

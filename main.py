@@ -235,6 +235,7 @@ async def main():
         # AI 工具层与 Web UI 共享同一实例（试搜/自检也走它）。
         from src.services.web_search import WebSearchService
         web_search_service = WebSearchService(config)
+        file_parser = FileParser(config)
         if config.WEB_UI_ENABLED:
             def _status_provider():
                 return {
@@ -249,15 +250,14 @@ async def main():
                 plugin_manager=plugin_manager, group_nicknames=group_nicknames,
                 group_style_rules=group_style_rules,
                 admin_service=admin_service, qzone_service=qzone_service,
-                memory_manager=memory_manager, search_service=web_search_service,
+                memory_manager=memory_manager, search_service=web_search_service, file_parser=file_parser,
             )
-        file_parser = FileParser(config)
         # 资源取数（Gate R）：三种资源形态一次接上；协议差异（OneBot /get_file、Milky 临时 URL）在 Adapter 层，
         # Core 只拿 ResourceRef，因此不认识任何协议侧的 id 字段名。
         resource_fetcher = build_resource_fetcher(
             call_api=sender.call_api,
             http_get=file_parser.fetch_url_bytes,
-            max_bytes=int(getattr(config, "MAX_FILE_DOWNLOAD_BYTES", 2 * 1024 * 1024)),
+            max_bytes=lambda: config.MAX_FILE_DOWNLOAD_BYTES,
         )
         # 共享 AI 预算实例：聊天与每日梗总结复用同一套全局/群计数（总结不绕过预算）
         from src.core.budget_manager import BudgetManager
@@ -353,8 +353,23 @@ async def main():
                 logger.warning("digest_restore_failed: %s", exc)
             policy_engine.context.digest_feed = daily_digest.record_message
 
+        from src.plugins.platform_actions import PlatformActions
+        plugin_manager.platform_actions = PlatformActions(
+            config, profiles=profile_service, search=web_search_service, qzone=qzone_service,
+            knowledge=meme_manager, personas=persona_manager, nicknames=group_nicknames,
+            prompts=prompt_manager, rules=group_style_rules, memory=memory_manager,
+            digest=daily_digest, stickers=sticker_manager, sender=sender,
+            tasks=message_router.task_manager, settings=config_service, file_parser=file_parser,
+            task_services={"daily_digest": daily_digest, "meme_summary": meme_summary},
+
+        )
+        plugin_manager.blossom_memory = blossom_memory
+
         # 启动后台任务（主动聊天 / 上下文备份，经 TaskManager 统一管理）
         await message_router.start()
+        poster = getattr(message_router, "_qzone_poster", None)
+        if poster is not None:
+            plugin_manager.platform_actions.task_services["qzone_auto"] = poster
         if daily_digest is not None:
             # 挂在 TaskManager 上统一取消；run_loop 自己算到下一个 00:00 的秒数
             message_router.task_manager.register("daily_digest", daily_digest.run_loop())
