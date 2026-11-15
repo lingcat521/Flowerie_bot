@@ -12,7 +12,6 @@
 架构：薄门面（认证/面板壳/生命周期）；功能域在 webui_panels/ 的 mixin，渲染在 webui_render/。
 配置持久化：.env（原子）+ settings.db 双写（见 ConfigService）。
 """
-import html as _html
 import secrets
 import time
 from typing import Dict, Optional, Tuple
@@ -55,8 +54,9 @@ from src.services.webui_panels import (
 
 # 兼容导出：拆分后常量/辅助函数移入 webui_panels.appearance_panel
 from src.services.webui_panels.appearance_panel import MAX_UPLOAD_BYTES  # noqa: F401
+from src.services.webui_render.background import adaptive_rules, saved_crops
 from src.services.webui_render.file_parse import render_file_preview
-from src.services.webui_render.graphics import empty_state
+from src.services.webui_render.logs import render_logs
 from src.services.webui_render.pages import render_message
 from src.services.webui_static import handle_panel_static, no_store_html
 from src.utils.logging_setup import get_logger, get_recent_logs
@@ -194,6 +194,7 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         # 修改登录账号（登录态；Bootstrap Lock 下唯一的改密入口）
         app.router.add_post("/panel/account/credentials", self._handle_panel_change_credentials)
         app.router.add_post("/panel/appearance", self._handle_panel_appearance_save)
+        app.router.add_post("/panel/appearance/log-opacity", self._handle_log_opacity_save)
         app.router.add_post("/panel/appearance/restore", self._handle_panel_appearance_restore)
         app.router.add_post("/panel/appearance/delete-image", self._handle_panel_appearance_delete_image)
         app.router.add_get("/panel/background", self._handle_panel_background)
@@ -301,9 +302,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
                        "nicknames", "profiles", "admin", "qzone", "private", "search",
                        "automation", "files"):
             tab = "config"
-        cat = request.query.get("cat", "")
-        if cat not in ("all", "") and cat not in ConfigService.CATEGORY_ORDER:
-            cat = ""
+        cat = request.query.get("cat", "") or "all"
+        if cat not in ("all", "advanced", "FileParse") and cat not in ConfigService.CATEGORY_ORDER:
+            cat = "all"
         if tab == "config" and cat == "FileParse":
             tab = "files"
         try:
@@ -333,15 +334,14 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
     def _panel_page(self, msg: str = "", err: bool = False, tab: str = "config", cat: str = "",
                     mcp_edit=None, edit_id: str = "", new_persona: bool = False,
                     gid: Optional[int] = None, search: str = "",
-                    prompt_gid: Optional[int] = None, file_result=None) -> str:
+                    prompt_gid: Optional[int] = None, file_result=None, crop_draft=None) -> str:
         prefs = self._get_prefs()
         theme = str(prefs["theme"])
         if theme not in THEMES:
             theme = "default"
         bg_color = str(prefs["bg_color"]) or theme_default_bg(theme)
-        image_url = ""
-        if prefs["bg_image"]:
-            image_url = "/panel/background?v=%d" % int(time.time())
+        image_url, image_ratio = self._background_composition()
+        crops = saved_crops(self._pref)
         # 主题面板透明度：用户显式设置则用其值（覆盖所有主题的默认 alpha），否则用各主题默认。
         # 卡片背景由服务端算成**具体 rgba(r,g,b,a)** 注入 body（杜绝 rgba(var(),var()) 在部分
         # 浏览器失效导致卡片颜色错误），保证深色主题卡片也是深色。
@@ -354,13 +354,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
             except ValueError:
                 panel_opacity = int(round(theme_default_alpha(theme) * 100))
         panel_bg_css = "rgba(%s,%.2f)" % (theme_rgb, panel_opacity / 100.0)
-        bg_rules = background_rules(
-            bg_color,
-            image_url if prefs["bg_image"] else "",
-            int(prefs["opacity"]),
-            str(prefs["size"]),
-            str(prefs["position"]),
-        )
+        bg_rules = (adaptive_rules(bg_color, image_url, int(prefs["opacity"]), image_ratio, crops)
+                    if image_ratio else background_rules(bg_color, image_url, int(prefs["opacity"]),
+                                                         str(prefs["size"]), str(prefs["position"])))
         msg_html = render_message(msg, not err)
         panel_style = "glass" if str(prefs.get("panel_style", "")) == "glass" else "clear"
         if tab == "files":
@@ -368,23 +364,18 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
                                                show_nav=False)
             body_html += render_file_preview(self._file_parser.status(), file_result)
         elif tab == "appearance":
+            draft_crops, draft_theme, draft_color, draft_opacity, draft_alpha, draft_style = crop_draft or (
+                crops, theme, bg_color, prefs["opacity"], panel_opacity, panel_style)
+            draft_theme = draft_theme or theme
             body_html = render_appearance(
-                theme, bg_color, int(prefs["opacity"]),
-                str(prefs["size"]), str(prefs["position"]),
-                bool(prefs["bg_image"]), image_url,
-                panel_opacity=panel_opacity, panel_style=panel_style,
+                draft_theme, draft_color or theme_default_bg(draft_theme), int(draft_opacity),
+                bool(image_url), image_url,
+                panel_opacity=draft_alpha, panel_style=draft_style, crops=draft_crops, image_ratio=image_ratio,
+                draft=bool(crop_draft), color_input=draft_color if crop_draft else "",
             )
         elif tab == "logs":
-            logs = "\n".join(get_recent_logs(200))
-            log_content = (
-                f'<pre class="log" tabindex="0" aria-label="运行日志">{_html.escape(logs)}</pre>'
-                if logs else empty_state("logs", "暂无运行日志。")
-            )
-            body_html = (
-                '<div class="log-toolbar"><span>最近 200 条</span>'
-                '<a href="/panel?tab=logs" class="btn secondary">刷新</a></div>'
-                f'<section class="log-frame"><h2>运行日志</h2>{log_content}</section>'
-            )
+            limit = 200
+            body_html = render_logs(get_recent_logs(limit), limit, panel_opacity)
         elif tab == "account":
             body_html = self._render_account_page(msg=msg, err=err)
         elif tab == "persona":

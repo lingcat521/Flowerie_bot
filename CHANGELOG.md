@@ -4,6 +4,43 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.19.2] - 2026-11-16
+
+### 新功能：背景图智能构图 + 日志卡片化
+
+- **响应式背景构图**（`webui_render/background.py`）：背景图不再简单 `cover` 铺满，改为按
+  设备（桌面 / 手机）分别配置显示模式与焦点：
+  - 模式：`auto`（智能适配）/ `cover`（焦点铺满）/ `contain`（完整显示）/ `soft`（完整显示＋柔化补边）
+  - 焦点位置：center / top / bottom / left / right，可自定义百分比
+  - 保护区域：可框定不被裁掉的主体范围
+  - 外观页提供「预览裁剪」，保存前可看到实际效果
+- **日志页卡片化**（`webui_render/logs.py`）：每条日志渲染为可选中卡片，支持按面板透明度
+  调整底色（100% 实底，调低透出背景）；新增 `/panel/appearance/log-opacity` 保存端点
+- **配置导航分组**（`pages.py` `_NAV_GROUPS`）：侧栏按「运行配置 / 对话与记忆 / QQ 与社群 /
+  工具与扩展 / 面板与诊断」五组呈现；手机端多项目分组可折叠（原生 `<details>`）
+- **配置页目录化**（`config_panel.py`）：默认入口直接渲染按分类折叠的分组表单；
+  `cat=advanced` 与未知分类展示「常用配置 / 高级配置 / 功能专页」索引
+- 外观页新增「自定义颜色」输入与面板底纹样式选择
+
+### 修复
+
+- **默认入口看不到任何配置项**：`cat` 为空字符串时被判定为未知分类，直接退回索引页。
+  现在空分类归一化为 `all`（`config_panel.py` + `web_ui.py` 双处兜底）
+- 测试同步：`test_panel_contains_all_config_keys`（FileParse 已独立为「文件解析」页签）、
+  `test_config_category_navigation`（分类直接渲染表单，不再有 `cat active` 标记）、
+  `test_appearance_restore_default`（外观改用按设备裁剪结构）、
+  `test_config_directory_grouped_and_foldable` / `test_config_category_nav_css_rules`
+  （旧的 `_render_cat_nav` 与 `.cats-summary` 系列类已移除，改测 `.settings-directory` /
+  `.cats` / `.cfg-group` 新结构）
+
+### 说明
+
+本版合并自第三方提交的 WebUI 增强包，**保留了 v2.19.0 / v2.19.1 的全部成果**：
+插件 WebUI SDK、平台 API（25 action）、夜间控制台、文件解析开关、
+Android 插件运行时兼容（shebang 与 Perl @INC）。
+
+> 验收：本地全量 pytest 2589 passed / 149 skipped（0 失败）
+
 ## [2.19.1] - 2026-11-15
 
 ### 修复（Android / Termux 环境下的插件启动）

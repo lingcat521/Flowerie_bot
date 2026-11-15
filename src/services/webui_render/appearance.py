@@ -1,12 +1,13 @@
 """webui_render 外观页：主题 / 背景颜色 / 背景图片 / 透明度。"""
 
+from src.services.webui_render.background import render_crop_controls
 from src.services.webui_render.theme import THEME_ORDER, THEMES
 from src.services.webui_render.util import _esc
 
 
-def render_appearance(theme: str, bg_color: str, opacity: int, size: str, position: str,
+def render_appearance(theme: str, bg_color: str, opacity: int,
                       has_bg_image: bool, image_url: str = "", panel_opacity: int = 90,
-                      panel_style: str = "clear") -> str:
+                      panel_style: str = "clear", *, crops=None, image_ratio=None, draft=False, color_input="") -> str:
     cards = []
     for name in THEME_ORDER:
         t = THEMES.get(name)
@@ -33,23 +34,7 @@ def render_appearance(theme: str, bg_color: str, opacity: int, size: str, positi
     if has_bg_image and image_url:
         preview = f'<img class="bg-preview" src="{_esc(image_url)}" alt="当前背景图">'
     opacity = max(0, min(100, int(opacity)))
-    size_opts = {
-        "cover": "cover（铺满，裁切边缘）",
-        "contain": "contain（完整显示，留白）",
-    }
-    pos_opts = {
-        "center": "居中",
-        "top": "顶部",
-        "bottom": "底部",
-        "left": "左侧",
-        "right": "右侧",
-    }
-    size_html = "".join(
-        f'<option value="{k}"{" selected" if k == size else ""}>{_esc(v)}</option>' for k, v in size_opts.items()
-    )
-    pos_html = "".join(
-        f'<option value="{k}"{" selected" if k == position else ""}>{_esc(v)}</option>' for k, v in pos_opts.items()
-    )
+    crop_controls = render_crop_controls(crops, image_ratio, image_url, bg_color, opacity, draft=draft) if crops else ""
     return (
         '<form method="post" action="/panel/appearance" enctype="multipart/form-data">'
         '<fieldset class="group"><legend>主题</legend>'
@@ -60,7 +45,7 @@ def render_appearance(theme: str, bg_color: str, opacity: int, size: str, positi
         '<div class="row-control">'
         f'<div class="range-row"><input type="range" name="panel_opacity" id="panel-opacity" aria-describedby="panel-opacity-hint" min="0" max="100" value="{max(0,min(100,int(panel_opacity)))}">'
         f'<output>已保存：{max(0,min(100,int(panel_opacity)))}%</output></div>'
-        '<span class="hint" id="panel-opacity-hint">100% 完全不透明。调低数值会透出更多背景，也可能降低文字可读性。</span>'
+        '<span class="hint" id="panel-opacity-hint">适用于日志、配置和结果卡片。100% 为实底，调低数值会透出更多背景。</span>'
         '</div></div>'
         '<div class="row"><span class="row-info" id="panel-style-label"><span class="row-title">卡片效果</span>'
         '<span class="row-key">panel_style</span></span>'
@@ -73,7 +58,7 @@ def render_appearance(theme: str, bg_color: str, opacity: int, size: str, positi
         '<fieldset class="group"><legend>背景颜色（跟主题绑定）</legend>'
         '<div class="row"><div class="row-control" style="flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap">'
         f'<span class="color-swatch" style="background:{_esc(bg_color)}" title="当前主题背景色"></span>'
-        '<label for="bg-color-input">自定义颜色</label><input type="text" id="bg-color-input" aria-describedby="bg-color-help" name="bg_color_input" value="" '
+        f'<label for="bg-color-input">自定义颜色</label><input type="text" id="bg-color-input" aria-describedby="bg-color-help" name="bg_color_input" value="{_esc(color_input)}" '
         'placeholder="#RRGGBB 或 253,238,243，留空=用主题默认" class="color-text" '
         'title="留空=用当前主题默认背景；想自定义填入 #RRGGBB 或 R,G,B / rgb(r,g,b)">'
         '<span class="hint" id="bg-color-help">背景颜色已随所选主题自动带好（切换主题即整套换肤，选黑色主题自动变黑）；'
@@ -92,13 +77,12 @@ def render_appearance(theme: str, bg_color: str, opacity: int, size: str, positi
         '<div class="row-control">'
         f'<div class="range-row"><input type="range" name="bg_image_opacity" id="bg-image-opacity" min="0" max="100" value="{opacity}">'
         f'<output>已保存：{opacity}%</output></div></div></div>'
-        '<div class="row"><span class="row-info"><span class="row-title">图片显示方式</span>'
-        '<span class="row-key">bg_size / bg_position</span></span>'
-        '<div class="row-control" style="flex-direction:row;gap:10px;flex-wrap:wrap">'
-        f'<label>缩放<select class="w-gid" name="bg_size">{size_html}</select></label>'
-        f'<label>位置<select class="w-sm" name="bg_position">{pos_html}</select></label></div></div>'
+        + crop_controls +
         '</fieldset>'
-        '<div class="actions-row"><button type="submit" class="btn">保存外观设置</button></div>'
+        '<div class="actions-row">'
+        + ('<button type="submit" class="btn secondary" name="appearance_action" value="preview">预览裁剪</button>'
+           if image_ratio else "") +
+        '<button type="submit" class="btn">保存外观设置</button></div>'
         '</form>'
         '<div class="actions-row">'
         '<form method="post" action="/panel/appearance/delete-image">'

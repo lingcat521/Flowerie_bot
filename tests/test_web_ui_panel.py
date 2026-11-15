@@ -107,6 +107,8 @@ async def test_panel_contains_all_config_keys():
                 continue  # 人格/知识/插件分类已移到各自专属页区块
             if ConfigService.SCHEMA[key][0] == "Automation":
                 continue  # v2.16.0：自动化键移到「自动化」tab（同 Persona/Plugin 模式）
+            if ConfigService.SCHEMA[key][0] == "FileParse":
+                continue  # 文件解析独立为「文件解析」tab（/panel?tab=files）
             if key.startswith("BLOSSOM_MEMORY_") and key != "BLOSSOM_MEMORY_ENABLED":
                 continue  # 花语记忆子键：总开关 OFF 时按设计门控隐藏（见 test_webui_blossom）
             assert f'name="{key}"' in text, f"面板缺少配置项 {key}"
@@ -341,13 +343,17 @@ async def test_config_category_navigation():
         # 默认"全部"：含分类导航 + 全部配置键
         resp = await server._handle_panel(FakeRequest(cookies={"fb_token": cookie}, query={}))
         text = _resp_text(resp)
-        assert 'class="cat active" href="/panel?cat=all"' in text
-        assert 'href="/panel?cat=MCP"' in text
-        assert 'href="/panel?cat=Bot"' in text
+        # v2.19.x：默认入口直接渲染「全部」配置，不再提供「全部」这个链接；
+        # 分类入口统一是 <a class="cat" href="/panel?cat=...">
+        assert 'name="DEEPSEEK_MODEL"' in text, "默认入口应直接展示配置项"
+        # v2.19.x：默认入口直接渲染「按分类折叠的分组表单」（原生 details），
+        # 分类索引只在 cat=advanced 或未知分类时出现。
+        assert 'class="cfg-group"' in text, "配置应以可折叠分组呈现"
+        assert '<summary class="cfg-summary"' in text, "分组标题可点击折叠"
         # 只看 MCP 分类
         resp2 = await server._handle_panel(FakeRequest(cookies={"fb_token": cookie}, query={"cat": "MCP"}))
         text2 = _resp_text(resp2)
-        assert 'class="cat active" href="/panel?cat=MCP"' in text2
+        # v2.19.x：分类直接渲染该组表单（不再有 cat active 标记）
         assert 'name="MCP_ENABLED"' in text2
         assert 'name="BOT_NICKNAME"' not in text2  # 别类不显示
         assert 'action="/panel/save?cat=MCP"' in text2  # 保存回 MCP
@@ -399,7 +405,10 @@ async def test_appearance_restore_default():
         assert repo.get_pref("theme") == "default"
         assert repo.get_pref("bg_color__amoled") in (None, "")
         assert repo.get_pref("bg_image_opacity") == "100"
-        assert repo.get_pref("bg_size") == "cover"
+        # v2.19.x：外观改为「按设备裁剪」结构（desktop/mobile 各自 mode + focus），
+        # 旧的单一 bg_size 不再写入；恢复默认后裁剪配置应被清空。
+        assert not repo.get_pref("bg_size") or repo.get_pref("bg_size") == "cover"
+        assert not repo.get_pref("bg_crop_desktop")
 
 
 # ---------- 背景图片上传与安全 ----------

@@ -2,15 +2,19 @@
 
 从 WebUIServer 拆分（防上帝类）：外观偏好持久化于 settings.db webui_prefs。
 """
+import json
 import os
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Tuple
 from urllib.parse import quote
 
 from aiohttp import web
+from PIL import Image
 
 from src.services.web_ui_assets import THEMES, theme_default_alpha
+from src.services.webui_render.background import DEVICES, parse_crop, saved_crops
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -73,7 +77,43 @@ def normalize_color(value: str) -> Optional[str]:
     return None
 
 
+@lru_cache(maxsize=16)
+def _image_ratio(path: Path, mtime_ns: int, size: int) -> Optional[float]:
+    try:
+        with Image.open(path) as image:
+            width, height = image.size
+            if image.getexif().get(274) in (5, 6, 7, 8):
+                width, height = height, width
+            return width / height if width > 0 and height > 0 else None
+    except (OSError, ValueError, Image.DecompressionBombError):
+        return None
+
+
 class AppearancePanelMixin:
+
+    def _background_composition(self):
+        path = self._background_path()
+        if path is not None:
+            try:
+                stat = path.stat()
+                return (f"/panel/background?v={stat.st_mtime_ns}",
+                        _image_ratio(path, stat.st_mtime_ns, stat.st_size))
+            except OSError:
+                pass
+        return "", None
+
+    async def _handle_log_opacity_save(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            return web.HTTPFound("/panel")
+        try:
+            form = await request.post()
+            opacity = int(form.get("panel_opacity", ""))
+            if not 0 <= opacity <= 100:
+                raise ValueError
+        except (TypeError, ValueError):
+            return web.HTTPFound("/panel?tab=logs&err=1&msg=" + quote("面板不透明度必须是 0~100 的整数"))
+        self._set_pref("panel_opacity", str(opacity))
+        return web.HTTPFound("/panel?tab=logs")
 
     async def _handle_panel_appearance_save(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
@@ -128,6 +168,27 @@ class AppearancePanelMixin:
             errors.append("图片位置无效")
             position = "center"
 
+        profile_fields = ("mode", "focus", "protect")
+        crop_values = {
+            device: [str(form.get(f"crop_{device}_{field}", "")) for field in profile_fields]
+            for device in DEVICES
+        }
+        has_crops = any(values[0] for values in crop_values.values())
+        crops = saved_crops(self._pref)
+        if has_crops:
+            try:
+                crops = {device: parse_crop(*values) for device, values in crop_values.items()}
+            except ValueError as exc:
+                errors.append(str(exc))
+        panel_style = "glass" if form.get("panel_style") == "glass" else "clear"
+        if form.get("appearance_action") == "preview":
+            if getattr(form.get("bg_image"), "filename", ""):
+                errors.append("请先保存新上传的图片，再预览裁剪")
+            return web.Response(text=self._panel_page(
+                msg="；".join(errors), err=bool(errors), tab="appearance",
+                crop_draft=None if errors else (crops, theme, bg_color, opacity, panel_opacity, panel_style),
+            ), content_type="text/html")
+
         file_field = form.get("bg_image")
         upload_data: Optional[bytes] = None
         upload_hint = ""
@@ -141,6 +202,11 @@ class AppearancePanelMixin:
         if errors:
             return web.HTTPFound(f"/panel?tab=appearance&msg={quote('未保存：' + '；'.join(errors))}&err=1")
 
+        if upload_data is not None:
+            ok, file_msg = self._save_background_image(upload_data, upload_hint)
+            if not ok:
+                return web.HTTPFound(f"/panel?tab=appearance&msg={quote(file_msg)}&err=1")
+
         # 全部通过 → 持久化（主题/颜色/透明度/显示方式；背景色按主题隔离）
         if theme:
             self._set_pref("theme", theme)
@@ -150,16 +216,12 @@ class AppearancePanelMixin:
         self._set_pref("bg_size", size)
         self._set_pref("bg_position", position)
         self._set_pref("panel_opacity", str(panel_opacity))
-        panel_style = str(form.get("panel_style", "") or "clear").strip()
-        if panel_style not in ("glass", "clear"):
-            panel_style = "clear"
         self._set_pref("panel_style", panel_style)
-        message = "外观设置已保存"
-        if upload_data is not None:
-            ok, file_msg = self._save_background_image(upload_data, upload_hint)
-            if not ok:
-                return web.HTTPFound(f"/panel?tab=appearance&msg={quote(file_msg)}&err=1")
-            message = file_msg
+        if has_crops:
+            self._set_pref("bg_crop_profiles", json.dumps(crop_values))
+        else:
+            self.config_service.repository.delete_pref("bg_crop_profiles")
+        message = "背景图片已更新" if upload_data is not None else "外观设置已保存"
         logger.info("web_ui appearance saved theme=%s", theme, extra={"event": "config_reload"})
         return web.HTTPFound(f"/panel?tab=appearance&msg={quote(message)}")
 
@@ -174,7 +236,8 @@ class AppearancePanelMixin:
         self._set_pref("panel_opacity", "")
         self._set_pref("panel_style", "clear")
         self._set_pref("bg_image_opacity", "100")
-        self._set_pref("bg_size", "cover")
+        self.config_service.repository.delete_pref("bg_size")
+        self.config_service.repository.delete_pref("bg_crop_profiles")
         self._set_pref("bg_position", "center")
         logger.info("web_ui appearance restored", extra={"event": "config_reload"})
         return web.HTTPFound(f"/panel?tab=appearance&msg={quote('已恢复默认主题与背景样式')}")

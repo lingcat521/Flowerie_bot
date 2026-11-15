@@ -34,19 +34,28 @@ _PAGES = {
 }
 
 
-def _navigation(active):
+def _navigation(active, *, mobile=False):
     links = {}
     for key, url, label in _TABS:
         selected = ' aria-current="page"' if key == active else ""
         css_class = "tab active" if key == active else "tab"
         links[key] = f'<a class="{css_class}" href="{url}"{selected}>{icon(key)}<span>{label}</span></a>'
-    groups = "".join(
-        f'<div class="nav-group"><p class="nav-label">{label}</p>'
-        f'<ul>{"".join(f"<li>{links[key]}</li>" for key, _ in items)}</ul></div>'
-        for label, items in _NAV_GROUPS
-    )
+    groups = []
+    for label, items in _NAV_GROUPS:
+        entries = "<ul>" + "".join(f"<li>{links[key]}</li>" for key, _ in items) + "</ul>"
+        if mobile:
+            if len(items) == 1:
+                groups.append(links[items[0][0]])
+                continue
+            opened = " open" if any(key == active for key, _ in items) else ""
+            groups.append(
+                f'<details class="nav-section" name="panel-nav-group"{opened}>'
+                f'<summary>{label}</summary>{entries}</details>'
+            )
+        else:
+            groups.append(f'<div class="nav-group"><p class="nav-label">{label}</p>{entries}</div>')
     return (
-        f'<nav class="tabs" aria-label="管理导航">{groups}</nav>'
+        f'<nav class="tabs" aria-label="管理导航">{"".join(groups)}</nav>'
         f'<div class="nav-logout"><a class="tab danger" href="/panel/logout">{icon("logout")}退出</a></div>'
     )
 
@@ -82,7 +91,7 @@ def render_panel_page(*, theme_class: str, bg_rules: str, msg_html: str,
     return render_template(
         "panel.html", css_rev=PANEL_ASSET_VER, bg_rules=bg_rules or "",
         body_class=theme_class + (" pglass" if glass else ""), inline_style=inline_style,
-        brand=flower(), navigation=_navigation(tab),
+        brand=flower(), navigation=_navigation(tab), mobile_navigation=_navigation(tab, mobile=True),
         nav_current=next(label for key, _, label in _TABS if key == tab),
         page_title=title, page_eyebrow=eyebrow, page_description=description,
         page_art=heading_art(tab), page_icon=icon(tab, "heading-icon"),

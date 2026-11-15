@@ -38,26 +38,28 @@ def _blossom_model_status_badge(cfgs, c: dict) -> str:
 
 def render_config_sections(configs, active_cat: str = "all", mcp_edit=None, mcp_test_status=None, mcp_tool_counts=None,
                            category_order=None, category_labels=None, *, show_nav=True) -> str:
-    """按分类渲染配置分组表单，顶部带分类导航（点某个分类只看那一类，避免全部堆在一屏）。
-
-    active_cat: "all" 显示全部分类；否则只显示该分类。纯 HTML + 链接跳转，零 JS。
-    category_order/labels: 可选注入（测试解耦）；缺省用 ConfigService 常量（生产行为不变）。
-    """
+    """Render the settings directory, advanced directory, or selected form."""
     order = category_order if category_order is not None else _DEFAULT_ORDER
     labels = category_labels if category_labels is not None else _DEFAULT_LABELS
+    # 归一化：空分类等价于「全部」。否则 cat=""（面板默认入口）会被下面的
+    # `active_cat not in cats` 判定为未知分类并退回索引页 —— 打开面板看不到任何配置项。
+    active_cat = (active_cat or "all").strip() or "all"
     by_cat: dict = {}
     for c in configs:
         by_cat.setdefault(c["category"], []).append(c)
-    # 有内容的分类（按固定顺序）
     cats = [cat for cat in order if by_cat.get(cat)]
-    if active_cat not in ("all", "") and active_cat not in by_cat:
-        active_cat = "all"
-    nav = _render_cat_nav(active_cat, cats, labels) if show_nav else ""
-    shown_cats = [active_cat] if active_cat in by_cat else cats
+    if show_nav:
+        cats = [cat for cat in cats if cat != "FileParse"]
+        if active_cat == "advanced":
+            return _render_advanced_index(cats, labels)
+        if active_cat != "all" and active_cat not in cats:
+            return _render_settings_index(cats, labels)
+    nav = _render_settings_back(active_cat) if show_nav else ""
+    shown_cats = cats if active_cat == "all" else [active_cat] if active_cat in cats else []
     sections = []
     for cat in shown_cats:
         label = labels.get(cat, cat)
-        action = f"/panel/save?cat={_esc(active_cat)}" if active_cat in by_cat else "/panel/save"
+        action = f"/panel/save?cat={_esc(cat)}"
         mcp_raw = None
         rows_html = []
         blossom_on = _blossom_on(by_cat[cat])
@@ -309,38 +311,59 @@ def _mcp_server_form(index, s, title, default_timeout: int = 15) -> str:
         '</div></form></fieldset>'
     )
 
-def _render_cat_nav(active: str, cats, labels) -> str:
-    """配置入口按用途分组；窄屏可折叠，宽屏显示同一组链接。"""
-    current = "全部配置" if active in ("all", "") else labels.get(active, active)
+_COMMON_CATEGORIES = ("Connection", "AI", "Behavior", "Bot")
+_FEATURE_PAGES = (
+    ("files", "文件解析"), ("search", "网页搜索"), ("automation", "自动化"), ("plugins", "插件"),
+)
 
-    def link(category, label):
-        selected = category == active or (category == "all" and not active)
-        css = "cat active" if selected else "cat"
-        marker = ' aria-current="page"' if selected else ""
-        return f'<a class="{css}" href="/panel?cat={_esc(category)}"{marker}>{_esc(label)}</a>'
 
-    def group(title, categories):
-        links = "".join(link(key, labels.get(key, key)) for key in categories)
-        heading = f'<span class="cfg-nav-label">{_esc(title)}</span>' if title else ""
-        return f'<div class="cfg-nav-group">{heading}<div class="cats">{links}</div></div>'
+def _settings_link(url, label):
+    return f'<a class="cat" href="{_esc(url)}">{_esc(label)}</a>'
 
-    known = {key for _, keys in CATEGORY_GROUPS for key in keys}
-    groups = ['<div class="cats">' + link("all", "全部配置") + '</div>']
-    for title, keys in CATEGORY_GROUPS:
-        shown = [key for key in cats if key in keys]
-        if shown:
-            groups.append(group(title, shown))
-    additional = [key for key in cats if key not in known]
-    if additional:
-        groups.append(group("", additional))
-    links_html = "".join(groups)
+
+def _category_links(categories, labels):
+    return "".join(_settings_link(f"/panel?cat={key}", labels.get(key, key)) for key in categories)
+
+
+def _render_settings_index(cats, labels):
+    common = _category_links([key for key in _COMMON_CATEGORIES if key in cats], labels)
+    features = "".join(_settings_link(f"/panel?tab={tab}", label) for tab, label in _FEATURE_PAGES)
     return (
-        '<details class="cats-fold">'
-        '<summary class="cats-summary"><span class="cats-title">配置分类</span>'
-        f'<span class="cats-current">当前：{_esc(str(current))}</span></summary>'
-        f'<nav class="cfg-nav" aria-label="配置分类">{links_html}</nav></details>'
-        f'<nav class="cfg-nav cats-wide" aria-label="配置分类">{links_html}</nav>'
+        '<section class="group settings-directory"><h2>常用配置</h2>'
+        f'<nav class="cats" aria-label="常用配置">{common}</nav></section>'
+        '<a class="group settings-advanced" href="/panel?cat=advanced">'
+        '<strong>高级配置</strong><span>互动、内容处理、记忆、权限与运行维护</span>'
+        '<span class="cfg-caret" aria-hidden="true"></span></a>'
+        '<details class="cfg-group settings-directory"><summary class="cfg-summary">'
+        '<span class="cfg-caret" aria-hidden="true"></span>功能专页</summary>'
+        f'<nav class="cats" aria-label="功能专页">{features}</nav></details>'
     )
+
+
+def _render_settings_back(category):
+    home = category in (*_COMMON_CATEGORIES, "all", "advanced")
+    url, label = ("/panel", "配置首页") if home else ("/panel?cat=advanced", "高级配置")
+    return f'<a class="settings-back" href="{url}">← 返回{label}</a>'
+
+
+def _render_advanced_index(cats, labels):
+    remaining = set(cats) - set(_COMMON_CATEGORIES)
+    groups = []
+    for title, keys in CATEGORY_GROUPS:
+        included = [key for key in keys if key in remaining]
+        if included:
+            groups.append((title, included))
+            remaining.difference_update(included)
+    if remaining:
+        groups.append(("其他", [key for key in cats if key in remaining]))
+    disclosures = "".join(
+        '<details class="cfg-group settings-directory" name="advanced-settings">'
+        '<summary class="cfg-summary"><span class="cfg-caret" aria-hidden="true"></span>'
+        f'{_esc(title)}</summary><nav class="cats" aria-label="{_esc(title)}">'
+        f'{_category_links(keys, labels)}</nav></details>'
+        for title, keys in groups
+    )
+    return _render_settings_back("advanced") + f'<h2 class="settings-section-title">高级配置</h2>{disclosures}'
 
 
 def _render_config_row(c: dict, extra_badges: str = "") -> str:

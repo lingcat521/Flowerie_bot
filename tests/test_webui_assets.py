@@ -201,20 +201,22 @@ def test_both_navigations_list_the_same_pages():
     assert html.count('class="heading-art"') == 1
 
 
-def test_config_category_nav_is_folded_and_grouped():
-    """手机可折叠分类，桌面直接展示按用途分组的同一组链接。"""
-    from src.services.webui_render.config_panel import _render_cat_nav
+def test_config_directory_grouped_and_foldable():
+    """配置入口（v2.19.x）：常用分类 + 高级配置 + 功能专页，折叠用原生 details。"""
+    from src.services.webui_render.config_panel import _render_settings_index
 
-    html = _render_cat_nav("AI", ["AI", "Bot"],
-                           {"AI": "AI / Provider 配置", "Bot": "基础配置"})
-    assert '<details class="cats-fold">' in html
-    assert "配置分类" in html and "当前：AI / Provider 配置" in html
-    assert 'class="cfg-nav cats-wide"' in html
-    assert html.count("接入与模型") == 2
-    assert 'class="cat active"' in html
+    html = _render_settings_index(["AI", "Bot"], {"AI": "AI / Provider 配置", "Bot": "基础配置"})
+    assert 'class="group settings-directory"' in html
+    assert '<nav class="cats"' in html
+    assert "常用配置" in html
+    assert "高级配置" in html
+    assert '<details class="cfg-group settings-directory">' in html, "功能专页应可折叠"
+    assert 'class="cat"' in html, "分类入口链接"
+    assert "AI / Provider 配置" in html and "基础配置" in html
 
 
 def test_config_category_nav_css_rules():
-    for rule in (".cats-summary", ".cats-wide {display:none;",
-                 ".cats-wide {display:grid}", ".cfg-group[open]>.cfg-summary>.cfg-caret"):
+    """配置入口与折叠分组的样式规则存在（v2.19.x 结构）。"""
+    for rule in (".settings-directory", ".cats {", ".cfg-group",
+                 ".cfg-caret", ".cfg-summary"):
         assert rule in PANEL_CSS, rule
