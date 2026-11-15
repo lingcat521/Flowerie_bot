@@ -13,7 +13,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-2580%20passed%20(local%20full%2C%20Python%203.14)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-2582%20passed%20(local%20full%2C%20Python%203.14)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -21,21 +21,21 @@
 ---
 ## 这是什么
 
-**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.19.0**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.19.1**）。
 
 - **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/reference/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
   [插件间通信](docs/plugins/plugin-communication.md)（`plugin.call/emit/on`，跨语言经 Core Router，权限/超时/取消/环保护/trace）+
   [Plugin WebUI](docs/plugins/plugin-webui-protocol.md)（插件自带管理页面，零 JavaScript）+
-  [插件 WebUI SDK](docs/plugins/plugin-webui-sdk.md)（**v2.19.0**：五语言统一组件式页面，插件只声明内容，
+  [插件 WebUI SDK](docs/plugins/plugin-webui-sdk.md)（**v2.19.1**：五语言统一组件式页面，插件只声明内容，
   宿主渲染 + 转义 + 表单校验）+
-  [插件平台 API](docs/reference/plugin-platform-api.md)（**v2.19.0**：25 个 action —— 画像 / 搜索 / 知识 /
+  [插件平台 API](docs/reference/plugin-platform-api.md)（**v2.19.1**：25 个 action —— 画像 / 搜索 / 知识 /
   QQ空间 / 自动化 / 私聊 / 群管理 / 文档解析，全部经权限闸门）。
   受控运行时：独立子进程 + 权限批准 + 保护级别 + 资源上限；CI 里 **13 种语言**最小插件真编译真运行。
-- **表情包三通道（v2.19.0）**：模型可用文本标记 `[STICKER:文件名]` 选图、被 @ 后按概率附随机图、或调用 `sticker_search`/`sticker_send` 工具自主发图；标记在解析层剥离，**文本与图片永远分开发送**，GIF 保留动图
+- **表情包三通道（v2.19.1）**：模型可用文本标记 `[STICKER:文件名]` 选图、被 @ 后按概率附随机图、或调用 `sticker_search`/`sticker_send` 工具自主发图；标记在解析层剥离，**文本与图片永远分开发送**，GIF 保留动图
 - **QQ Bot 是原生场景**：开箱即用的群聊机器人 —— DeepSeek 驱动的人设对话、识图、转发/卡片解析、
   长期记忆、人格系统、表情包、MCP 工具、主动聊天、冷却与预算；OneBot11 / Milky 双协议接入。
-- **零 JavaScript 的 Web 管理后台**（**v2.19.0 夜间控制台**）：桌面侧栏 + 手机底部导航双布局、内联 SVG 图标、无障碍跳转；配置/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/私聊/外观/日志/用户状态/插件，热更新。
+- **零 JavaScript 的 Web 管理后台**（**v2.19.1 夜间控制台**）：桌面侧栏 + 手机底部导航双布局、内联 SVG 图标、无障碍跳转；配置/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/私聊/外观/日志/用户状态/插件，热更新。
 
 ## 功能
 
@@ -44,14 +44,14 @@
 | 💬 AI 对话 | DeepSeek 或任意 OpenAI 兼容厂商驱动，小恶魔系人设，@ 或群聊接话；**也支持本机自建模型**（Ollama / vLLM / llama.cpp / LM Studio，回环地址免填 Key、免发鉴权头） |
 | 🌙 每日摘要 | 长期挂机不重启：每天凌晨把当天群聊压缩成滚动摘要（嵌套合并、既定背景、收敛检查），跨周/跨月连续记忆；`DIGEST_ENABLED` 默认关，摘要可导出 txt；`DIGEST_SOURCE` 可选隐私存档 txt 作数据源 |
 | 🧑‍🤝‍🧑 群友画像 | 性格/喜好/个人生活/特点的长期记忆：每日摘要后自动提炼（merge 语义更新、字段级 TTL 淘汰），群聊时注入本群活跃成员画像；`PROFILE_ENABLED` 默认关，Web UI 画像页 + `/profile` 命令可查可改 |
-| 🤖 AI 自主工具层（v2.12.0；v2.17.0 / v2.19.0 扩展，默认关） | 模型在对话中可自己调用内置工具：QQ空间（发/删/配图识图）· 群管理（禁言/解禁，发起人须群主/管理员）· 记忆读取 · 网页搜索 · 群成员名单 · 群友画像 · 群知识/梗 · 戳一戳（poke 护栏：不戳管理员/自己/Bot）· 表情包检索与发送（v2.19.0）；还能按 AI_QZONE_AUTO_INTERVAL_HOURS 定时自己发动态。全部开关默认关，Web UI「自动化」页统一管理 |
+| 🤖 AI 自主工具层（v2.12.0；v2.17.0 / v2.19.1 扩展，默认关） | 模型在对话中可自己调用内置工具：QQ空间（发/删/配图识图）· 群管理（禁言/解禁，发起人须群主/管理员）· 记忆读取 · 网页搜索 · 群成员名单 · 群友画像 · 群知识/梗 · 戳一戳（poke 护栏：不戳管理员/自己/Bot）· 表情包检索与发送（v2.19.1）；还能按 AI_QZONE_AUTO_INTERVAL_HOURS 定时自己发动态。全部开关默认关，Web UI「自动化」页统一管理 |
 | 💬 私聊（v2.14.0） | 按 QQ 号完全隔离的私聊会话：独立上下文/记忆/人格/预算，AI 能力与群聊一致（识图/工具/记忆），命令同样可用；Web UI「私聊」页管理允许名单与每人记忆；默认关，留空名单=仅管理员可私聊 |
 | 🛡️ 群内管理指令（v2.11.0） | 花璃先自检自己的群权限再动手：`/admin` 看双方权限、`/mute QQ号 [10m]` 禁言（s/m/h/d，上限 30 天）、`/unmute QQ号` 解禁；发起人须群主/管理员，权限不足直接说明原因；不经过 LLM |
 | 👑 群管理控制台（v2.10.0） | Web UI「群管理」页 12 个操作：设/取消管理员、禁言/解除、踢人（可拒绝再加群）、改群名片、改群名、专属头衔、全员禁言、禁言列表、退群（群主可解散）；SDK `set_group_admin` 等 10 个 Bot 方法 + 插件 API 同步 |
 | 🌏 QQ空间（v2.10.0） | Web UI「QQ空间」页：发表说说（正文 + 最多 9 图，本地绝对路径（自动转 file://）/ file:// / http(s):// / base64://；权限 1/4/16/64/128）、按 tid 删除、本机发布历史；SDK `qzone_publish` / `qzone_delete`；底层 NapCat 扩展动作 |
-| 🧩 插件 WebUI SDK（v2.19.0） | 插件用 `webui.page()` 声明组件与表单，宿主渲染 HTML、跟随控制台主题、校验字段、显示错误；五种语言同一套结构（Python / TS / Go / Rust / Java），零 JavaScript 可操作，页面值全部服务端转义 |
-| 🔌 插件平台 API（v2.19.0） | 25 个宿主能力 action：画像读写、网页搜索、群知识、人格/昵称解析、QQ空间、自动化状态与定时、私聊、群成员/禁言/踢人/改名片/头衔/全员禁言、文档解析；每项绑定权限，manifest 声明 + 管理员批准才生效 |
-| 📄 文件解析（v2.19.0 开关化） | `FILE_PARSE_ENABLED` 总开关 + `FILE_PARSE_GROUP_UPLOAD_ENABLED` 群文件开关 + `FILE_PARSE_FORMATS` 格式白名单（txt/pdf/docx/xlsx/csv）；另有文本上限 / 下载字节 / PDF 页数 / Excel 单元格 / CSV 行数等预算 |
+| 🧩 插件 WebUI SDK（v2.19.1） | 插件用 `webui.page()` 声明组件与表单，宿主渲染 HTML、跟随控制台主题、校验字段、显示错误；五种语言同一套结构（Python / TS / Go / Rust / Java），零 JavaScript 可操作，页面值全部服务端转义 |
+| 🔌 插件平台 API（v2.19.1） | 25 个宿主能力 action：画像读写、网页搜索、群知识、人格/昵称解析、QQ空间、自动化状态与定时、私聊、群成员/禁言/踢人/改名片/头衔/全员禁言、文档解析；每项绑定权限，manifest 声明 + 管理员批准才生效 |
+| 📄 文件解析（v2.19.1 开关化） | `FILE_PARSE_ENABLED` 总开关 + `FILE_PARSE_GROUP_UPLOAD_ENABLED` 群文件开关 + `FILE_PARSE_FORMATS` 格式白名单（txt/pdf/docx/xlsx/csv）；另有文本上限 / 下载字节 / PDF 页数 / Excel 单元格 / CSV 行数等预算 |
 | 👁️ 识图 | 图片/表情包/转发内图片，视觉模型描述后自然回复（`VISION_ENABLED` 总开关可关闭）|
 | 📦 转发/卡片解析 | 合并转发递归展开（含图片）、JSON 卡片 |
 | 🧠 记忆库 | 按用户×群隔离，SQLite 持久化，自动去重，用户可查/删 |
@@ -225,7 +225,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/featu
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 2580 个测试（本地全量实测，Python 3.14；CI 另含 ruby/lua 等环境相关用例）
+pytest              # 2582 个测试（本地全量实测，Python 3.14；CI 全套工具链口径更多）
 pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（61 条：五语言真 build / 真调用 / 真关闭，含群管 / QQ空间 / 私聊动作）
 pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
 pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）

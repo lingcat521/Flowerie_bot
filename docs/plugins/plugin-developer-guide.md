@@ -913,3 +913,27 @@ export PERL5LIB="$PREFIX/lib/perl5/5.42.2:$PREFIX/lib/perl5/site_perl/5.42.2"
 
 > 说明：这些变量只影响**插件子进程**，不改变主进程行为；非 Termux 环境（CI/Linux）
 > 通常都未设置，白名单放行是无副作用的空转（不影响任何既有用例）。
+
+### exec 插件与无 `/usr/bin/env` 的环境（v2.19.1）
+
+`runtime: "exec"` 的插件由主进程直接 exec 入口文件，语言不限。标准写法通常带 shebang：
+
+```text
+#!/usr/bin/env ruby     ← 依赖 /usr/bin/env
+#!/usr/bin/env perl
+```
+
+**Android / Termux / 精简容器里没有 `/usr/bin/env`**，内核无法解析这类 shebang，
+表现为插件启动超时（而不是报错）。Flowerie 的处理：
+
+1. 先尝试 `_ensure_executable()` 补齐执行位（ZIP 解包会丢 Unix 执行位）；
+2. 再检查 shebang：若为 `env` 形式且该 `env` 不存在，改为
+   **「解释器绝对路径 + 脚本」** 调用（解释器从 `PATH` 里找）；
+3. 找不到解释器时保持原样，让真实错误照常暴露。
+
+所以**插件作者不需要为 Android 改 shebang**——写标准的 `#!/usr/bin/env <lang>` 即可，
+在 Linux CI 与 Android 设备上都能跑。
+
+另：Perl 插件的 `@INC` 在前缀变更后可能失效（`Can't locate strict.pm`）。
+运行时会在未显式设置 `PERL5LIB` 时，自动注入同前缀的 `lib/perl5` 目录。
+若你的插件依赖额外模块，自行在启动脚本里 `export PERL5LIB=...` 会被原样保留。

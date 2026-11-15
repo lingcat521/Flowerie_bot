@@ -1,6 +1,6 @@
 # 📱 花璃 · 安卓 (Termux) 专用安装
 
-> 当前版本 **v2.19.0**。本文是 Termux 部署的**唯一权威步骤**（[README](../../README.md) 与 [Release 资产说明](install-release-guide.md) 都指向本文）。
+> 当前版本 **v2.19.1**。本文是 Termux 部署的**唯一权威步骤**（[README](../../README.md) 与 [Release 资产说明](install-release-guide.md) 都指向本文）。
 > 安卓与 PC 的差别：`pydantic-core` 在 Termux 没有匹配 wheel（源码编译需 Rust，极易失败），必须走 Termux 专用源拿预编译包；
 > `aiohttp` / `lxml` 等仍需本地用 clang 编译，耗时数分钟属正常。
 
@@ -135,3 +135,27 @@ export PERL5LIB="$PREFIX/lib/perl5/5.42.2:$PREFIX/lib/perl5/site_perl/5.42.2"
 ---
 
 [← 返回 README](../../README.md)
+
+## Termux 派生环境已知差异
+
+> 适用范围：Android 上的 Termux，以及以 Termux 为基座重新打包的应用（例如改过包名、
+> 前缀变成 `/data/data/<别的包名>/files/usr` 的环境）。**纯 Linux / macOS 不会遇到**。
+
+这类环境的共同点：**很多二进制与配置文件在编译期就把前缀写死了**。换前缀后程序仍能启动，
+但会在某个具体动作上失败，而错误信息往往只有一句 `No such file or directory`，很难定位。
+
+| # | 症状 | 根因 | 修法 |
+| :--- | :--- | :--- | :--- |
+| 1 | 用 `pkg install` 装包报 `6 expected programs not found in PATH` | `dpkg` 用 realpath 比对 PATH，而 `/data/data` 是 `/data/user/0` 的符号链接 | 把 PATH 写成 `/data/user/0/<包名>/files/usr/bin` 形式 |
+| 2 | `dpkg -i` 不报错但文件没落地 | deb 里的路径是 `/data/data/com.termux/...`，目标目录不存在 | `dpkg-deb -x` 解到临时目录，重写前缀后再复制 |
+| 3 | 编译任何 C 扩展都报 `[Errno 2] No such file or directory` | Python 的 `_sysconfigdata*` 里 `LDSHARED` / `LIBDIR` 指向旧前缀 | 逐行替换成实际前缀（**不要用跨行正则**，会拼坏多行字符串） |
+| 4 | 同上，且 `pkg-config --modversion foo` 找不到 | `$PREFIX/lib/pkgconfig/*.pc` 里 `prefix=` 是旧前缀 | 批量替换 `.pc` 文件里的前缀 |
+| 5 | `subprocess.Popen(..., shell=True)` 报旧前缀的 `sh` 不存在 | Termux 的 Python 给 `subprocess.py` 打过补丁，`unix_shell` 写死 | 改 `subprocess.py` 里的 `unix_shell` 为该环境的 sh 路径 |
+| 6 | Perl 插件报 `Can't locate strict.pm in @INC` | `@INC` 编译进二进制；改 `Config.pm` / `Config_heavy.pl` **无效** | 设 `PERL5LIB`（Flowerie 的插件运行时会自动探测同前缀 `lib/perl5` 并注入） |
+| 7 | `runtime: "exec"` 的插件（Ruby / 任意脚本）启动超时 30 秒 | 没有 `/usr/bin/env`，`#!/usr/bin/env ruby` 无法解析 | Flowerie 会自动退回「解释器绝对路径 + 脚本」；自建环境也可手动装 `env` |
+
+**Flowerie 自身已经处理了第 6、7 条**（`src/plugins/runtime.py` 的
+`_perl_lib_path()` / `_shebang_interpreter()`），其余属于环境搭建范畴。
+
+> 排查建议：遇到「明明装了却报找不到」时，先用 `grep -rl 'com.termux' <相关目录>`
+> 看是不是还留着旧前缀——这条命令一次能挖出绝大多数此类问题。

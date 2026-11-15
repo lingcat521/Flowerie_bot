@@ -4,6 +4,32 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.19.1] - 2026-11-15
+
+### 修复（Android / Termux 环境下的插件启动）
+
+两处都是"在 Linux CI 里永远不会出现、在 Android 上必然发生"的问题：
+
+- **shebang `#!/usr/bin/env X` 无法被执行**：Android 没有 `/usr/bin/env`，
+  内核解析 shebang 直接失败，`runtime: "exec"` 的插件（Ruby / Perl / 任意脚本）
+  只能等到 30 秒启动超时。`PluginRuntime` 现在会在 exec 前检查 shebang：
+  若为 `env` 形式且该 `env` 路径不存在，则改为「解释器绝对路径 + 脚本」调用
+  （`_shebang_interpreter`），Linux 下行为完全不变。
+- **Perl 插件的 `@INC` 指向旧前缀**：perl 的模块搜索路径编译进二进制，
+  前缀变更后仍去 `/data/data/com.termux/...` 找 `strict.pm`，连 `use strict` 都失败
+  （改 `Config.pm` / `Config_heavy.pl` 无效——那是报告而非来源）。
+  `PluginRuntime` 现在会探测同前缀的 `lib/perl5`，未显式设置时注入 `PERL5LIB`
+  （`_perl_lib_path`），其它语言与用户已配置的值不受影响。
+
+### 文档
+
+- `docs/guides/install-termux.md`：新增「Termux 派生环境已知差异」一节——
+  记录已遇到的五类硬编码前缀（`.pc` / 脚本 shebang / Python `subprocess` 的
+  `unix_shell` / Perl `@INC` / 插件 `#!/usr/bin/env`）与各自的修法
+- `docs/plugins/plugin-developer-guide.md`：exec 插件一节补「无 `/usr/bin/env` 环境」说明
+
+> 验收：本地全量 pytest + rubin/perl 最小插件矩阵均通过
+
 ## [2.19.0] - 2026-11-15
 
 > 题眼：**插件生态平台化**——插件不再只能收发消息，而是能画自己的管理页、调用宿主的

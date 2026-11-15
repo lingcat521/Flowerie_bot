@@ -1,6 +1,6 @@
 # 开发
 
-> 当前版本 **v2.19.0**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
+> 当前版本 **v2.19.1**。SDK 三层架构见 [sdk.md](../reference/sdk.md)，安全边界见 [security.md](../reference/security.md)，
 > 历史审计报告见 [archive/](../archive/README.md)。
 
 > **v2.14.x 新增**：私聊（按 QQ 号完全隔离的上下文 / 记忆 / 人格 / 预算）与 Web UI 第 12 页签「私聊」；

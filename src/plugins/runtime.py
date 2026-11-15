@@ -270,6 +270,13 @@ class PluginRuntime:
         env = {k: os.environ.get(k, "") for k in _ENV_WHITELIST if k in os.environ}
         if not env.get("PATH"):
             env["PATH"] = "/usr/bin:/bin"
+        # Perl 的 @INC 在二进制里编译写死（Android/Termux 前缀变动后即为旧路径）；
+        # PERL5LIB 是唯一能覆盖它的入口。仅当检测到同前缀的 perl5 目录且用户未显式设置时注入，
+        # 其它语言与已有配置一律不受影响。
+        if not env.get("PERL5LIB"):
+            _perl_lib = self._perl_lib_path()
+            if _perl_lib:
+                env["PERL5LIB"] = _perl_lib
         if self.manifest.runtime == "node":
             node_bin = shutil.which("node") or "node"
             cmd = [node_bin, os.path.join(runner_dir, "node_runner.js"),
@@ -286,9 +293,80 @@ class PluginRuntime:
             entry_path = os.path.abspath(os.path.join(self.plugin_dir, self.manifest.entry))
             self._ensure_executable(entry_path)
             cmd = [entry_path]
+            # Android/Termux 等环境没有 /usr/bin/env：`#!/usr/bin/env ruby` 这类 shebang
+            # 无法被内核解析，exec 会直接失败。此时退回「解释器绝对路径 + 脚本」的调用形式
+            # （解释器从 PATH 里找，找不到就维持原样，让真实错误照常暴露）。
+            interp = self._shebang_interpreter(entry_path)
+            if interp:
+                cmd = [interp, entry_path]
         else:
             raise RuntimeError(f"runtime {self.manifest.runtime} 不适用于子进程")
         return cmd, env
+
+    @staticmethod
+    def _perl_lib_path() -> "str | None":
+        """返回与本解释器同前缀的 perl5 模块目录（供 PERL5LIB）；不存在则 None。"""
+        try:
+            perl_bin = shutil.which("perl")
+        except Exception:  # noqa: BLE001 - 探测失败不影响插件启动
+            return None
+        if not perl_bin:
+            return None
+        prefix = os.path.dirname(os.path.dirname(os.path.realpath(perl_bin)))
+        candidates = []
+        lib5 = os.path.join(prefix, "lib", "perl5")
+        if not os.path.isdir(lib5):
+            return None
+        for version in sorted(os.listdir(lib5), reverse=True):
+            vdir = os.path.join(lib5, version)
+            if not os.path.isdir(vdir):
+                continue
+            for sub in sorted(os.listdir(vdir)):
+                subdir = os.path.join(vdir, sub)
+                if os.path.isdir(subdir):
+                    candidates.append(subdir)
+            candidates.append(vdir)
+        site = os.path.join(lib5, "site_perl")
+        if os.path.isdir(site):
+            for version in sorted(os.listdir(site), reverse=True):
+                sdir = os.path.join(site, version)
+                if os.path.isdir(sdir):
+                    for sub in sorted(os.listdir(sdir)):
+                        subdir = os.path.join(sdir, sub)
+                        if os.path.isdir(subdir):
+                            candidates.append(subdir)
+                    candidates.append(sdir)
+        return os.pathsep.join(candidates) if candidates else None
+
+    @staticmethod
+    def _shebang_interpreter(entry_path: str) -> "str | None":
+        """shebang 为 `#!/usr/bin/env X` 但 `/usr/bin/env` 不存在时，返回 X 的绝对路径。
+
+        Android / Termux / 精简容器里通常没有 `/usr/bin/env`，内核无法解析这类 shebang；
+        返回解释器路径让调用方改成 `[解释器, 脚本]`，行为与 POSIX 环境一致。
+        """
+        import shutil
+
+        try:
+            with open(entry_path, "rb") as f:
+                head = f.read(256)
+        except OSError:
+            return None
+        if not head.startswith(b"#!"):
+            return None
+        first_line = head.split(b"\n", 1)[0][2:].strip()
+        if not first_line:
+            return None
+        parts = first_line.decode("utf-8", "replace").split()
+        if not parts:
+            return None
+        env_path = parts[0]
+        # 只在 env 形式且该 env 确实不存在时介入；其它解释器路径交给内核
+        if os.path.basename(env_path) != "env" or os.path.exists(env_path):
+            return None
+        if len(parts) < 2:
+            return None
+        return shutil.which(parts[1])
 
     @staticmethod
     def _ensure_executable(entry_path: str) -> None:
