@@ -230,7 +230,7 @@ Web UI 入口为 **工具与扩展 → 文件解析**。可保存开关、格式
 | `WEB_UI_TOKEN_TTL_SECONDS` | 登录 token 有效期（秒，区间 60~604800） | `3600` |
 | `WEB_UI_USERNAME` / `WEB_UI_PASSWORD` | 初始管理账号；**不在 SCHEMA/配置表单中**——由 `/panel/register` 注册页管理，密码只存 scrypt 哈希 | `admin` / 空 |
 
-- 访问：`http://127.0.0.1:8080/panel`（十二个页签：配置 / 人格 / 群聊知识 / 群友画像 / 群管理 / QQ空间 / 私聊 / 群昵称 / 插件 / 外观 / 日志 / 用户状态，全部零 JavaScript 服务端渲染）。
+- 访问：`http://127.0.0.1:8080/panel`（十六个页签：配置 / 文件解析 / 人格 / 群聊知识 / 群友画像 / 群管理 / QQ空间 / 私聊 / 群昵称 / 插件 / 网页搜索 / 自动化 / 外观 / 日志 / 用户状态 / 账号，全部零 JavaScript 服务端渲染）。
 - **Bootstrap Lock**：`WEB_UI_PASSWORD` 允许为空（= UNINITIALIZED，此时拒绝一切登录），公开注册页是创建**第一个**管理员的唯一入口；
   系统一旦初始化（`.env` 或 `settings.db` 已有凭据）注册**永久关闭**，改账号走登录态「用户状态」页（需当前密码），
   注销 = 显式重置回 UNINITIALIZED 才能重新注册。详见 [security.md](../reference/security.md)、[web-ui.md](../features/web-ui.md)。

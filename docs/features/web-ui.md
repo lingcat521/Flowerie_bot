@@ -38,11 +38,11 @@
 | 工具与扩展 | 文件解析、网页搜索、自动化、插件 |
 | 面板与诊断 | 外观、日志、用户状态 |
 
-## 十四个页签
+## 十六个页签
 
 | 页签 | 功能 |
 | :--- | :--- |
-| **配置** | 全部配置变量按分类分组（人格 / 群聊知识 / 插件 / 群管理 / QQ空间 / 私聊配置已移入对应页签），顶部分类导航，每组一个表单保存 |
+| **配置** | 全部配置变量按分类折叠分组（原生 `<details>`，默认展开）；`cat=advanced` 或未知分类时显示「常用配置 / 高级配置 / 功能专页」目录。人格 / 群聊知识 / 插件 / 群管理 / QQ空间 / 私聊 / 文件解析配置已移入对应页签 |
 | **文件解析** | 控制总开关和群文件自动解析，设置格式和限额，查看依赖状态，上传文件试解析 |
 | **人格** | 全局人格、人格库 CRUD（创建/编辑/删除/设为全局）、群聊人格绑定与解除、管理员补充发言规则、按群自定义 Prompt、`PERSONA_*` 配置 |
 | **插件** | 插件列表、上传 ZIP / 单 manifest / URL 安装、刷新扫描、启用（含权限批准）、禁用、卸载、保护措施与插件配置 |
@@ -55,7 +55,7 @@
 | **自动化**（v2.16.0；v2.17.0 扩展） | AI 自主工具层全部开关（QQ空间 / 群管理 / 记忆 / **网页搜索 / 群成员 / 画像 / 群知识 / 戳一戳**）+ QQ空间配套参数（配图池/发布历史/默认权限），单表单保存 |
 | **群昵称** | 群特色昵称（× 人设隔离）：群绑定人设后唤名联动，留空恢复默认 |
 | **外观** | 7 套主题 + 背景颜色/图片 + 面板透明度 + 卡片效果 + 恢复默认/删除图片 |
-| **日志** | 最近 **200** 条运行日志（`get_recent_logs(200)`，`src/services/web_ui.py`） |
+| **日志** | 最近 **200** 条运行日志（`get_recent_logs(200)`）；v2.19.2 起每条渲染为**可选中卡片**，底色跟随面板透明度（100% 实底，调低透出背景），可在外观页调整并按 `/panel/appearance/log-opacity` 保存 |
 | **用户状态** | 账户信息与凭据来源、改账号、注销、服务器状态、MCP 工具状态、API 厂商连接状态（含**向量/重排模型（花语记忆）**两条链路） |
 
 全部通过 HTML `<form>` + GET/POST + 服务端模板渲染，不使用任何 JavaScript。
@@ -83,7 +83,14 @@
 - **7 套主题**：默认（明亮浅色）/ 深色 / 浅色 / Sakura（浅粉）/ Ocean（天空蓝）/ Forest（草绿）/ AMOLED（纯黑，省电）。
 - **背景色按主题隔离存储**（`bg_color__<主题>`），切主题互不污染；可填 `#RRGGBB` / `253,238,243` / `rgb(r,g,b)`，留空=用主题默认。
 - **面板透明度** 0~100%；**卡片效果** `clear`（纯透明，淡入淡出）/ `glass`（液态玻璃磨砂）。
-- **背景图**：PNG/JPEG/WEBP/GIF ≤ 5MB（`MAX_UPLOAD_BYTES`），服务端**魔数校验** + 固定文件名 `background.<ext>` 防路径穿越，持久化到 `data/webui/background/`；图片透明度 0~100% 与背景颜色经 CSS 渐变遮罩合成同一视觉层；显示方式 cover / contain + 位置（居中/顶部/底部/左右）；**顶栏不透明**；「恢复默认主题」「删除背景图片」独立按钮。
+- **背景图**：PNG/JPEG/WEBP/GIF ≤ 5MB（`MAX_UPLOAD_BYTES`），服务端**魔数校验** + 固定文件名 `background.<ext>` 防路径穿越，持久化到 `data/webui/background/`；图片透明度 0~100% 与背景颜色经 CSS 渐变遮罩合成同一视觉层；**顶栏不透明**；「恢复默认主题」「删除背景图片」独立按钮。
+- **背景智能裁剪（v2.19.2）**：桌面与手机可分别配置，不再只有 `cover`/ `contain`：
+  - 模式 `auto`（按图片比例与容器比例智能挑选）/ `cover`（焦点铺满）/ `contain`（完整显示）/ `soft`（完整显示 + 柔化补边）
+  - **焦点** center / top / bottom / left / right，也可填自定义百分比（`50,30` 这种）
+  - **保护区**：框定不能被裁掉的主体范围（四边百分比），由服务端按容器比例计算最终裁切
+  - 外观页提交前可点「预览裁剪」看实际效果；参数非法会被拒并给出原因
+- **自定义颜色**：外观页提供颜色输入框，可与主题色并存（按主题隔离存储）。
+- **面板底纹样式**：`clear`（纯透明）/ `glass`（磨砂）二选一。
 
 ## MCP 工具页
 
@@ -110,11 +117,11 @@
 | :--- | :--- |
 | 配置持久化 | 项目根 `.env`（原子写入）+ `data/settings.db`（`app_config` / `webui_prefs` / `personas` / `group_persona` / `persona_global`） |
 | 服务端实现 | `src/services/web_ui.py`（薄门面：认证/面板壳/生命周期）+ `src/services/webui_panels/`（功能域 mixin：account/auth/config/appearance/mcp/persona/knowledge/nickname/prompt/plugin） |
-| 渲染层 | `src/services/webui_render/`（theme/pages/config_panel/appearance/persona/knowledge/account/plugins/nicknames/plugin_dsl/plugin_webui/category_constants/markdown_mini/util + `assets.py` 兼容 PyInstaller `_MEIPASS`）+ `src/services/web_ui_assets.py`（聚合导出） |
+| 渲染层 | `src/services/webui_render/`（theme/pages/config_panel/appearance/**background**/**logs**/**graphics**/persona/knowledge/account/plugins/nicknames/plugin_dsl/plugin_webui/category_constants/markdown_mini/util + `assets.py` 兼容 PyInstaller `_MEIPASS`）+ `src/services/web_ui_assets.py`（聚合导出） |
 | 模板与样式 | `src/services/webui_render/templates/*.html`（panel / login / register / register_closed）、`src/services/webui_render/static/panel.css`（含 `{{THEME_VARS}}` 占位） |
 | 静态路由与缓存 | `src/services/webui_static.py`（`/panel/static/{name}` + HTML `no-store`） |
 | 业务层 | `config_service.py`（SCHEMA + 双写）、`persona_manager.py` + `persona_presets.py`、`meme_knowledge_manager.py` + `meme_knowledge_repository.py`、`system_status.py`（用户状态页零依赖读 /proc）、`src/repositories/env_store.py`（.env 写入器） |
-| 插件运行时 | `src/plugins/`（manager/runtime/manifest/permissions/installer/http_action/runner）+ `src/services/webui_panels/plugin_panel.py` |
+| 插件运行时 | `src/plugins/`（manager/runtime/manifest/permissions/installer/http_action/runner/**platform_actions**/**webui_view**/**document_file**）+ `src/services/webui_panels/plugin_panel.py`；插件页面渲染见 [插件 WebUI SDK](../plugins/plugin-webui-sdk.md) |
 
 ## 缓存与自适应
 
@@ -123,5 +130,5 @@
 
 ## 相关文档
 
-[configuration.md](../guides/configuration.md)（配置项全量）、[persona.md](persona.md)、[memory.md](memory.md)（群聊知识）、[mcp.md](mcp.md)、[plugin-developer-guide.md](../plugins/plugin-developer-guide.md)、[security.md](../reference/security.md)。
+[configuration.md](../guides/configuration.md)（配置项全量）、[persona.md](persona.md)、[memory.md](memory.md)（群聊知识）、[mcp.md](mcp.md)、[stickers.md](stickers.md)、[plugin-developer-guide.md](../plugins/plugin-developer-guide.md)、[plugin-webui-sdk.md](../plugins/plugin-webui-sdk.md)（插件页面组件化）、[plugin-platform-api.md](../reference/plugin-platform-api.md)（插件可调的平台能力）、[security.md](../reference/security.md)。
 

@@ -1,8 +1,9 @@
 # Flowerie 文档
 
-> 对应 **v2.19.2**（2026-11-16）：**插件生态平台化**——插件 WebUI SDK（五语言统一组件式页面，
-> 宿主渲染 + 转义 + 表单校验）、插件平台 API（25 个 action：画像 / 搜索 / 知识 / QQ空间 / 自动化 /
-> 私聊 / 群管理 / 文档解析）、夜间控制台 UI（侧栏 + 手机导航 + 内联 SVG）、文件解析开关与格式白名单。
+> 对应 **v2.19.2**（2026-11-16）：**插件生态平台化 + 控制台增强**——插件 WebUI SDK（五语言统一
+> 组件式页面，宿主渲染 + 转义 + 表单校验）、插件平台 API（25 个 action：画像 / 搜索 / 知识 / QQ空间 /
+> 自动化 / 私聊 / 群管理 / 文档解析）、夜间控制台（侧栏 + 手机折叠导航 + 内联 SVG）、
+> **背景图按设备智能裁剪**（焦点 / 保护区 / 预览）、**日志卡片化**、文件解析开关与格式白名单。
 > 协议仍是 **v1**，旧插件零改动。更早版本见 `CHANGELOG.md`；历史报告见 [archive/](archive/README.md)。
 
 ## 先挑一条路线走
@@ -60,7 +61,7 @@
 | [sdk.md](reference/sdk.md) | SDK 模式全参考：Event 字段 / BotMessage / Matcher / 多轮交互 / 定时 / 权限 / FAQ + **附录 A 能力与兼容矩阵**（端点映射 / 网关兼容 / v2.1 缺口台账） | 插件开发者 |
 | [api.md](reference/api.md) | **API 权威速查总表**（方法 × 作用 × 权限 × 章节，自动生成） | 插件开发者 |
 | [configuration.md](guides/configuration.md) | 全部配置项 / `.env` / 优先级 / 功能开关表 / **多条回复与 Native Reply Tool** / **私聊（PRIVATE_CHAT_*）** / **AI 工具层** / 存储后端与迁移工具 | 运维 |
-| [web-ui.md](features/web-ui.md) | Web UI 十二个页签（含 **群管理** / **QQ空间** / **私聊**）/ 如何开启 / 零 JavaScript / 注册与登录 / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
+| [web-ui.md](features/web-ui.md) | Web UI **十六个页签**（含 文件解析 / 群管理 / QQ空间 / 私聊）/ 如何开启 / 零 JavaScript / 注册与登录 / **背景智能裁剪（焦点 + 保护区 + 预览）** / **分辨率自适应五档断点** / **缓存策略** / 静态资源与模板结构 | 运维 |
 | [security.md](reference/security.md) | **安全规则权威**：SSRF / 注入 / 权限 / 资源上限 / 指标 / 已知边界 | 运维 + 开发者 |
 | [memory.md](features/memory.md) | 记忆体系：Context / Memory / 群知识 / 花语记忆（BlossomMemory） | 运维 + 开发者 |
 | [persona.md](features/persona.md) | 人格系统（内置三套 / 群 / 全局 / 管理员补充规则） | 运维 |
