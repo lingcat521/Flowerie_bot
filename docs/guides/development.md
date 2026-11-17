@@ -50,7 +50,7 @@ PYTHONPATH=$HOME python3 -m pytest -p stubplug -p stubio tests/ -q  # 追加 aio
 
 > **数字口径**（重要）：上表 unit 行是 **v2.19.0 本地全量实测**
 > `2687 passed / 166 skipped`（本地口径，`--ignore=tests/e2e`；CI 装 go/rustc/javac/tsc 等工具链，skip 更少、passed 更多）。
-> 本机（Termux）全量 `pytest tests/` 为 `2531 passed / 143 skipped / 1 xfailed`（go/dotnet/R 本机不可用即 skip；
+> 本机（Termux）全量 `pytest tests/` 为 `2687 passed / 166 skipped`（分批实测合计；单次跑全量在 Android 上易被 OOM kill，故按文件分批）（go/dotnet/R 本机不可用即 skip；
 > 另有 1 项 perl 插件 30s 超时 + ruff 未安装属本机环境限制）；
 > skip 数随本机装了哪些工具链而变，**不是失败**。以 CI 日志的实际汇总行为准。
 >

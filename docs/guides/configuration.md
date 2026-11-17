@@ -220,6 +220,25 @@ Web UI 入口为 **工具与扩展 → 文件解析**。可保存开关、格式
 | `MCP_AUTH_TYPE` / `MCP_AUTH_TOKEN` | 单 server 认证方式（`none`/`bearer`/`api_key`/`header`/`basic`）与 token（`MCP_SERVERS` 为空时生效）；凭据不进日志/错误/SDK 返回值 | 空 |
 | `MCP_AUTH_HEADER` / `MCP_AUTH_USERNAME` / `MCP_AUTH_PASSWORD` | api_key 的自定义 header 名（缺省 `X-API-Key`）/ basic 的用户名与密码 | 空 |
 
+## 网页搜索
+
+| 变量 | 说明 | 默认 |
+| :--- | :--- | :--- |
+| `AI_SEARCH_ENABLED` | AI 自主搜索工具总开关（Web UI「自动化」页统一管理） | `false` |
+| `SEARCH_ENGINES` | 启用引擎与回退顺序（逗号分隔；可选 `ddg` / `ddg-lite` / `bing` / `searxng` / `deepseek-native`） | `ddg,bing,searxng,ddg-lite` |
+| `SEARCH_PAID_ENABLED` | **付费搜索总开关**。`false` 时 `deepseek-native` 从执行链彻底剔除，即使显式写进 `SEARCH_ENGINES` 也不用 | `true` |
+| `SEARCH_DEEPSEEK_PRIORITY` | 付费开关允许时，是否把可用的原生搜索自动排到链首 | `true` |
+| `SEARCH_DEEPSEEK_BASE_URL` | DeepSeek 原生搜索端点（Anthropic 兼容） | `https://api.deepseek.com/anthropic/v1` |
+| `SEARCH_DEEPSEEK_MODEL` | 原生搜索用的模型名 | `deepseek-v4-flash` |
+| `SEARCH_DEEPSEEK_API_KEY` | 搜索专用 Key；留空则复用 `DEEPSEEK_API_KEY`。后台脱敏显示，可清除以恢复复用 | 空 |
+| `SEARCH_DEEPSEEK_MAX_USES` | 每个模型回合允许调用服务端搜索的次数（1–10） | `3` |
+| `SEARCH_MAX_RESULTS` / `SEARCH_TIMEOUT` | 默认结果条数（1–10）/ 单引擎超时（秒） | `5` / `10` |
+| `SEARCH_CACHE_TTL` / `SEARCH_SAFE_SEARCH` | 结果缓存分钟数（0=禁用，最大 5）/ 安全搜索 `off`/`moderate`/`strict` | `5` / `off` |
+| `SEARCH_BLOCKED_DOMAINS` | 结果域名黑名单（逗号分隔，命中直接丢弃） | 空 |
+| `SEARCH_SEARXNG_INSTANCES` | SearXNG 公共实例列表（逗号或换行分隔；留空=内置 6 个） | 空 |
+| `SEARCH_FETCH_MAX_CHARS` | `web_fetch` 正文截断字数（1000–8000） | `2000` |
+
+全部热更新。两个付费相关开关的区别、原生搜索的实现原理与成本，见 [网页搜索](../features/search.md)。
 ## Web UI
 
 | 变量 | 说明 | 默认 |
@@ -520,7 +539,7 @@ QZONE_IMAGE_DESCRIBE_LIMIT=12        # 单次列图最多识图几张（省视�
 | `group_status` | 看 Bot 与自己的群权限 | 只读 |
 | `group_mute` / `group_unmute` | 禁言/解禁 | 需 `AI_ADMIN_ENABLED`；**发起人必须是群主/管理员**，Bot 自己也要有管理权限；单次 ≤24h |
 | `memory_recall` | 读当前用户在本群的长期记忆 | 只读、只限当前用户 |
-| `web_search` / `web_fetch` | 搜实时信息 / 抓网页正文 | 需 `AI_SEARCH_ENABLED`；结果按不可信外部数据处理，详见 [网页搜索](../../features/search.md) |
+| `web_search` / `web_fetch` | 搜实时信息 / 抓网页正文 | 需 `AI_SEARCH_ENABLED`；结果按不可信外部数据处理，详见 [网页搜索](../features/search.md) |
 | `group_members` | 看当前群成员名单（昵称/角色） | 需 `AI_GROUP_INFO_ENABLED`；只读 |
 | `member_profile` | 看某成员的群友画像 | 需 `AI_PROFILES_ENABLED`；只读，无画像直说 |
 | `group_knowledge` | 检索本群知识/梗 | 需 `AI_KNOWLEDGE_ENABLED`；只读 |
