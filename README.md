@@ -13,7 +13,7 @@
 
 [![GitHub Tag](https://img.shields.io/github/v/tag/lingcat521/Flowerie_bot)](https://github.com/lingcat521/Flowerie_bot) [![Build Flowerie_bot](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/compiler.yml)
 [![Acceptance](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml/badge.svg)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
-[![Tests](https://img.shields.io/badge/tests-2589%20passed%20(local%20full%2C%20Python%203.14)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-2687%20passed%20(local%20full%2C%20Python%203.14)-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/ci.yml)
 [![Acceptance Tests](https://img.shields.io/badge/acceptance-37%2F37%20passed-2ea043)](https://github.com/lingcat521/Flowerie_bot/actions/workflows/acceptance.yml)
 
 </div>
@@ -21,7 +21,7 @@
 ---
 ## 这是什么
 
-**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.19.2**）。
+**花璃（Flowerie）是一个以 QQ Bot 为原生场景的跨语言插件平台**（当前版本 **v2.19.3**）。
 
 - **插件平台是本体**：语言无关的 [Plugin Protocol v1](docs/reference/plugin-protocol.md)（JSON-Lines，任意语言可接入）+
   **五套官方 SDK**（Python / TypeScript / Go / Rust / Java，零第三方依赖，能力对齐）+
@@ -67,7 +67,7 @@
 | 🔌 NapCat WebSocket | 正向 / 反向二选一（`NAPCAT_WS_MODE`），forward 支持鉴权 token + 断线重连 |
 | 🖼️ 表情包 | 目录扫描 + Vision 索引缓存，模型按语境选择发送 |
 | 🔧 MCP 工具 | 外部工具调用，插件式多 server + 工具白名单 + 独立熔断 |
-| 🔍 网页搜索 | 原生免 key 引擎（DDG/Bing/SearXNG），失败感知回退 + 正文抓取，Web UI「网页搜索」页试搜/自检：[文档](docs/features/search.md) |
+| 🔍 网页搜索 | 免 Key 引擎（DDG/Bing/SearXNG）与可选 DeepSeek 原生搜索，支持失败回退、正文抓取、Web UI 指定引擎试搜和自检。[文档](docs/features/search.md) |
 | ⚔️ 引战检测 | 关键词 + AI 双重确认 |
 | 🎯 冷却/预算 | 用户/机器人冷却、全局+群+用户三层 AI 预算、复读检测、主动聊天 |
 | 🖥️ Web UI | 管理后台：配置/文件解析/人格/群昵称/群聊知识/群友画像/群管理/QQ空间/私聊/网页搜索/自动化/外观/日志/用户状态/插件（**十六个页签**），全零 JS，热更新；桌面侧栏 + 手机原生 `<details>` 折叠导航；背景图支持按设备智能裁剪（焦点 / 保护区 / 预览） |
@@ -225,7 +225,7 @@ Web UI「群聊知识」页管理；详细设计见 [记忆与知识](docs/featu
 
 ```bash
 pip install -r requirements-dev.txt
-pytest              # 2589 个测试（本地全量实测，Python 3.14；CI 全套工具链口径更多）
+pytest              # 2687 个测试通过（本地分批实测合计，Python 3.14；CI 全套工具链口径更多）
 pytest -q -s tests/sdk/     # 多语言 SDK 最小插件实测（61 条：五语言真 build / 真调用 / 真关闭，含群管 / QQ空间 / 私聊动作）
 pytest -q -s tests/webui/   # Plugin WebUI 真服务器黑盒（102 条）
 pytest -q -s tests/e2e/     # 真浏览器 E2E（21 条；需 playwright install chromium）

@@ -67,6 +67,7 @@
 | [persona.md](features/persona.md) | 人格系统（内置三套 / 群 / 全局 / 管理员补充规则） | 运维 |
 | [mcp.md](features/mcp.md) | MCP 工具服务器（单 server / 插件式多 server / SSRF 防护） | 运维 + 开发者 |
 | [stickers.md](features/stickers.md) | 表情包系统 | 运维 |
+| [search.md](features/search.md) | 网页搜索：4 个免 Key 引擎 + DeepSeek 原生搜索（Anthropic 兼容 + 服务端 web_search 工具）/ 自动编排与回退 / **付费总开关 SEARCH_PAID_ENABLED** / AI 自主选引擎 / SSRF 与不可信输入边界 | 运维 + 开发者 |
 | [development.md](guides/development.md) | 开发约定 / 目录结构 / 测试与 CI / 存储后端扩展 | 开发者 |
 | [install-termux.md](guides/install-termux.md) | **Termux 部署权威步骤**（镜像源 / 依赖 / SSL 与编译报错排查） | 运维 |
 | [install-release-guide.md](guides/install-release-guide.md) | Release 资产用法：Linux / macOS / Termux 源码包（含 `build-termux.sh`） | 运维 |

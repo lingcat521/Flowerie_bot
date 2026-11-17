@@ -101,6 +101,7 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
         + _api_card("引战检测", api_status.get("toxic"), "toxic")
         + _api_card("向量模型（花语记忆）", api_status.get("embedding"), "embedding")
         + _api_card("重排模型（花语记忆）", api_status.get("reranker"), "reranker")
+        + _api_card("DeepSeek 搜索（原生）", api_status.get("search"), "search")
         + '<div class="hint">发送最小 ping 请求验证真实连通性；视觉/引战未独立配置时回退用 DeepSeek。</div>'
         '</fieldset>'
     )
@@ -113,7 +114,11 @@ def _api_card(label, st, test_tg=None):
     st = st or {}
     label_state = _esc(st.get("label") or label)
     key_state = ""
-    if st.get("key_set"):
+    if st.get("status"):
+        tone = st.get("tone")
+        badge_class = f"badge {tone}" if tone in ("ok", "warn") else "badge"
+        key_state = f'<span class="{badge_class}">{_esc(st["status"])}</span>'
+    elif st.get("key_set"):
         key_state = '<span class="badge ok">已配置 Key</span>'
     elif st.get("loopback"):
         # 本机回环模型不校验密钥（Ollama/vLLM 等），不该显示成"未配置"
@@ -135,6 +140,7 @@ def _api_card(label, st, test_tg=None):
         f'<div class="mcp-card-url">地址：{_esc(st.get("url", "N/A"))} · '
         f'模型：{_esc(st.get("model", "N/A"))}'
         + (' · Key：' + _esc(st.get("key")) if st.get("key") else "")
+        + (' · ' + _esc(st["note"]) if st.get("note") else "")
         + f'</div>{test_btn}'
         '</div>'
     )

@@ -13,6 +13,7 @@ from aiohttp import web
 
 from src.config import is_loopback_url
 from src.services.system_status import collect as collect_system_status
+from src.services.web_search import WebSearchService
 from src.services.web_ui_assets import render_account_tab
 
 # API 厂商连接状态展示所需的配置键（配置层面：URL/模型/Key 是否设置/是否独立）
@@ -63,9 +64,9 @@ class AccountPanelMixin:
         values = {k: self.config_service.get_value(k) for k in _API_KEYS}
         out = {}
 
-        def _masked(key):
-            v = values.get(key) or ""
-            return (v[:4] + "****" + v[-4:]) if len(v) > 8 else ("****" if v else "")
+        def _masked(value):
+            value = value or ""
+            return (value[:4] + "****" + value[-4:]) if len(value) > 8 else ("****" if value else "")
 
         # 本机回环模型（Ollama/vLLM 等）：不校验密钥，状态页标注出来，避免"密钥没填=没配好"的误解
         _chat_url = values.get("DEEPSEEK_API_URL") or ""
@@ -73,7 +74,7 @@ class AccountPanelMixin:
         out["deepseek"] = {
             "url": _chat_url or "N/A",
             "model": values.get("DEEPSEEK_MODEL") or "N/A",
-            "key": _masked("DEEPSEEK_API_KEY"),
+            "key": _masked(values.get("DEEPSEEK_API_KEY")),
             "key_set": bool(values.get("DEEPSEEK_API_KEY")),
             "label": "本机回环模型（免密钥）" if _loopback else "第三方厂商（聊天主厂商）",
             "loopback": _loopback,
@@ -81,30 +82,53 @@ class AccountPanelMixin:
         out["vision"] = {
             "url": values.get("VISION_API_URL") or "回退 DeepSeek",
             "model": values.get("VISION_MODEL") or "回退 DeepSeek",
-            "key": _masked("VISION_API_KEY"),
+            "key": _masked(values.get("VISION_API_KEY")),
             "key_set": bool(values.get("VISION_API_KEY")),
             "label": "视觉识图",
         }
         out["toxic"] = {
             "url": values.get("TOXIC_API_URL") or "回退 DeepSeek",
             "model": values.get("TOXIC_MODEL") or "回退 DeepSeek",
-            "key": _masked("TOXIC_API_KEY"),
+            "key": _masked(values.get("TOXIC_API_KEY")),
             "key_set": bool(values.get("TOXIC_API_KEY")),
             "label": "引战检测",
         }
         out["embedding"] = {
             "url": values.get("BLOSSOM_MEMORY_EMBEDDING_API_URL") or "未启用",
             "model": values.get("BLOSSOM_MEMORY_EMBEDDING_MODEL") or "未启用",
-            "key": _masked("BLOSSOM_MEMORY_EMBEDDING_API_KEY"),
+            "key": _masked(values.get("BLOSSOM_MEMORY_EMBEDDING_API_KEY")),
             "key_set": bool(values.get("BLOSSOM_MEMORY_EMBEDDING_API_KEY")),
             "label": "向量模型（花语记忆）",
         }
         out["reranker"] = {
             "url": values.get("BLOSSOM_MEMORY_RERANKER_API_URL") or "未启用",
             "model": values.get("BLOSSOM_MEMORY_RERANKER_MODEL") or "未启用",
-            "key": _masked("BLOSSOM_MEMORY_RERANKER_API_KEY"),
+            "key": _masked(values.get("BLOSSOM_MEMORY_RERANKER_API_KEY")),
             "key_set": bool(values.get("BLOSSOM_MEMORY_RERANKER_API_KEY")),
             "label": "重排模型（花语记忆）",
+        }
+        search = WebSearchService(self.config)
+        base, model, key, _ = search._deepseek_search_conf()
+        key = key.strip()
+        reuse = bool(key and not getattr(self.config, "SEARCH_DEEPSEEK_API_KEY", ""))
+        if not search.paid_search_enabled():
+            status, tone = "已禁用（付费搜索关闭）", ""
+        elif not key:
+            status, tone = "未配置（自动使用免费引擎）", "warn"
+        elif not search.deepseek_native_ready():
+            status, tone = "仍是模板值，请填真实 Key", "warn"
+        else:
+            status, tone = "已配置", "ok"
+        out["search"] = {
+            "url": base or "N/A",
+            "model": model or "N/A",
+            "key": _masked(key),
+            "key_set": bool(key),
+            "label": "DeepSeek 搜索（原生）",
+            "loopback": is_loopback_url(base),
+            "status": status,
+            "tone": tone,
+            "note": "复用聊天 Key" if reuse else "",
         }
         return out
 

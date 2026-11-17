@@ -189,3 +189,19 @@ async def test_qzone_gateway_history_preserves_existing_action_result(platform):
     assert listed["items"][0]["tid"] == "fixture-post"
     await manager._handle_action("qzone", "qzone_delete", {"tid": "fixture-post"})
     assert (await manager._handle_action("qzone", "qzone_history", {}))["items"] == []
+
+
+async def test_plugin_cannot_select_unusable_paid_search_engine(platform):
+    manager, search, config = platform
+    from src.services.web_search import WebSearchService
+
+    config.DEEPSEEK_API_KEY = "fixture-only-0123456789abcdef"
+    search.deepseek_native_usable = WebSearchService(config).deepseek_native_usable
+    payload = {"query": "花璃", "engine": "deepseek-native"}
+    config.SEARCH_PAID_ENABLED = False
+    assert (await manager._handle_action("allowed", "web_search", payload))["ok"]
+    search.search.assert_awaited_once_with("花璃", max_results=5)
+    search.search.reset_mock()
+    config.SEARCH_PAID_ENABLED = True
+    assert (await manager._handle_action("allowed", "web_search", payload))["ok"]
+    search.search.assert_awaited_once_with("花璃", max_results=5, engine="deepseek-native")

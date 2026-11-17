@@ -252,8 +252,23 @@ pre,.log-box {white-space:pre-wrap;overflow-wrap:anywhere;background:var(--panel
 .search-result:last-child {border-bottom:0}
 .search-result h3 {color:var(--accent);margin-bottom:4px}
 .search-result p {margin:8px 0 0}
-.search-query .row-control {display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
-.search-query input,.search-query button {min-height:52px}
+.search-overview .hint,.search-paid .hint,.search-engine .hint {margin:8px 0 0}
+.search-chain {display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;margin-bottom:0}
+.search-chain code {display:inline-block;padding:3px 8px;border-radius:6px;background:var(--input-bg)}
+.search-chain strong code {background:var(--accent-soft);color:var(--accent)}
+.search-paid {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.search-paid h2 {display:inline-block;margin:0 8px 0 0}
+.search-engine-grid {display:grid;grid-template-columns:minmax(0,1fr);gap:12px;padding-top:12px}
+.search-engine {min-width:0;margin:0}
+.search-engine-native {grid-column:1/-1}
+.search-engine h3 {margin-bottom:4px}
+.search-engine .badges {margin-top:8px}
+.search-engine-inactive {background:var(--ui-raised)}
+.search-engine-inactive .badge:not(.ok,.warn,.err),
+.search-membership {background:var(--input-bg);color:var(--secondary)}
+.search-probe {display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:16px 0;border-bottom:1px solid var(--panel-border)}
+.search-probe label {font-weight:500}
+.search-probe .hint {margin:0}
 .danger-options {border:1px solid var(--err);border-radius:12px;padding:12px;margin-top:16px}
 .danger-options legend {color:var(--err);font-size:16px}
 .automation-panels {display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
@@ -292,6 +307,9 @@ pre,.log-box {white-space:pre-wrap;overflow-wrap:anywhere;background:var(--panel
 @media (min-width:480px) {
   .mobile-navigation .nav-section ul {grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+@media (min-width:640px) {
+  .search-engine-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 @media (max-width:767px) {
   body {font-size:16px;line-height:26px}
   .group-actions>.btn:not(.small),.page-appearance form>.actions-row>.btn {width:100%}
@@ -314,7 +332,10 @@ pre,.log-box {white-space:pre-wrap;overflow-wrap:anywhere;background:var(--panel
   .w-md {max-width:300px}
   .w-lg {max-width:380px}
   .theme-grid,.registry-items,.nick-grid,.profile-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
-  .search-query .row-control {grid-template-columns:minmax(0,1fr) minmax(112px,auto)}
+  .search-probe {grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:center;column-gap:12px}
+  .search-probe label[for="search-engine"] {grid-column:2;grid-row:1}
+  .search-probe input,.search-probe select,.search-probe button {grid-row:2}
+  .search-probe .hint {grid-column:1/-1}
   .automation-panels {grid-template-columns:repeat(2,minmax(0,1fr))}
   .identity-data div {grid-template-columns:160px minmax(0,1fr);gap:16px}
   .auth-shell {grid-template-columns:minmax(0,1fr) minmax(0,448px);padding:40px clamp(24px,4vw,64px);width:min(100%,1248px);align-items:center}
@@ -344,6 +365,9 @@ pre,.log-box {white-space:pre-wrap;overflow-wrap:anywhere;background:var(--panel
   .rule-add {grid-template-columns:minmax(120px,9.5rem) minmax(0,1fr) auto}
   .nick-add {grid-template-columns:repeat(3,minmax(0,1fr)) auto}
   .persona-editor textarea[name=system_prompt] {min-height:360px}
+}
+@media (min-width:1200px) {
+  .search-engine-grid {grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (min-width:1440px) {
   .nick-grid {grid-template-columns:repeat(3,minmax(0,1fr))}

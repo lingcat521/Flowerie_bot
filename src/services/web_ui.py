@@ -305,8 +305,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         cat = request.query.get("cat", "") or "all"
         if cat not in ("all", "advanced", "FileParse") and cat not in ConfigService.CATEGORY_ORDER:
             cat = "all"
-        if tab == "config" and cat == "FileParse":
-            tab = "files"
+        if tab == "config" and cat in ("FileParse", "Search"):
+            tab = "files" if cat == "FileParse" else "search"
         try:
             mcp_edit = int(request.query.get("edit", ""))
         except (TypeError, ValueError):
@@ -399,6 +399,8 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         elif tab == "search":
             body_html = self._render_search_page(msg=msg, err=err,
                                                  probe=getattr(self, "_search_probe_cache", None))
+            body_html += render_config_sections(self.config_service.list_configs(), active_cat="Search",
+                                                show_nav=False)
         else:
             body_html = render_config_sections(self.config_service.list_configs(), active_cat=cat,
                                                mcp_edit=mcp_edit, mcp_test_status=self._get_mcp_test_status(),

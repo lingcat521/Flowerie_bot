@@ -5,6 +5,7 @@
 """
 import os
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -139,6 +140,7 @@ def test_account_status_marks_loopback(tmp_path):
     class _Fake(AccountPanelMixin):
         def __init__(self, values):
             self._values = values
+            self.config = SimpleNamespace(**values)
 
         class config_service:  # noqa: N801 - 简化桩
             pass

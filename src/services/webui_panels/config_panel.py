@@ -2,6 +2,8 @@
 
 从 WebUIServer 拆分（防上帝类）：配置保存走 ConfigService（.env + settings.db 双写）。
 """
+import asyncio
+import time
 from typing import Dict
 from urllib.parse import quote
 
@@ -9,6 +11,7 @@ from aiohttp import web
 
 from src.services.config_service import ConfigService
 from src.services.file_parser import file_parse_error
+from src.services.web_search import WebSearchService
 
 _STATUS = {"invalid_argument": 400, "file_too_large": 413, "unsupported_format": 415,
            "parse_failed": 422, "busy": 429, "unavailable": 503}
@@ -38,6 +41,8 @@ class ConfigPanelMixin:
         form = await request.post()
         target = str(form.get("target", "") or "")
         cat = "BlossomMemory" if target in ("embedding", "reranker") else "AI"
+        if target == "search":
+            cat = "Search"
         back = str(form.get("back", "") or "")
         try:
             if target == "chat" or target == "deepseek":
@@ -50,13 +55,50 @@ class ConfigPanelMixin:
                 ok, msg = await self._ping_embedding()
             elif target == "reranker":
                 ok, msg = await self._ping_reranker()
+            elif target == "search":
+                ok, msg = await self._ping_search()
             else:
                 ok, msg = False, "未知测试目标"
         except Exception as e:  # noqa: BLE001 - 测试失败即结果
             ok, msg = False, f"{type(e).__name__}: {e}"
+        if target == "search" and not WebSearchService(self.config).paid_search_enabled():
+            msg += "。付费搜索当前已关闭，此测试仅验证连接。"
         if back == "account":
             return web.HTTPFound(f"/panel?tab=account&msg={quote(msg)}&err={'1' if not ok else ''}")
         return web.HTTPFound(f"/panel?cat={cat}&msg={quote(msg)}&err={'1' if not ok else ''}")
+
+    async def _ping_search(self):
+        import httpx
+
+        svc = WebSearchService(self.config)
+        base, model, key, _ = svc._deepseek_search_conf()
+        key = key.strip()
+        if not key:
+            return False, "未配置搜索 Key（自动搜索使用免费引擎）"
+        if not svc.deepseek_native_ready():
+            return False, "搜索 Key 仍是模板值，请填真实 Key"
+        if not base.strip():
+            return False, "SEARCH_DEEPSEEK_BASE_URL 为空"
+        started = time.monotonic()
+        try:
+            async with asyncio.timeout(20), httpx.AsyncClient(timeout=20) as client:
+                resp = await client.post(
+                    base + "/messages",
+                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
+                    json={"model": model, "max_tokens": 16, "thinking": {"type": "disabled"},
+                          "messages": [{"role": "user", "content": "ping"}]},
+                )
+        except (TimeoutError, httpx.TimeoutException):
+            return False, "连接超时（预算 20 秒）"
+        except httpx.HTTPError as e:
+            return False, f"连接失败：{type(e).__name__}"
+        if resp.status_code == 200:
+            return True, f"连接成功（{time.monotonic() - started:.1f}s，未消耗搜索额度）"
+        if resp.status_code == 401:
+            return False, "HTTP 401：Key 无效或尚未开通 Anthropic 兼容端点"
+        if resp.status_code == 404:
+            return False, "HTTP 404：端点路径有误（应以 /anthropic/v1 结尾）"
+        return False, f"HTTP {resp.status_code}：{resp.text.replace(key, '****')[:160]}"
 
     async def _ping_chat(self):
         import httpx
@@ -178,6 +220,12 @@ class ConfigPanelMixin:
                                  if name == "FILE_PARSE_FORMATS" else str(vals[-1]) if vals else "")
             else:
                 updates[name] = str(form.get(name, ""))
+        search_key = "SEARCH_DEEPSEEK_API_KEY"
+        if search_key in updates:
+            if form.get("clear_search_key") == "true":
+                updates[search_key] = ""
+            elif not updates[search_key].strip():
+                del updates[search_key]
         ok, message = self.config_service.update_many(updates)
         return web.HTTPFound(f"/panel?msg={quote(message)}&err={'1' if not ok else ''}{_catq}")
 

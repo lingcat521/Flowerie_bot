@@ -97,7 +97,11 @@ def test_engine_order_empty_falls_back():
     class C(_Cfg):
         SEARCH_ENGINES = "nonsense"
     order = _svc(C())._engine_order()
-    assert len(order) == 4 and set(order) == set(ENGINE_IDS)
+    # 回退到内置默认顺序：仍是四个免 key 引擎
+    assert order == ["ddg", "bing", "searxng", "ddg-lite"]
+    # deepseek-native 每次搜索会消耗一个模型回合，必须显式配置才启用
+    assert "deepseek-native" in ENGINE_IDS
+    assert "deepseek-native" not in order
 
 
 def test_searxng_instances_default_and_custom():

@@ -128,6 +128,7 @@ class ConfigService:
         result = []
         for key, (category, ctype, is_secret, hot, desc) in self.SCHEMA.items():
             current = overrides.get(key) if key in overrides else getattr(self.config, key, None)
+            ctype, is_secret = ("secret", True) if key == "SEARCH_DEEPSEEK_API_KEY" else (ctype, is_secret)
             entry = {
                 "key": key,
                 "category": category,
@@ -655,7 +656,7 @@ class ConfigService:
     @classmethod
     def _display(cls, key: str, ctype: str, current, is_secret: bool) -> str:
         """配置当前值 → 表单显示字符串（列表逗号分隔 / 多行换行 / 敏感脱敏）。"""
-        if current is None:
+        if current is None or (key == "SEARCH_DEEPSEEK_API_KEY" and not current):
             return ""
         if is_secret:
             return cls._mask(key, current, True)

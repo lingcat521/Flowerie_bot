@@ -293,6 +293,14 @@ class Settings(BaseSettings):
     STICKER_MAX_LIST: int = 30          # 提供给模型的可用表情包描述上限（防 token 膨胀）
     # 网页搜索（v2.15.0：免 key 原生引擎；Web UI「网页搜索」页试搜/自检）
     SEARCH_ENGINES: str = "ddg,bing,searxng,ddg-lite"   # 启用引擎与回退顺序（逗号分隔）
+    # DeepSeek 原生搜索（Anthropic 兼容 Messages + 服务端 web_search 工具）
+    # 引擎名 `deepseek-native`；不填 key 时复用 DEEPSEEK_API_KEY
+    SEARCH_DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/anthropic/v1"
+    SEARCH_DEEPSEEK_MODEL: str = "deepseek-v4-flash"
+    SEARCH_DEEPSEEK_API_KEY: str = ""      # 留空 = 复用 DEEPSEEK_API_KEY
+    SEARCH_DEEPSEEK_MAX_USES: int = 3      # 单次请求最多内部搜索轮数（1-10）
+    SEARCH_DEEPSEEK_PRIORITY: bool = True  # 有可用凭据时自动把原生搜索排到链首（无凭据则剔除）
+    SEARCH_PAID_ENABLED: bool = True       # 付费搜索总开关（关=彻底禁用 deepseek-native，即使显式配置也不用）
     SEARCH_MAX_RESULTS: int = 5          # 默认结果条数（1-10）
     SEARCH_TIMEOUT: int = 10             # 单引擎请求超时（秒；10-30）
     SEARCH_CACHE_TTL: int = 5            # 结果缓存分钟数（0=禁用，最大 5）

@@ -40,14 +40,25 @@ _USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 _ACCEPT_LANG = "zh-CN,zh;q=0.9,en;q=0.8"
 
-ENGINE_IDS = ("ddg", "ddg-lite", "bing", "searxng")
+ENGINE_IDS = ("ddg", "ddg-lite", "bing", "searxng", "deepseek-native")
 
 ENGINE_LABELS = {
     "ddg": "DuckDuckGo · HTML",
     "ddg-lite": "DuckDuckGo · Lite",
     "bing": "Bing",
     "searxng": "SearXNG · 元搜索（公共实例）",
+    "deepseek-native": "DeepSeek · 原生搜索（服务端工具）",
 }
+
+# DeepSeek 原生搜索（Anthropic 兼容 Messages + web_search_20250305 服务端工具）。
+# 设计取自 DeepSeek Harness 的 dsh-web-search-deepseek：搜索由模型在服务端执行，
+# 返回结构化 web_search_tool_result 块；摘要在 text 块的 citations[].cited_text 里
+# （结果项本身通常不带摘要），按 url 建映射补齐。
+_DEEPSEEK_SEARCH_BASE = "https://api.deepseek.com/anthropic/v1"
+_DEEPSEEK_SEARCH_MODEL = "deepseek-v4-flash"
+_DEEPSEEK_SEARCH_MAX_USES = 3
+_DEEPSEEK_SEARCH_MAX_TOKENS = 2048
+_ANTHROPIC_VERSION = "2023-06-01"
 
 DEFAULT_SEARXNG_INSTANCES = (
     "https://opnxng.com",
@@ -222,11 +233,73 @@ class WebSearchService:
     def enabled(self) -> bool:
         return bool(self._cfg("AI_SEARCH_ENABLED", False))
 
+
+    # ---------- 凭据可用性（决定是否把 deepseek-native 摆到链首） ----------
+
+    # 明显的占位符：命中即视为「未配置」，不参与优先链
+    _PLACEHOLDER_KEY_HINTS = (
+        "sk-original", "sk-your-key", "your-key-here", "changeme",
+        "sk-test", "replace-me", "todo",
+    )
+
+    @classmethod
+    def _key_usable(cls, key: str) -> bool:
+        """粗略判断是否为「真」凭据：占位符与过短的一律视为未配置。
+
+        目的不是严格校验，而是避免 ``SEARCH_DEEPSEEK_API_KEY=sk-original`` 这类模板值
+        让链路每次先去打一个必然 401 的端点。
+        """
+        k = (key or "").strip()
+        if len(k) < 20:
+            return False
+        low = k.lower()
+        return not any(hint in low for hint in cls._PLACEHOLDER_KEY_HINTS)
+
+    def deepseek_native_ready(self) -> bool:
+        """deepseek-native 是否具备可用凭据。"""
+        _, _, key, _ = self._deepseek_search_conf()
+        return self._key_usable(key)
+
+    def paid_search_enabled(self) -> bool:
+        """付费搜索总开关（SEARCH_PAID_ENABLED，默认开）。
+
+        关掉后 deepseek-native 从执行链里彻底剔除 —— 即使显式写进
+        SEARCH_ENGINES 也不会用。与 SEARCH_DEEPSEEK_PRIORITY 的区别：
+        后者只控制「是否自动排到链首」，本开关是「允不允许用它」。
+        """
+        raw = self._cfg("SEARCH_PAID_ENABLED", True)
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() not in ("0", "false", "no", "off", "")
+
+    def deepseek_native_usable(self) -> bool:
+        """真正可用于搜索：付费开关打开 且 凭据可用。UI 判断应使用这个。"""
+        return self.paid_search_enabled() and self.deepseek_native_ready()
+    def _auto_deepseek_priority(self) -> bool:
+        """是否启用「有 key 就优先原生搜索」（SEARCH_DEEPSEEK_PRIORITY，默认开）。"""
+        raw = self._cfg("SEARCH_DEEPSEEK_PRIORITY", True)
+        if isinstance(raw, bool):
+            return raw
+        return str(raw).strip().lower() not in ("0", "false", "no", "off", "")
     def _engine_order(self) -> List[str]:
+        """实际顺序：配置顺序 + 「有凭据就优先 DeepSeek 原生搜索」的自动编排。
+
+        规则（SEARCH_DEEPSEEK_PRIORITY 默认开）：
+        - 凭据可用 → deepseek-native 提到链首（若已显式配置则保留其位置）
+        - 凭据不可用/未配置 → 从链里剔除（避免每次先打必然 401 的端点）
+        - 关掉 SEARCH_DEEPSEEK_PRIORITY → 完全照 SEARCH_ENGINES 字面执行
+        """
         raw = str(self._cfg("SEARCH_ENGINES", "ddg,bing,searxng,ddg-lite") or "")
         order = [x.strip() for x in raw.split(",") if x.strip() in ENGINE_IDS]
         if not order:
             order = ["ddg", "bing", "searxng", "ddg-lite"]
+        ready = self.deepseek_native_usable()  # 付费开关 + 凭据可用，两者都满足才用
+        if "deepseek-native" in order:
+            if not ready:
+                order = [e for e in order if e != "deepseek-native"]
+        elif ready and self._auto_deepseek_priority():
+            order = ["deepseek-native"] + order
+        return order or ["ddg", "bing", "searxng", "ddg-lite"]
         return order
 
     def _searxng_instances(self) -> List[str]:
@@ -443,7 +516,110 @@ class WebSearchService:
             "ddg-lite": self._search_ddg_lite,
             "bing": self._search_bing,
             "searxng": self._search_searxng,
+            "deepseek-native": self._search_deepseek_native,
         }[engine](query, limit, time_range, signal)
+
+    # ---------- DeepSeek 原生搜索 ----------
+
+    def _deepseek_search_conf(self) -> Tuple[str, str, str, int]:
+        """读配置：返回 (base_url, model, api_key, max_uses)。"""
+        base = str(self._cfg("SEARCH_DEEPSEEK_BASE_URL", _DEEPSEEK_SEARCH_BASE) or _DEEPSEEK_SEARCH_BASE).rstrip("/")
+        model = str(self._cfg("SEARCH_DEEPSEEK_MODEL", _DEEPSEEK_SEARCH_MODEL) or _DEEPSEEK_SEARCH_MODEL)
+        key = str(self._cfg("SEARCH_DEEPSEEK_API_KEY", "") or self._cfg("DEEPSEEK_API_KEY", "") or "")
+        try:
+            uses = int(self._cfg("SEARCH_DEEPSEEK_MAX_USES", _DEEPSEEK_SEARCH_MAX_USES))
+        except (TypeError, ValueError):
+            uses = _DEEPSEEK_SEARCH_MAX_USES
+        return base, model, key, max(1, min(uses, 10))
+
+    async def _search_deepseek_native(self, query, limit, time_range, signal):
+        """DeepSeek 原生搜索：Anthropic 兼容 Messages + 服务端 web_search 工具。
+
+        与免 key 引擎的区别：搜索由模型在服务端完成，返回结构化结果块；
+        没有结果块即视为失败（不降级去刮正文），交给回退链。
+        """
+        base, model, key, uses = self._deepseek_search_conf()
+        if not key:
+            raise httpx.HTTPError("deepseek-native: 未配置 SEARCH_DEEPSEEK_API_KEY / DEEPSEEK_API_KEY")
+        endpoint = base + "/messages"
+        body = {
+            "model": model,
+            "max_tokens": _DEEPSEEK_SEARCH_MAX_TOKENS,
+            "messages": [{
+                "role": "user",
+                "content": [{"type": "text",
+                             "text": "Perform a web search for the query: %s" % query}],
+            }],
+            "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": uses}],
+            "thinking": {"type": "disabled"},
+        }
+        headers = {
+            "x-api-key": key,
+            "anthropic-version": _ANTHROPIC_VERSION,
+            "content-type": "application/json",
+            "accept": "application/json",
+        }
+        if signal is not None and signal.is_set():
+            raise httpx.HTTPError("deepseek-native: 已取消")
+        r = await self.client.post(endpoint, json=body, headers=headers,
+                                   timeout=httpx.Timeout(max(30, self._timeout() * 3)))
+        if r.status_code == 401:
+            # 凭据无效：不重试、不进退避链，直接让上层记录
+            raise httpx.HTTPError("deepseek-native: 凭据无效（HTTP 401）")
+        if r.status_code != 200:
+            detail = ""
+            try:
+                parsed = r.json()
+                err = parsed.get("error")
+                detail = err if isinstance(err, str) else (err or {}).get("message") or parsed.get("message") or ""
+            except Exception:  # noqa: BLE001 - 错误体解析失败不影响主判定
+                pass
+            raise httpx.HTTPError("deepseek-native: HTTP %s%s" % (
+                r.status_code, (": " + str(detail)[:120]) if detail else ""))
+        try:
+            data = r.json()
+        except Exception as e:  # noqa: BLE001
+            raise httpx.HTTPError("deepseek-native: 响应不是合法 JSON") from e
+
+        blocks = data.get("content") or []
+        # 摘要来源：text 块的 citations[].cited_text，按 url 首次出现优先
+        snippets: dict = {}
+        for block in blocks:
+            if not isinstance(block, dict):
+                continue
+            for cite in block.get("citations") or []:
+                if not isinstance(cite, dict):
+                    continue
+                url = cite.get("url")
+                text = cite.get("cited_text")
+                if isinstance(url, str) and url and isinstance(text, str) and text and url not in snippets:
+                    snippets[url] = text
+
+        sources, seen = [], set()
+        for block in blocks:
+            if not isinstance(block, dict) or block.get("type") != "web_search_tool_result":
+                continue
+            for item in block.get("content") or []:
+                if not isinstance(item, dict) or item.get("type") != "web_search_result":
+                    continue
+                url = item.get("url")
+                if not isinstance(url, str) or not url or url in seen:
+                    continue
+                seen.add(url)
+                entry = {"url": url}
+                title = item.get("title")
+                if isinstance(title, str) and title:
+                    entry["title"] = title
+                snippet = snippets.get(url)
+                if snippet:
+                    entry["snippet"] = snippet
+                age = item.get("page_age")
+                if isinstance(age, str) and age:
+                    entry["publishedAt"] = age
+                sources.append(entry)
+        if not sources:
+            raise httpx.HTTPError("deepseek-native: 未返回 web_search_tool_result 结果块")
+        return _unique_sources(sources, limit, self._blocked_domains())
 
     async def _search_chain(self, query: str, limit: int, time_range: Optional[str],
                             engine: Optional[str]) -> Tuple[List[dict], str, List[str]]:

@@ -186,6 +186,14 @@ class AiToolRegistry:
                 "name": MEMORY_RECALL, "description": "读当前用户在本群的长期记忆（用于主动回忆他之前说过什么）。",
                 "parameters": {"type": "object", "properties": {}, "required": []}}})
         if self.search_enabled():
+            _avail = self._available_engines()
+            _engine_prop = {}
+            # 只有「API 搜索可用」时才把 engine 暴露给模型：这时才有真正的取舍
+            # （准确/带摘要但要花钱 vs 免费可能被反爬）。无凭据时免费引擎互相比没意义，
+            # 交给自动回退即可，别让模型为引擎名操心。
+            if "deepseek-native" in _avail:
+                _engine_prop = {"engine": {"type": "string", "enum": _avail,
+                               "description": self._engine_hint() or "可选搜索引擎 id"}}
             out += [
                 {"type": "function", "function": {
                     "name": WEB_SEARCH,
@@ -194,7 +202,8 @@ class AiToolRegistry:
                     "parameters": {"type": "object", "properties": {
                         "query": {"type": "string", "description": "搜索关键词（用搜索引擎的语气，别带语气词）"},
                         "timeRange": {"type": "string",
-                                      "description": "可选时间过滤：day / week / month / year"}},
+                                      "description": "可选时间过滤：day / week / month / year"},
+                        **_engine_prop},
                         "required": ["query"]}}},
                 {"type": "function", "function": {
                     "name": WEB_FETCH,
@@ -512,7 +521,11 @@ class AiToolRegistry:
         if not query:
             return {"ok": False, "error": "query 不能为空"}
         time_range = str(args.get("timeRange") or "").strip().lower() or None
-        return await self.search.search(query, time_range=time_range)
+        # 模型可自主指定引擎；不在可用清单里就忽略（回退到自动编排），不报错中断对话
+        engine = str(args.get("engine") or "").strip().lower() or None
+        if engine and engine not in self._available_engines():
+            engine = None
+        return await self.search.search(query, time_range=time_range, engine=engine)
 
     async def _web_fetch(self, args: dict) -> Dict[str, Any]:
         url = str(args.get("url") or "").strip()
@@ -521,6 +534,33 @@ class AiToolRegistry:
         max_chars = int(getattr(self.config, "SEARCH_FETCH_MAX_CHARS", 2000) or 2000)
         return await self.search.fetch_page(url, max_chars=max(500, min(8000, max_chars)))
 
+    # ---------- 引擎选择（让模型自己决定用 API 搜索还是免费引擎）----------
+
+    def _available_engines(self) -> list:
+        """当前可用的搜索引擎 id 列表（API 搜索需凭据才列出）。"""
+        svc = self.search
+        if svc is None:
+            return []
+        try:
+            from src.services.web_search import ENGINE_IDS
+            # 用 usable 而不是 ready：付费总开关关掉时也要从清单里剔除
+            ready = bool(getattr(svc, "deepseek_native_usable", None) and svc.deepseek_native_usable())
+            return [e for e in ENGINE_IDS if e != "deepseek-native" or ready]
+        except Exception:  # noqa: BLE001 - 探测失败不影响搜索本身
+            return []
+
+    def _engine_hint(self) -> str:
+        """给模型的引擎差异说明；无 API 凭据时返回空串（不提这个选项）。"""
+        svc = self.search
+        try:
+            ready = bool(svc is not None and getattr(svc, "deepseek_native_usable", None) and svc.deepseek_native_usable())
+        except Exception:  # noqa: BLE001
+            ready = False
+        if not ready:
+            return ""
+        return ("可选引擎 engine：deepseek-native（走模型服务端搜索，结果更准且有摘要，"
+                "但较慢且按 token 计费）或免费引擎 ddg/bing/searxng（快、免费、可能被反爬）。"
+                "不确定时不要传，宿主会按配置自动挑。")
     # ---------- 工具实现：群信息 / 画像 / 群知识 / 戳一戳（v2.17.0） ----------
     async def _group_members(self, _args: dict) -> Dict[str, Any]:
         """当前群成员名单（走群管控制台 adapter 的只读接口）。"""

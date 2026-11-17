@@ -82,7 +82,8 @@ class PlatformActions:
                 if engine:
                     if engine not in ENGINE_IDS:
                         raise ValueError("不支持的搜索引擎")
-                    options["engine"] = engine
+                    if engine != "deepseek-native" or self.search.deepseek_native_usable():
+                        options["engine"] = engine
                 time_range = _text(payload, "time_range", 16)
                 if time_range:
                     if time_range not in ("day", "week", "month", "year"):

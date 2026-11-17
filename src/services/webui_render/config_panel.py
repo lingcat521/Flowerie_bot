@@ -424,6 +424,9 @@ def _render_config_row(c: dict, extra_badges: str = "") -> str:
     hint = ""
     if ctype == "secret":
         hint = f'<span id="{input_id}-help" class="hint">密钥不显示明文；留空提交不会覆盖现有值</span>'
+        if key == "SEARCH_DEEPSEEK_API_KEY":
+            hint += ('<label class="opt"><input type="checkbox" name="clear_search_key" value="true">'
+                     '清除专用 Key，复用聊天 Key</label>')
     elif not c.get("hot_reload"):
         hint = f'<span id="{input_id}-help" class="hint">已保存到 .env，部分配置将在服务器重启后生效</span>'
     checkbox = ctype == "bool"
