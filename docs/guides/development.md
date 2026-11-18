@@ -36,6 +36,8 @@ python3 scripts/bench_load.py       # 负载基准：多群+附件并发（五�
 python3 scripts/bench_load.py --tier 3   # 单档
 
 python3 scripts/bench_stress.py     # 全功能压测：9 个子系统同时跑
+
+python3 scripts/bench_resources.py  # 资源谱系：CPU/内存/磁盘IO/fd
 ```
 
 只测纯本地计算（不含网络与 LLM）。基线数据与树莓派可行性见
