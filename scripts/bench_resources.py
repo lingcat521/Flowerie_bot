@@ -25,7 +25,6 @@ import os
 import sys
 import tempfile
 import time
-import types
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -79,9 +78,9 @@ def dir_size_mb(path):
 
 async def load_mixed(cfg, stop_at, tmpdir):
     """混合负载：SQLite 高频写 + 文件解析 + 图片 + 消息链。"""
-    from src.repositories.settings_repository import SettingsRepository
     from src.core.reply_splitter import fragment_split
     from src.core.sanitizer import sanitize_untrusted_text
+    from src.repositories.settings_repository import SettingsRepository
     from src.services.multimodal import gif_first_frame_png
 
     repo = SettingsRepository(os.path.join(tmpdir, "s.db"))
@@ -93,8 +92,9 @@ async def load_mixed(cfg, stop_at, tmpdir):
 
     txt = (("文档内容行" * 5) + chr(10)) * 150
     try:
-        from PIL import Image
         import io as _io
+
+        from PIL import Image
         frames = [Image.new("P", (80, 60), i * 25) for i in range(3)]
         buf = _io.BytesIO()
         frames[0].save(buf, "GIF", save_all=True, append_images=frames[1:],

@@ -159,8 +159,9 @@ def bench_text_pipeline(iters):
 
 def bench_mention(iters):
     """@ 检测（群消息热路径，每条消息都会跑一次）。"""
-    from src.core.name_mention import detect
     import types
+
+    from src.core.name_mention import detect
 
     class M:
         def __init__(self, text):
@@ -180,8 +181,9 @@ def bench_mention(iters):
 
 def bench_detectors(iters):
     """重复检测（每条群消息都过）。"""
-    from src.core.repeat_detector import RepeatDetector
     import types
+
+    from src.core.repeat_detector import RepeatDetector
 
     cfg = types.SimpleNamespace(REPEAT_DETECT_ENABLED=True, REPEAT_THRESHOLD=3,
                                 REPEAT_WINDOW=60, REPEAT_COOLDOWN_SECONDS=60, CONTEXT_SIZE=300)
@@ -299,7 +301,7 @@ def bench_web_render(iters):
 
     body = "<div>" + "<p>内容块</p>" * 50 + "</div>"
 
-    def render(_):
+    def render(_unused):
         return render_panel_page(theme_class="theme-night", bg_rules="", msg_html="",
                                  body_html=body, active_tab="config")
 
@@ -323,7 +325,6 @@ def bench_config(iters):
 
 def bench_memory(iters):
     """整体内存：进程 RSS（常驻）与导入全部模块的增量。"""
-    import resource
 
     def rss_mb():
         try:
@@ -359,10 +360,11 @@ def bench_memory(iters):
 
 def bench_e2e_local(iters):
     """端到端（本地部分）：从原始消息到「该不该回 + 回复怎么拆」，不含 LLM。"""
+    import types
+
     from src.core.name_mention import detect
     from src.core.reply_splitter import fragment_split
     from src.core.sanitizer import sanitize_untrusted_text
-    import types
 
     cfg = types.SimpleNamespace(BOT_NICKNAME="花璃", BOT_QQ=10000, BOT_ALIASES="")
 
@@ -373,7 +375,7 @@ def bench_e2e_local(iters):
 
     def pipeline(_):
         msg = M()
-        hit = detect(msg, cfg)              # @ 检测
+        detect(msg, cfg)              # @ 检测
         text, _ = sanitize_untrusted_text(msg.content)  # 消毒
         reply = "我觉得吧，" + text[:60] + "，这个问题挺有意思的，可以再想想。"
         return fragment_split(reply)        # 分句

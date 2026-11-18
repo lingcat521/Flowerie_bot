@@ -20,8 +20,6 @@ import argparse
 import json
 import os
 import re
-import sys
-
 
 # 图形栈相关库名（命中任一即说明进程可能用 GPU）
 GPU_LIBS = (
@@ -46,7 +44,7 @@ def check_code(root):
     pat = re.compile(
         r"\b(cairo|skia|opengl|opengles|webgl|vulkan|pygame|moderngl|glfw|"
         r"PyQt|PySide|gtk|tkinter|matplotlib\.pyplot)\b", re.I)
-    for dirpath, dirnames, filenames in os.walk(root):
+    for dirpath, _dirnames, filenames in os.walk(root):
         if any(x in dirpath for x in (".git", "__pycache__", "/data", "/logs",
                                     "/scripts", "/docs", "/tests", "/examples")):
             continue
@@ -173,7 +171,7 @@ def main():
     else:
         print("      无（进程没加载 libGL / libEGL / libGLESv2 / libvulkan / libcairo）")
     print()
-    print(f"[3] 驱动层 —— GPU 设备节点")
+    print("[3] 驱动层 —— GPU 设备节点")
     print(f"      系统存在: {devices_present or '无'}")
     print(f"      本进程打开: {devices_opened or '无'}")
     print()

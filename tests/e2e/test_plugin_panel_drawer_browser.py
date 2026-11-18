@@ -11,6 +11,9 @@ v2.19.0 把旧的“☰ + 遮罩抽屉”（需要 JS 控制 checkbox）换成�
         <summary>导航 <span>当前：…</span></summary>
         <nav>…页签链接…</nav>
 
+  v2.19.3 起导航按用途分组，details.mobile-navigation 里有 1 个总 summary
+  + 4 个分组 summary，所以定位必须用 .first（总开关）而不是裸 locator。
+
   于是这里改用用户真实路径验证：窄屏点 summary 展开 → 页签可见且可点 →
   确实发生跳转；再点 summary 能收起。全程不需要 JavaScript。
 """
@@ -40,7 +43,7 @@ def test_mobile_navigation_expands_and_links_clickable(browser_provider, webui_s
         assert nav.is_visible(), "窄屏应显示折叠导航（details.mobile-navigation）"
         assert _is_open(page) is False, "折叠导航默认应收起"
 
-        nav.locator("summary").click()
+        nav.locator("summary").first.click()
         page.wait_for_timeout(200)
         assert _is_open(page) is True, "点 summary 应展开导航"
 
@@ -71,11 +74,11 @@ def test_mobile_navigation_collapses_on_second_tap(browser_provider, webui_serve
         page.goto(webui_server.base_url + "/panel", wait_until="domcontentloaded")
 
         nav = page.locator(NAV)
-        nav.locator("summary").click()
+        nav.locator("summary").first.click()
         page.wait_for_timeout(200)
         assert _is_open(page) is True
 
-        nav.locator("summary").click()
+        nav.locator("summary").first.click()
         page.wait_for_timeout(200)
         assert _is_open(page) is False, "再点 summary 应收起导航"
         assert not nav.locator('a[href="/panel?tab=appearance"]').is_visible()

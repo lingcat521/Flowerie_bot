@@ -28,7 +28,6 @@ import gc
 import io
 import json
 import os
-import random
 import sys
 import tempfile
 import time
@@ -325,7 +324,7 @@ async def lane_digest(env, stop_at, stats, lane):
         try:
             msgs = [f"用户{i}说：今天天气不错" for i in range(200)]
             joined = chr(10).join(msgs)
-            prompt = "请总结以下群聊：" + chr(10) + joined[:4000]
+            _prompt = "请总结以下群聊：" + chr(10) + joined[:4000]
             stats["digest"] += 1
             stats["lat_digests"].append((time.perf_counter() - t0) * 1000)
         except Exception as e:
@@ -368,7 +367,7 @@ async def run_tier(tier, env):
 
     tasks = []
     for lane in range(tier["lanes"]):
-        for name, fn in LANES:
+        for _lane_name, fn in LANES:
             tasks.append(asyncio.create_task(fn(env, stop_at, stats, lane)))
 
     async def watch():
