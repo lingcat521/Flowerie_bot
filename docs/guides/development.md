@@ -25,6 +25,16 @@ pytest -m "not real_device"               # 排除实机用例
 
 **四层测试必须分清**（不要把手工测试伪装成 CI 自动测试；分层口径见 [tests/integration/README.md](../../tests/integration/README.md)）：
 
+## 性能基准
+
+```bash
+python3 scripts/bench.py           # 全部用例（约 1 分钟）
+python3 scripts/bench.py --quick   # 快速版
+python3 scripts/bench.py --json    # JSON，便于跨机器对比
+```
+
+只测纯本地计算（不含网络与 LLM）。基线数据与树莓派可行性见
+[performance.md](performance.md)。
 | 层 | 位置 | 命令 | 当前状态 |
 | :--- | :--- | :--- | :--- |
 | unit / 静态（含架构 Gate） | `tests/test_*.py` | `pytest -q -rs --ignore=tests/sdk --ignore=tests/webui --ignore=tests/e2e` | **v2.19.3 本地全量实测 2687 passed / 166 skipped**（`--ignore=tests/e2e`；CI 另跑 e2e，口径见下方注） |
