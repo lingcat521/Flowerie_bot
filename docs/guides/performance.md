@@ -21,6 +21,9 @@ python3 scripts/bench_stress.py --tier 3 # 只跑极限档
 
 # 资源占用：CPU/内存/磁盘 IO/文件描述符
 python3 scripts/bench_resources.py
+
+# GPU 亲和性：证明服务端零 GPU 调用路径
+python3 scripts/bench_gpu.py
 ```
 
 脚本只测**纯本地计算**（不含网络与 LLM），这样换机器才有可比性。
@@ -356,6 +359,92 @@ WAL + NORMAL 的组合下，崩溃最多丢最后几条事务，但不会损坏�
 | Pi Zero 2 W (512MB) | 512 MB | ❌ 会 OOM |
 
 ---
+
+
+---
+
+## GPU：不是「占用很低」，是「零调用路径」
+
+### 为什么不能直接测
+
+Linux 的 `/proc/<pid>` **没有进程级 GPU 统计**（CPU、内存都是进程隔离的，GPU 是全局资源）。
+所以「花璃用了多少 GPU」这个数**测不出来** —— 不是工具不够，是内核没这个概念。
+
+本机（Android）也验证过：
+- Mali 的 `/sys/class/misc/mali0/device/utilization` → 不存在
+- `/sys/kernel/debug` → 无权限（需 root）
+- `dumpsys SurfaceFlinger` → Permission Denial
+- `devfreq` → 无
+
+### 所以改用「反向证明」
+
+既然测不了用了多少，就证明**根本没有调用路径**。用 `scripts/bench_gpu.py`：
+
+```bash
+python3 scripts/bench_gpu.py
+python3 scripts/bench_gpu.py --json
+```
+
+检查四个层面，任一命中即说明可能用 GPU：
+
+| 层面 | 检查什么 | 结果 |
+| :--- | :--- | :--- |
+| **代码层** | 源码里是否引用 cairo / skia / opengl / vulkan / webgl | **0 处** |
+| **链接层** | 进程 `/proc/self/maps` 是否加载 libGL / libEGL / libGLESv2 / libvulkan | **0 个** |
+| **驱动层** | 是否打开了 GPU 设备节点 | **0 个**（系统有 `/dev/mali0` 和 `/dev/dri/card0`，但本进程没开） |
+| **线程层** | 是否有渲染线程（RenderThread / gpu-worker） | **0 个**（全进程仅 1 个线程） |
+
+```
+结论：GPU 零路径
+```
+
+**这比「占用 0.1%」更强**：占用低还是有可能波动，零路径是结构性的 —— 代码里没有、链接里没有、
+驱动没打开、线程没起。GPU 占用恒为 0，与负载无关。
+
+### 那 Web UI 的图形在哪里渲染
+
+在**打开页面的人**的设备上，不在服务器：
+
+```
+树莓派（拼 15 KB HTML 字符串，3 ms）
+   ↓ 网络（KB 级）
+你的手机/电脑浏览器（用你的 GPU 渲染）
+```
+
+服务端做的事：Python f-string 拼 HTML + 用 `math` 算 SVG 坐标。
+
+| 服务端工作 | 耗时 |
+| :--- | ---: |
+| 面板页渲染（15 KB HTML） | 3.06 ms |
+| 花标 SVG 生成（纯数学） | 0.0063 ms |
+| 图标 SVG 生成 | 0.0011 ms |
+
+### 客户端侧：低端设备可能掉帧，与服务器无关
+
+CSS 里有几处 GPU 密集属性：
+
+| 属性 | 次数 | 说明 |
+| :--- | ---: | :--- |
+| `backdrop-filter` | 2 | **毛玻璃**，实时模糊采样，最吃 GPU |
+| `transform` | 10 | 悬停位移、折叠动画 |
+| `filter:` | 3 | 阴影/模糊 |
+| `transition` | 4 | 过渡 |
+
+影响的是**打开面板的浏览器**：
+
+| 场景 | 影响 |
+| :--- | :--- |
+| 手机/PC 浏览器访问树莓派 | 无感（设备 GPU 足够） |
+| 树莓派接显示器 + 本机浏览器 | Pi 5/4 流畅；Pi 3B+ 毛玻璃可能掉帧 |
+
+规避方法（Pi 3 本机看面板时）：Web UI → 外观 → 面板底纹样式 → `clear`（避开 backdrop-filter）。
+
+### 想看浏览器侧的真实 GPU 开销
+
+两个办法（都在客户端做，不在服务器）：
+
+1. **Android 开发者选项** → 「GPU 渲染模式分析」→ 打开面板页面看柱状图
+2. **Chrome DevTools** → Performance 面板 → 勾选 GPU → 录制 → 看 GPU 耗时
 
 ## 其他注意事项
 
