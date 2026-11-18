@@ -28,9 +28,12 @@ pytest -m "not real_device"               # 排除实机用例
 ## 性能基准
 
 ```bash
-python3 scripts/bench.py           # 全部用例（约 1 分钟）
-python3 scripts/bench.py --quick   # 快速版
-python3 scripts/bench.py --json    # JSON，便于跨机器对比
+python3 scripts/bench.py            # 微基准：单次操作多快（约 1 分钟）
+python3 scripts/bench.py --quick    # 快速版
+python3 scripts/bench.py --json     # JSON，便于跨机器对比
+
+python3 scripts/bench_load.py       # 负载基准：多群+附件并发（五档约 1 分钟）
+python3 scripts/bench_load.py --tier 3   # 单档
 ```
 
 只测纯本地计算（不含网络与 LLM）。基线数据与树莓派可行性见
