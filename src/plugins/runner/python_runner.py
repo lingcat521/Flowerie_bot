@@ -229,6 +229,18 @@ class PluginApi:
         """写插件自己的配置覆盖层（操作员配置优先，插件改不动操作员的值）。"""
         return self._runner._op_config_set(values)
 
+    def message_analysis_get(self) -> Dict[str, Any]:
+        """读取全局群消息分析配置（需要 manage_message_analysis 权限）。"""
+        return self._runner._send_engine_op("message_analysis.get", {})
+
+    def message_analysis_update(self, values: Dict[str, Any]) -> Dict[str, Any]:
+        """批量修改群消息分析配置（密钥传 None 表示清除）。"""
+        return self._runner._send_engine_op("message_analysis.update", {"values": values})
+
+    def ping_models(self, target: str = "all") -> Dict[str, Any]:
+        """探测宿主保存的模型（需要 ping_models 权限）。"""
+        return self._runner._send_engine_op("models.ping", {"target": target})
+
     def permission_check(self, permission: str) -> bool:
         """查询管理员是否批准了某权限（只读；无法提权）。"""
         res = self._runner._op_permission_check(permission) or {}

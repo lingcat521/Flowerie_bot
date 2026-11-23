@@ -1,5 +1,6 @@
 import time
 from collections import deque
+from itertools import islice
 from typing import Dict
 
 from src.config import Settings
@@ -48,10 +49,10 @@ class RepeatDetector:
         queue.append(now)
         # 缓存上限：淘汰最旧条目（dict 保持插入序，近似 LRU）
         if len(state.msg_timestamps) > self._MAX_CACHE_ENTRIES:
-            for k in list(state.msg_timestamps)[:self._EVICT_BATCH]:
+            for k in list(islice(state.msg_timestamps, self._EVICT_BATCH)):
                 state.msg_timestamps.pop(k, None)
         if len(state.repeat_cache) > self._MAX_CACHE_ENTRIES:
-            for k in list(state.repeat_cache)[:self._EVICT_BATCH]:
+            for k in list(islice(state.repeat_cache, self._EVICT_BATCH)):
                 state.repeat_cache.pop(k, None)
         if len(queue) >= self.config.REPEAT_THRESHOLD:
             last_repeat = state.repeat_cache.get(cache_key, 0)

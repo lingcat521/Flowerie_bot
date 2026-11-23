@@ -144,7 +144,7 @@ async def test_account_ping_uses_no_search_tools(server, monkeypatch, status, me
 
     def respond(request):
         sent.append(request)
-        return httpx.Response(status)
+        return httpx.Response(status, json={"content": [{"type": "text", "text": "pong"}]})
 
     def client(*, timeout):
         assert timeout == 20

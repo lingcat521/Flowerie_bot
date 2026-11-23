@@ -74,6 +74,8 @@ CAPABILITY_GROUPS = {
 #: 插件 → 引擎 的反向 op（引擎按 op 分派；未知 op 一律拒绝）。
 #: plugin.call / plugin.emit / plugin.cancel 是插件间通信的唯一发起路径（§十二 不许旁路）。
 ENGINE_OPS = ("context.get", "config.get", "permission.check",
+              "message_analysis.get", "message_analysis.update",
+              "models.ping",
               "plugin.call", "plugin.emit", "plugin.cancel")
 
 ACTION_ID_BASE = 1_000_000        # 插件 → 引擎 请求 id 偏移（与引擎请求 id 不共用命名空间）

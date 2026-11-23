@@ -14,7 +14,9 @@ import os
 import re
 import threading
 import time
+from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional, Tuple
+from unicodedata import normalize
 
 from src.core.sanitizer import validate_memory_content
 from src.repositories.base import MemoryNote, MemoryRepository
@@ -252,33 +254,42 @@ class MemoryManager:
         await self.save()
 
     # ---------- 记忆矛盾检测（治 misinformation） ----------
-    _NEGATION_WORDS = ("不", "没", "讨厌", "退游", "弃坑", "戒了", "不再", "卸载", "退", "弃", "戒")
-    _POSITIVE_WORDS = ("喜欢", "爱", "玩", "打", "吃", "喝", "穿", "戴", "看", "听", "用", "做")
+    _PREF_LEAD = re.compile(r"^(?:本人|我|现在|以前|之前|最近|已经|比较|特别|真的)\s*")
+    _PREF_VERB = r"喜欢|偏好|爱|玩|打|吃|喝|穿|戴|看|听|用|做"
+    _PREF_NEGATION = re.compile(rf"^(?:(?:不再|不|没)\s*(?={_PREF_VERB})|讨厌|反感|厌恶|戒掉|戒(?!不掉)|卸载)")
+    _PREF_ACTION = re.compile(rf"^(?:{_PREF_VERB})\s*")
+    _PREF_QUIT = re.compile(r"^(?:已)?(?:退游|弃坑)了?[，,。\s]+")
+    _SUBJECT_QUALIFIER = re.compile(r"不(?:加|含|放|带|要)|(?:无|少|低|多|微)(?:糖|盐|辣|冰|油|咖啡因)")
 
     @classmethod
-    def _core_words(cls, s: str) -> str:
-        """去掉正反倾向词后的核心词（用于比较两条记忆是否在讲同一件事）。"""
-        for w in cls._NEGATION_WORDS + cls._POSITIVE_WORDS:
-            s = s.replace(w, "")
-        s = re.sub(r"[\s，。！？、,.!?;；:：]+", "", s)
-        for w in ("现在", "最近", "以前", "之前", "当初", "了", "呢", "吧", "啊", "哦", "呀"):
-            s = s.replace(w, "")
-        return s
+    def _strip_preference_lead(cls, text: str) -> str:
+        while prefix := cls._PREF_LEAD.match(text):
+            text = text[prefix.end():]
+        return text
+
+    @classmethod
+    def _preference_subject(cls, note: str) -> tuple[str, bool] | None:
+        """提取单一偏好断言的对象，只将谓词前的否定或明确退出视作反向。"""
+        text = normalize("NFKC", note).strip().rstrip(" 。.!?！")
+        text = cls._strip_preference_lead(text)
+        quit_prefix = cls._PREF_QUIT.match(text)
+        if quit_prefix:
+            text = cls._strip_preference_lead(text[quit_prefix.end():])
+        negation = cls._PREF_NEGATION.match(text)
+        if negation:
+            text = text[negation.end():].lstrip()
+        # 去掉一层喜好动词及其可选动作，如“喜欢喝”，保留对象中的“不加糖”。
+        text = re.sub(r"^(?:喜欢|偏好|爱)\s*", "", text)
+        text = cls._PREF_ACTION.sub("", text).removesuffix("了").strip()
+        if not text or re.search(r"[,，。！？；;、\n\r!?]", text):
+            return None
+        return re.sub(r"\s+", "", text).casefold(), bool(negation or quit_prefix)
 
     @classmethod
     def _is_contradiction(cls, a: str, b: str) -> bool:
-        """a 与 b 是否构成"肯定↔否定"矛盾：一方含否定词、另一方不含，且核心词重叠 ≥0.6。"""
-        if not a or not b:
-            return False
-        a_neg = any(w in a for w in cls._NEGATION_WORDS)
-        b_neg = any(w in b for w in cls._NEGATION_WORDS)
-        if a_neg == b_neg:
-            return False  # 同为肯定或同为否定 → 交给去重逻辑，不算矛盾
-        core_a, core_b = cls._core_words(a), cls._core_words(b)
-        if not core_a or not core_b:
-            return False
-        from difflib import SequenceMatcher
-        return SequenceMatcher(None, core_a, core_b).ratio() >= 0.6
+        """仅在两个断言明确针对同一对象且倾向相反时替换旧记忆。"""
+        left, right = cls._preference_subject(a), cls._preference_subject(b)
+        return bool(left and right and left[0] == right[0] and left[1] != right[1])
 
     async def append_memory_text(
         self,
@@ -310,7 +321,7 @@ class MemoryManager:
         text = claim
         notes = self.repository.list_notes(user_id, group_id)
 
-        # 矛盾替换（治 misinformation）：新记忆是否定/退出、旧记忆是肯定/进行，且核心词重叠 → 旧被新顶掉。
+        # 仅替换已确认指向同一对象的矛盾记忆。
         replaced_old = None
         for i, existing in enumerate(notes):
             if self._is_contradiction(existing.text, text):
@@ -323,18 +334,22 @@ class MemoryManager:
             self._audit("REPLACE", user_id, group_id, f"旧={replaced_old} 新={text}")
 
         # 高相似度去重（完全相同/互为子串/相似度≥0.85/字符包含率≥80% 都跳过）
-        from difflib import SequenceMatcher
-
         def _norm(s: str) -> str:
             return re.sub(r"[\s，。！？、,.!?;；:：()（）「」『』【】\[\]]+", "", s)
 
         text_norm = _norm(text)
+        subject = self._preference_subject(text)
         for existing in notes:
             existing_norm = _norm(existing.text)
             if not existing_norm:
                 continue
             if existing_norm == text_norm:
                 return
+            previous = self._preference_subject(existing.text)
+            if previous and subject and previous != subject and (
+                previous[1] != subject[1] or self._SUBJECT_QUALIFIER.search(previous[0] + " " + subject[0])
+            ):
+                continue
             if existing_norm in text_norm or text_norm in existing_norm:
                 return
             if SequenceMatcher(None, existing_norm, text_norm).ratio() >= 0.85:

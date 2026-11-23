@@ -318,7 +318,7 @@ class TestBudgetPrecheckSkipsQueries(unittest.TestCase):
             def extract_sticker(self, *args, **kwargs):
                 return None
 
-            def build_sticker_context(self):
+            def build_sticker_context(self, *, image_paths=None):
                 calls["sticker"] += 1
                 return "表情包上下文"
 

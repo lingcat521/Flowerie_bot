@@ -2,8 +2,6 @@
 
 从 WebUIServer 拆分（防上帝类）：配置保存走 ConfigService（.env + settings.db 双写）。
 """
-import asyncio
-import time
 from typing import Dict
 from urllib.parse import quote
 
@@ -12,6 +10,7 @@ from aiohttp import web
 from src.services.config_service import ConfigService
 from src.services.file_parser import file_parse_error
 from src.services.web_search import WebSearchService
+from src.utils.message_analysis_config import ANALYSIS_API_KEYS
 
 _STATUS = {"invalid_argument": 400, "file_too_large": 413, "unsupported_format": 415,
            "parse_failed": 422, "busy": 429, "unavailable": 503}
@@ -32,7 +31,7 @@ async def _read_bounded(stream, limit):
 class ConfigPanelMixin:
 
     async def _handle_panel_model_test(self, request: web.Request) -> web.Response:
-        """模型连接测试（ping）：主聊天模型 / 花语向量模型 / 花语重排模型。
+        """用已保存配置向指定模型发送 ping 请求。
 
         用当前已保存配置发起真实请求；结果经 msg 回显（零 JS：表单 POST → 重定向）。
         """
@@ -44,153 +43,25 @@ class ConfigPanelMixin:
         if target == "search":
             cat = "Search"
         back = str(form.get("back", "") or "")
-        try:
-            if target == "chat" or target == "deepseek":
-                ok, msg = await self._ping_chat()
-            elif target == "vision":
-                ok, msg = await self._ping_vision()
-            elif target == "toxic":
-                ok, msg = await self._ping_toxic()
-            elif target == "embedding":
-                ok, msg = await self._ping_embedding()
-            elif target == "reranker":
-                ok, msg = await self._ping_reranker()
-            elif target == "search":
-                ok, msg = await self._ping_search()
-            else:
-                ok, msg = False, "未知测试目标"
-        except Exception as e:  # noqa: BLE001 - 测试失败即结果
-            ok, msg = False, f"{type(e).__name__}: {e}"
+        result = await self._model_pings.ping({"target": target}, panel=True)
+        entry = next(iter(result.get("results", {}).values()), result)
+        ok, msg = entry["ok"], entry.get("message") or entry["error"]
         if target == "search" and not WebSearchService(self.config).paid_search_enabled():
             msg += "。付费搜索当前已关闭，此测试仅验证连接。"
         if back == "account":
             return web.HTTPFound(f"/panel?tab=account&msg={quote(msg)}&err={'1' if not ok else ''}")
         return web.HTTPFound(f"/panel?cat={cat}&msg={quote(msg)}&err={'1' if not ok else ''}")
 
-    async def _ping_search(self):
-        import httpx
-
-        svc = WebSearchService(self.config)
-        base, model, key, _ = svc._deepseek_search_conf()
-        key = key.strip()
-        if not key:
-            return False, "未配置搜索 Key（自动搜索使用免费引擎）"
-        if not svc.deepseek_native_ready():
-            return False, "搜索 Key 仍是模板值，请填真实 Key"
-        if not base.strip():
-            return False, "SEARCH_DEEPSEEK_BASE_URL 为空"
-        started = time.monotonic()
+    async def _handle_api_model_ping(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            return web.json_response({"error": "未认证"}, status=401)
         try:
-            async with asyncio.timeout(20), httpx.AsyncClient(timeout=20) as client:
-                resp = await client.post(
-                    base + "/messages",
-                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
-                    json={"model": model, "max_tokens": 16, "thinking": {"type": "disabled"},
-                          "messages": [{"role": "user", "content": "ping"}]},
-                )
-        except (TimeoutError, httpx.TimeoutException):
-            return False, "连接超时（预算 20 秒）"
-        except httpx.HTTPError as e:
-            return False, f"连接失败：{type(e).__name__}"
-        if resp.status_code == 200:
-            return True, f"连接成功（{time.monotonic() - started:.1f}s，未消耗搜索额度）"
-        if resp.status_code == 401:
-            return False, "HTTP 401：Key 无效或尚未开通 Anthropic 兼容端点"
-        if resp.status_code == 404:
-            return False, "HTTP 404：端点路径有误（应以 /anthropic/v1 结尾）"
-        return False, f"HTTP {resp.status_code}：{resp.text.replace(key, '****')[:160]}"
-
-    async def _ping_chat(self):
-        import httpx
-        cfg = self.config
-        url = str(getattr(cfg, "DEEPSEEK_API_URL", "") or "").strip()
-        key = str(getattr(cfg, "DEEPSEEK_API_KEY", "") or "").strip()
-        model = str(getattr(cfg, "DEEPSEEK_MODEL", "") or "").strip()
-        if not url or not key:
-            return False, "未配置 DEEPSEEK_API_URL / DEEPSEEK_API_KEY"
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(
-                    url, json={"model": model, "messages": [{"role": "user", "content": "ping"}],
-                               "max_tokens": 1}, headers={"Authorization": f"Bearer {key}"})
-                if resp.status_code == 200:
-                    return True, "连接成功（模型已响应 ping）"
-                return False, f"HTTP {resp.status_code}：{(resp.text or '')[:160]}"
-        except httpx.HTTPError as e:
-            return False, f"连接失败：{type(e).__name__}: {e}"
-
-    async def _ping_vision(self):
-        import httpx
-        cfg = self.config
-        url = str(getattr(cfg, "VISION_API_URL", "") or "").strip()
-        key = str(getattr(cfg, "VISION_API_KEY", "") or "").strip()
-        model = str(getattr(cfg, "VISION_MODEL", "") or "").strip()
-        if not url or not key:
-            # 未独立配置 → 回退 DeepSeek（生产行为一致）
-            return await self._ping_chat()
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(
-                    url, json={"model": model, "messages": [{"role": "user", "content": "ping"}],
-                               "max_tokens": 1}, headers={"Authorization": f"Bearer {key}"})
-                if resp.status_code == 200:
-                    return True, "视觉识图连接成功"
-                return False, f"HTTP {resp.status_code}：{(resp.text or '')[:160]}"
-        except httpx.HTTPError as e:
-            return False, f"连接失败：{type(e).__name__}: {e}"
-
-    async def _ping_toxic(self):
-        import httpx
-        cfg = self.config
-        url = str(getattr(cfg, "TOXIC_API_URL", "") or "").strip()
-        key = str(getattr(cfg, "TOXIC_API_KEY", "") or "").strip()
-        model = str(getattr(cfg, "TOXIC_MODEL", "") or "").strip()
-        if not url or not key:
-            return await self._ping_chat()
-        try:
-            async with httpx.AsyncClient(timeout=10) as client:
-                resp = await client.post(
-                    url, json={"model": model, "messages": [{"role": "user", "content": "ping"}],
-                               "max_tokens": 1}, headers={"Authorization": f"Bearer {key}"})
-                if resp.status_code == 200:
-                    return True, "引战检测连接成功"
-                return False, f"HTTP {resp.status_code}：{(resp.text or '')[:160]}"
-        except httpx.HTTPError as e:
-            return False, f"连接失败：{type(e).__name__}: {e}"
-
-    async def _ping_embedding(self):
-        from src.services.blossom_memory import EmbeddingClient
-        cfg = self.config
-        model = str(getattr(cfg, "BLOSSOM_MEMORY_EMBEDDING_MODEL", "") or "").strip()
-        url = str(getattr(cfg, "BLOSSOM_MEMORY_EMBEDDING_API_URL", "") or "").strip()
-        key = str(getattr(cfg, "BLOSSOM_MEMORY_EMBEDDING_API_KEY", "") or "").strip()
-        if not model or not url:
-            return False, "未配置向量模型/地址"
-        c = EmbeddingClient(model, url, key, timeout=10)
-        try:
-            vec = await c.embed("ping")
-            return True, f"连接成功：返回 {len(vec)} 维向量"
-        except Exception as e:  # noqa: BLE001
-            return False, f"连接失败：{type(e).__name__}: {str(e)[:160]}"
-        finally:
-            await c.close()
-
-    async def _ping_reranker(self):
-        from src.services.blossom_memory import OpenAICompatibleRerank
-        cfg = self.config
-        model = str(getattr(cfg, "BLOSSOM_MEMORY_RERANKER_MODEL", "") or "").strip()
-        url = str(getattr(cfg, "BLOSSOM_MEMORY_RERANKER_API_URL", "") or "").strip()
-        key = str(getattr(cfg, "BLOSSOM_MEMORY_RERANKER_API_KEY", "") or "").strip()
-        if not model or not url:
-            return False, "未配置重排模型/地址"
-        c = OpenAICompatibleRerank(model, url, key, timeout=10)
-        try:
-            res = await c.rerank("ping", ["花璃"])
-            return True, f"连接成功：重排返回 {len(res)} 条结果"
-        except Exception as e:  # noqa: BLE001
-            return False, f"连接失败：{type(e).__name__}: {str(e)[:160]}"
-        finally:
-            await c.close()
+            args = await request.json() if request.can_read_body else {}
+        except ValueError:
+            return web.json_response({"ok": False, "code": "invalid_argument", "error": "请求格式错误"}, status=400)
+        result = await self._model_pings.ping(args)
+        status = _STATUS.get(result.get("code"), 200)
+        return web.json_response(result, status=status, headers={"Cache-Control": "no-store"})
 
     async def _handle_panel_save(self, request: web.Request) -> web.Response:
         """配置保存：兼容旧版单键表单（key/value）；分组表单字段名=配置键。
@@ -226,6 +97,10 @@ class ConfigPanelMixin:
                 updates[search_key] = ""
             elif not updates[search_key].strip():
                 del updates[search_key]
+        for key in ANALYSIS_API_KEYS:
+            if form.get(f"clear_{key}") == "true":
+                updates[key] = ""
+                updates[f"clear_{key}"] = "true"
         ok, message = self.config_service.update_many(updates)
         return web.HTTPFound(f"/panel?msg={quote(message)}&err={'1' if not ok else ''}{_catq}")
 

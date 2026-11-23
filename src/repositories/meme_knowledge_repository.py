@@ -15,6 +15,11 @@ import sqlite3
 import threading
 import time
 from typing import List, Optional
+from unicodedata import normalize
+
+
+def normalize_knowledge_text(text: str) -> str:
+    return normalize("NFKC", (text or "").strip().lower())
 
 
 class MemeKnowledgeRepository:
@@ -222,8 +227,7 @@ class MemeKnowledgeRepository:
             if len(rows) <= max_items:
                 return 0
             remove_ids = [r["id"] for r in rows[: len(rows) - max_items]]
-            for rid in remove_ids:
-                self._conn.execute("DELETE FROM meme_knowledge WHERE id=?", (rid,))
+            self._conn.executemany("DELETE FROM meme_knowledge WHERE id=?", ((rid,) for rid in remove_ids))
             self._conn.commit()
             return len(remove_ids)
 
@@ -246,9 +250,7 @@ class MemeKnowledgeRepository:
     @staticmethod
     def _normalize(term: str) -> str:
         """term 归一化：去首尾空白、统一小写（英文/数字梗）、NFKC 归一化全角。"""
-        import unicodedata
-        t = unicodedata.normalize("NFKC", (term or "").strip().lower())
-        return t[:100]
+        return normalize_knowledge_text(term)[:100]
 
     def close(self) -> None:
         with self._lock:

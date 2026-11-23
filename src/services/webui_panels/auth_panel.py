@@ -87,6 +87,22 @@ class AuthPanelMixin:
         status = 200 if ok else 400
         return web.json_response({"ok": ok, "message": message}, status=status)
 
+    async def _handle_get_message_analysis(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            return web.json_response({"error": "未认证"}, status=401)
+        return web.json_response(self.config_service.message_analysis_get())
+
+    async def _handle_update_message_analysis(self, request: web.Request) -> web.Response:
+        if not self._check_token(request):
+            return web.json_response({"error": "未认证"}, status=401)
+        try:
+            values = await request.json()
+        except ValueError:
+            return web.json_response({"ok": False, "error": "请求格式错误"}, status=400)
+        result = self.config_service.message_analysis_update(values)
+        status = 200 if result["ok"] else 500 if result.get("code") == "write_failed" else 400
+        return web.json_response(result, status=status)
+
     async def _handle_status(self, request: web.Request) -> web.Response:
         if not self._check_token(request):
             return web.json_response({"error": "未认证"}, status=401)

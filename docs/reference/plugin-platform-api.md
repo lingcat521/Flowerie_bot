@@ -102,6 +102,64 @@ TypeScript 和 Java 使用 lowerCamelCase，Go 使用首字母大写形式（如
 
 五语言另有群公告、群文件/文件夹、好友和私聊动作的同名便捷方法，复用既有 action 契约。当前网关缺少执行端点时，`group_file_upload`、`group_file_rename`、`group_invite`、`friend_remark`、`friend_delete` 仍返回 `not supported`。文件管理已支持的操作包括列目录、取文件 URL、移动和删除文件、创建/重命名/删除文件夹，具体取决于运行网关。
 
+## 群消息分析配置
+
+管理员可在 Web UI 服务上用 Bearer token 请求 `GET /api/config/message-analysis` 查询，用 `PATCH /api/config/message-analysis` 批量修改。PATCH 请求体是配置键值对象，例如：
+
+```json
+{
+  "MESSAGE_ANALYSIS_PREFERENCE_MODEL": "qwen2.5:3b",
+  "MESSAGE_ANALYSIS_TOXIC_MODEL": "qwen2.5:7b",
+  "MESSAGE_ANALYSIS_GROUP_IDS": [123456],
+  "TOXIC_GROUP_IDS": [123456]
+}
+```
+
+支持全部 `MESSAGE_ANALYSIS_*` 字段，以及 `TOXIC_GROUP_IDS` 和 `TOXIC_WARNING_COOLDOWN`。两个群列表使用正整数数组，`[]` 清空。语义引战检测要求群在两个列表中，喜好提取还受现有长期记忆开关控制。模型与地址用字符串，预算、超时与冷却用整数。专用模型或接口地址传空字符串可恢复继承共用配置。密钥传新字符串设置，传 `null` 清除。切换地址时，若有原本绑定到旧地址的密钥将随配置发往新地址，须在同一请求中更换或清除这些密钥。
+
+读取返回 `{ok, values, secrets_configured}`，密钥只返回各自是否已配置。修改成功返回 `{ok, saved}`，`saved` 为本次写入的键。只提交要修改的字段，任一字段校验失败会拒绝整批。成功保存后立即生效并持久化。
+
+插件须在 manifest 的 `permissions` 中声明 `manage_message_analysis` 并获得管理员批准。这项权限能改适用群和模型服务地址，只应授予受信任的插件。自行实现协议的插件使用反向 `engine` 操作 `message_analysis.get`（`args: {}`）和 `message_analysis.update`（`args: {"values": {...}}`）。
+
+| SDK | 查询 | 修改 |
+|---|---|---|
+| Python `api` / `bot` | `message_analysis_get()` | `message_analysis_update(values)` |
+| TypeScript `ctx` | `await ctx.messageAnalysisGet()` | `await ctx.messageAnalysisUpdate(values)` |
+| Go `ctx` | `ctx.MessageAnalysisGet()` | `ctx.MessageAnalysisUpdate(values)` |
+| Rust `ctx` | `ctx.message_analysis_get()?` | `ctx.message_analysis_update(&values)?` |
+| Java `ctx` | `ctx.messageAnalysisGet()` | `ctx.messageAnalysisUpdate(values)` |
+
+请检查响应的 `ok` 字段。Java 清除密钥时请用支持 `null` 值的 `Map`，例如 `HashMap`。
+
+## 模型连通性探测
+
+管理员用 Bearer token 请求 `POST /api/models/ping`。请求体使用 `{"target":"all"}`，也可用空对象或省略请求体来并行探测全部模型。通过 `target` 指定单个模型：
+
+| target | 模型 |
+|---|---|
+| `chat` | 主聊天模型 |
+| `vision` | 视觉识图模型 |
+| `toxic` | 关键词预筛后的引战判定模型 |
+| `analysis_preference` | 喜好提取模型 |
+| `analysis_toxic` | 语义引战检测模型 |
+| `embedding` | 向量模型 |
+| `reranker` | 重排模型 |
+| `search` | DeepSeek 原生搜索模型 |
+
+有效请求返回 HTTP 200 和 `{ok, results}`。`results` 按目标名索引，每项含 `ok`、`status`、`message`，实际探测项还含 `model`、`latency_ms`，上游 HTTP 失败时附 `http_status`。至少一项可达且已配置项均成功时，总体 `ok` 为真。逐项状态包括 `reachable`、`unconfigured`、`invalid_configuration`、`timeout`、`http_error`、`connection_error`、`invalid_response`。无效参数返回 HTTP 400，并发探测请求返回 HTTP 429。
+
+探测使用已保存的配置和固定测试内容，单次请求最多等待约 8 秒。同一批里共用地址、模型、凭据和请求格式的目标只请求一次，未配置的目标直接跳过。探测会实际调用模型，可能产生少量推理费用。视觉探测测试模型连通性，搜索探测测试模型接口且不触发搜索工具。
+
+插件须声明并获得管理员批准的 `ping_models` 权限。五种 SDK 均使用同一反向 `engine` 操作 `models.ping`，参数为 `{"target":"all"}`。
+
+| SDK | 并行探测全部 |
+|---|---|
+| Python `api` / `bot` | `ping_models()` |
+| TypeScript `ctx` | `await ctx.pingModels()` |
+| Go `ctx` | `ctx.PingModels("all")` |
+| Rust `ctx` | `ctx.ping_models("all")?` |
+| Java `ctx` | `ctx.pingModels("all")` |
+
 ## 文件解析
 
 文件解析复用 Bot 的文档提取服务和当前格式、页数、行数设置。三个动作都需在 manifest 中声明 `parse_files` 并由管理员批准。

@@ -1,6 +1,6 @@
 # Plugin SDK（多语言）
 
-画像、搜索、QQ 空间、自动化、私聊及群管理的调用方法与权限见[插件平台 API](../reference/plugin-platform-api.md)。
+画像、搜索、QQ 空间、自动化、私聊及群管理的调用方法与权限见[插件平台 API](../reference/plugin-platform-api.md)。喜好提取和引战检测模型可通过[群消息分析配置](../reference/plugin-platform-api.md#群消息分析配置)读取和修改。五种 SDK 均支持[一键探测全部模型](../reference/plugin-platform-api.md#模型连通性探测)。
 
 > 插件协议**语言无关**：[plugin-protocol.md](../reference/plugin-protocol.md)（线格式 / 方法集 / 错误模型 / 版本协商）。
 > 本文是**通用规则的唯一出处**——五种语言共同的语义只写在这里，单语言文档只写「本语言特有的写法」并链回本文。

@@ -226,12 +226,11 @@ class VisionService:
 
         与外部视觉模型走同一描述规范（80-150 字详细描述）。
         """
-        from src.services.multimodal import load_image_part
+        from pathlib import Path
 
-        fp = str(file_path or "")
-        if not fp.startswith("file://"):
-            fp = "file://" + fp
-        part = load_image_part(fp)
+        from src.services.multimodal import load_local_image_part
+
+        part = load_local_image_part(Path(str(file_path or "").removeprefix("file://")))
         if not part:
             return None
         payload = {

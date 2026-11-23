@@ -12,6 +12,8 @@ from src.core.reply_splitter import SplitSegments, extract_stickers, fragment_sp
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
+_MEMORY_MARKER = re.compile(r"MEMORY_JSON:|^[ \t]*(?:【记忆】|记忆[:：])", re.MULTILINE)
+_JSON_DECODER = json.JSONDecoder()
 
 
 def extract_multi_messages(text: str) -> Optional[List[str]]:
@@ -42,44 +44,68 @@ def extract_multi_messages(text: str) -> Optional[List[str]]:
     out = [str(m).strip() for m in msgs if str(m).strip()]
     return out or None
 
-def split_memory_lines(text: str) -> Tuple[str, Optional[str]]:
-    """从文本中逐行剥离记忆指令，返回 (剩余文本, memory_update)。
+def _line_end(text: str, position: int) -> int:
+    end = text.find("\n", position)
+    return len(text) if end < 0 else end
 
-    与 parse_reply_content 同一套记忆行识别（MEMORY_JSON: / 记忆: / 【记忆】），
-    供流式分句逐段使用（C4/W3）：记忆行绝不发给用户；其余行原样保留。
-    多条记忆行时以最后一条为准（与 parse_reply_content 的覆盖语义一致）。
-    """
-    clean_lines, memory_update = [], None
-    # 行内拼接兜底：部分模型（如 Atria-Dawn）把 MEMORY_JSON 跟正文写在同一行，
-    # 按纯行首匹配会漏剥。先把行内 JSON 提取为记忆，再走行首识别。
-    _inline_mem = None
-    m = re.search(r"MEMORY_JSON:\s*(\{.*\})\s*$", (text or "").rstrip())
-    if m:
-        try:
-            parsed = json.loads(m.group(1))
-            if isinstance(parsed, dict) and parsed.get("text"):
-                _inline_mem = str(parsed["text"]).strip()
-        except (json.JSONDecodeError, TypeError):
-            pass
-        text = (text or "")[:m.start()].rstrip()
-    for line in text.split("\n"):
-        stripped = line.strip()
-        if stripped.startswith("MEMORY_JSON:"):
-            try:
-                json_body = stripped[len("MEMORY_JSON:"):].strip()
-                parsed = json.loads(json_body)
-                if isinstance(parsed, dict) and parsed.get("text"):
-                    memory_update = str(parsed["text"]).strip()
-            except (json.JSONDecodeError, TypeError):
-                logger.warning("Memory JSON parse failed: %s", stripped[:80])
-            continue
-        if (stripped.startswith("【记忆】") or
-                stripped.startswith("记忆:") or
-                stripped.startswith("记忆：")):
-            memory_update = stripped
-            continue
-        clean_lines.append(line)
-    return "\n".join(clean_lines).strip(), (memory_update or _inline_mem)
+
+def _invalid_json_end(text: str, start: int) -> int:
+    """Skip a broken control object without showing its body in chat."""
+    depth, quoted, escaped = 0, False, False
+    for index in range(start, len(text)):
+        char = text[index]
+        if quoted:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                quoted = False
+        elif char == '"':
+            quoted = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if not depth:
+                return index + 1
+    return len(text)
+
+
+def split_memory_lines(text: str) -> Tuple[str, Optional[str]]:
+    """剥离记忆指令和完整 JSON 对象，按原文顺序采用最后一条有效更新。"""
+    text = text or ""
+    clean, update, cursor, search = [], None, 0, 0
+    while marker := _MEMORY_MARKER.search(text, search):
+        start = marker.start()
+        line_start = text.rfind("\n", 0, start) + 1
+        standalone = not text[line_start:start].strip()
+        end = _line_end(text, marker.end())
+        if marker.group() == "MEMORY_JSON:":
+            body = marker.end()
+            while body < len(text) and text[body].isspace():
+                body += 1
+            if text[body:body + 1] == "{":
+                try:
+                    value, end = _JSON_DECODER.raw_decode(text, body)
+                    claim = value.get("text") if isinstance(value, dict) else None
+                    if isinstance(claim, str) and (claim := claim.strip()):
+                        update = claim
+                except (ValueError, RecursionError):
+                    logger.warning("Memory JSON parse failed")
+                    end = _invalid_json_end(text, body)
+            elif not standalone:
+                search = marker.end()
+                continue
+        else:
+            update = text[start:end].strip()
+        rest_of_line = _line_end(text, end)
+        if standalone and not text[end:rest_of_line].strip():
+            start, end = line_start, min(len(text), rest_of_line + 1)
+        clean.append(text[cursor:start])
+        cursor = search = end
+    clean.append(text[cursor:])
+    return "".join(clean).strip(), update
 
 
 def parse_reply_content(content: str, config) -> Tuple[Optional[Any], Optional[str]]:

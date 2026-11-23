@@ -12,11 +12,9 @@
 - 管理密码：**禁止明文落库**——register_user 只保存 scrypt 哈希；登录/注册
   校验统一走 verify_password（兼容旧明文并自动迁移为哈希）
 """
-import hashlib
 import json
 import math
 import os
-import secrets as _secrets
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,47 +32,13 @@ from src.services.webui_render.category_constants import (  # 单源（无 pydan
     CATEGORY_ORDER,
 )
 from src.utils.logging_setup import get_logger
+from src.utils.message_analysis_config import ANALYSIS_API_KEYS, is_analysis_url
+
+# 口令哈希已抽到 src/utils/password.py（纯函数，便于独立测试）
+from src.utils.password import hash_password, is_hashed_password, verify_password  # noqa: F401
 
 logger = get_logger(__name__)
 
-# scrypt 参数（stdlib hashlib，零新依赖；N 需为 2 的幂）
-_SCRYPT_N = 2 ** 14
-_SCRYPT_R = 8
-_SCRYPT_P = 1
-_SCRYPT_DKLEN = 32
-_PASSWORD_PREFIX = "scrypt$"
-
-
-def hash_password(password: str) -> str:
-    """口令哈希（scrypt + 随机盐），返回自描述格式 `scrypt$N$r$p$salt_hex$hash_hex`。
-
-    绝不返回/记录明文。参数内嵌便于未来升级 KDF 参数。
-    """
-    salt = os.urandom(16)
-    dk = hashlib.scrypt(password.encode("utf-8"), salt=salt,
-                        n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P, dklen=_SCRYPT_DKLEN)
-    return f"{_PASSWORD_PREFIX}{_SCRYPT_N}${_SCRYPT_R}${_SCRYPT_P}${salt.hex()}${dk.hex()}"
-
-
-def verify_password(password: str, stored: str) -> bool:
-    """安全校验口令：stored 为 scrypt 哈希时用哈希校验；为旧版明文（历史 DB 或 .env）
-    时用恒定时间比较。任何解析失败按不通过处理，不抛异常。"""
-    if not stored:
-        return False
-    if stored.startswith(_PASSWORD_PREFIX):
-        try:
-            _prefix, n, r, p, salt_hex, hash_hex = stored.split("$", 5)
-            dk = hashlib.scrypt(password.encode("utf-8"), salt=bytes.fromhex(salt_hex),
-                                n=int(n), r=int(r), p=int(p), dklen=_SCRYPT_DKLEN)
-            return _secrets.compare_digest(dk.hex(), hash_hex)
-        except (ValueError, TypeError):
-            return False
-    # 旧版明文（兼容迁移路径）
-    return _secrets.compare_digest(password, stored)
-
-
-def is_hashed_password(stored: str) -> bool:
-    return bool(stored) and stored.startswith(_PASSWORD_PREFIX)
 
 
 class ConfigService:
@@ -101,10 +65,6 @@ class ConfigService:
     管理账号（WEB_UI_USERNAME / WEB_UI_PASSWORD）**不在此表**：由注册页管理，
     密码只存 scrypt 哈希，禁止通过配置表单写入明文 .env。
     """
-
-    # key -> (分类, 类型, 是否敏感, 是否热更新, 说明)
-
-    # 分类显示名与展示顺序（表单分组用）
 
     def __init__(self, config: Settings, repository: SettingsRepository,
                  env_path: Optional[str] = None):
@@ -368,6 +328,15 @@ class ConfigService:
         return False
 
     # ---------- 修改 ----------
+    def message_analysis_get(self) -> Dict[str, Any]:
+        """读取群消息分析配置（实现在 message_analysis_service.py）。"""
+        from src.services.message_analysis_service import MessageAnalysisService
+        return MessageAnalysisService(self).get()
+
+    def message_analysis_update(self, values: Any) -> Dict[str, Any]:
+        """批量修改群消息分析配置（实现在 message_analysis_service.py）。"""
+        from src.services.message_analysis_service import MessageAnalysisService
+        return MessageAnalysisService(self).update(values)
     def update(self, key: str, raw_value: str) -> Tuple[bool, str]:
         """更新单个配置（API 与旧版单键表单路径）。返回 (是否成功, 提示信息)。"""
         if key not in self.SCHEMA:
@@ -410,9 +379,10 @@ class ConfigService:
         for key, raw in updates.items():
             if key not in self.SCHEMA:
                 continue  # 表单中的非配置字段（提交按钮等）忽略
-            category, ctype, is_secret, hot, _ = self.SCHEMA[key]
-            raw = "" if raw is None else str(raw)
-            if is_secret and not raw.strip():
+            _, ctype, is_secret, _, _ = self.SCHEMA[key]
+            clear = key in ANALYSIS_API_KEYS and updates.get(f"clear_{key}") == "true"
+            raw = "" if raw is None or clear else str(raw)
+            if is_secret and not raw.strip() and not clear:
                 continue  # 密钥留空 = 不修改
             if not raw.strip() and ctype in ("int", "float", "bool"):
                 continue  # 数值/开关留空 = 不修改（清空不应被"值不合法"拦住）
@@ -549,11 +519,12 @@ class ConfigService:
                     return None
                 return "true" if raw.lower() in ("true", "1") else "false"
             if ctype == "secret":
-                if len(raw) < 6:
+                if len(raw) < 6 and key not in ANALYSIS_API_KEYS:
                     return None
                 return raw
             if ctype == "str":
-                if key in self._ENUM_VALUES and raw.lower() not in self._ENUM_VALUES[key]:
+                if (key in self._ENUM_VALUES and raw.lower() not in self._ENUM_VALUES[key]) or (
+                        raw and key.startswith("MESSAGE_ANALYSIS_") and key.endswith("_API_URL") and not is_analysis_url(raw)):
                     return None
                 return normalize_file_formats(raw) if key == "FILE_PARSE_FORMATS" else raw
             if ctype == "json":
@@ -656,7 +627,7 @@ class ConfigService:
     @classmethod
     def _display(cls, key: str, ctype: str, current, is_secret: bool) -> str:
         """配置当前值 → 表单显示字符串（列表逗号分隔 / 多行换行 / 敏感脱敏）。"""
-        if current is None or (key == "SEARCH_DEEPSEEK_API_KEY" and not current):
+        if current is None or (not current and (key == "SEARCH_DEEPSEEK_API_KEY" or key in ANALYSIS_API_KEYS)):
             return ""
         if is_secret:
             return cls._mask(key, current, True)

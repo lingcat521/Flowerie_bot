@@ -11,6 +11,20 @@ from src.utils.logging_setup import get_logger
 logger = get_logger(__name__)
 
 
+async def record_self_claim(memory_manager, claim: str, user_id: int, group_id: int, msg_id: int) -> None:
+    """静默记录当前发言者的原话。"""
+    text = validate_memory_content(claim)
+    if text is None:
+        logger.warning("memory_inject_rejected user=%s group=%s len=%d", user_id, group_id, len(claim),
+                       extra={"event": "memory_inject_rejected"})
+        return
+    await memory_manager.append_memory_text(
+        user_id, group_id, text, source_user=user_id, source_group=group_id,
+        source_message_id=msg_id, confidence="self_claim",
+    )
+    logger.info("self_claim_added user=%s group=%s len=%d", user_id, group_id, len(text))
+
+
 async def apply_memory_update(memory_manager, policy_engine, memory_update: Optional[str],
                               user_id: Optional[int], group_id: int, msg_id: str,
                               memory_disabled: bool) -> None:

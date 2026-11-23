@@ -25,14 +25,7 @@ class SplitSegments(list):
         self.stickers: List[str] = []
 
 
-# 句尾标点（强边界）：句号/问号/感叹号（中英全角）+ 分号
-_SENTENCE_PUNCT = "。！？!?；;"
-# 弱边界：逗号（中英）与顿号
-_COMMA_PUNCT = "，,、"
-# 切点保护：切点之后至少保留这么多字符，避免切出「一句话 + 一个标点」式碎片段
-_MIN_TAIL = 2
-
-_TRAILING_PUNCT = re.compile(r"[\s。！？!?；;，,、…~～]+$")
+_SENTENCE_BOUNDARY = re.compile(r"(?<=[。！？!?；;])(?![。！？!?；;])")
 
 
 def fragment_split(text: str) -> List[str]:
@@ -41,18 +34,7 @@ def fragment_split(text: str) -> List[str]:
     Only used when SPLIT_REPLY_ENABLED and the reply is under the lower threshold.
     Punctuation stays attached to the preceding fragment. Empty frags dropped.
     """
-    if not text or not str(text).strip():
-        return []
-    parts = re.split(r"[ 	]+", str(text).strip())
-    out: List[str] = []
-    for part in parts:
-        if not part:
-            continue
-        # further split after sentence-ending punctuation only: keep the punct with the preceding piece
-        # 逗号/顿号/小数点不拆（它们是句内成分，拆了反而碎）
-        pieces = re.split(r"(?<=[。！？!?；;])", part)
-        out.extend(p for p in pieces if p)
-    return out
+    return [piece for word in str(text or "").split() for piece in _SENTENCE_BOUNDARY.split(word) if piece]
 
 # 控制标记：[STICKER:文件名] —— 不是聊天文本，属框架内部指令
 _STICKER_TAG_RE = re.compile(r"\[STICKER:\s*([^\]]+?)\s*\]")

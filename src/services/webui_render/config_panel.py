@@ -9,6 +9,7 @@ from src.services.webui_render.category_constants import (
     CATEGORY_ORDER as _DEFAULT_ORDER,
 )
 from src.services.webui_render.util import _esc
+from src.utils.message_analysis_config import ANALYSIS_API_KEYS
 
 # ---------- 花语记忆：模型配置链状态徽标（零 JS；未配置/缺配置/已配置） ----------
 _BLOSSOM_MODEL_KEYS = {
@@ -427,6 +428,9 @@ def _render_config_row(c: dict, extra_badges: str = "") -> str:
         if key == "SEARCH_DEEPSEEK_API_KEY":
             hint += ('<label class="opt"><input type="checkbox" name="clear_search_key" value="true">'
                      '清除专用 Key，复用聊天 Key</label>')
+        elif key in ANALYSIS_API_KEYS and cur:
+            hint += (f'<label class="opt"><input type="checkbox" name="clear_{key}" value="true">'
+                     '清除已保存的密钥</label>')
     elif not c.get("hot_reload"):
         hint = f'<span id="{input_id}-help" class="hint">已保存到 .env，部分配置将在服务器重启后生效</span>'
     checkbox = ctype == "bool"

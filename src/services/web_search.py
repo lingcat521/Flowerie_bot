@@ -22,6 +22,7 @@ from urllib.parse import unquote, urlsplit
 import httpx
 
 from src.core.sanitizer import sanitize_untrusted_text, validate_mcp_server_url
+from src.services.ddg_html import DuckDuckGoResults
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -75,10 +76,6 @@ _DDG_DF = {"day": "d", "week": "w", "month": "m", "year": "y"}
 _SEARXNG_TIME = {"day": "day", "week": "week", "month": "month", "year": "year"}
 
 #: 引擎 HTML 解析正则（模块级，避免反复编译）
-_DDG_BLOCK_RE = re.compile(r'<div class="result results_links[\s\S]*?</div>\s*</div>')
-_DDG_HREF_RE = re.compile(r'<a[^>]*class="result__a"[^>]*href="([^"]*)"')
-_DDG_TITLE_RE = re.compile(r'<a[^>]*class="result__a"[^>]*>(.*?)</a>', re.S)
-_DDG_SNIP_RE = re.compile(r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>', re.S)
 _DDGL_LINK_RE = re.compile(r'<a[^>]*class=["\']result-link["\'][^>]*>[\s\S]*?</a>')
 _DDGL_TITLE_RE = re.compile(r'class=["\']result-link["\'][^>]*>(.*?)</a>', re.S)
 _DDGL_SNIP_RE = re.compile(r'class=["\']result-snippet["\'][^>]*>([\s\S]*?)</td>')
@@ -394,21 +391,10 @@ class WebSearchService:
         url = "https://html.duckduckgo.com/html/?" + "&".join(
             "%s=%s" % (k, v) for k, v in params.items())
         html = await self._fetch_html(url)
-        blocks = re.findall(_DDG_BLOCK_RE, html)
         sources = []
-        for block in blocks:
-            href = _DDG_HREF_RE.search(block)
-            title = _DDG_TITLE_RE.search(block)
-            snip = _DDG_SNIP_RE.search(block)
-            u = extract_ddg_url(href.group(1) if href else "")
-            if not u:
-                continue
-            entry = {"url": u}
-            if title:
-                entry["title"] = _strip_tags(title.group(1))
-            if snip:
-                entry["snippet"] = _strip_tags(snip.group(1))
-            sources.append(entry)
+        for result in DuckDuckGoResults(html).results:
+            if url := extract_ddg_url(result.pop("href", "")):
+                sources.append({"url": url, **result})
         return _unique_sources(sources, limit, self._blocked_domains())
 
     async def _search_ddg_lite(self, query, limit, time_range, signal):

@@ -1,6 +1,7 @@
 import asyncio
 import random
 import time
+from itertools import islice
 from typing import Dict, Optional
 
 from src.config import Settings
@@ -10,6 +11,11 @@ from src.models import GlobalState, GroupState
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
+
+
+def _tail(items, count):
+    """Return the last count items in their original order without copying the whole deque."""
+    return list(reversed(list(islice(reversed(items), count))))
 
 
 class ContextManager:
@@ -97,7 +103,7 @@ class ContextManager:
     def should_reply_by_context(self, group_id: int) -> bool:
         state = self.get_group_state(group_id)
         cfg = self.config
-        recent_msgs = [m for m in list(state.context)[-5:]
+        recent_msgs = [m for m in _tail(state.context, 5)
                        if m.get("type") != "compact"]
         if not recent_msgs:
             prob = self._prob(
@@ -193,7 +199,7 @@ class ContextManager:
         同步 SQLite 全表重写放线程池执行，事件循环不被阻塞（fix.txt ⑤ IO-1）。
         """
         try:
-            snapshot = {gid: (list(st.context)[-50:], list(st.processed_msg_ids)[-200:])
+            snapshot = {gid: (_tail(st.context, 50), _tail(st.processed_msg_ids, 200))
                         for gid, st in self.groups.items()}
             async with self._backup_save_lock():
                 written = await asyncio.to_thread(self._backup.save, snapshot)

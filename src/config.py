@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.sanitizer import validate_mcp_server_url
 from src.services.mcp_auth import build_auth
+from src.utils.message_analysis_config import validate_analysis_config
 
 FILE_PARSE_FORMAT_NAMES = ("txt", "pdf", "docx", "xlsx", "csv")
 DEFAULT_FILE_PARSE_FORMATS = ",".join(FILE_PARSE_FORMAT_NAMES)
@@ -76,6 +77,21 @@ class Settings(BaseSettings):
     TOXIC_API_KEY: Optional[str] = None
     TOXIC_API_URL: Optional[str] = None
     TOXIC_MODEL: Optional[str] = "deepseek-flash"
+
+    # 独立群消息分析模型（仅配置的群启用）
+    MESSAGE_ANALYSIS_GROUP_IDS: List[int] = []
+    MESSAGE_ANALYSIS_API_URL: str = ""
+    MESSAGE_ANALYSIS_API_KEY: str = ""
+    MESSAGE_ANALYSIS_MODEL: str = ""
+    MESSAGE_ANALYSIS_PREFERENCE_API_URL: str = ""
+    MESSAGE_ANALYSIS_PREFERENCE_API_KEY: str = ""
+    MESSAGE_ANALYSIS_PREFERENCE_MODEL: str = ""
+    MESSAGE_ANALYSIS_TOXIC_API_URL: str = ""
+    MESSAGE_ANALYSIS_TOXIC_API_KEY: str = ""
+    MESSAGE_ANALYSIS_TOXIC_MODEL: str = ""
+    MESSAGE_ANALYSIS_TIMEOUT: int = Field(3, ge=1, le=30)
+    MESSAGE_ANALYSIS_DAILY_LIMIT: int = Field(1000, ge=1)
+    MESSAGE_ANALYSIS_GROUP_DAILY_LIMIT: int = Field(300, ge=1)
 
     # 视觉识图（花璃看图用；可选，留空回退用 DeepSeek key/网址）
     VISION_API_KEY: Optional[str] = None
@@ -669,6 +685,8 @@ def validate_config(config: Settings) -> None:
         raise ValueError(f"WS_PORT 必须在 1~65535 之间，当前: {getattr(config, 'WS_PORT', 0)}")
     if getattr(config, "MAX_CONCURRENT_AI", 1) < 1:
         raise ValueError(f"MAX_CONCURRENT_AI 必须 >= 1，当前: {getattr(config, 'MAX_CONCURRENT_AI', 1)}")
+    if getattr(config, "MESSAGE_ANALYSIS_GROUP_IDS", None):
+        validate_analysis_config(config)
     if getattr(config, "AI_MAX_RETRIES", 0) < 0:
         raise ValueError(f"AI_MAX_RETRIES 必须 >= 0，当前: {getattr(config, 'AI_MAX_RETRIES', 0)}")
     if getattr(config, "USER_COOLDOWN", 0) < 0 or getattr(config, "BOT_COOLDOWN", 0) < 0:

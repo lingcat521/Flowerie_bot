@@ -117,6 +117,8 @@ def test_method_sets_are_disjoint_and_complete():
     assert len(PLUGIN_METHODS) == 3, "插件间通信 = CALL / EVENT / CANCEL（第 4 份任务书 §十）"
     assert len(OPTIONAL_METHODS) == 14, "可选方法 = 8 核心 + 3 WebUI + 3 插件间通信"
     assert ENGINE_OPS == ("context.get", "config.get", "permission.check",
+                          "message_analysis.get", "message_analysis.update",
+                          "models.ping",
                           "plugin.call", "plugin.emit", "plugin.cancel")
 
 

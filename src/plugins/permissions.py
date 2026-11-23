@@ -103,6 +103,8 @@ ALL_PERMISSIONS = frozenset({
     "bot_profile",           # 修改 Bot 自身资料（昵称/签名）
     "qzone",                 # QQ空间写操作（发说说/删说说）——默认不给，需管理员批准
     "plugin_admin",          # 插件运行时管理（调用/事件/服务/重载/发现/健康/配置）
+    "manage_message_analysis",  # 管理全局群消息分析模型、适用群和预算
+    "ping_models",            # 探测宿主保存的模型接口（可能产生模型调用费用）
     "web_ui",                # Plugin WebUI：插件自有管理页面（管理员批准后才能访问）
     "web_ui.files",          # Plugin WebUI 文件能力（上传/下载，仅插件自身空间）
     # Plugin WebUI Protocol（任务书第 3 份 §十五）：页面/动作/配置/存储四条通道各自的闸门

@@ -110,9 +110,12 @@ def validate_mcp_server_url(url: str, allowed_hosts: Optional[list] = None) -> T
 
 
 # 已知注入/系统覆盖句式（大小写不敏感）。命中即替换为占位符，打断注入，保留上下文可读性。
+_IGNORE_INSTRUCTION = re.compile(
+    r"(?:忽略|无视)\s*(?:(?:以上|上述|之前)\s*(?:所有|全部)\s*(?:规则|指令|要求|提示|内容|一切)?"
+    r"|(?:以上|上述|之前)\s*(?:规则|指令|要求|提示|内容|一切)?"
+    r"|(?:所有|全部)\s*(?:规则|指令|要求|提示|内容|一切)|规则|指令|要求|提示|内容|一切)"
+)
 _INJECTION_PATTERNS = [
-    r"忽略\s*(以上|上述|之前|之前所有|所有|全部)?\s*(规则|指令|要求|提示|内容|一切)?",
-    r"无视\s*(以上|上述|之前)?\s*(规则|指令|要求|内容)?",
     r"忘记\s*(你|自己)?\s*(的|是)?[^。\n]{0,6}(身份|人设|指令|规则|要求)",
     r"从现在开始\s*(你|您)?\s*(是|要|必须|当)",
     r"system\s*prompt",
@@ -127,6 +130,12 @@ _INJECTION_PATTERNS = [
 ]
 
 _PLACEHOLDER = "【疑似注入内容，已过滤】"
+_COMPILED_INJECTION_PATTERNS = (_IGNORE_INSTRUCTION, *(re.compile(pat, re.IGNORECASE) for pat in _INJECTION_PATTERNS))
+_CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\u200b-\u200f\u2028-\u202f\ufeff\u00ad]")
+_LONG_NUMBER = re.compile(r"\d{5,}")
+_NUMBER_UNIT = re.compile(r"\s*(?:毫安(?:时)?|千米|公里|厘米|毫米|公斤|千克|毫升|mAh|km|kg)(?![a-zA-Z])", re.I)
+_ID_CONTEXT = re.compile(r"QQ|群号|账号|帐号|号码", re.I)
+_SLASH_COMMAND = re.compile(r"(?<![A-Za-z0-9_/])/[a-zA-Z_]+")
 
 
 def sanitize_untrusted_text(text: str) -> Tuple[str, bool]:
@@ -140,17 +149,13 @@ def sanitize_untrusted_text(text: str) -> Tuple[str, bool]:
     changed = False
     result = text
     # 清理控制字符与零宽/格式字符（防终端/渲染注入、防零宽字符绕过关键词过滤）
-    cleaned = re.sub(
-        r"[\x00-\x08\x0b\x0c\x0e-\x1f\u200b-\u200f\u2028-\u202f\ufeff\u00ad]",
-        "",
-        result,
-    )
+    cleaned = _CONTROL_CHARS.sub("", result)
     if cleaned != result:
         changed = True
         result = cleaned
     # 替换已知注入句式
-    for pat in _INJECTION_PATTERNS:
-        new, n = re.subn(pat, _PLACEHOLDER, result, flags=re.IGNORECASE)
+    for pat in _COMPILED_INJECTION_PATTERNS:
+        new, n = pat.subn(_PLACEHOLDER, result)
         if n:
             changed = True
             result = new
@@ -163,7 +168,7 @@ def validate_memory_content(text: str) -> Optional[str]:
     返回清洗后的文本；返回 None 表示拒绝写入。即使 AI 被诱导输出恶意记忆，
     也过不了这道闸门：
     - 超长（>100 字）拒绝（记忆要求极简客观）
-    - 含 QQ 号（7~12 位数字）拒绝（P1 边界）
+    - 含疑似 QQ 号（5 位以上且没有明确单位的数字，或有账号语境）拒绝
     - 含记忆指令/命令句式拒绝（防自我复制型注入）
     - 含指令性关键词拒绝
     """
@@ -174,17 +179,24 @@ def validate_memory_content(text: str) -> Optional[str]:
         return None
     if len(t) > 100:
         return None
-    # QQ 号（5~12 位数字，覆盖老号段）一律拒绝，防止记忆里残留他人/自己的 QQ
-    if re.search(r"\d{5,12}", t):
+    if contains_suspected_account_number(t):
         return None
     if re.search(r"【记忆】|记忆\s*[:：]|MEMORY_JSON", t, re.IGNORECASE):
         return None
-    if re.search(r"/[a-zA-Z_]+", t):
+    if _SLASH_COMMAND.search(t):
         return None
-    for kw in ("忽略", "记住", "执行", "system", "指令", "从现在开始", "忘记你是"):
+    if _IGNORE_INSTRUCTION.search(t):
+        return None
+    for kw in ("记住", "执行", "system", "指令", "从现在开始", "忘记你是"):
         if kw in t:
             return None
     return t
+
+
+def contains_suspected_account_number(text: str) -> bool:
+    """Keep the conservative ID check while accepting clearly labelled measurements."""
+    explicit_id = _ID_CONTEXT.search(text) is not None
+    return any(explicit_id or not _NUMBER_UNIT.match(text, number.end()) for number in _LONG_NUMBER.finditer(text))
 
 
 def validate_mcp_resolved_ips(host: str, ips: list, allowed_hosts: Optional[list] = None) -> Tuple[bool, str]:

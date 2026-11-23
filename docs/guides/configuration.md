@@ -87,6 +87,31 @@ Web UI 入口为 **工具与扩展 → 文件解析**。可保存开关、格式
 | `VISION_FORWARD_IMAGES` | 是否识别合并转发内的图片 | `false` |
 | `MAX_AI_INPUT_CHARS` | 单次 AI 输入（上下文+消息）最大字符数 | `8000` |
 
+## 群消息 AI 分析
+
+在 Web UI 的「配置 → AI / Provider 配置」可分别填写喜好提取和语义引战检测的接口地址、模型名和密钥。面板保存后立即生效，并写入 `.env`。直接编辑 `.env` 时重启后生效。例如，喜好提取用本机模型，引战用另一家服务：
+
+```dotenv
+MESSAGE_ANALYSIS_GROUP_IDS=[123456789]
+MESSAGE_ANALYSIS_PREFERENCE_API_URL=http://127.0.0.1:11434/v1/chat/completions
+MESSAGE_ANALYSIS_PREFERENCE_MODEL=你的本地模型名
+MESSAGE_ANALYSIS_PREFERENCE_API_KEY=
+MESSAGE_ANALYSIS_TOXIC_API_URL=https://provider.example/v1/chat/completions
+MESSAGE_ANALYSIS_TOXIC_MODEL=你的引战检测模型名
+MESSAGE_ANALYSIS_TOXIC_API_KEY=你的服务密钥
+TOXIC_GROUP_IDS=[123456789]
+```
+
+`MESSAGE_ANALYSIS_GROUP_IDS` 默认为 `[]`。引战只在同时出现在 `TOXIC_GROUP_IDS` 的群里检测。如果某项任务没有可用的地址和模型名，则跳过该项。喜好保存通过校验的完整原话（不超过 100 字），并沿用长期记忆开关、按群禁用设置和原有存储，群友仍可用 `/memory` 查看或删除自己的记忆。群友画像的每日提取继续由摘要任务负责。
+
+专用地址和模型留空时，分别继承 `MESSAGE_ANALYSIS_API_URL` 和 `MESSAGE_ANALYSIS_MODEL`。地址留空继承时，密钥也可继承 `MESSAGE_ANALYSIS_API_KEY`。填了专用地址就使用该任务的专用密钥，密钥为空则发送无鉴权请求。面板的密钥输入框留空会保留现有值，可以勾选「清除已保存的密钥」来清空。`TOXIC_API_URL` 等旧配置仍用于未开启语义分析的群。
+
+保存配置后，可以在「用户状态 → API 厂商连接状态」点击「喜好提取」和「语义引战检测」卡片的「连通性测试」。按钮使用各自生效的地址、模型和密钥发送 ping，可在选定启用群之前测试。
+
+喜好模型收到当前文本，引战模型还会收到最近四条同群文本。发言者使用临时编号，API 请求不附带 QQ 号、群号、文件或图片。使用远程模型时，这些文本会发往对应服务。两项任务的地址、模型和密钥相同时合并为一次请求，配置不同时并行请求。
+
+`MESSAGE_ANALYSIS_TIMEOUT` 默认 3 秒。`MESSAGE_ANALYSIS_DAILY_LIMIT` 和 `MESSAGE_ANALYSIS_GROUP_DAILY_LIMIT` 分别限制每日全局和单群调用次数，默认为 1000 和 300，与对话预算独立。用两个模型分析同一条消息会分别计数。繁忙、超时、额度用尽或结果无法解析时，跳过受影响的任务并继续处理消息。
+
 ## 多条回复（Multi-Reply）
 
 > 一次 AI 回复拆成 **1~N 条独立消息**逐条发送；默认关闭，关闭时行为与单条回复完全一致。

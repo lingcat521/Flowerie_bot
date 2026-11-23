@@ -20,7 +20,7 @@ from collections import deque
 from typing import Deque, Dict, List, Optional, Tuple
 
 from src.core.sanitizer import sanitize_untrusted_text
-from src.repositories.meme_knowledge_repository import MemeKnowledgeRepository
+from src.repositories.meme_knowledge_repository import MemeKnowledgeRepository, normalize_knowledge_text
 from src.utils.logging_setup import get_logger
 from src.utils.metrics import registry
 
@@ -31,6 +31,16 @@ _M_REJECT = registry.counter("meme_knowledge_rejections_total", "梗知识写入
 
 # 置信度排序（低 < 中 < 高），合并时取高者
 _CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
+_ASCII_WORD = frozenset("abcdefghijklmnopqrstuvwxyz0123456789_")
+
+
+def contains_knowledge_term(text: str, term: str) -> bool:
+    """Match a normalized term, with word boundaries for Latin letters and numbers."""
+    if not term or term not in text:
+        return False
+    left = r"(?<![a-z0-9_])" if term[0] in _ASCII_WORD else ""
+    right = r"(?![a-z0-9_])" if term[-1] in _ASCII_WORD else ""
+    return not (left or right) or re.search(left + re.escape(term) + right, text) is not None
 
 
 class MemeKnowledgeManager:
@@ -109,9 +119,10 @@ class MemeKnowledgeManager:
         terms = self.repository.list_all_terms(group_id)
         if not terms:
             return []
+        normalized_text = normalize_knowledge_text(text)
         hits: List[Tuple[str, int]] = []
         for term in terms:
-            if term and len(term) >= 1 and term in text:
+            if contains_knowledge_term(normalized_text, normalize_knowledge_text(term)):
                 hits.append((term, len(term)))
         # 长词优先（避免短词过度命中），最多 max_items
         hits.sort(key=lambda x: -x[1])

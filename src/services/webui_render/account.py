@@ -98,11 +98,13 @@ def render_account_tab(username, credential_source, system_info, mcp_status, api
         '<fieldset class="group"><legend>API 厂商连接状态（连通性测试）</legend>'
         + _api_card("DeepSeek（聊天主厂商）", api_status.get("deepseek"), "deepseek")
         + _api_card("视觉识图", api_status.get("vision"), "vision")
-        + _api_card("引战检测", api_status.get("toxic"), "toxic")
+        + _api_card("引战检测（关键词预筛）", api_status.get("toxic"), "toxic")
+        + _api_card("喜好提取", api_status.get("analysis_preference"), "analysis_preference")
+        + _api_card("语义引战检测", api_status.get("analysis_toxic"), "analysis_toxic")
         + _api_card("向量模型（花语记忆）", api_status.get("embedding"), "embedding")
         + _api_card("重排模型（花语记忆）", api_status.get("reranker"), "reranker")
         + _api_card("DeepSeek 搜索（原生）", api_status.get("search"), "search")
-        + '<div class="hint">发送最小 ping 请求验证真实连通性；视觉/引战未独立配置时回退用 DeepSeek。</div>'
+        + '<div class="hint">发送 ping 请求验证模型连通性。</div>'
         '</fieldset>'
     )
 

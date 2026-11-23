@@ -21,6 +21,7 @@ from aiohttp import web
 from src.config import Settings
 from src.services.config_service import ConfigService, verify_password
 from src.services.file_parser import FileParser
+from src.services.model_ping import ModelPingService
 from src.services.web_ui_assets import (
     THEMES,
     background_rules,
@@ -78,8 +79,10 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
                  persona_manager=None, meme_manager=None, prompt_manager=None,
                  plugin_manager=None, group_nicknames=None, group_style_rules=None,
                  profile_service=None, admin_service=None, qzone_service=None,
-                 memory_manager=None, search_service=None, file_parser=None):
+                 memory_manager=None, search_service=None, file_parser=None,
+                 model_pings: Optional[ModelPingService] = None):
         self.config = config
+        self._model_pings = model_pings if model_pings is not None else ModelPingService(config)
         self._file_parser = file_parser if file_parser is not None else FileParser(config)
         self.group_nicknames = group_nicknames
         # 群专属发言规则 store（与 MessageRouter 共享同一实例；按 群+人设 解析）
@@ -255,6 +258,9 @@ class WebUIServer(AccountPanelMixin, AuthPanelMixin, ConfigPanelMixin, Appearanc
         app.router.add_post("/api/logout", self._handle_logout)
         app.router.add_get("/api/config", self._handle_get_config)
         app.router.add_put("/api/config", self._handle_update_config)
+        app.router.add_get("/api/config/message-analysis", self._handle_get_message_analysis)
+        app.router.add_patch("/api/config/message-analysis", self._handle_update_message_analysis)
+        app.router.add_post("/api/models/ping", self._handle_api_model_ping)
         app.router.add_get("/api/status", self._handle_status)
         app.router.add_get("/api/logs", self._handle_logs)
         return app

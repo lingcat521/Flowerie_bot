@@ -180,7 +180,7 @@ class _FakeClient:
 _DDG_HTML = (
     # 真实 DDG HTML 是双层嵌套 div（外 result results_links + 内 result__body）
     '<div class="result results_links" data-d="1"><div class="links_main links_deep">'
-    '<a class="result__a" href="/l/?uddg=https%3A%2F%2Fddg1.com">T1</a>'
+    "<a href='/l/?uddg=https%3A%2F%2Fddg1.com' class='result__a'>T1</a>"
     '<a class="result__snippet">S1</a></div></div>'
     '<div class="result results_links" data-d="2"><div class="links_main links_deep">'
     '<a class="result__a" href="/l/?uddg=https%3A%2F%2Fddg2.com">T2</a>'

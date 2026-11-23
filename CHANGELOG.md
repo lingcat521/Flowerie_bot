@@ -4,6 +4,50 @@
 
 > 早期版本的日期为补记（以版本号顺序为准）。
 
+## [2.19.5] - 2026-11-24
+
+### 新增：模型探测（SDK 与 Web UI 双入口）
+
+- **`src/services/model_ping.py`**（189 行）：只用固定的最小测试请求探测宿主保存的模型端点，
+  逐项报告可达性、耗时与错误；不发送任何用户数据
+- **SDK 新方法**：`bot.ping_models(target="all")`，五语言同步
+  （Go / Java / Rust / TypeScript / Python）
+- **新权限**：`ping_models`（探测会调用模型，可能产生费用，需管理员批准）
+
+### 新增：群消息独立分析
+
+- **`src/services/message_analyzer.py`**（141 行）：用**独立模型**分析群消息，
+  一次调用同时产出引战判定与可保存的喜好原话
+- **`src/utils/message_analysis_config.py`**（45 行）：配置与任务覆盖解析
+- **14 个配置键**：`MESSAGE_ANALYSIS_*`（API_URL / API_KEY / MODEL 三组）+ 适用群、
+  超时（3-30s）、全局日限额（默认 1000）、单群日限额（默认 300）
+- **SDK 新方法**：`bot.message_analysis_get()` / `bot.message_analysis_update(values)`
+- **新权限**：`manage_message_analysis`（改模型、适用群与预算）
+
+### 重构：DDG 结果解析改用标准 HTML 解析器
+
+`src/services/ddg_html.py`（57 行）：把 DuckDuckGo 结果卡片从正则改成
+`html.parser.HTMLParser` 子类。正则跨 HTML 结构微调极易失效，标准解析器更稳。
+
+### 重构：拆分 ConfigService（架构 Gate 触发）
+
+新增的群消息分析读写把 `config_service.py` 顶到 774 行，触发架构 Gate
+（`test_core_modules_stay_slim` 上限 700，防上帝类回归）。按职责拆出：
+
+- `src/services/message_analysis_service.py`（99 行）：群消息分析配置读写
+- `src/utils/password.py`（47 行）：scrypt 口令哈希与旧明文兼容校验
+- `config_service.py` 降至 672 行，保留薄委托与 re-export（既有 import 路径不变）
+
+### 修复
+
+- `ANALYSIS_API_KEYS` 在拆分后遗漏导入（三处使用）
+
+### 文档
+
+- `docs/reference/plugin-protocol.md` / `plugin-sdk.md` / `plugin-platform-api.md`
+- `docs/guides/configuration.md`（14 个新键）
+- `.env_example`
+
 ## [2.19.4] - 2026-11-19
 
 ### 新增：性能测试工具链（5 个脚本 + 1 份评估文档）

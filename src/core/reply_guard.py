@@ -17,8 +17,8 @@ def mention_gate_allows(config) -> bool:
 只做纯判断，不碰发送与状态，便于单测与复用。
 """
 
-# 图片占位标记（解析层写入的「主模型直看」与「外部识图」两种形态）
-IMAGE_MARKS = ("[native_vision_image]", "[用户发送了一张图片")
+# 图片占位文字由消息组装层写入。
+IMAGE_MARKS = ("[用户发送了一张图片",)
 
 
 def is_image_only_message(full_text: str, clean_text: str) -> bool:

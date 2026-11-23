@@ -25,9 +25,10 @@ import re
 import time
 from typing import Dict, List, Optional, Tuple
 
+from src.repositories.meme_knowledge_repository import normalize_knowledge_text
 from src.services.ai_client import AIClient
 from src.services.mcp_tool_manager import McpToolManager
-from src.services.meme_knowledge_manager import MemeKnowledgeManager
+from src.services.meme_knowledge_manager import MemeKnowledgeManager, contains_knowledge_term
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -284,7 +285,8 @@ class MemeSummaryService:
     def _weighted_confidence(cls, model_conf: str, term: str, messages: List[str]) -> str:
         """可信度 = 模型判断 + 群内出现次数加权（多次出现更可信）。"""
         conf = model_conf if model_conf in ("low", "medium", "high") else "low"
-        occurrences = sum(1 for m in messages if term in m)
+        normalized_term = normalize_knowledge_text(term)
+        occurrences = sum(1 for m in messages if contains_knowledge_term(normalize_knowledge_text(m), normalized_term))
         if occurrences >= 8 and conf != "high":
             conf = "high"
         elif occurrences >= 3 and conf == "low":

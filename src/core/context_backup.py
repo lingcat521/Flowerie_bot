@@ -177,19 +177,17 @@ class ContextBackupStore:
             for group_id, (msgs, processed_ids) in groups.items():
                 if not msgs and not processed_ids:
                     continue
-                for seq, msg in enumerate(msgs):
-                    conn.execute(
-                        "INSERT INTO group_context (group_id, seq, user_id, message, is_bot, time)"
-                        " VALUES (?,?,?,?,?,?)",
-                        (group_id, seq,
+                conn.executemany(
+                    "INSERT INTO group_context (group_id, seq, user_id, message, is_bot, time)"
+                    " VALUES (?,?,?,?,?,?)",
+                    ((group_id, seq,
                          msg.get("user_id", 0),
                          str(msg.get("message", "")),
                          1 if msg.get("is_bot", False) else 0,
-                         msg.get("time", time.time())),
-                    )
-                for mid in processed_ids:
-                    conn.execute("INSERT OR IGNORE INTO processed_ids (group_id, message_id) VALUES (?,?)",
-                                 (group_id, mid))
+                         msg.get("time", time.time())) for seq, msg in enumerate(msgs)),
+                )
+                conn.executemany("INSERT OR IGNORE INTO processed_ids (group_id, message_id) VALUES (?,?)",
+                                 ((group_id, mid) for mid in processed_ids))
             conn.commit()
             return True
         except Exception:

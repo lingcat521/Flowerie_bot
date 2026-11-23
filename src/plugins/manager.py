@@ -43,7 +43,9 @@ from src.repositories.settings_repository import SettingsRepository
 from src.sdk.bot import Bot
 from src.sdk.event import BotEvent
 from src.sdk.matcher import Matcher
+from src.services.config_service import ConfigService
 from src.services.mcp_auth import McpAuthError, build_auth
+from src.services.model_ping import ModelPingService
 from src.utils.logging_setup import get_logger
 from src.utils.metrics import registry
 
@@ -82,6 +84,11 @@ _TEMPLATE_FIELDS = ("group_id", "user_id", "text", "message_name", "message")
 # 插件 id 的唯一合法形态（与 plugins/manifest.py 的 _ID_RE 同源）：
 # 所有「用 id 拼路径」的入口都必须先过这里 —— 否则 id 里的 ../ 会越出 plugin_dir。
 _PLUGIN_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
+_ENGINE_OPERATOR_PERMISSIONS = {
+    "message_analysis.get": "manage_message_analysis",
+    "message_analysis.update": "manage_message_analysis",
+    "models.ping": "ping_models",
+}
 
 
 class PluginManager:
@@ -92,8 +99,12 @@ class PluginManager:
                  state_provider: Optional[Callable[[str, Any], Optional[dict]]] = None,
                  installer: Optional[PluginInstaller] = None, context_manager: Optional[Any] = None,
                  bot_factory: Optional[Any] = None,
-                 ai_client: Optional[Any] = None):
+                 ai_client: Optional[Any] = None,
+                 config_service: Optional[ConfigService] = None,
+                 model_pings: Optional[ModelPingService] = None):
         self.config = config
+        self._config_service = config_service
+        self._model_pings = model_pings if model_pings is not None else ModelPingService(config)
         self.platform_actions = PlatformActions(config)
         self.repository = repository
         self.sender = sender
@@ -865,7 +876,7 @@ class PluginManager:
 
     # ================= Plugin Protocol v1：插件 → 引擎 的反向 op =================
     async def _handle_engine_op(self, plugin_id: str, op: str, args: Dict[str, Any]) -> dict:
-        """处理插件发来的 engine op（config.get / permission.check / context.get）。
+        """处理插件发来的 engine op。
 
         安全原则（与 action 一致）：**身份由连接决定**（插件从不传 plugin_id，杜绝身份伪造）；
         permission 只读查询已批准权限；config 只读操作员配置；未知 op 一律拒绝（不静默忽略）。
@@ -880,6 +891,21 @@ class PluginManager:
         approved = set(row.get("approved_permissions") or [])
         if op in ("plugin.call", "plugin.emit", "plugin.cancel"):
             return await self._engine_op_comm(plugin_id, op, args, approved)
+        permission = _ENGINE_OPERATOR_PERMISSIONS.get(op)
+        if permission and permission not in approved:
+            logger.warning("plugin_permission_denied id=%s op=%s", plugin_id, op,
+                           extra={"event": "plugin_permission_denied"})
+            return {"ok": False, "denied": True, "error": f"需要 {permission} 权限"}
+        if op == "models.ping":
+            if "target" not in args:
+                return {"ok": False, "code": "invalid_argument", "error": "需要 target 参数"}
+            return await self._model_pings.ping(args)
+        if op in ("message_analysis.get", "message_analysis.update"):
+            if self._config_service is None:
+                return {"ok": False, "error": "群消息分析配置服务不可用"}
+            if op == "message_analysis.get":
+                return self._config_service.message_analysis_get()
+            return self._config_service.message_analysis_update(args.get("values"))
         try:
             manifest = self._manifest_of(row)
         except Exception:  # noqa: BLE001

@@ -7,6 +7,7 @@ QQ 群号恒为正数，负 key 不会与真实群冲突；用户之间、用户
 import time
 
 from src.core.memory_hook import apply_memory_update
+from src.services.multimodal import native_event_images
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -84,7 +85,8 @@ async def handle_private_event(host, event) -> None:
     text = str(event.text or "").strip()
     if text.startswith("/") and await host.commands.handle(text, user_id, key, private_user_id=user_id):
         return
-    if not text and not image_descriptions:
+    images = native_event_images(config, event)
+    if not text and not (image_descriptions or images):
         return
     if not await host.ai_gateway.precheck_allowed(key, user_id):
         logger.info("private_budget_rejected user=%s", user_id, extra={"event": "budget_rejected"})
@@ -97,7 +99,8 @@ async def handle_private_event(host, event) -> None:
     if not user_prompt:
         return
     reply, memory_update, denied = await host.guarded_chat(
-        key, user_id, user_message=user_prompt, context=context_text, is_mentioned=False)
+        key, user_id, user_message=user_prompt, context=context_text, is_mentioned=False,
+        **({"images": tuple(images)} if images else {}))
     if denied:
         logger.info("private_budget_rejected user=%s", user_id, extra={"event": "budget_rejected"})
         return

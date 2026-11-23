@@ -85,7 +85,7 @@
 
 ## 5. 反向通道（插件 → 引擎）
 
-`method` 固定为 `"engine"`，按 `op` 分派；未知 op 一律拒绝（`ENGINE_OPS`，6 个）：
+`method` 固定为 `"engine"`，按 `op` 分派。未知 op 一律拒绝：
 
 ```json
 {"id":1000001,"method":"engine","params":{"op":"permission.check","args":{"permission":"send_message"}}}
@@ -95,6 +95,8 @@
 | op | 用途 |
 | :--- | :--- |
 | `context.get` / `config.get` / `permission.check` | 只读查询（能力见 §4.2） |
+| `message_analysis.get` / `message_analysis.update` | 读取和更新[群消息分析配置](plugin-platform-api.md#群消息分析配置)，需管理员授予 `manage_message_analysis` |
+| `models.ping` | [探测一个或全部模型](plugin-platform-api.md#模型连通性探测)，需管理员授予 `ping_models` |
 | `plugin.call` / `plugin.emit` / `plugin.cancel` | 插件间通信的**唯一**发起路径，不许旁路 |
 
 `method:"action"`（发消息、撤回、加群……）保持不变，它是**副作用**通道：一切 action 先过

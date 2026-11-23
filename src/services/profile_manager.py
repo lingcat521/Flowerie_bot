@@ -24,7 +24,7 @@ import sqlite3
 import time
 from typing import Dict, List, Optional, Tuple
 
-from src.core.sanitizer import sanitize_untrusted_text
+from src.core.sanitizer import contains_suspected_account_number, sanitize_untrusted_text
 from src.utils.logging_setup import get_logger
 
 logger = get_logger(__name__)
@@ -77,18 +77,18 @@ PROFILE_INSTRUCTION = "\n".join([
 def _sanitize_section(text: str, limit: int = _SECTION_MAX_CHARS) -> Optional[str]:
     """画像字段清洗（代码层闸门；与 MemoryManager 的 validate_memory_content 同源）。
 
-    拒绝：空 / 超长 / 含 QQ 号（5~12 位数字）/ 含换行 / 含注入或指令关键词。
+    拒绝：空 / 超长 / 疑似 QQ 号 / 含换行 / 含注入或指令关键词。
     返回清洗后的文本，None 表示拒绝写入。
     """
     t = (text or "").strip()
     if not t or len(t) > limit:
         return None
-    if re.search(r"\d{5,12}", t):  # QQ 号不入库（P1 边界，同记忆库）
+    if contains_suspected_account_number(t):
         return None
     if re.search(r"[\r\n]", t):  # 单行：画像块按行拼接，换行会破坏格式
         return None
-    if re.search(r"MEMORY_JSON|【|】|忽略|记住|执行|从现在开始|忘记你是|指令|system",
-                 t, re.IGNORECASE):
+    if (re.search(r"【|】|记住|执行|从现在开始|忘记你是|指令|system", t, re.IGNORECASE)
+            or sanitize_untrusted_text(t)[1]):
         return None
     return t
 

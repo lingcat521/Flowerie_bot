@@ -12,14 +12,14 @@ from src.core import name_mention as _name_mention
 from src.core.ai_gateway import AiGateway
 from src.core.budget_manager import BudgetManager
 from src.core.command_handler import CommandHandler
-from src.core.memory_hook import apply_memory_update
+from src.core.memory_hook import apply_memory_update, record_self_claim
 from src.core.message_assembler import MessageAssembler
 from src.core.policy_engine import PolicyEngine
 from src.core.private_chat import handle_private_event
 from src.core.reply_dispatch import ReplyDispatchMixin
 from src.core.reply_guard import is_image_only_message, is_summoned, mention_gate_allows
 from src.core.reply_plan import first_text
-from src.core.sanitizer import sanitize_untrusted_text, validate_memory_content
+from src.core.sanitizer import sanitize_untrusted_text
 from src.models import GroupMessage
 from src.services.ai_client import AIClient
 from src.services.file_parser import FileParser, group_file_parse_enabled
@@ -27,6 +27,8 @@ from src.services.mcp_tool_manager import McpToolManager
 from src.services.meme_knowledge_manager import MemeKnowledgeManager
 from src.services.meme_summary import MemeSummaryService
 from src.services.memory_manager import MemoryManager
+from src.services.message_analyzer import MessageAnalyzer
+from src.services.multimodal import native_event_images
 from src.services.persona_manager import PersonaManager
 from src.services.prompt_manager import PromptManager
 from src.services.sender import Sender
@@ -76,6 +78,7 @@ class MessageRouter(ReplyDispatchMixin):
     ):
         self.config = config
         self.ai_client = ai_client
+        self.message_analyzer = MessageAnalyzer(config, lambda: self.ai_client.client)
         self.memory_manager = memory_manager
         self.sender = sender
         # 消息边界（Phase 5）：OneBot raw → InternalEvent；None 时按默认构造（行为不变）
@@ -283,35 +286,43 @@ class MessageRouter(ReplyDispatchMixin):
         state.processed_msg_ids.append(msg_id)
         _M_PROCESSED.inc()
 
-        # 消息组装（文本/识图/转发/卡片/文件/存档）交给 MessageAssembler
         full_text, image_descriptions, is_reply_to_bot, has_reply_to_other, has_at_others = await self.assembler.assemble(
             event, user_id, group_id, raw_time,
         )
-        # 纯文本与是否@机器人（决策需要）：来自边界解析（等价格）
         clean_text, is_mentioned = event.text, event.is_mentioned
+        images = native_event_images(self.config, event)
 
         # 用户命令（P2-9 记忆管理：/help /memory /forget /forget_me；管理员 /memory_clear /memory_dump）
         if clean_text.strip().startswith("/") and await self.commands.handle(clean_text.strip(), user_id, group_id):
             return
 
-        # 复读检测（REPEAT_ENABLED 关闭时跳过）
-        if full_text and getattr(self.config, "REPEAT_ENABLED", True):
-            if self.policy_engine.check_and_record_repeat(full_text, group_id):
-                await self.sender.send_group_message(group_id, full_text)
+        use_analyzer = group_id in (getattr(self.config, "MESSAGE_ANALYSIS_GROUP_IDS", None) or ())
+        detect_toxic = group_id in (self.config.TOXIC_GROUP_IDS or ())
+        silent_memory = not is_summoned(is_mentioned, is_reply_to_bot)
+        claim, toxic = None, False
+        if use_analyzer:
+            analysis = await self.message_analyzer.analyze(
+                group_id, user_id, clean_text, detect_toxic=detect_toxic,
+                detect_preference=silent_memory and not has_at_others and not self._memory_disabled(group_id)
+                and getattr(self.config, "MEMORY_ENABLED", True),
+            )
+            claim, toxic = analysis.preference, analysis.toxic
+        repeat_key = "\n".join((full_text, *images)) if images else full_text
+        if (not toxic and full_text and getattr(self.config, "REPEAT_ENABLED", True)
+                and self.policy_engine.check_and_record_repeat(repeat_key, group_id)):
+            await self.sender.send_group_message(group_id, full_text)
+            self.policy_engine.record_bot_reply(group_id)
+            self.policy_engine.add_context(group_id, 0, full_text, is_bot=True)
+            return
+        if not use_analyzer and detect_toxic:
+            toxic = await self.ai_gateway.guarded_is_toxic(group_id, user_id, full_text)
+        if toxic:
+            now = time.time()
+            if now - self.global_state.last_toxic_warning.get(group_id, 0) >= self.config.TOXIC_WARNING_COOLDOWN:
+                await self.sender.send_group_message(group_id, "居然有人在引战喔（坏笑，马上发消息给群主咪）")
+                self.global_state.last_toxic_warning.set(group_id, now)
                 self.policy_engine.record_bot_reply(group_id)
-                self.policy_engine.add_context(group_id, 0, full_text, is_bot=True)
-                return
-
-        # 引战检测（统一准入：走预算闸门）
-        if self.config.TOXIC_GROUP_IDS and group_id in self.config.TOXIC_GROUP_IDS:
-            if await self.ai_gateway.guarded_is_toxic(group_id, user_id, full_text):
-                now = time.time()
-                last_warn = self.global_state.last_toxic_warning.get(group_id, 0)
-                if now - last_warn >= self.config.TOXIC_WARNING_COOLDOWN:
-                    await self.sender.send_group_message(group_id, "居然有人在引战喔（坏笑，马上发消息给群主咪）")
-                    self.global_state.last_toxic_warning.set(group_id, now)
-                    self.policy_engine.record_bot_reply(group_id)
-                return
+            return
 
         # 构建消息对象
         msg = GroupMessage(
@@ -336,24 +347,15 @@ class MessageRouter(ReplyDispatchMixin):
         if self.meme_manager is not None and full_text and full_text.strip():
             self.meme_manager.record_message(group_id, user_id, full_text, raw_time)
 
-        # ---------- 强制记忆（静默；命中个人偏好句式只记记忆、不回复、不烧 AI）----------
-        # 命中个人偏好句式即确定记录（记忆禁用群除外，降级为普通消息继续走回复流程）
-        force_memory = self.policy_engine.should_force_memory(clean_text, full_text, has_at_others)
-        silent_memory_only = force_memory and not is_mentioned and not is_reply_to_bot
-        if silent_memory_only and not self._memory_disabled(group_id):
-            claim = validate_memory_content(clean_text[:100])
-            if claim is None:
-                logger.warning("memory_inject_rejected user=%s group=%s len=%d", user_id, group_id, len(clean_text), extra={"event": "memory_inject_rejected"})
+        if (not use_analyzer and silent_memory and not self._memory_disabled(group_id)
+                and self.policy_engine.should_force_memory(clean_text, full_text, has_at_others)):
+            claim = clean_text[:100]
+        if claim is not None:
+            await record_self_claim(self.memory_manager, claim, user_id, group_id, msg_id)
+            if self.config.ONLY_REPLY_WHEN_AT or not _name_mention.detect(
+                msg, self.config, getattr(self, "group_nicknames", None)
+            ):
                 return
-            await self.memory_manager.append_memory_text(
-                user_id, group_id, claim,
-                source_user=user_id,
-                source_group=group_id,
-                source_message_id=msg_id,
-                confidence="self_claim",
-            )
-            logger.info(f"Force memory for user {user_id} in group {group_id}: {claim}")
-            return
 
         # ---------- 决定是否回复 ----------
         if not getattr(self.config, "VISION_REPLY_ON_IMAGE", False) and is_image_only_message(
@@ -392,13 +394,11 @@ class MessageRouter(ReplyDispatchMixin):
         user_prompt = full_text if full_text.strip() else (
             f"用户刚刚发了一张图片，图片内容：{'; '.join(image_descriptions)}" if image_descriptions else "用户刚刚@了你，但没有说话。"
         )
-        # 表情包上下文：可用表情包的"文字描述"（不传图片本体，防 token 与隐私浪费）
         if self.sticker_manager and self.sticker_manager.is_enabled():
-            sticker_ctx = self.sticker_manager.build_sticker_context()
+            sticker_ctx = self.sticker_manager.build_sticker_context(image_paths=images)
             if sticker_ctx:
-                sticker_ctx = sanitize_untrusted_text(str(sticker_ctx))
+                sticker_ctx, _ = sanitize_untrusted_text(sticker_ctx)
                 user_prompt = f"{user_prompt}\n\n{sticker_ctx}"
-        # 输入截断已统一收敛到 AIClient.chat_once（覆盖主动聊天等所有路径）
         logger.info("policy_pass group=%s user=%s", group_id, user_id, extra={"event": "policy_pass"})
         reply, memory_update, denied = await self.guarded_chat(
             group_id,
@@ -406,6 +406,7 @@ class MessageRouter(ReplyDispatchMixin):
             user_message=user_prompt,
             context=context_text,
             is_mentioned=is_mentioned or is_reply_to_bot,
+            **({"images": tuple(images)} if images else {}),
         )
         if denied:
             # 预算/限速拦截：静默跳过（不发送"喵？"兜底）
@@ -467,7 +468,6 @@ class MessageRouter(ReplyDispatchMixin):
         """群级熔断器（委托 AiGateway；兼容旧调用）。"""
         return self.ai_gateway._get_group_breaker(group_id)
 
-    # ---------- 决策逻辑 ----------
     def _should_reply(self, msg: GroupMessage) -> bool:
         if self.config.ONLY_REPLY_WHEN_AT:
             if msg.is_mentioned or msg.is_reply_to_bot:

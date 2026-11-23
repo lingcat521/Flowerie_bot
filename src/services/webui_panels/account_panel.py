@@ -15,6 +15,7 @@ from src.config import is_loopback_url
 from src.services.system_status import collect as collect_system_status
 from src.services.web_search import WebSearchService
 from src.services.web_ui_assets import render_account_tab
+from src.utils.message_analysis_config import analysis_endpoint
 
 # API 厂商连接状态展示所需的配置键（配置层面：URL/模型/Key 是否设置/是否独立）
 _API_KEYS = ("DEEPSEEK_API_URL", "DEEPSEEK_MODEL", "DEEPSEEK_API_KEY",
@@ -91,8 +92,17 @@ class AccountPanelMixin:
             "model": values.get("TOXIC_MODEL") or "回退 DeepSeek",
             "key": _masked(values.get("TOXIC_API_KEY")),
             "key_set": bool(values.get("TOXIC_API_KEY")),
-            "label": "引战检测",
+            "label": "引战检测（关键词预筛）",
         }
+        for task in ("preference", "toxic"):
+            endpoint = analysis_endpoint(self.config, task)
+            out[f"analysis_{task}"] = {
+                "url": endpoint.url,
+                "model": endpoint.model,
+                "key": _masked(endpoint.key),
+                "key_set": bool(endpoint.key),
+                "loopback": is_loopback_url(endpoint.url),
+            } if endpoint else {"status": "缺少接口地址或模型名", "tone": "warn"}
         out["embedding"] = {
             "url": values.get("BLOSSOM_MEMORY_EMBEDDING_API_URL") or "未启用",
             "model": values.get("BLOSSOM_MEMORY_EMBEDDING_MODEL") or "未启用",

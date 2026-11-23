@@ -11,11 +11,13 @@ import asyncio
 import hashlib
 import os
 import re
+from pathlib import Path
 from typing import Optional
 
 from src.config import Settings
 from src.repositories.sticker_repository import StickerRepository
 from src.services.ai_client import AIClient
+from src.services.multimodal import native_vision_active
 from src.utils.expiring_map import ExpiringMap
 from src.utils.logging_setup import get_logger
 
@@ -119,27 +121,22 @@ class StickerManager:
         return 1
 
     # ---------- 模型选择辅助 ----------
-    def build_sticker_context(self) -> str:
-        """提供给模型的可用表情包上下文。
-
-        主模型原生识图（_native_vision_active）时传图片本体（native_vision_image
-        标记由 AIClient 转成多模态段，主模型自己看图选图）；否则只传文字描述
-        （外部识图模型在索引时已写好描述）。
-        """
+    def build_sticker_context(self, image_paths: list[str | Path] | None = None) -> str:
+        """提供候选表情包的文字上下文，原生识图时可单独收集本地图片。"""
         if not self.is_enabled():
             return ""
         stickers = self.repository.list_ok(limit=max(1, self.config.STICKER_MAX_LIST))
         if not stickers:
             return ""
-        from src.core.message_assembler import _native_vision_active
-        native = _native_vision_active(self.config)
         lines = ["可用表情包（如语境合适，可在回复中附加 [STICKER:文件名] 选择，最多一张）："]
-        if native:
-            # 主模型直看：候选图本体（限制张数，防 token 爆炸）
+        if image_paths is not None and native_vision_active(self.config):
+            root = Path(self.config.STICKER_DIR).resolve()
             max_imgs = max(1, int(getattr(self.config, "STICKER_NATIVE_MAX_IMAGES", 4) or 4))
             for s in stickers[:max_imgs]:
-                lines.append(f"[STICKER:{s['filename']}]")
-                lines.append(f"[native_vision_image] file://{s['file_path']}")
+                path = Path(s["file_path"]).resolve()
+                if path.is_relative_to(root) and path.suffix.lower() in _IMAGE_EXTS and path.is_file():
+                    image_paths.append(path)
+                    lines.append(f"[STICKER:{s['filename']}]")
         else:
             for s in stickers:
                 lines.append(f"[{s['filename']}] {s['description'][:120]}")
