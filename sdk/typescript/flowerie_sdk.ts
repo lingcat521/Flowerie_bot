@@ -873,6 +873,21 @@ export class PluginContext {
     }
     return merged;
   }
+  /** 读取全局群消息分析配置（需要 manage_message_analysis 权限）。 */
+  messageAnalysisGet(): Promise<Record<string, unknown>> {
+    return this.client.engineOp("message_analysis.get");
+  }
+
+  /** 批量修改群消息分析配置（密钥传 null 表示清除）。 */
+  messageAnalysisUpdate(values: Record<string, unknown>): Promise<Record<string, unknown>> {
+    return this.client.engineOp("message_analysis.update", { values });
+  }
+
+  /** 探测宿主保存的模型（需要 ping_models 权限）。 */
+  pingModels(target = "all"): Promise<Record<string, unknown>> {
+    return this.client.engineOp("models.ping", { target });
+  }
+
   configSet(values: Record<string, unknown>): string[] {
     const overlay = this.configOverlay();
     for (const [k, v] of Object.entries(values)) {

@@ -338,6 +338,21 @@ public class FloweriePlugin {
             return merged;
         }
 
+        /** 读取全局群消息分析配置（需要 manage_message_analysis 权限）。 */
+        public Object messageAnalysisGet() throws IOException {
+            return engineOp("message_analysis.get", Map.of());
+        }
+
+        /** 批量修改群消息分析配置（密钥传 null 表示清除）。 */
+        public Object messageAnalysisUpdate(Map<String, Object> values) throws IOException {
+            return engineOp("message_analysis.update", Map.of("values", values));
+        }
+
+        /** 探测宿主保存的模型。传 all 可探测全部。 */
+        public Object pingModels(String target) throws IOException {
+            return engineOp("models.ping", Map.of("target", target));
+        }
+
         /** 写入插件自己的覆盖层（改不了操作员的全局配置）。 */
         @SuppressWarnings("unchecked")
         public List<String> configSet(Map<String, Object> values) throws IOException {

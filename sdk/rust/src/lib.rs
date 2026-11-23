@@ -191,6 +191,21 @@ impl Context {
         Ok(merged)
     }
 
+    /// Reads the shared analysis settings with manage_message_analysis permission.
+    pub fn message_analysis_get(&self) -> Result<Json, String> {
+        self.engine_op("message_analysis.get", &Json::obj(vec![]))
+    }
+
+    /// Updates analysis settings in one request. Use Json::Null to clear an API key.
+    pub fn message_analysis_update(&self, values: &Json) -> Result<Json, String> {
+        self.engine_op("message_analysis.update", &Json::obj(vec![("values", values.clone())]))
+    }
+
+    /// Probes the saved model target. Pass "all" to probe every model.
+    pub fn ping_models(&self, target: &str) -> Result<Json, String> {
+        self.engine_op("models.ping", &Json::obj(vec![("target", Json::str(target))]))
+    }
+
     /// 写入插件自己的覆盖层（改不了操作员的全局配置）。
     pub fn config_set(&self, values: &Json) -> Result<Vec<String>, String> {
         let pairs = match values {

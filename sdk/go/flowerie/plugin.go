@@ -772,6 +772,21 @@ func (c *Context) engineOp(op string, args map[string]any) (map[string]any, erro
 	return c.reverse("engine", map[string]any{"op": op, "args": args})
 }
 
+// MessageAnalysisGet reads the shared analysis settings with manage_message_analysis permission.
+func (c *Context) MessageAnalysisGet() (map[string]any, error) {
+	return c.engineOp("message_analysis.get", map[string]any{})
+}
+
+// MessageAnalysisUpdate updates analysis settings in one request. Use nil to clear an API key.
+func (c *Context) MessageAnalysisUpdate(values map[string]any) (map[string]any, error) {
+	return c.engineOp("message_analysis.update", map[string]any{"values": values})
+}
+
+// PingModels probes the saved model target. Pass "all" to probe every model.
+func (c *Context) PingModels(target string) (map[string]any, error) {
+	return c.engineOp("models.ping", map[string]any{"target": target})
+}
+
 // Action 发起动作（副作用出口）。
 func (c *Context) Action(actionType string, params map[string]any) (map[string]any, error) {
 	return c.reverse("action", map[string]any{"action": actionType, "payload": params})

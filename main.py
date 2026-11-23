@@ -24,6 +24,7 @@ from src.services.mcp_tool_manager import McpToolManager
 from src.services.meme_knowledge_manager import MemeKnowledgeManager
 from src.services.meme_summary import MemeSummaryService
 from src.services.memory_manager import MemoryManager
+from src.services.model_ping import ModelPingService
 from src.services.persona_manager import PersonaManager
 from src.services.prompt_manager import PromptManager
 from src.services.sender import Sender
@@ -212,11 +213,14 @@ async def main():
         # policy_engine（含 ContextManager）先于插件管理器构造：
         # 插件 SDK 的 get_context 复用现有 ContextManager（领域数据源，不重造）
         policy_engine = PolicyEngine(config, memory_manager)
+        model_pings = ModelPingService(config)
         plugin_manager = PluginManager(
             config, settings_repo, sender=sender, memory_manager=memory_manager,
             state_provider=_plugin_state_provider, context_manager=policy_engine.context,
             bot_factory=OneBotAdapter,
             ai_client=ai_client,
+            config_service=config_service,
+            model_pings=model_pings,
         )
         from src.services.group_nicknames import GroupNicknameStore
         from src.services.group_style_rules import GroupStyleRuleStore
@@ -251,6 +255,7 @@ async def main():
                 group_style_rules=group_style_rules,
                 admin_service=admin_service, qzone_service=qzone_service,
                 memory_manager=memory_manager, search_service=web_search_service, file_parser=file_parser,
+                model_pings=model_pings,
             )
         # 资源取数（Gate R）：三种资源形态一次接上；协议差异（OneBot /get_file、Milky 临时 URL）在 Adapter 层，
         # Core 只拿 ResourceRef，因此不认识任何协议侧的 id 字段名。

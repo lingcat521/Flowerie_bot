@@ -692,6 +692,18 @@ class FlowerieBot:
     def profile_set_section(self, group_id, user_id, label, text, nickname="") -> dict:
         return self._api.profile_set_section(group_id, user_id, label, text, nickname) if self._api else self._no_api()
 
+    def ping_models(self, target: str = "all") -> dict:
+        """探测宿主保存的模型（默认探测全部）。"""
+        return self._api.ping_models(target) if self._api else self._no_api()
+
+    def message_analysis_get(self) -> dict:
+        """读取全局群消息分析配置及密钥配置状态。"""
+        return self._api.message_analysis_get() if self._api else self._no_api()
+
+    def message_analysis_update(self, values: dict) -> dict:
+        """批量修改群消息分析配置（密钥传 None 表示清除）。"""
+        return self._api.message_analysis_update(values) if self._api else self._no_api()
+
     def profile_delete(self, group_id, user_id) -> dict:
         return self._api.profile_delete(group_id, user_id) if self._api else self._no_api()
 
